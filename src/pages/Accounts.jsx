@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +18,7 @@ import {
   Users,
   Upload,
   Flag,
-  FileCheck // Added FileCheck import
+  FileCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -194,7 +193,6 @@ export default function AccountsPage() {
     const matchesStatus = statusFilter === "all" || account.reportability_status === statusFilter;
     const matchesEntity = entityFilter === "all" || account.entity_id === entityFilter;
     
-    // Country filter - check tax residencies and account holder address
     const matchesCountry = countryFilter === "all" || 
       (account.tax_residencies && account.tax_residencies.some(r => r.country === countryFilter)) ||
       account.account_holder_address?.country === countryFilter;
@@ -202,7 +200,6 @@ export default function AccountsPage() {
     return matchesSearch && matchesStatus && matchesEntity && matchesCountry;
   });
 
-  // Get unique countries from accounts for filter
   const uniqueCountries = [...new Set(
     accounts.flatMap(a => [
       a.account_holder_address?.country,
@@ -324,7 +321,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Reportable</p>
-                      <p className="2xl font-bold text-slate-900">
+                      <p className="text-2xl font-bold text-slate-900">
                         {accounts.filter(a => a.reportability_status === "reportable").length}
                       </p>
                     </div>
@@ -340,7 +337,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Pending Review</p>
-                      <p className="2xl font-bold text-slate-900">
+                      <p className="text-2xl font-bold text-slate-900">
                         {accounts.filter(a => a.reportability_status === "pending_review").length}
                       </p>
                     </div>
@@ -356,7 +353,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Non-Reportable</p>
-                      <p className="2xl font-bold text-slate-900">
+                      <p className="text-2xl font-bold text-slate-900">
                         {accounts.filter(a => a.reportability_status === "non_reportable").length}
                       </p>
                     </div>
@@ -365,7 +362,6 @@ export default function AccountsPage() {
               </Card>
             </div>
 
-            {/* Enhanced Filters */}
             <Card className="border-0 shadow-lg">
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -638,7 +634,7 @@ export default function AccountsPage() {
           <AccountForm
             account={selectedAccount}
             entities={entities}
-            tenant={tenant} 
+            tenant={tenant}
             onSubmit={(data) => {
               if (selectedAccount) {
                 updateMutation.mutate({ id: selectedAccount.id, data });
