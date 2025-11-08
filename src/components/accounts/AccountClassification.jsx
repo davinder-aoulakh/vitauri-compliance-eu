@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, AlertTriangle, Users } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,301 +17,53 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// CRS Individual Account Reportability Workflow
-const INDIVIDUAL_WORKFLOW = {
-  Q1_account_type: {
-    type: "decision",
-    question: "Is this a new account or a pre-existing account?",
-    help: "New accounts opened after the CRS implementation date follow simplified due diligence. Pre-existing accounts may have already undergone review.",
-    outputs: { 
-      NEW: "Q2_self_cert_obtained",
-      PREEXISTING: "Q3_account_balance"
-    }
-  },
-  Q2_self_cert_obtained: {
-    type: "decision",
-    question: "Has a valid self-certification been obtained from the account holder?",
-    help: "For new accounts, a self-certification is mandatory to establish tax residency. This is a requirement under CRS procedures.",
-    outputs: { 
-      YES: "frm_enter_tax_residencies",
-      NO: "act_classify_pending_self_cert"
-    }
-  },
-  frm_enter_tax_residencies: {
-    type: "form",
-    label: "Enter tax residency information from self-certification",
-    help: "Enter all countries where the account holder claims tax residency.",
-    fieldId: "taxResidencies",
-    fieldType: "text",
-    placeholder: "e.g., United States, United Kingdom (comma-separated)",
-    next: "Q4_home_jurisdiction"
-  },
-  Q4_home_jurisdiction: {
-    type: "decision",
-    question: "Is the account holder ONLY tax resident in your home jurisdiction (no foreign tax residency)?",
-    help: "If the account holder is solely resident in your country with no foreign tax obligations, the account is typically non-reportable.",
-    outputs: { 
-      YES: "act_classify_non_reportable_local",
-      NO: "Q5_check_crs_jurisdiction"
-    }
-  },
-  Q5_check_crs_jurisdiction: {
-    type: "decision",
-    question: "Are any of the foreign tax residency jurisdictions CRS participating countries?",
-    help: "CRS reporting only applies to participating jurisdictions. Check the OECD list of CRS participating countries.",
-    outputs: { 
-      YES: "act_classify_reportable_foreign",
-      NO: "act_classify_non_reportable_non_crs"
-    }
-  },
-  Q3_account_balance: {
-    type: "form",
-    label: "What is the account balance/value?",
-    help: "Pre-existing accounts may have balance thresholds for due diligence requirements.",
-    fieldId: "accountBalance",
-    fieldType: "number",
-    placeholder: "Enter account balance in USD",
-    next: "Q6_high_value"
-  },
-  Q6_high_value: {
-    type: "decision",
-    question: "Does the account balance exceed USD 1,000,000? (High Value Account threshold)",
-    help: "High value pre-existing accounts require enhanced due diligence procedures.",
-    rule: (answers) => parseFloat(answers.accountBalance) > 1000000 ? "YES" : "NO",
-    outputs: { 
-      YES: "Q7_indicia_search",
-      NO: "Q8_lower_value_indicia"
-    }
-  },
-  Q7_indicia_search: {
-    type: "decision",
-    question: "Has an electronic record search been performed for foreign indicia?",
-    help: "For high value accounts, you must search electronic records for: foreign address, foreign phone, standing instructions to foreign address, POA to foreign address.",
-    outputs: { 
-      YES: "Q9_indicia_found_high",
-      NO: "act_classify_pending_indicia_search"
-    }
-  },
-  Q9_indicia_found_high: {
-    type: "decision",
-    question: "Were any foreign indicia found in the electronic search?",
-    help: "Foreign indicia include: residence address in foreign country, mailing address in foreign country, phone number in foreign country, standing instructions to transfer funds to foreign country, or POA granted to person with foreign address.",
-    outputs: { 
-      YES: "frm_indicia_list",
-      NO: "Q10_paper_search"
-    }
-  },
-  frm_indicia_list: {
-    type: "multiselect",
-    label: "Select all foreign indicia found",
-    fieldId: "indiciaFound",
-    options: [
-      { value: "foreign_address", label: "Foreign residence address" },
-      { value: "foreign_mailing", label: "Foreign mailing/hold mail address" },
-      { value: "foreign_phone", label: "Foreign telephone number" },
-      { value: "standing_instructions", label: "Standing instructions to transfer funds to foreign account" },
-      { value: "poa_foreign", label: "Power of Attorney granted to person with foreign address" }
-    ],
-    next: "Q11_self_cert_cure_high"
-  },
-  Q11_self_cert_cure_high: {
-    type: "decision",
-    question: "Has a valid self-certification been obtained to cure the indicia?",
-    help: "A self-certification can override indicia if it establishes the account holder is NOT tax resident in the foreign jurisdiction indicated by the indicia.",
-    outputs: { 
-      YES: "frm_enter_tax_residencies",
-      NO: "act_classify_reportable_indicia_uncured"
-    }
-  },
-  Q10_paper_search: {
-    type: "decision",
-    question: "Has a paper record search been performed? (Required for high value accounts)",
-    help: "For high value accounts without electronic indicia, you must review paper records from the past 5 years for indicia.",
-    outputs: { 
-      YES: "Q12_paper_indicia",
-      NO: "act_classify_pending_paper_search"
-    }
-  },
-  Q12_paper_indicia: {
-    type: "decision",
-    question: "Were any foreign indicia found in the paper record search?",
-    outputs: { 
-      YES: "frm_indicia_list",
-      NO: "act_classify_non_reportable_no_indicia"
-    }
-  },
-  Q8_lower_value_indicia: {
-    type: "decision",
-    question: "Were any foreign indicia found in the electronic records? (For lower value pre-existing accounts)",
-    help: "For accounts under USD 1M, electronic record search is required but paper search is not mandatory unless indicia are found.",
-    outputs: { 
-      YES: "frm_indicia_list_lower",
-      NO: "act_classify_non_reportable_no_indicia"
-    }
-  },
-  frm_indicia_list_lower: {
-    type: "multiselect",
-    label: "Select all foreign indicia found",
-    fieldId: "indiciaFound",
-    options: [
-      { value: "foreign_address", label: "Foreign residence address" },
-      { value: "foreign_mailing", label: "Foreign mailing/hold mail address" },
-      { value: "foreign_phone", label: "Foreign telephone number" },
-      { value: "standing_instructions", label: "Standing instructions to transfer funds to foreign account" },
-      { value: "poa_foreign", label: "Power of Attorney granted to person with foreign address" }
-    ],
-    next: "Q13_self_cert_lower"
-  },
-  Q13_self_cert_lower: {
-    type: "decision",
-    question: "Has a self-certification been obtained to resolve the indicia?",
-    outputs: { 
-      YES: "frm_enter_tax_residencies",
-      NO: "act_classify_reportable_indicia_uncured"
-    }
-  },
-  
-  // Actions - Classification outcomes
-  act_classify_reportable_foreign: {
-    type: "action",
-    classification: "reportable",
-    reason: (answers) => `Account holder is tax resident in foreign CRS participating jurisdiction(s): ${answers.taxResidencies}`,
-    reportable_jurisdictions: (answers) => answers.taxResidencies ? answers.taxResidencies.split(',').map(j => j.trim()) : []
-  },
-  act_classify_reportable_indicia_uncured: {
-    type: "action",
-    classification: "reportable",
-    reason: (answers) => `Foreign indicia found and not cured by self-certification. Indicia: ${answers.indiciaFound?.join(', ') || 'unspecified'}`,
-    reportable_jurisdictions: ["To be determined based on indicia"]
-  },
-  act_classify_non_reportable_local: {
-    type: "action",
-    classification: "non_reportable",
-    reason: "Account holder is solely tax resident in home jurisdiction - no foreign tax residency"
-  },
-  act_classify_non_reportable_non_crs: {
-    type: "action",
-    classification: "non_reportable",
-    reason: "Foreign tax residency is in non-CRS participating jurisdiction - not reportable under CRS"
-  },
-  act_classify_non_reportable_no_indicia: {
-    type: "action",
-    classification: "non_reportable",
-    reason: "No foreign indicia found - presumed local resident account"
-  },
-  act_classify_pending_self_cert: {
-    type: "action",
-    classification: "pending_review",
-    reason: "Self-certification required but not yet obtained - follow up needed"
-  },
-  act_classify_pending_indicia_search: {
-    type: "action",
-    classification: "pending_review",
-    reason: "Electronic record search for indicia not yet completed - due diligence pending"
-  },
-  act_classify_pending_paper_search: {
-    type: "action",
-    classification: "pending_review",
-    reason: "Paper record search required for high value account - due diligence pending"
-  }
-};
-
-// CRS Entity Account Reportability Workflow
-const ENTITY_WORKFLOW = {
-  QE1_is_financial_institution: {
-    type: "decision",
-    question: "Is the entity account holder itself a Financial Institution (FI)?",
-    help: "Financial Institutions include: custodial institutions, depository institutions, investment entities, and specified insurance companies. If yes, this FI should do its own CRS reporting.",
-    outputs: {
-      YES: "QE2_fi_type",
-      NO: "QE3_nfe_classification"
-    }
-  },
-  QE2_fi_type: {
-    type: "form",
-    label: "What type of Financial Institution is it?",
-    fieldId: "fiType",
-    fieldType: "select",
-    options: [
-      { value: "custodial", label: "Custodial Institution" },
-      { value: "depository", label: "Depository Institution" },
-      { value: "investment_entity", label: "Investment Entity" },
-      { value: "insurance", label: "Specified Insurance Company" }
-    ],
-    next: "act_classify_entity_non_reportable_fi"
-  },
-  QE3_nfe_classification: {
-    type: "decision",
-    question: "Is the entity an Active NFE or a Passive NFE?",
-    help: "Active NFEs conduct substantial business activities (operational companies). Passive NFEs primarily hold passive income/assets (holding companies, investment vehicles). If unsure, default to Passive for enhanced due diligence.",
-    outputs: {
-      ACTIVE: "QE4_active_nfe_reason",
-      PASSIVE: "act_entity_needs_controlling_persons"
-    }
-  },
-  QE4_active_nfe_reason: {
-    type: "form",
-    label: "Select the Active NFE classification basis",
-    fieldId: "activeNfeReason",
-    fieldType: "select",
-    options: [
-      { value: "operational", label: "Operational company with substantial business activity" },
-      { value: "publicly_traded", label: "Publicly traded entity or affiliate" },
-      { value: "governmental", label: "Governmental entity or wholly-owned subsidiary" },
-      { value: "holding_active", label: "Holding company of Active NFE group" },
-      { value: "startup", label: "Start-up entity (less than 24 months)" },
-      { value: "liquidation", label: "Entity in liquidation or emerging from bankruptcy" },
-      { value: "treasury", label: "Treasury center serving Active NFE group" }
-    ],
-    next: "act_classify_entity_non_reportable_active_nfe"
-  },
-  
-  // Actions for entity workflow
-  act_classify_entity_non_reportable_fi: {
-    type: "action",
-    classification: "non_reportable",
-    reason: (answers) => `Entity is a Financial Institution (${answers.fiType || 'unspecified type'}) - responsible for its own CRS reporting`,
-    entity_classification: "financial_institution"
-  },
-  act_classify_entity_non_reportable_active_nfe: {
-    type: "action",
-    classification: "non_reportable",
-    reason: (answers) => `Entity is an Active NFE (${answers.activeNfeReason?.replace(/_/g, ' ') || 'unspecified reason'}) - not reportable under CRS`,
-    entity_classification: "active_nfe"
-  },
-  act_entity_needs_controlling_persons: {
-    type: "action",
-    classification: "pending_review",
-    reason: "Entity is a Passive NFE - controlling persons must be identified and assessed for reportability",
-    entity_classification: "passive_nfe",
-    requires_controlling_persons: true
-  }
-};
-
 export default function AccountClassification({ account, onComplete, onCancel }) {
-  const [workflow, setWorkflow] = useState(null);
   const [currentNodeId, setCurrentNodeId] = useState(null);
   const [answers, setAnswers] = useState(account?.classification_answers || {});
   const [selectedValue, setSelectedValue] = useState("");
-  const [selectedMultiple, setSelectedMultiple] = useState([]);
-  const [textInput, setTextInput] = useState("");
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
+  const [workflow, setWorkflow] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [completedPath, setCompletedPath] = useState([]);
+
+  // Fetch published account classification workflows
+  const { data: workflows = [], isLoading } = useQuery({
+    queryKey: ['account-workflows'],
+    queryFn: () => base44.entities.Workflow.filter({ 
+      workflow_type: 'account_reportability',
+      status: 'published'
+    })
+  });
 
   useEffect(() => {
     loadUser();
-    initializeWorkflow();
-  }, [account]);
+  }, []);
 
-  const initializeWorkflow = () => {
-    if (account?.account_holder_type === "individual") {
-      setWorkflow(INDIVIDUAL_WORKFLOW);
-      setCurrentNodeId("Q1_account_type");
-    } else if (account?.account_holder_type === "entity") {
-      setWorkflow(ENTITY_WORKFLOW);
-      setCurrentNodeId("QE1_is_financial_institution");
+  useEffect(() => {
+    if (workflows.length > 0 && !workflow) {
+      // Find workflow based on account holder type
+      const workflowName = account?.account_holder_type === "individual" 
+        ? "Individual Account Reportability (CRS)"
+        : "Entity Account Reportability (CRS)";
+      
+      const matchingWorkflows = workflows.filter(w => w.workflow_name === workflowName);
+      
+      if (matchingWorkflows.length > 0) {
+        // Get the latest version
+        const sortedWorkflows = matchingWorkflows.sort((a, b) => 
+          parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
+        );
+        const latestWorkflow = sortedWorkflows[0];
+        setWorkflow(latestWorkflow);
+        
+        // Set initial node
+        if (latestWorkflow.steps && latestWorkflow.steps.length > 0) {
+          setCurrentNodeId(latestWorkflow.steps[0].step_id);
+        }
+      }
     }
-  };
+  }, [workflows, workflow, account]);
 
   const loadUser = async () => {
     try {
@@ -321,128 +74,219 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  if (!workflow || !currentNodeId) {
+  if (isLoading) {
     return (
-      <div className="p-8 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
       </div>
     );
   }
 
-  const currentNode = workflow[currentNodeId];
-  const progress = Math.round((Object.keys(answers).length / 15) * 100);
+  if (!workflow) {
+    const accountType = account?.account_holder_type === "individual" ? "individual" : "entity";
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertCircle className="w-4 h-4 text-amber-600" />
+          <AlertDescription className="text-amber-900">
+            No published {accountType} account reportability workflow found. Please contact your administrator to publish the workflow.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!currentNodeId && !showSummary) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  // Build step map
+  const stepMap = {};
+  workflow.steps.forEach(step => {
+    stepMap[step.step_id] = step;
+  });
+
+  const currentNode = showSummary ? null : stepMap[currentNodeId];
+  
+  if (!currentNode && !showSummary) {
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertDescription className="text-red-900">
+            Workflow configuration error. Current step not found.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const isEntityWorkflow = account?.account_holder_type === "entity";
+  const currentStepIndex = history.length;
+  const totalSteps = completedPath.length || history.length + 1;
+  const progress = Math.round((currentStepIndex / totalSteps) * 100);
+
+  // Determine if current node is an action (end) node
+  const isActionNode = (step) => {
+    if (!step) return false;
+    if (!step.options || step.options.length === 0) {
+      return true;
+    }
+    return !step.options.some(opt => opt.next_step);
+  };
 
   const handleNext = () => {
     const newAnswers = { ...answers };
     
-    if (currentNode.type === "form") {
-      if (!textInput && currentNode.fieldType !== "multiselect") return;
-      newAnswers[currentNode.fieldId] = textInput;
-    } else if (currentNode.type === "multiselect") {
-      if (selectedMultiple.length === 0) return;
-      newAnswers[currentNode.fieldId] = selectedMultiple;
-    } else if (currentNode.type === "decision" && !currentNode.rule) {
+    // Store the answer
+    if (currentNode.question_type === "single_choice" || 
+        currentNode.question_type === "yes_no" ||
+        currentNode.question_type === "multiple_choice") {
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
     }
 
     setAnswers(newAnswers);
-    setHistory([...history, currentNodeId]);
+    const newHistory = [...history, currentNodeId];
+    setHistory(newHistory);
 
-    let nextNodeId;
+    // Determine next step
+    let nextNodeId = null;
 
-    if (currentNode.type === "action") {
-      completeClassification(currentNode, newAnswers);
+    // Check conditional logic first
+    if (currentNode.conditional_logic) {
+      const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
+      nextNodeId = conditionMet 
+        ? currentNode.conditional_logic.next_step 
+        : currentNode.conditional_logic.else_step;
+    } 
+    // Check if there's a selected option with next_step
+    else if (selectedValue && currentNode.options) {
+      const selectedOption = currentNode.options.find(opt => 
+        opt.value === selectedValue || opt.label === selectedValue
+      );
+      nextNodeId = selectedOption?.next_step;
+    }
+
+    // If this is an action node or no next step, show summary
+    if (!nextNodeId || isActionNode(currentNode)) {
+      setCompletedPath([...newHistory, currentNodeId]);
+      setShowSummary(true);
       return;
-    } else if (currentNode.type === "form" || currentNode.type === "multiselect") {
-      nextNodeId = currentNode.next;
-    } else if (currentNode.rule) {
-      const decision = currentNode.rule(newAnswers);
-      nextNodeId = currentNode.outputs[decision];
-      newAnswers[currentNodeId] = decision;
-    } else {
-      nextNodeId = currentNode.outputs[selectedValue];
     }
 
-    if (workflow[nextNodeId]?.type === "action") {
-      completeClassification(workflow[nextNodeId], newAnswers);
-    } else {
-      setCurrentNodeId(nextNodeId);
-      setSelectedValue("");
-      setSelectedMultiple([]);
-      setTextInput("");
-    }
+    // Move to next node
+    setCurrentNodeId(nextNodeId);
+    setSelectedValue("");
+  };
+
+  const evaluateConditionalLogic = (logic, answers) => {
+    if (!logic.conditions || logic.conditions.length === 0) return false;
+
+    let result = true;
+
+    logic.conditions.forEach((condition, idx) => {
+      const fieldValue = answers[condition.field];
+      let conditionMet = false;
+
+      switch (condition.operator) {
+        case "=":
+          conditionMet = fieldValue == condition.value;
+          break;
+        case "!=":
+          conditionMet = fieldValue != condition.value;
+          break;
+        case "in":
+          conditionMet = condition.value.split(",").map(v => v.trim()).includes(fieldValue);
+          break;
+        case "not_in":
+          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(fieldValue);
+          break;
+        case "contains":
+          conditionMet = String(fieldValue).includes(condition.value);
+          break;
+        case ">":
+          conditionMet = parseFloat(fieldValue) > parseFloat(condition.value);
+          break;
+        case "<":
+          conditionMet = parseFloat(fieldValue) < parseFloat(condition.value);
+          break;
+        case ">=":
+          conditionMet = parseFloat(fieldValue) >= parseFloat(condition.value);
+          break;
+        case "<=":
+          conditionMet = parseFloat(fieldValue) <= parseFloat(condition.value);
+          break;
+        default:
+          conditionMet = false;
+      }
+
+      if (idx === 0) {
+        result = conditionMet;
+      } else {
+        if (condition.logic_operator === "AND") {
+          result = result && conditionMet;
+        } else if (condition.logic_operator === "OR") {
+          result = result || conditionMet;
+        }
+      }
+    });
+
+    return result;
   };
 
   const handleBack = () => {
+    if (showSummary) {
+      setShowSummary(false);
+      return;
+    }
+
     if (history.length === 0) {
       onCancel();
       return;
     }
 
     const previousNodeId = history[history.length - 1];
-    const previousNode = workflow[previousNodeId];
-
     const newAnswers = { ...answers };
-    if (previousNode.type === "form" || previousNode.type === "multiselect") {
-      delete newAnswers[previousNode.fieldId];
-    } else if (previousNode.type === "decision") {
-      delete newAnswers[previousNodeId];
-    }
+    delete newAnswers[currentNodeId];
 
     setAnswers(newAnswers);
     setHistory(history.slice(0, -1));
     setCurrentNodeId(previousNodeId);
-    
-    if (previousNode.type === "form") {
-      setTextInput(answers[previousNode.fieldId] || "");
-    } else if (previousNode.type === "multiselect") {
-      setSelectedMultiple(answers[previousNode.fieldId] || []);
-    } else {
-      setSelectedValue(answers[previousNodeId] || "");
-    }
+    setSelectedValue(answers[previousNodeId] || "");
   };
 
-  const completeClassification = async (actionNode, finalAnswers) => {
-    const classification = actionNode.classification;
-    const reason = typeof actionNode.reason === "function" 
-      ? actionNode.reason(finalAnswers) 
-      : actionNode.reason;
-    const reportableJurisdictions = typeof actionNode.reportable_jurisdictions === "function"
-      ? actionNode.reportable_jurisdictions(finalAnswers)
-      : (actionNode.reportable_jurisdictions || []);
+  const completeClassification = async () => {
+    const finalNode = stepMap[history[history.length - 1]] || currentNode;
+    const finalAnswers = answers;
 
-    const classificationData = {
-      classification_answers: finalAnswers,
-      reportability_status: classification,
-      reportability_reason: reason,
-      indicia_found: finalAnswers.indiciaFound || [],
-      self_certification_obtained: finalAnswers.Q2_self_cert_obtained === "YES" || finalAnswers.Q11_self_cert_cure_high === "YES" || finalAnswers.Q13_self_cert_lower === "YES",
-      self_certification_date: (finalAnswers.Q2_self_cert_obtained === "YES" || finalAnswers.Q11_self_cert_cure_high === "YES" || finalAnswers.Q13_self_cert_lower === "YES") 
-        ? new Date().toISOString().split('T')[0] 
-        : null
-    };
+    // Determine classification based on final node
+    let reportabilityStatus = "pending_review";
+    let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
 
-    // Entity-specific data
-    if (isEntityWorkflow) {
-      classificationData.entity_classification = actionNode.entity_classification;
-      
-      // If it's a Passive NFE, signal that controlling persons are needed
-      if (actionNode.requires_controlling_persons) {
-        classificationData.requires_controlling_persons = true;
+    // Parse classification from node title/help text
+    if (finalNode.step_title?.toLowerCase().includes("reportable") || 
+        finalNode.help_text?.toLowerCase().includes("reportable")) {
+      if (finalNode.step_title?.toLowerCase().includes("non-reportable") || 
+          finalNode.help_text?.toLowerCase().includes("non-reportable")) {
+        reportabilityStatus = "non_reportable";
+      } else if (finalNode.step_title?.toLowerCase().includes("pending") || 
+                 finalNode.help_text?.toLowerCase().includes("pending")) {
+        reportabilityStatus = "pending_review";
+      } else {
+        reportabilityStatus = "reportable";
       }
     }
 
-    // Parse tax residencies if provided (for individuals)
-    if (finalAnswers.taxResidencies) {
-      const residencies = finalAnswers.taxResidencies.split(',').map(country => ({
-        country: country.trim(),
-        tin: "",
-        tin_unavailable_reason: ""
-      }));
-      classificationData.tax_residencies = residencies;
-    }
+    const classificationData = {
+      classification_answers: finalAnswers,
+      reportability_status: reportabilityStatus,
+      reportability_reason: reason,
+      self_certification_obtained: finalNode.step_title?.toLowerCase().includes("self-certification obtained") || false
+    };
 
     // Save classification history record
     try {
@@ -450,11 +294,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
         tenant_id: account.tenant_id,
         account_id: account.id,
         classification_date: new Date().toISOString(),
-        reportability_status: classification,
+        reportability_status: reportabilityStatus,
         classification_reason: reason,
-        reportable_jurisdictions: reportableJurisdictions,
+        reportable_jurisdictions: [],
         workflow_answers: finalAnswers,
-        indicia_found: finalAnswers.indiciaFound || [],
+        indicia_found: [],
         self_certification_status: classificationData.self_certification_obtained ? "obtained" : "not_obtained",
         performed_by: user?.email || "unknown",
         account_holder_name: account.account_holder_name,
@@ -469,26 +313,29 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const renderNode = () => {
-    if (currentNode.type === "decision") {
-      const options = Object.keys(currentNode.outputs);
+    if (currentNode.question_type === "yes_no") {
+      const options = currentNode.options || [
+        { value: "YES", label: "Yes" },
+        { value: "NO", label: "No" }
+      ];
       
       return (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
             {options.map((option) => (
               <div 
-                key={option}
+                key={option.value}
                 className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-                onClick={() => setSelectedValue(option)}
+                onClick={() => setSelectedValue(option.value)}
               >
-                <RadioGroupItem value={option} id={option} />
+                <RadioGroupItem value={option.value} id={option.value} />
                 <Label 
-                  htmlFor={option}
+                  htmlFor={option.value}
                   className="flex-1 cursor-pointer font-medium text-slate-900"
                 >
-                  {option}
+                  {option.label}
                 </Label>
-                {option === selectedValue && (
+                {option.value === selectedValue && (
                   <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                 )}
               </div>
@@ -498,99 +345,193 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
-    if (currentNode.type === "form") {
-      if (currentNode.fieldType === "select") {
-        return (
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-slate-700">{currentNode.label}</Label>
-            <Select value={textInput} onValueChange={setTextInput}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select an option..." />
-              </SelectTrigger>
-              <SelectContent>
-                {currentNode.options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-      }
-      
+    if (currentNode.question_type === "single_choice" || currentNode.question_type === "multiple_choice") {
       return (
         <div className="space-y-4">
-          <Label className="text-sm font-medium text-slate-700">{currentNode.label}</Label>
-          <Input
-            type={currentNode.fieldType}
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            placeholder={currentNode.placeholder}
-            className="w-full"
-          />
+          <Select value={selectedValue} onValueChange={setSelectedValue}>
+            <SelectTrigger className="w-full h-12">
+              <SelectValue placeholder="Select an option..." />
+            </SelectTrigger>
+            <SelectContent>
+              {currentNode.options?.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       );
     }
 
-    if (currentNode.type === "multiselect") {
+    if (currentNode.question_type === "text_input") {
       return (
-        <div className="space-y-4">
-          <Label className="text-sm font-medium text-slate-700">{currentNode.label}</Label>
-          <div className="space-y-2">
-            {currentNode.options.map((option) => (
-              <div 
-                key={option.value}
-                className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                  selectedMultiple.includes(option.value)
-                    ? 'border-indigo-400 bg-indigo-50'
-                    : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
-                }`}
-                onClick={() => {
-                  setSelectedMultiple(prev => 
-                    prev.includes(option.value)
-                      ? prev.filter(v => v !== option.value)
-                      : [...prev, option.value]
-                  );
-                }}
-              >
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                  selectedMultiple.includes(option.value)
-                    ? 'bg-indigo-600 border-indigo-600'
-                    : 'border-slate-300'
-                }`}>
-                  {selectedMultiple.includes(option.value) && (
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                  )}
-                </div>
-                <Label className="flex-1 cursor-pointer font-medium text-slate-900">
-                  {option.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="w-4 h-4 text-green-600" />
+          <AlertDescription className="text-green-900 font-medium">
+            {currentNode.help_text || "Classification complete!"}
+          </AlertDescription>
+        </Alert>
       );
     }
 
     return null;
   };
 
+  // Summary Screen
+  if (showSummary) {
+    const finalNode = stepMap[completedPath[completedPath.length - 1]];
+    const isReportable = finalNode?.step_title?.toLowerCase().includes("reportable") && 
+                         !finalNode?.step_title?.toLowerCase().includes("non-reportable");
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${
+            isReportable ? 'bg-amber-100' : 'bg-green-100'
+          }`}>
+            {isReportable ? (
+              <AlertCircle className="w-10 h-10 text-amber-600" />
+            ) : (
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            )}
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Classification Complete</h2>
+          <p className="text-slate-600">
+            Review your answers and confirm the reportability status for account <strong>{account.account_number}</strong>
+          </p>
+        </div>
+
+        {/* Classification Result Preview */}
+        <Card className={`border-2 ${
+          isReportable 
+            ? 'bg-amber-50 border-amber-200' 
+            : 'bg-green-50 border-green-200'
+        }`}>
+          <CardHeader className="border-b border-slate-200">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Reportability Assessment Result
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">Status:</span>
+                <Badge className={`text-sm ${
+                  isReportable 
+                    ? 'bg-amber-600 text-white' 
+                    : 'bg-green-600 text-white'
+                }`}>
+                  {isReportable ? 'Reportable' : 'Non-Reportable'}
+                </Badge>
+              </div>
+              <div className="flex items-start justify-between">
+                <span className="text-sm font-medium text-slate-700">Reason:</span>
+                <span className="text-sm text-slate-900 text-right max-w-md">
+                  {finalNode?.help_text || finalNode?.step_title || "Classification completed"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* All Answers Summary */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-slate-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Complete Answer Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {completedPath.map((stepId, idx) => {
+                const step = stepMap[stepId];
+                const answer = answers[stepId];
+                if (!step || !answer) return null;
+
+                const answerLabel = step.options?.find(o => o.value === answer)?.label || answer;
+
+                return (
+                  <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900 mb-1">
+                        {step.step_title}
+                      </p>
+                      {step.question_text && (
+                        <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
+                      )}
+                      <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                        {answerLabel}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex justify-between gap-3 pt-4 border-t">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleBack}
+            size="lg"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Review Answers
+          </Button>
+          <Button 
+            onClick={completeClassification}
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            <CheckCircle2 className="w-5 h-5 mr-2" />
+            Complete Classification
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main workflow screen
   return (
     <div className="space-y-6">
-      {/* Progress */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-slate-700">
-            {isEntityWorkflow ? "Entity Classification" : "Reportability Assessment"}
-          </span>
-          <span className="text-sm text-slate-500">{Object.keys(answers).length} steps completed</span>
+      {/* Workflow Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">Account Reportability Assessment</h2>
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            {workflow.workflow_name} v{workflow.version}
+          </Badge>
         </div>
-        <div className="w-full bg-slate-200 rounded-full h-2">
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-700">
+            Step {currentStepIndex + 1}
+          </p>
+          <p className="text-xs text-slate-500">{progress}% Complete</p>
+        </div>
+      </div>
+
+      {/* Enhanced Progress Bar */}
+      <div className="space-y-2">
+        <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
           <div 
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(progress, 100)}%` }}
           />
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Started</span>
+          <span className="font-medium text-indigo-600">{Object.keys(answers).length} questions answered</span>
+          <span>Summary</span>
         </div>
       </div>
 
@@ -600,73 +541,133 @@ export default function AccountClassification({ account, onComplete, onCancel })
           <>
             <Users className="w-4 h-4 text-purple-600" />
             <AlertDescription className="text-sm text-purple-900">
-              <strong>Entity Account Holder:</strong> This workflow will determine if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
+              <strong>Entity Account:</strong> This workflow determines if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
             </AlertDescription>
           </>
         ) : (
           <>
             <Info className="w-4 h-4 text-blue-600" />
             <AlertDescription className="text-sm text-blue-900">
-              <strong>Individual Account Holder:</strong> This workflow follows CRS due diligence procedures for individual accounts, including indicia searches and self-certification requirements.
+              <strong>Individual Account:</strong> This workflow follows CRS due diligence procedures for individual accounts.
             </AlertDescription>
           </>
         )}
       </Alert>
 
+      {/* Step Breadcrumb */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {[...history, currentNodeId].map((stepId, idx) => {
+          const step = stepMap[stepId];
+          const isCompleted = idx < history.length;
+          const isCurrent = idx === history.length;
+          
+          return (
+            <React.Fragment key={stepId}>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                isCompleted 
+                  ? 'bg-green-50 border-green-200' 
+                  : isCurrent 
+                    ? 'bg-indigo-50 border-indigo-300' 
+                    : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isCompleted 
+                    ? 'bg-green-600' 
+                    : isCurrent 
+                      ? 'bg-indigo-600' 
+                      : 'bg-slate-300'
+                }`}>
+                  {isCompleted ? (
+                    <Check className="w-4 h-4 text-white" />
+                  ) : (
+                    <span className="text-white text-xs font-bold">{idx + 1}</span>
+                  )}
+                </div>
+                <span className={`text-xs font-medium whitespace-nowrap ${
+                  isCompleted 
+                    ? 'text-green-700' 
+                    : isCurrent 
+                      ? 'text-indigo-700' 
+                      : 'text-slate-500'
+                }`}>
+                  {step?.step_title?.substring(0, 20) || `Step ${idx + 1}`}
+                  {step?.step_title?.length > 20 && '...'}
+                </span>
+              </div>
+              {idx < history.length && (
+                <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
       {/* Question Card */}
-      <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30">
+      <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30 shadow-lg">
         <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-1">
-                <span className="text-white font-bold text-sm">{history.length + 1}</span>
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center flex-shrink-0 shadow-lg">
+                <span className="text-white font-bold text-lg">{currentStepIndex + 1}</span>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  {currentNode.question || currentNode.label}
+                <h3 className="text-xl font-bold text-slate-900 mb-3">
+                  {currentNode.step_title}
                 </h3>
-                {currentNode.help && (
-                  <Alert className="bg-blue-50 border-blue-200">
+                {currentNode.question_text && (
+                  <p className="text-slate-700 mb-3 leading-relaxed">{currentNode.question_text}</p>
+                )}
+                {currentNode.help_text && (
+                  <Alert className="bg-blue-50 border-blue-200 mb-4">
                     <Info className="w-4 h-4 text-blue-600" />
                     <AlertDescription className="text-sm text-blue-900">
-                      {currentNode.help}
+                      {currentNode.help_text}
                     </AlertDescription>
                   </Alert>
+                )}
+                {currentNode.regulatory_reference && (
+                  <p className="text-xs text-slate-500 italic mb-3 flex items-center gap-2">
+                    <FileCheck className="w-3 h-3" />
+                    Reference: {currentNode.regulatory_reference}
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="ml-11">
+            {/* Render current node */}
+            <div className="pl-16">
               {renderNode()}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Previous Answers Summary */}
+      {/* Previous Answers Compact View */}
       {Object.keys(answers).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <FileCheck className="w-4 h-4" />
-              Previous Answers
-            </h4>
-            <div className="space-y-2">
-              {Object.entries(answers).map(([key, value]) => {
-                const node = workflow[key];
-                if (!node) return null;
-                return (
-                  <div key={key} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 text-xs">
-                      {node.question || node.label || key}
-                    </span>
-                    <Badge variant="outline" className="capitalize text-xs">
-                      {Array.isArray(value) ? value.join(', ') : value}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
+            <details className="cursor-pointer">
+              <summary className="text-sm font-semibold text-slate-700 flex items-center gap-2 hover:text-indigo-600 transition-colors">
+                <FileCheck className="w-4 h-4" />
+                View Previous Answers ({Object.keys(answers).length})
+              </summary>
+              <div className="mt-3 space-y-2 pl-6">
+                {Object.entries(answers).map(([key, value]) => {
+                  const step = stepMap[key];
+                  if (!step) return null;
+                  return (
+                    <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
+                      <span className="text-slate-600 text-xs">
+                        {step.step_title || key}
+                      </span>
+                      <Badge variant="outline" className="capitalize text-xs">
+                        {step.options?.find(o => o.value === value)?.label || value}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
           </CardContent>
         </Card>
       )}
@@ -677,20 +678,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
           type="button" 
           variant="outline" 
           onClick={handleBack}
+          size="lg"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {history.length === 0 ? "Cancel" : "Back"}
+          {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
         <Button 
           onClick={handleNext}
-          disabled={
-            (currentNode.type === "decision" && !selectedValue && !currentNode.rule) ||
-            (currentNode.type === "form" && !textInput) ||
-            (currentNode.type === "multiselect" && selectedMultiple.length === 0)
-          }
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          disabled={!selectedValue && !isActionNode(currentNode)}
+          size="lg"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >
-          Continue
+          {isActionNode(currentNode) ? "View Summary" : "Next Question"}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>

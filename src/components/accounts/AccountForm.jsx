@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { XCircle, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TaxResidencyManager from "./TaxResidencyManager";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel }) {
   const [formData, setFormData] = useState(account || {
@@ -51,12 +52,17 @@ export default function AccountForm({ account, entities, onSubmit, onCancel }) {
     }));
   };
 
+  const handleTaxResidenciesChange = (residencies) => {
+    setFormData(prev => ({ ...prev, tax_residencies: residencies }));
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
-          <TabsTrigger value="address">Address & Tax Info</TabsTrigger>
+          <TabsTrigger value="address">Address</TabsTrigger>
+          <TabsTrigger value="tax">Tax Information</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4 mt-4">
@@ -271,14 +277,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel }) {
               </div>
             </div>
           </div>
+        </TabsContent>
 
-          <div className="pt-4 border-t">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900">
-                <strong>Note:</strong> Tax residency information can be added after the account is created through the classification workflow.
-              </p>
-            </div>
-          </div>
+        <TabsContent value="tax" className="space-y-4 mt-4">
+          <TaxResidencyManager
+            residencies={formData.tax_residencies}
+            onChange={handleTaxResidenciesChange}
+            accountHolderType={formData.account_holder_type}
+          />
         </TabsContent>
       </Tabs>
 
