@@ -324,7 +324,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Reportable</p>
-                      <p className="text-2xl font-bold text-slate-900">
+                      <p className="2xl font-bold text-slate-900">
                         {accounts.filter(a => a.reportability_status === "reportable").length}
                       </p>
                     </div>
@@ -340,7 +340,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Pending Review</p>
-                      <p className="text-2xl font-bold text-slate-900">
+                      <p className="2xl font-bold text-slate-900">
                         {accounts.filter(a => a.reportability_status === "pending_review").length}
                       </p>
                     </div>
@@ -356,7 +356,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Non-Reportable</p>
-                      <p className="text-2xl font-bold text-slate-900">
+                      <p className="2xl font-bold text-slate-900">
                         {accounts.filter(a => a.reportability_status === "non_reportable").length}
                       </p>
                     </div>
@@ -638,7 +638,7 @@ export default function AccountsPage() {
           <AccountForm
             account={selectedAccount}
             entities={entities}
-            tenant={tenant} {/* Added tenant prop */}
+            tenant={tenant} 
             onSubmit={(data) => {
               if (selectedAccount) {
                 updateMutation.mutate({ id: selectedAccount.id, data });
