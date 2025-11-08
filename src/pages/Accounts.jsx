@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,13 +46,13 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AccountForm from "../components/accounts/AccountForm.jsx";
-import AccountDetails from "../components/accounts/AccountDetails.jsx";
-import AccountClassification from "../components/accounts/AccountClassification.jsx";
-import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory.jsx";
-import ControllingPersonsList from "../components/accounts/ControllingPersonsList.jsx";
-import BulkImport from "../components/accounts/BulkImport.jsx";
-import ComplianceFlags from "../components/accounts/ComplianceFlags.jsx";
+import AccountForm from "../components/accounts/AccountForm";
+import AccountDetails from "../components/accounts/AccountDetails";
+import AccountClassification from "../components/accounts/AccountClassification";
+import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory";
+import ControllingPersonsList from "../components/accounts/ControllingPersonsList";
+import BulkImport from "../components/accounts/BulkImport";
+import ComplianceFlags from "../components/accounts/ComplianceFlags";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -176,7 +175,6 @@ export default function AccountsPage() {
     setShowComplianceFlags(false);
     setActiveTab("accounts");
     
-    // Determine what action to take based on the issue
     if (account.reportability_status === 'pending_review') {
       handleClassify(account);
     } else if (account.entity_classification === 'passive_nfe') {
@@ -219,7 +217,6 @@ export default function AccountsPage() {
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
 
-  // Count compliance issues
   const complianceIssuesCount = accounts.filter(a => 
     a.reportability_status === 'pending_review' ||
     (a.entity_classification === 'passive_nfe' && !a.requires_controlling_persons) ||
@@ -237,7 +234,6 @@ export default function AccountsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Accounts</h1>
@@ -268,7 +264,6 @@ export default function AccountsPage() {
           </div>
         </div>
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 max-w-md">
             <TabsTrigger value="accounts">
@@ -287,7 +282,6 @@ export default function AccountsPage() {
           </TabsList>
 
           <TabsContent value="accounts" className="space-y-6">
-            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="border-0 shadow-lg">
                 <CardContent className="p-4">
@@ -352,7 +346,6 @@ export default function AccountsPage() {
               </Card>
             </div>
 
-            {/* Filters */}
             <Card className="border-0 shadow-lg">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row gap-4">
@@ -384,7 +377,6 @@ export default function AccountsPage() {
               </CardContent>
             </Card>
 
-            {/* Accounts Table */}
             <Card className="border-0 shadow-lg">
               <CardHeader className="border-b bg-slate-50/50">
                 <div className="flex items-center justify-between">
@@ -551,7 +543,6 @@ export default function AccountsPage() {
         </Tabs>
       </div>
 
-      {/* Dialogs remain the same */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
