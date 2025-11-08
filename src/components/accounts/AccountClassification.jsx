@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, AlertTriangle } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, AlertTriangle, Users } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 
 // CRS Individual Account Reportability Workflow
-const WORKFLOW = {
+const INDIVIDUAL_WORKFLOW = {
   Q1_account_type: {
     type: "decision",
     question: "Is this a new account or a pre-existing account?",
@@ -215,8 +215,81 @@ const WORKFLOW = {
   }
 };
 
+// CRS Entity Account Reportability Workflow
+const ENTITY_WORKFLOW = {
+  QE1_is_financial_institution: {
+    type: "decision",
+    question: "Is the entity account holder itself a Financial Institution (FI)?",
+    help: "Financial Institutions include: custodial institutions, depository institutions, investment entities, and specified insurance companies. If yes, this FI should do its own CRS reporting.",
+    outputs: {
+      YES: "QE2_fi_type",
+      NO: "QE3_nfe_classification"
+    }
+  },
+  QE2_fi_type: {
+    type: "form",
+    label: "What type of Financial Institution is it?",
+    fieldId: "fiType",
+    fieldType: "select",
+    options: [
+      { value: "custodial", label: "Custodial Institution" },
+      { value: "depository", label: "Depository Institution" },
+      { value: "investment_entity", label: "Investment Entity" },
+      { value: "insurance", label: "Specified Insurance Company" }
+    ],
+    next: "act_classify_entity_non_reportable_fi"
+  },
+  QE3_nfe_classification: {
+    type: "decision",
+    question: "Is the entity an Active NFE or a Passive NFE?",
+    help: "Active NFEs conduct substantial business activities (operational companies). Passive NFEs primarily hold passive income/assets (holding companies, investment vehicles). If unsure, default to Passive for enhanced due diligence.",
+    outputs: {
+      ACTIVE: "QE4_active_nfe_reason",
+      PASSIVE: "act_entity_needs_controlling_persons"
+    }
+  },
+  QE4_active_nfe_reason: {
+    type: "form",
+    label: "Select the Active NFE classification basis",
+    fieldId: "activeNfeReason",
+    fieldType: "select",
+    options: [
+      { value: "operational", label: "Operational company with substantial business activity" },
+      { value: "publicly_traded", label: "Publicly traded entity or affiliate" },
+      { value: "governmental", label: "Governmental entity or wholly-owned subsidiary" },
+      { value: "holding_active", label: "Holding company of Active NFE group" },
+      { value: "startup", label: "Start-up entity (less than 24 months)" },
+      { value: "liquidation", label: "Entity in liquidation or emerging from bankruptcy" },
+      { value: "treasury", label: "Treasury center serving Active NFE group" }
+    ],
+    next: "act_classify_entity_non_reportable_active_nfe"
+  },
+  
+  // Actions for entity workflow
+  act_classify_entity_non_reportable_fi: {
+    type: "action",
+    classification: "non_reportable",
+    reason: (answers) => `Entity is a Financial Institution (${answers.fiType || 'unspecified type'}) - responsible for its own CRS reporting`,
+    entity_classification: "financial_institution"
+  },
+  act_classify_entity_non_reportable_active_nfe: {
+    type: "action",
+    classification: "non_reportable",
+    reason: (answers) => `Entity is an Active NFE (${answers.activeNfeReason?.replace(/_/g, ' ') || 'unspecified reason'}) - not reportable under CRS`,
+    entity_classification: "active_nfe"
+  },
+  act_entity_needs_controlling_persons: {
+    type: "action",
+    classification: "pending_review",
+    reason: "Entity is a Passive NFE - controlling persons must be identified and assessed for reportability",
+    entity_classification: "passive_nfe",
+    requires_controlling_persons: true
+  }
+};
+
 export default function AccountClassification({ account, onComplete, onCancel }) {
-  const [currentNodeId, setCurrentNodeId] = useState("Q1_account_type");
+  const [workflow, setWorkflow] = useState(null);
+  const [currentNodeId, setCurrentNodeId] = useState(null);
   const [answers, setAnswers] = useState(account?.classification_answers || {});
   const [selectedValue, setSelectedValue] = useState("");
   const [selectedMultiple, setSelectedMultiple] = useState([]);
@@ -226,7 +299,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     loadUser();
-  }, []);
+    initializeWorkflow();
+  }, [account]);
+
+  const initializeWorkflow = () => {
+    if (account?.account_holder_type === "individual") {
+      setWorkflow(INDIVIDUAL_WORKFLOW);
+      setCurrentNodeId("Q1_account_type");
+    } else if (account?.account_holder_type === "entity") {
+      setWorkflow(ENTITY_WORKFLOW);
+      setCurrentNodeId("QE1_is_financial_institution");
+    }
+  };
 
   const loadUser = async () => {
     try {
@@ -237,8 +321,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  const currentNode = WORKFLOW[currentNodeId];
+  if (!workflow || !currentNodeId) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+      </div>
+    );
+  }
+
+  const currentNode = workflow[currentNodeId];
   const progress = Math.round((Object.keys(answers).length / 15) * 100);
+  const isEntityWorkflow = account?.account_holder_type === "entity";
 
   const handleNext = () => {
     const newAnswers = { ...answers };
@@ -272,8 +365,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
       nextNodeId = currentNode.outputs[selectedValue];
     }
 
-    if (WORKFLOW[nextNodeId]?.type === "action") {
-      completeClassification(WORKFLOW[nextNodeId], newAnswers);
+    if (workflow[nextNodeId]?.type === "action") {
+      completeClassification(workflow[nextNodeId], newAnswers);
     } else {
       setCurrentNodeId(nextNodeId);
       setSelectedValue("");
@@ -289,7 +382,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     const previousNodeId = history[history.length - 1];
-    const previousNode = WORKFLOW[previousNodeId];
+    const previousNode = workflow[previousNodeId];
 
     const newAnswers = { ...answers };
     if (previousNode.type === "form" || previousNode.type === "multiselect") {
@@ -331,7 +424,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
         : null
     };
 
-    // Parse tax residencies if provided
+    // Entity-specific data
+    if (isEntityWorkflow) {
+      classificationData.entity_classification = actionNode.entity_classification;
+      
+      // If it's a Passive NFE, signal that controlling persons are needed
+      if (actionNode.requires_controlling_persons) {
+        classificationData.requires_controlling_persons = true;
+      }
+    }
+
+    // Parse tax residencies if provided (for individuals)
     if (finalAnswers.taxResidencies) {
       const residencies = finalAnswers.taxResidencies.split(',').map(country => ({
         country: country.trim(),
@@ -396,6 +499,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.type === "form") {
+      if (currentNode.fieldType === "select") {
+        return (
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-slate-700">{currentNode.label}</Label>
+            <Select value={textInput} onValueChange={setTextInput}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select an option..." />
+              </SelectTrigger>
+              <SelectContent>
+                {currentNode.options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      }
+      
       return (
         <div className="space-y-4">
           <Label className="text-sm font-medium text-slate-700">{currentNode.label}</Label>
@@ -458,7 +581,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
       {/* Progress */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-slate-700">Reportability Assessment</span>
+          <span className="text-sm font-medium text-slate-700">
+            {isEntityWorkflow ? "Entity Classification" : "Reportability Assessment"}
+          </span>
           <span className="text-sm text-slate-500">{Object.keys(answers).length} steps completed</span>
         </div>
         <div className="w-full bg-slate-200 rounded-full h-2">
@@ -469,13 +594,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
       </div>
 
-      {/* Warning for Individual Accounts Only */}
-      <Alert className="bg-blue-50 border-blue-200">
-        <Info className="w-4 h-4 text-blue-600" />
-        <AlertDescription className="text-sm text-blue-900">
-          <strong>Note:</strong> This workflow is designed for <strong>individual account holders</strong>. 
-          Entity account classification will be available in Phase 2.
-        </AlertDescription>
+      {/* Workflow Type Indicator */}
+      <Alert className={isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}>
+        {isEntityWorkflow ? (
+          <>
+            <Users className="w-4 h-4 text-purple-600" />
+            <AlertDescription className="text-sm text-purple-900">
+              <strong>Entity Account Holder:</strong> This workflow will determine if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
+            </AlertDescription>
+          </>
+        ) : (
+          <>
+            <Info className="w-4 h-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-900">
+              <strong>Individual Account Holder:</strong> This workflow follows CRS due diligence procedures for individual accounts, including indicia searches and self-certification requirements.
+            </AlertDescription>
+          </>
+        )}
       </Alert>
 
       {/* Question Card */}
@@ -518,7 +653,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             </h4>
             <div className="space-y-2">
               {Object.entries(answers).map(([key, value]) => {
-                const node = WORKFLOW[key];
+                const node = workflow[key];
                 if (!node) return null;
                 return (
                   <div key={key} className="flex items-center justify-between text-sm">
