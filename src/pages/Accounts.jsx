@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tantml:react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Plus, 
   Wallet, 
@@ -385,7 +386,7 @@ export default function AccountsPage() {
 
             {/* Accounts Table */}
             <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+              <CardHeader className="border-b bg-slate-50/50">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
