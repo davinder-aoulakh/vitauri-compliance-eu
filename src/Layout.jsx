@@ -14,7 +14,8 @@ import {
   LogOut,
   ChevronDown,
   Shield,
-  Menu
+  Menu,
+  Wrench
 } from "lucide-react";
 import {
   Sidebar,
@@ -250,6 +251,32 @@ export default function Layout({ children }) {
                 </SidebarGroupContent>
               </SidebarGroup>
             )}
+
+            {/* Setup Link for Testing */}
+            <SidebarGroup className="mt-auto">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={`rounded-lg transition-all duration-200 ${
+                        location.pathname === createPageUrl("Setup")
+                          ? 'text-white shadow-md' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                      style={location.pathname === createPageUrl("Setup") ? {
+                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                      } : {}}
+                    >
+                      <Link to={createPageUrl("Setup")} className="flex items-center gap-3 px-3 py-2.5">
+                        <Wrench className="w-4 h-4" />
+                        <span className="font-medium text-sm">Setup / Switch Role</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="border-t border-slate-100 p-4">
@@ -274,9 +301,11 @@ export default function Layout({ children }) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem>
-                  <Users className="w-4 h-4 mr-2" />
-                  Profile Settings
+                <DropdownMenuItem asChild>
+                  <Link to={createPageUrl("Setup")}>
+                    <Wrench className="w-4 h-4 mr-2" />
+                    Switch Role (Testing)
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Bell className="w-4 h-4 mr-2" />
