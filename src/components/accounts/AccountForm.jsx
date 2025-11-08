@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import TaxResidencyManager from "./TaxResidencyManager";
+import DocumentUpload from "./DocumentUpload";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant }) {
   const [formData, setFormData] = useState(account || {
@@ -36,7 +38,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       country: ""
     },
     tax_residencies: [],
-    needs_reclassification: false
+    needs_reclassification: false,
+    self_certification_document_url: null,
+    self_certification_document_name: null,
+    self_certification_upload_date: null,
+    self_certification_obtained: false, // Default to false
+    self_certification_date: null // Default to null
   });
 
   const [detectedChanges, setDetectedChanges] = useState([]);
@@ -52,12 +59,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     if (!initialData || !account) return;
 
     const changes = [];
-    const significantFields = [
-      'account_holder_address.country',
-      'tax_residencies',
-      'entity_classification',
-      'account_holder_type'
-    ];
+    // const significantFields = [ // This was commented out in the original, keeping it that way
+    //   'account_holder_address.country',
+    //   'tax_residencies',
+    //   'entity_classification',
+    //   'account_holder_type'
+    // ];
 
     // Check address country change
     if (initialData.account_holder_address?.country !== formData.account_holder_address?.country) {
@@ -91,11 +98,33 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     const hasForeignTaxResidency = accountData.tax_residencies?.some(
       r => r.country && r.country !== tenantJurisdiction
     );
-    if (hasForeignTaxResidency) {
+    if (hasForeignTaxResency) {
       indicia.push('foreign_tax_residency');
     }
 
     return indicia;
+  };
+
+  const handleDocumentUpload = (fileUrl, fileName) => {
+    setFormData(prev => ({
+      ...prev,
+      self_certification_document_url: fileUrl,
+      self_certification_document_name: fileName,
+      self_certification_upload_date: new Date().toISOString(),
+      self_certification_obtained: true,
+      self_certification_date: new Date().toISOString().split('T')[0]
+    }));
+  };
+
+  const handleDocumentDelete = () => {
+    setFormData(prev => ({
+      ...prev,
+      self_certification_document_url: null,
+      self_certification_document_name: null,
+      self_certification_upload_date: null,
+      self_certification_obtained: false,
+      self_certification_date: null
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -154,10 +183,11 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       )}
 
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
           <TabsTrigger value="address">Address</TabsTrigger>
           <TabsTrigger value="tax">Tax Information</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4 mt-4">
@@ -380,6 +410,29 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             onChange={handleTaxResidenciesChange}
             accountHolderType={formData.account_holder_type}
           />
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-4 mt-4">
+          <DocumentUpload
+            documentUrl={formData.self_certification_document_url}
+            onUploadComplete={handleDocumentUpload}
+            onDelete={handleDocumentDelete}
+            label="Self-Certification Document"
+            description="Upload the account holder's self-certification form (PDF, JPG, or PNG up to 10MB)"
+          />
+
+          {formData.self_certification_document_url && formData.self_certification_upload_date && (
+            <div className="text-xs text-slate-600 mt-2">
+              <p>
+                <strong>Uploaded:</strong> {new Date(formData.self_certification_upload_date).toLocaleString()}
+              </p>
+              {formData.self_certification_document_name && (
+                <p>
+                  <strong>Filename:</strong> {formData.self_certification_document_name}
+                </p>
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

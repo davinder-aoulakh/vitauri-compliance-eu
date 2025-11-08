@@ -18,7 +18,8 @@ import {
   History,
   Users,
   Upload,
-  Flag
+  Flag,
+  FileCheck // Added FileCheck import
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -497,6 +498,7 @@ export default function AccountsPage() {
                         {filteredAccounts.map((account) => {
                           const accountEntity = entities.find(e => e.id === account.entity_id);
                           const isPassiveNFE = account.entity_classification === "passive_nfe";
+                          const hasDocument = !!account.self_certification_document_url;
                           
                           return (
                             <TableRow key={account.id} className="hover:bg-slate-50/50">
@@ -509,7 +511,12 @@ export default function AccountsPage() {
                                     {getStatusIcon(account.reportability_status)}
                                   </div>
                                   <div>
-                                    <p className="font-semibold text-slate-900">{account.account_holder_name}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-semibold text-slate-900">{account.account_holder_name}</p>
+                                      {hasDocument && (
+                                        <FileCheck className="w-4 h-4 text-green-600" title="Self-certification document uploaded" />
+                                      )}
+                                    </div>
                                     <p className="text-xs text-slate-500 capitalize">
                                       {account.account_holder_type?.replace("_", " ")}
                                       {isPassiveNFE && (
@@ -631,6 +638,7 @@ export default function AccountsPage() {
           <AccountForm
             account={selectedAccount}
             entities={entities}
+            tenant={tenant} {/* Added tenant prop */}
             onSubmit={(data) => {
               if (selectedAccount) {
                 updateMutation.mutate({ id: selectedAccount.id, data });
