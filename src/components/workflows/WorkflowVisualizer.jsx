@@ -86,43 +86,72 @@ export default function WorkflowVisualizer({ workflow }) {
     setShowNodeDetails(true);
   };
 
-  // Simple tree layout calculation
+  // Improved layout calculation using level-based positioning
   const calculateLayout = () => {
+    if (!workflow.steps || workflow.steps.length === 0) return [];
+    
     const layout = [];
-    const visited = new Set();
-    let level = 0;
-    let queue = [{ step: workflow.steps[0], level: 0, x: 0 }];
-
+    const positioned = new Set();
+    const levels = {};
+    
+    // Start with first step
+    const firstStep = workflow.steps[0];
+    const queue = [{ step: firstStep, level: 0, parentX: 0 }];
+    
+    // Calculate levels for all nodes
     while (queue.length > 0) {
-      const { step, level, x } = queue.shift();
+      const { step, level, parentX } = queue.shift();
       
-      if (!step || visited.has(step.step_id)) continue;
-      visited.add(step.step_id);
-
-      layout.push({
-        step,
-        x: x * 280,
-        y: level * 150,
-        level
-      });
-
+      if (!step || positioned.has(step.step_id)) continue;
+      
+      if (!levels[level]) {
+        levels[level] = [];
+      }
+      
+      levels[level].push({ step, parentX });
+      positioned.add(step.step_id);
+      
       const connections = getConnections(step);
       connections.forEach((conn, idx) => {
         const nextStep = stepMap[conn.to];
-        if (nextStep && !visited.has(conn.to)) {
+        if (nextStep && !positioned.has(conn.to)) {
           queue.push({
             step: nextStep,
             level: level + 1,
-            x: x + idx - (connections.length - 1) / 2
+            parentX: idx
           });
         }
       });
     }
-
+    
+    // Position nodes by level
+    Object.keys(levels).forEach(level => {
+      const nodesAtLevel = levels[level];
+      const levelNum = parseInt(level);
+      const nodeCount = nodesAtLevel.length;
+      
+      nodesAtLevel.forEach((nodeData, index) => {
+        const xOffset = (index - (nodeCount - 1) / 2) * 320;
+        
+        layout.push({
+          step: nodeData.step,
+          x: 400 + xOffset,
+          y: 50 + levelNum * 180,
+          level: levelNum
+        });
+      });
+    });
+    
     return layout;
   };
 
   const layout = calculateLayout();
+
+  // Calculate canvas dimensions
+  const maxX = Math.max(...layout.map(l => l.x)) + 300;
+  const maxY = Math.max(...layout.map(l => l.y)) + 150;
+  const canvasWidth = Math.max(1200, maxX);
+  const canvasHeight = Math.max(800, maxY);
 
   return (
     <div className="space-y-4">
@@ -181,12 +210,14 @@ export default function WorkflowVisualizer({ workflow }) {
           <CardTitle className="text-lg">Workflow Flow Diagram</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-auto bg-slate-50" style={{ minHeight: "600px" }}>
+          <div className="overflow-auto bg-slate-50" style={{ height: "600px" }}>
             <div
-              className="relative p-12"
+              className="relative"
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: "top left",
+                width: canvasWidth,
+                height: canvasHeight,
                 minWidth: "100%",
                 minHeight: "100%"
               }}
@@ -203,7 +234,7 @@ export default function WorkflowVisualizer({ workflow }) {
                     if (!targetNode) return null;
 
                     const startX = x + 120;
-                    const startY = y + 40;
+                    const startY = y + 70;
                     const endX = targetNode.x + 120;
                     const endY = targetNode.y + 10;
 
@@ -219,11 +250,12 @@ export default function WorkflowVisualizer({ workflow }) {
                         {/* Label */}
                         <text
                           x={(startX + endX) / 2}
-                          y={(startY + endY) / 2}
+                          y={(startY + endY) / 2 - 10}
                           fill="#64748b"
-                          fontSize="12"
+                          fontSize="11"
                           textAnchor="middle"
                           className="select-none"
+                          style={{ fontWeight: 500 }}
                         >
                           {conn.label}
                         </text>
