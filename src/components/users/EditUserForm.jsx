@@ -140,7 +140,6 @@ export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
           </Select>
         </div>
 
-        {/* Permissions */}
         <div className="border-t pt-4">
           <Label className="text-base mb-3 block">Permissions</Label>
           <div className="space-y-3 bg-slate-50 rounded-lg p-4">
