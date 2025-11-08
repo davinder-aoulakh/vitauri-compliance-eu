@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,13 @@ import {
   MoreVertical,
   History,
   PlayCircle,
-  GitCompare
+  GitCompare,
+  Package, // New import
+  Globe, // New import
+  Calculator, // New import
+  Plug, // New import
+  BarChart3, // New import
+  Wand2 // New import
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,6 +47,12 @@ import WorkflowForm from "../components/superadmin/WorkflowForm";
 import WorkflowVisualizer from "../components/workflows/WorkflowVisualizer";
 import WorkflowVersionHistory from "../components/workflows/WorkflowVersionHistory";
 import WorkflowTestRunner from "../components/workflows/WorkflowTestRunner";
+import WorkflowDragDropBuilder from "../components/workflows/WorkflowDragDropBuilder"; // New import
+import ComponentLibrary from "../components/workflows/ComponentLibrary"; // New import
+import WorkflowAnalyticsDashboard from "../components/workflows/WorkflowAnalyticsDashboard"; // New import
+import JurisdictionOverrides from "../components/workflows/JurisdictionOverrides"; // New import
+import FormulaBuilder from "../components/workflows/FormulaBuilder"; // New import
+import IntegrationManager from "../components/workflows/IntegrationManager"; // New import
 
 export default function WorkflowBuilder() {
   const [user, setUser] = useState(null);
@@ -48,7 +61,14 @@ export default function WorkflowBuilder() {
   const [showVisualizer, setShowVisualizer] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showTestRunner, setShowTestRunner] = useState(false);
+  const [showDragDropBuilder, setShowDragDropBuilder] = useState(false); // New state
+  // const [showComponentLibrary, setShowComponentLibrary] = useState(false); // Not used for dialogs, rendered in Tabs
+  const [showAnalytics, setShowAnalytics] = useState(false); // New state
+  const [showJurisdictionOverrides, setShowJurisdictionOverrides] = useState(false); // New state
+  const [showFormulaBuilder, setShowFormulaBuilder] = useState(false); // New state
+  // const [showIntegrationManager, setShowIntegrationManager] = useState(false); // Not used for dialogs, rendered in Tabs
   const [selectedWorkflowForVersions, setSelectedWorkflowForVersions] = useState(null);
+  const [activeTab, setActiveTab] = useState("workflows"); // New state
 
   const queryClient = useQueryClient();
 
@@ -80,6 +100,7 @@ export default function WorkflowBuilder() {
     onSuccess: () => {
       queryClient.invalidateQueries(['workflows']);
       setShowForm(false);
+      setShowDragDropBuilder(false); // New: Close builder on success
       setSelectedWorkflow(null);
     }
   });
@@ -89,6 +110,8 @@ export default function WorkflowBuilder() {
     onSuccess: () => {
       queryClient.invalidateQueries(['workflows']);
       setShowForm(false);
+      setShowDragDropBuilder(false); // New: Close builder on success
+      setShowJurisdictionOverrides(false); // New: Close jurisdiction overrides on success
       setSelectedWorkflow(null);
       setShowVersionHistory(false);
     }
@@ -106,6 +129,11 @@ export default function WorkflowBuilder() {
     setShowForm(true);
   };
 
+  const handleVisualEdit = (workflow) => { // New handler
+    setSelectedWorkflow(workflow);
+    setShowDragDropBuilder(true);
+  };
+
   const handleViewFlow = (workflow) => {
     setSelectedWorkflow(workflow);
     setShowVisualizer(true);
@@ -119,6 +147,16 @@ export default function WorkflowBuilder() {
   const handleTestWorkflow = (workflow) => {
     setSelectedWorkflow(workflow);
     setShowTestRunner(true);
+  };
+
+  const handleViewAnalytics = (workflow) => { // New handler
+    setSelectedWorkflow(workflow);
+    setShowAnalytics(true);
+  };
+
+  const handleManageJurisdictions = (workflow) => { // New handler
+    setSelectedWorkflow(workflow);
+    setShowJurisdictionOverrides(true);
   };
 
   const handlePublish = async (workflow) => {
@@ -273,221 +311,246 @@ export default function WorkflowBuilder() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Workflow Builder</h1>
             <p className="text-indigo-200">
-              Configure and manage compliance questionnaires with visual tools
+              Advanced workflow management with drag-drop builder, analytics & integrations
             </p>
           </div>
           <Button
             onClick={() => {
               setSelectedWorkflow(null);
-              setShowForm(true);
+              setShowDragDropBuilder(true); // Changed to open drag-drop builder
             }}
             className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
           >
-            <Plus className="w-4 h-4" />
-            Create Workflow
+            <Wand2 className="w-4 h-4" /> {/* New icon */}
+            Build Workflow
           </Button>
         </div>
 
-        {/* Phase 1 Features Alert */}
-        <Alert className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-500/50 backdrop-blur-sm">
-          <GitBranch className="w-4 h-4 text-blue-300" />
-          <AlertDescription className="text-blue-100">
-            <strong>New:</strong> Visual flow viewer • Version history & rollback • Advanced branching logic • Test mode preview
+        {/* Phase 2 & 3 Features Alert */}
+        <Alert className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/50 backdrop-blur-sm">
+          <Wand2 className="w-4 h-4 text-purple-300" /> {/* New icon */}
+          <AlertDescription className="text-purple-100">
+            <strong>New Advanced Features:</strong> Drag-drop builder • Component library • Analytics dashboard • 
+            Jurisdiction overrides • Formula builder • External integrations
           </AlertDescription>
         </Alert>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <CardContent className="p-6 text-center">
-              <CheckCircle2 className="w-8 h-8 mx-auto mb-3 text-green-400" />
-              <h3 className="text-2xl font-bold text-white mb-1">
-                {workflows.filter(w => w.status === "published").length}
-              </h3>
-              <p className="text-sm text-indigo-200">Published</p>
-            </CardContent>
-          </Card>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-sm">
+            <TabsTrigger value="workflows" className="text-white data-[state=active]:bg-white/20">
+              <GitBranch className="w-4 h-4 mr-2" />
+              Workflows
+            </TabsTrigger>
+            <TabsTrigger value="components" className="text-white data-[state=active]:bg-white/20">
+              <Package className="w-4 h-4 mr-2" />
+              Components
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="text-white data-[state=active]:bg-white/20">
+              <Plug className="w-4 h-4 mr-2" />
+              Integrations
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="text-white data-[state=active]:bg-white/20">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <CardContent className="p-6 text-center">
-              <Clock className="w-8 h-8 mx-auto mb-3 text-yellow-400" />
-              <h3 className="text-2xl font-bold text-white mb-1">
-                {workflows.filter(w => w.status === "draft").length}
-              </h3>
-              <p className="text-sm text-indigo-200">Drafts</p>
-            </CardContent>
-          </Card>
+          <TabsContent value="workflows" className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <CardContent className="p-6 text-center">
+                  <CheckCircle2 className="w-8 h-8 mx-auto mb-3 text-green-400" />
+                  <h3 className="text-2xl font-bold text-white mb-1">
+                    {workflows.filter(w => w.status === "published").length}
+                  </h3>
+                  <p className="text-sm text-indigo-200">Published</p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <CardContent className="p-6 text-center">
-              <GitBranch className="w-8 h-8 mx-auto mb-3 text-purple-400" />
-              <h3 className="text-2xl font-bold text-white mb-1">
-                {workflows.length}
-              </h3>
-              <p className="text-sm text-indigo-200">Total Versions</p>
-            </CardContent>
-          </Card>
+              <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <CardContent className="p-6 text-center">
+                  <Clock className="w-8 h-8 mx-auto mb-3 text-yellow-400" />
+                  <h3 className="text-2xl font-bold text-white mb-1">
+                    {workflows.filter(w => w.status === "draft").length}
+                  </h3>
+                  <p className="text-sm text-indigo-200">Drafts</p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <CardContent className="p-6 text-center">
-              <Archive className="w-8 h-8 mx-auto mb-3 text-slate-400" />
-              <h3 className="text-2xl font-bold text-white mb-1">
-                {workflows.filter(w => w.status === "archived").length}
-              </h3>
-              <p className="text-sm text-indigo-200">Archived</p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <CardContent className="p-6 text-center">
+                  <GitBranch className="w-8 h-8 mx-auto mb-3 text-purple-400" />
+                  <h3 className="text-2xl font-bold text-white mb-1">
+                    {workflows.length}
+                  </h3>
+                  <p className="text-sm text-indigo-200">Total Versions</p>
+                </CardContent>
+              </Card>
 
-        {/* Workflows Table */}
-        <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
-          <CardHeader className="border-b border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-white">
+              <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <CardContent className="p-6 text-center">
+                  <Archive className="w-8 h-8 mx-auto mb-3 text-slate-400" />
+                  <h3 className="text-2xl font-bold text-white mb-1">
+                    {workflows.filter(w => w.status === "archived").length}
+                  </h3>
+                  <p className="text-sm text-indigo-200">Archived</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Workflows Table */}
+            <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
+              <CardHeader className="border-b border-white/10">
+                <CardTitle className="text-white flex items-center gap-2">
                   <GitBranch className="w-5 h-5" />
                   Workflows ({workflows.length})
                 </CardTitle>
-                <CardDescription className="text-indigo-200">
-                  Manage compliance questionnaires with advanced features
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
-              </div>
-            ) : workflows.length === 0 ? (
-              <div className="p-12 text-center">
-                <GitBranch className="w-16 h-16 mx-auto mb-4 text-indigo-300" />
-                <h3 className="text-lg font-semibold text-white mb-2">No workflows configured</h3>
-                <p className="text-indigo-200 mb-6">
-                  Create your first workflow to enable compliance questionnaires
-                </p>
-                <Button
-                  onClick={() => setShowForm(true)}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create First Workflow
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-white/10 hover:bg-white/5">
-                      <TableHead className="text-indigo-200">Workflow Name</TableHead>
-                      <TableHead className="text-indigo-200">Type</TableHead>
-                      <TableHead className="text-indigo-200">Version</TableHead>
-                      <TableHead className="text-indigo-200">Steps</TableHead>
-                      <TableHead className="text-indigo-200">Status</TableHead>
-                      <TableHead className="text-indigo-200">Last Modified</TableHead>
-                      <TableHead className="text-right text-indigo-200">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {workflows.map((workflow) => (
-                      <TableRow key={workflow.id} className="border-white/10 hover:bg-white/5">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                              <GitBranch className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-white">{workflow.workflow_name}</p>
-                              {workflow.jurisdiction && (
-                                <p className="text-xs text-indigo-300">{workflow.jurisdiction}</p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getWorkflowTypeBadge(workflow.workflow_type)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-mono text-sm">v{workflow.version || "1.0"}</span>
-                            {workflow.parent_workflow_id && (
-                              <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
-                                Updated
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-white">{workflow.steps?.length || 0} steps</span>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(workflow.status)}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-indigo-200">
-                            {workflow.updated_date 
-                              ? new Date(workflow.updated_date).toLocaleDateString()
-                              : "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleViewFlow(workflow)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Flow Diagram
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleTestWorkflow(workflow)}>
-                                <PlayCircle className="w-4 h-4 mr-2" />
-                                Test Workflow
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleViewVersions(workflow)}>
-                                <History className="w-4 h-4 mr-2" />
-                                Version History
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(workflow)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Workflow
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCreateNewVersion(workflow)}>
-                                <GitCompare className="w-4 h-4 mr-2" />
-                                Create New Version
-                              </DropdownMenuItem>
-                              {workflow.status === "draft" && (
-                                <DropdownMenuItem onClick={() => handlePublish(workflow)}>
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Publish
-                                </DropdownMenuItem>
-                              )}
-                              {workflow.status === "published" && (
-                                <DropdownMenuItem onClick={() => handleArchive(workflow)}>
-                                  <Archive className="w-4 h-4 mr-2" />
-                                  Archive
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(workflow.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                {/* CardDescription removed based on outline */}
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                  </div>
+                ) : workflows.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <GitBranch className="w-16 h-16 mx-auto mb-4 text-indigo-300" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No workflows</h3>
+                    <Button onClick={() => setShowDragDropBuilder(true)} className="bg-gradient-to-r from-indigo-600 to-purple-600">
+                      <Wand2 className="w-4 h-4 mr-2" /> {/* New icon */}
+                      Build First Workflow
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/10 hover:bg-white/5">
+                          <TableHead className="text-indigo-200">Name</TableHead>
+                          <TableHead className="text-indigo-200">Type</TableHead>
+                          <TableHead className="text-indigo-200">Version</TableHead>
+                          <TableHead className="text-indigo-200">Steps</TableHead>
+                          <TableHead className="text-indigo-200">Status</TableHead>
+                          <TableHead className="text-right text-indigo-200">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {workflows.map((workflow) => (
+                          <TableRow key={workflow.id} className="border-white/10 hover:bg-white/5">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                                  <GitBranch className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-white">{workflow.workflow_name}</p>
+                                  {workflow.jurisdiction && (
+                                    <p className="text-xs text-indigo-300">{workflow.jurisdiction}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getWorkflowTypeBadge(workflow.workflow_type)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-mono text-sm">v{workflow.version || "1.0"}</span>
+                                {workflow.parent_workflow_id && (
+                                  <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                                    Updated
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-white">{workflow.steps?.length || 0} steps</span>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(workflow.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleVisualEdit(workflow)}> {/* New item */}
+                                    <Wand2 className="w-4 h-4 mr-2" />
+                                    Visual Editor
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleViewFlow(workflow)}>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Diagram
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleTestWorkflow(workflow)}>
+                                    <PlayCircle className="w-4 h-4 mr-2" />
+                                    Test Workflow
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleViewAnalytics(workflow)}> {/* New item */}
+                                    <BarChart3 className="w-4 h-4 mr-2" />
+                                    View Analytics
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleViewVersions(workflow)}>
+                                    <History className="w-4 h-4 mr-2" />
+                                    Version History
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleManageJurisdictions(workflow)}> {/* New item */}
+                                    <Globe className="w-4 h-4 mr-2" />
+                                    Jurisdictions
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEdit(workflow)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Details {/* Renamed */}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleCreateNewVersion(workflow)}>
+                                    <GitCompare className="w-4 h-4 mr-2" />
+                                    New Version {/* Renamed */}
+                                  </DropdownMenuItem>
+                                  {workflow.status === "draft" && (
+                                    <DropdownMenuItem onClick={() => handlePublish(workflow)}>
+                                      <Upload className="w-4 h-4 mr-2" />
+                                      Publish
+                                    </DropdownMenuItem>
+                                  )}
+                                  {workflow.status === "published" && (
+                                    <DropdownMenuItem onClick={() => handleArchive(workflow)}>
+                                      <Archive className="w-4 h-4 mr-2" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(workflow.id)}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="components">
+            <ComponentLibrary />
+          </TabsContent>
+
+          <TabsContent value="integrations">
+            <IntegrationManager />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <WorkflowAnalyticsDashboard />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Workflow Form Dialog */}
@@ -515,12 +578,35 @@ export default function WorkflowBuilder() {
         </DialogContent>
       </Dialog>
 
+      {/* Visual Workflow Drag-Drop Builder Dialog (New) */}
+      <Dialog open={showDragDropBuilder} onOpenChange={setShowDragDropBuilder}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Visual Workflow Builder</DialogTitle>
+          </DialogHeader>
+          <WorkflowDragDropBuilder
+            workflow={selectedWorkflow}
+            onSave={(data) => {
+              if (selectedWorkflow) {
+                updateMutation.mutate({ id: selectedWorkflow.id, data });
+              } else {
+                createMutation.mutate(data);
+              }
+            }}
+            onCancel={() => {
+              setShowDragDropBuilder(false);
+              setSelectedWorkflow(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Visual Flow Diagram Dialog */}
       <Dialog open={showVisualizer} onOpenChange={setShowVisualizer}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Workflow Flow Diagram: {selectedWorkflow?.workflow_name}
+              Flow Diagram: {selectedWorkflow?.workflow_name}
             </DialogTitle>
           </DialogHeader>
           <WorkflowVisualizer workflow={selectedWorkflow} />
@@ -556,6 +642,44 @@ export default function WorkflowBuilder() {
             workflow={selectedWorkflow}
             onClose={() => setShowTestRunner(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Analytics Dashboard Dialog (New) */}
+      <Dialog open={showAnalytics} onOpenChange={setShowAnalytics}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Analytics: {selectedWorkflow?.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <WorkflowAnalyticsDashboard workflowId={selectedWorkflow?.id} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Jurisdiction Overrides Dialog (New) */}
+      <Dialog open={showJurisdictionOverrides} onOpenChange={setShowJurisdictionOverrides}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Jurisdiction Overrides: {selectedWorkflow?.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <JurisdictionOverrides
+            workflow={selectedWorkflow}
+            onSave={(data) => {
+              updateMutation.mutate({ id: selectedWorkflow.id, data });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Formula Builder Dialog (New) */}
+      <Dialog open={showFormulaBuilder} onOpenChange={setShowFormulaBuilder}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Formula Builder</DialogTitle>
+          </DialogHeader>
+          <FormulaBuilder onSave={(formula) => {
+            console.log("Formula saved:", formula);
+            setShowFormulaBuilder(false);
+          }} />
         </DialogContent>
       </Dialog>
     </div>
