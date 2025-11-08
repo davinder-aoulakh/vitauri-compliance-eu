@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2 } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -23,6 +23,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
   const [workflow, setWorkflow] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [completedPath, setCompletedPath] = useState([]);
 
   // Fetch published entity classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -82,7 +84,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     );
   }
 
-  if (!currentNodeId) {
+  if (!currentNodeId && !showSummary) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
@@ -96,9 +98,9 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     stepMap[step.step_id] = step;
   });
 
-  const currentNode = stepMap[currentNodeId];
+  const currentNode = showSummary ? null : stepMap[currentNodeId];
   
-  if (!currentNode) {
+  if (!currentNode && !showSummary) {
     return (
       <div className="p-12 text-center">
         <Alert className="bg-red-50 border-red-200">
@@ -110,10 +112,13 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     );
   }
 
-  const progress = Math.round((Object.keys(answers).length / workflow.steps.length) * 100);
+  const currentStepIndex = history.length;
+  const totalSteps = completedPath.length || history.length + 1;
+  const progress = Math.round((currentStepIndex / totalSteps) * 100);
 
   // Determine if current node is an action (end) node
   const isActionNode = (step) => {
+    if (!step) return false;
     if (!step.options || step.options.length === 0) {
       return true;
     }
@@ -133,7 +138,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     }
 
     setAnswers(newAnswers);
-    setHistory([...history, currentNodeId]);
+    const newHistory = [...history, currentNodeId];
+    setHistory(newHistory);
 
     // Determine next step
     let nextNodeId = null;
@@ -153,9 +159,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       nextNodeId = selectedOption?.next_step;
     }
 
-    // If this is an action node or no next step, complete classification
+    // If this is an action node or no next step, show summary
     if (!nextNodeId || isActionNode(currentNode)) {
-      completeClassification(currentNode, newAnswers);
+      setCompletedPath([...newHistory, currentNodeId]);
+      setShowSummary(true);
       return;
     }
 
@@ -168,7 +175,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     if (!logic.conditions || logic.conditions.length === 0) return false;
 
     let result = true;
-    let currentLogicOp = null;
 
     logic.conditions.forEach((condition, idx) => {
       const fieldValue = answers[condition.field];
@@ -223,6 +229,11 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   };
 
   const handleBack = () => {
+    if (showSummary) {
+      setShowSummary(false);
+      return;
+    }
+
     if (history.length === 0) {
       onCancel();
       return;
@@ -240,7 +251,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     setSelectedValue(answers[previousNodeId] || "");
   };
 
-  const completeClassification = async (finalNode, finalAnswers) => {
+  const completeClassification = async () => {
+    const finalNode = stepMap[history[history.length - 1]] || currentNode;
+    const finalAnswers = answers;
+
     // Determine classification based on final node
     let classification = "non_reporting_fi";
     let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
@@ -303,7 +317,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       ];
       
       return (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
             {options.map((option) => (
               <div 
@@ -332,8 +346,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       return (
         <div className="space-y-4">
           <Select value={selectedValue} onValueChange={setSelectedValue}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={`Select an option...`} />
+            <SelectTrigger className="w-full h-12">
+              <SelectValue placeholder="Select an option..." />
             </SelectTrigger>
             <SelectContent>
               {currentNode.options?.map((option) => (
@@ -361,42 +375,233 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     return null;
   };
 
+  // Summary Screen
+  if (showSummary) {
+    const finalNode = stepMap[completedPath[completedPath.length - 1]];
+    const isReportingFI = finalNode?.step_title?.toLowerCase().includes("reporting fi") || 
+                          finalNode?.help_text?.toLowerCase().includes("reporting fi");
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${
+            isReportingFI ? 'bg-amber-100' : 'bg-green-100'
+          }`}>
+            {isReportingFI ? (
+              <AlertCircle className="w-10 h-10 text-amber-600" />
+            ) : (
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            )}
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Classification Complete</h2>
+          <p className="text-slate-600">
+            Review your answers and confirm the classification for <strong>{entity.entity_name}</strong>
+          </p>
+        </div>
+
+        {/* Classification Result Preview */}
+        <Card className={`border-2 ${
+          isReportingFI 
+            ? 'bg-amber-50 border-amber-200' 
+            : 'bg-green-50 border-green-200'
+        }`}>
+          <CardHeader className="border-b border-slate-200">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Final Classification
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">Status:</span>
+                <Badge className={`text-sm ${
+                  isReportingFI 
+                    ? 'bg-amber-600 text-white' 
+                    : 'bg-green-600 text-white'
+                }`}>
+                  {isReportingFI ? 'Reporting FI' : 'Non-Reporting FI'}
+                </Badge>
+              </div>
+              <div className="flex items-start justify-between">
+                <span className="text-sm font-medium text-slate-700">Reason:</span>
+                <span className="text-sm text-slate-900 text-right max-w-md">
+                  {finalNode?.help_text || finalNode?.step_title || "Classification completed"}
+                </span>
+              </div>
+              {answers.frm_select_fi_type && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">FI Type:</span>
+                  <Badge variant="outline">
+                    {currentNode?.options?.find(o => o.value === answers.frm_select_fi_type)?.label || answers.frm_select_fi_type}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* All Answers Summary */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-slate-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Complete Answer Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {completedPath.map((stepId, idx) => {
+                const step = stepMap[stepId];
+                const answer = answers[stepId];
+                if (!step || !answer) return null;
+
+                const answerLabel = step.options?.find(o => o.value === answer)?.label || answer;
+
+                return (
+                  <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900 mb-1">
+                        {step.step_title}
+                      </p>
+                      {step.question_text && (
+                        <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
+                      )}
+                      <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                        {answerLabel}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex justify-between gap-3 pt-4 border-t">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleBack}
+            size="lg"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Review Answers
+          </Button>
+          <Button 
+            onClick={completeClassification}
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            <CheckCircle2 className="w-5 h-5 mr-2" />
+            Complete Classification
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main workflow screen
   return (
     <div className="space-y-6">
-      {/* Workflow Info */}
+      {/* Workflow Header */}
       <div className="flex items-center justify-between">
         <div>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">Entity Classification</h2>
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
             {workflow.workflow_name} v{workflow.version}
           </Badge>
         </div>
-        <span className="text-sm text-slate-500">{Object.keys(answers).length} steps completed</span>
-      </div>
-
-      {/* Progress */}
-      <div>
-        <div className="w-full bg-slate-200 rounded-full h-2">
-          <div 
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${Math.min(progress, 100)}%` }}
-          />
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-700">
+            Step {currentStepIndex + 1}
+          </p>
+          <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
 
+      {/* Enhanced Progress Bar */}
+      <div className="space-y-2">
+        <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+          <div 
+            className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Started</span>
+          <span className="font-medium text-indigo-600">{Object.keys(answers).length} questions answered</span>
+          <span>Summary</span>
+        </div>
+      </div>
+
+      {/* Step Breadcrumb */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {[...history, currentNodeId].map((stepId, idx) => {
+          const step = stepMap[stepId];
+          const isCompleted = idx < history.length;
+          const isCurrent = idx === history.length;
+          
+          return (
+            <React.Fragment key={stepId}>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                isCompleted 
+                  ? 'bg-green-50 border-green-200' 
+                  : isCurrent 
+                    ? 'bg-indigo-50 border-indigo-300' 
+                    : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isCompleted 
+                    ? 'bg-green-600' 
+                    : isCurrent 
+                      ? 'bg-indigo-600' 
+                      : 'bg-slate-300'
+                }`}>
+                  {isCompleted ? (
+                    <Check className="w-4 h-4 text-white" />
+                  ) : (
+                    <span className="text-white text-xs font-bold">{idx + 1}</span>
+                  )}
+                </div>
+                <span className={`text-xs font-medium whitespace-nowrap ${
+                  isCompleted 
+                    ? 'text-green-700' 
+                    : isCurrent 
+                      ? 'text-indigo-700' 
+                      : 'text-slate-500'
+                }`}>
+                  {step?.step_title?.substring(0, 20) || `Step ${idx + 1}`}
+                  {step?.step_title?.length > 20 && '...'}
+                </span>
+              </div>
+              {idx < history.length && (
+                <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
       {/* Question Card */}
-      <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30">
+      <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30 shadow-lg">
         <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-1">
-                <span className="text-white font-bold text-sm">{history.length + 1}</span>
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center flex-shrink-0 shadow-lg">
+                <span className="text-white font-bold text-lg">{currentStepIndex + 1}</span>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                <h3 className="text-xl font-bold text-slate-900 mb-3">
                   {currentNode.step_title}
                 </h3>
                 {currentNode.question_text && (
-                  <p className="text-slate-700 mb-3">{currentNode.question_text}</p>
+                  <p className="text-slate-700 mb-3 leading-relaxed">{currentNode.question_text}</p>
                 )}
                 {currentNode.help_text && (
                   <Alert className="bg-blue-50 border-blue-200 mb-4">
@@ -407,7 +612,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
                   </Alert>
                 )}
                 {currentNode.regulatory_reference && (
-                  <p className="text-xs text-slate-500 italic mb-3">
+                  <p className="text-xs text-slate-500 italic mb-3 flex items-center gap-2">
+                    <FileCheck className="w-3 h-3" />
                     Reference: {currentNode.regulatory_reference}
                   </p>
                 )}
@@ -415,37 +621,39 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
             </div>
 
             {/* Render current node */}
-            <div className="ml-11">
+            <div className="pl-16">
               {renderNode()}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Previous Answers Summary */}
+      {/* Previous Answers Compact View */}
       {Object.keys(answers).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <FileCheck className="w-4 h-4" />
-              Previous Answers
-            </h4>
-            <div className="space-y-2">
-              {Object.entries(answers).map(([key, value]) => {
-                const step = stepMap[key];
-                if (!step) return null;
-                return (
-                  <div key={key} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 text-xs">
-                      {step.step_title || key}
-                    </span>
-                    <Badge variant="outline" className="capitalize text-xs">
-                      {step.options?.find(o => o.value === value)?.label || value}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
+            <details className="cursor-pointer">
+              <summary className="text-sm font-semibold text-slate-700 flex items-center gap-2 hover:text-indigo-600 transition-colors">
+                <FileCheck className="w-4 h-4" />
+                View Previous Answers ({Object.keys(answers).length})
+              </summary>
+              <div className="mt-3 space-y-2 pl-6">
+                {Object.entries(answers).map(([key, value]) => {
+                  const step = stepMap[key];
+                  if (!step) return null;
+                  return (
+                    <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
+                      <span className="text-slate-600 text-xs">
+                        {step.step_title || key}
+                      </span>
+                      <Badge variant="outline" className="capitalize text-xs">
+                        {step.options?.find(o => o.value === value)?.label || value}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
           </CardContent>
         </Card>
       )}
@@ -456,16 +664,18 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           type="button" 
           variant="outline" 
           onClick={handleBack}
+          size="lg"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {history.length === 0 ? "Cancel" : "Back"}
+          {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
         <Button 
           onClick={handleNext}
           disabled={!selectedValue && !isActionNode(currentNode)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          size="lg"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >
-          {isActionNode(currentNode) ? "Complete" : "Continue"}
+          {isActionNode(currentNode) ? "View Summary" : "Next Question"}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
