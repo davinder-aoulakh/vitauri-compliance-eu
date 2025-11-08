@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/select";
 import { XCircle, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import TaxResidencyManager from "./TaxResidencyManager";
 
-export default function AccountForm({ account, entities, onSubmit, onCancel }) {
+export default function AccountForm({ account, entities, onSubmit, onCancel, tenant }) {
   const [formData, setFormData] = useState(account || {
     entity_id: "",
     account_number: "",
@@ -33,12 +35,87 @@ export default function AccountForm({ account, entities, onSubmit, onCancel }) {
       postal_code: "",
       country: ""
     },
-    tax_residencies: []
+    tax_residencies: [],
+    needs_reclassification: false
   });
+
+  const [detectedChanges, setDetectedChanges] = useState([]);
+  const [initialData, setInitialData] = useState(null);
+
+  useEffect(() => {
+    if (account) {
+      setInitialData(JSON.parse(JSON.stringify(account)));
+    }
+  }, [account]);
+
+  useEffect(() => {
+    if (!initialData || !account) return;
+
+    const changes = [];
+    const significantFields = [
+      'account_holder_address.country',
+      'tax_residencies',
+      'entity_classification',
+      'account_holder_type'
+    ];
+
+    // Check address country change
+    if (initialData.account_holder_address?.country !== formData.account_holder_address?.country) {
+      changes.push('Address country changed');
+    }
+
+    // Check tax residencies change
+    if (JSON.stringify(initialData.tax_residencies) !== JSON.stringify(formData.tax_residencies)) {
+      changes.push('Tax residencies modified');
+    }
+
+    // Detect foreign indicia
+    const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
+    if (newIndicia.length > 0 && (!account.indicia_found || account.indicia_found.length === 0)) {
+      changes.push(`Foreign indicia detected: ${newIndicia.join(', ')}`);
+    }
+
+    setDetectedChanges(changes);
+  }, [formData, initialData, account, tenant]);
+
+  const detectIndicia = (accountData, tenantJurisdiction) => {
+    const indicia = [];
+
+    // Foreign address
+    if (accountData.account_holder_address?.country && 
+        accountData.account_holder_address.country !== tenantJurisdiction) {
+      indicia.push('foreign_address');
+    }
+
+    // Foreign tax residency
+    const hasForeignTaxResidency = accountData.tax_residencies?.some(
+      r => r.country && r.country !== tenantJurisdiction
+    );
+    if (hasForeignTaxResidency) {
+      indicia.push('foreign_tax_residency');
+    }
+
+    return indicia;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Auto-detect indicia
+    const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
+    
+    // Determine if needs reclassification
+    const needsReclassification = detectedChanges.length > 0 && 
+      account && 
+      account.reportability_status !== 'pending_review';
+
+    const updatedData = {
+      ...formData,
+      indicia_found: newIndicia.length > 0 ? newIndicia : undefined,
+      needs_reclassification: needsReclassification
+    };
+
+    onSubmit(updatedData);
   };
 
   const handleChange = (field, value) => {
@@ -58,6 +135,24 @@ export default function AccountForm({ account, entities, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Change Detection Alert */}
+      {detectedChanges.length > 0 && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <AlertDescription className="text-sm text-amber-900">
+            <strong>Significant changes detected:</strong>
+            <ul className="list-disc list-inside mt-1">
+              {detectedChanges.map((change, idx) => (
+                <li key={idx}>{change}</li>
+              ))}
+            </ul>
+            <p className="mt-2 font-medium">
+              This account will be flagged for re-classification after saving.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="basic" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>

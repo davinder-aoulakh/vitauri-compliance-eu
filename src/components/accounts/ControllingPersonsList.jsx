@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import { format } from "date-fns";
 
@@ -77,37 +78,53 @@ export default function ControllingPersonsList({ account }) {
     }
   };
 
+  const isPassiveNFE = account?.entity_classification === "passive_nfe";
   const reportablePersons = controllingPersons.filter(p => p.is_reportable);
   const nonReportablePersons = controllingPersons.filter(p => !p.is_reportable);
+  const hasReportableControllingPersons = reportablePersons.length > 0;
 
-  // Check if account is Passive NFE
-  const isPassiveNFE = account?.entity_classification === "passive_nfe";
-  const requiresControllingPersons = account?.requires_controlling_persons || isPassiveNFE;
+  // Auto-trigger for Passive NFE
+  useEffect(() => {
+    if (account?.entity_classification === 'passive_nfe' && controllingPersons.length === 0) {
+      // Show prominent alert if Passive NFE has no controlling persons
+      setShowForm(true);
+    }
+  }, [account, controllingPersons]);
 
   return (
     <div className="space-y-6">
-      {/* Warning if Passive NFE with no controlling persons */}
-      {requiresControllingPersons && controllingPersons.length === 0 && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
-          <AlertDescription className="text-sm text-amber-900">
-            <strong>Action Required:</strong> This account is classified as a Passive NFE. 
-            You must identify and add all controlling persons to complete the reportability assessment.
+      {/* Passive NFE Alert */}
+      {isPassiveNFE && (
+        <Alert className="bg-purple-50 border-purple-200">
+          <AlertCircle className="w-4 h-4 text-purple-600" />
+          <AlertDescription className="text-sm text-purple-900">
+            <strong>Passive NFE Account:</strong> Under CRS, all controlling persons must be identified. 
+            Any controlling persons with foreign tax residency will make this account reportable.
+            {controllingPersons.length === 0 && (
+              <p className="mt-2 font-medium text-purple-800">
+                ⚠️ No controlling persons identified yet. Please add controlling persons to complete compliance review.
+              </p>
+            )}
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Header Card with Stats */}
-      <Card className="border-2 border-purple-100 bg-gradient-to-br from-white to-purple-50/30">
-        <CardHeader>
+      {/* Header Card */}
+      <Card className={`border-0 shadow-lg ${isPassiveNFE && controllingPersons.length === 0 ? 'border-2 border-purple-200' : ''}`}>
+        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Users className="w-6 h-6 text-purple-600" />
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600" />
                 Controlling Persons
+                {isPassiveNFE && (
+                  <Badge className="bg-purple-100 text-purple-800 ml-2">
+                    Required for Passive NFE
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription className="mt-1">
-                Individuals exercising control over the entity account holder
+                Individuals who exercise control over the entity ({">"}25% ownership or senior management)
               </CardDescription>
             </div>
             <Button
@@ -115,30 +132,33 @@ export default function ControllingPersonsList({ account }) {
                 setSelectedPerson(null);
                 setShowForm(true);
               }}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Controlling Person
             </Button>
           </div>
-
-          {controllingPersons.length > 0 && (
-            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-purple-100">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-slate-900">{controllingPersons.length}</p>
-                <p className="text-xs text-slate-600">Total</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{reportablePersons.length}</p>
-                <p className="text-xs text-slate-600">Reportable</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-slate-600">{nonReportablePersons.length}</p>
-                <p className="text-xs text-slate-600">Non-Reportable</p>
-              </div>
-            </div>
-          )}
         </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-2xl font-bold text-slate-900">{controllingPersons.length}</p>
+              <p className="text-xs text-slate-600">Total Persons</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+              <p className="text-2xl font-bold text-green-600">
+                {nonReportablePersons.length}
+              </p>
+              <p className="text-xs text-green-700">Non-Reportable</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-2xl font-bold text-amber-600">
+                {reportablePersons.length}
+              </p>
+              <p className="text-xs text-amber-700">Reportable (Foreign)</p>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Controlling Persons Table */}
@@ -155,13 +175,13 @@ export default function ControllingPersonsList({ account }) {
                 No Controlling Persons Added
               </h3>
               <p className="text-slate-600 mb-6">
-                {requiresControllingPersons
+                {isPassiveNFE
                   ? "This Passive NFE account requires controlling persons to be identified for CRS reporting."
                   : "Add individuals who exercise control over the entity account holder."}
               </p>
               <Button
                 onClick={() => setShowForm(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add First Controlling Person

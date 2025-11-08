@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -67,6 +68,8 @@ export default function AccountsPage() {
   const [showComplianceFlags, setShowComplianceFlags] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [countryFilter, setCountryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("accounts");
 
   const queryClient = useQueryClient();
@@ -188,8 +191,23 @@ export default function AccountsPage() {
     const matchesSearch = account.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          account.account_number?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || account.reportability_status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesEntity = entityFilter === "all" || account.entity_id === entityFilter;
+    
+    // Country filter - check tax residencies and account holder address
+    const matchesCountry = countryFilter === "all" || 
+      (account.tax_residencies && account.tax_residencies.some(r => r.country === countryFilter)) ||
+      account.account_holder_address?.country === countryFilter;
+    
+    return matchesSearch && matchesStatus && matchesEntity && matchesCountry;
   });
+
+  // Get unique countries from accounts for filter
+  const uniqueCountries = [...new Set(
+    accounts.flatMap(a => [
+      a.account_holder_address?.country,
+      ...(a.tax_residencies || []).map(r => r.country)
+    ]).filter(Boolean)
+  )].sort();
 
   const getStatusBadge = (status) => {
     const config = {
@@ -346,10 +364,11 @@ export default function AccountsPage() {
               </Card>
             </div>
 
+            {/* Enhanced Filters */}
             <Card className="border-0 shadow-lg">
               <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-2">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                       <Input
@@ -360,10 +379,11 @@ export default function AccountsPage() {
                       />
                     </div>
                   </div>
+                  
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full md:w-64">
+                    <SelectTrigger>
                       <Filter className="w-4 h-4 mr-2" />
-                      <SelectValue placeholder="Filter by status" />
+                      <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
@@ -373,6 +393,52 @@ export default function AccountsPage() {
                       <SelectItem value="excluded">Excluded</SelectItem>
                     </SelectContent>
                   </Select>
+
+                  <Select value={entityFilter} onValueChange={setEntityFilter}>
+                    <SelectTrigger>
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Entity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Entities</SelectItem>
+                      {entities.map((entity) => (
+                        <SelectItem key={entity.id} value={entity.id}>
+                          {entity.entity_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-4 mt-4 flex-wrap">
+                  <Select value={countryFilter} onValueChange={setCountryFilter}>
+                    <SelectTrigger className="w-full md:w-64">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Countries</SelectItem>
+                      {uniqueCountries.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {(searchTerm || statusFilter !== "all" || entityFilter !== "all" || countryFilter !== "all") && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setStatusFilter("all");
+                        setEntityFilter("all");
+                        setCountryFilter("all");
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -402,11 +468,11 @@ export default function AccountsPage() {
                     <Wallet className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">No accounts found</h3>
                     <p className="text-slate-600 mb-6">
-                      {searchTerm || statusFilter !== "all" 
+                      {searchTerm || statusFilter !== "all" || entityFilter !== "all" || countryFilter !== "all"
                         ? "Try adjusting your filters" 
                         : "Get started by adding your first account"}
                     </p>
-                    {!searchTerm && statusFilter === "all" && (
+                    {!searchTerm && statusFilter === "all" && entityFilter === "all" && countryFilter === "all" && (
                       <Button onClick={() => setShowForm(true)} style={{ backgroundColor: primaryColor }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Account

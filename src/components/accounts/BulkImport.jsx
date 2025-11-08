@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,50 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
     return account;
   };
 
+  const autoClassifyAccount = (accountData, tenantJurisdiction) => {
+    // Auto-classification logic
+    let autoReportabilityStatus = 'pending_review';
+    let autoReportabilityReason = 'Requires manual classification';
+    let autoIndicia = [];
+
+    // Check for foreign address
+    if (accountData.account_holder_address?.country && 
+        accountData.account_holder_address.country !== tenantJurisdiction) {
+      autoIndicia.push('foreign_address');
+    }
+
+    // Check for foreign tax residencies
+    const hasForeignTaxResidency = accountData.tax_residencies.some(
+      r => r.country && r.country !== tenantJurisdiction
+    );
+
+    // Simple auto-classification rules
+    if (accountData.account_holder_type === 'individual') {
+      if (hasForeignTaxResidency) {
+        autoReportabilityStatus = 'reportable';
+        autoReportabilityReason = 'Foreign tax residency detected in import data';
+        autoIndicia.push('foreign_tax_residency');
+      } else if (autoIndicia.length > 0) {
+        autoReportabilityStatus = 'pending_review';
+        autoReportabilityReason = 'Foreign indicia found - requires self-certification';
+      } else if (!hasForeignTaxResidency && accountData.tax_residencies.length > 0) {
+        // Has tax residency info and all are local
+        autoReportabilityStatus = 'non_reportable';
+        autoReportabilityReason = 'Local tax resident only (auto-classified from import)';
+      }
+    } else if (accountData.account_holder_type === 'entity') {
+      // Entity accounts always need manual classification
+      autoReportabilityStatus = 'pending_review';
+      autoReportabilityReason = 'Entity account requires classification workflow';
+    }
+
+    return {
+      reportability_status: autoReportabilityStatus,
+      reportability_reason: autoReportabilityReason,
+      indicia_found: autoIndicia.length > 0 ? autoIndicia : undefined
+    };
+  };
+
   const handleImport = async () => {
     if (!file) return;
 
@@ -165,18 +210,25 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
         return;
       }
 
-      // Import accounts
+      // Import accounts with auto-classification
       const imported = [];
       const failed = [];
 
       for (let i = 0; i < rows.length; i++) {
         try {
           const accountData = convertRowToAccount(rows[i]);
+          
+          // Apply auto-classification
+          const autoClassification = autoClassifyAccount(accountData, tenant.jurisdiction);
+          Object.assign(accountData, autoClassification);
+
           const account = await base44.entities.Account.create(accountData);
           imported.push({
             row: i + 2,
             account_number: accountData.account_number,
-            account_holder_name: accountData.account_holder_name
+            account_holder_name: accountData.account_holder_name,
+            auto_classified: autoClassification.reportability_status !== 'pending_review',
+            status: autoClassification.reportability_status
           });
         } catch (error) {
           failed.push({
@@ -194,7 +246,8 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
         imported: imported.length,
         failed: failed.length,
         importedAccounts: imported,
-        failedAccounts: failed
+        failedAccounts: failed,
+        autoClassified: imported.filter(a => a.auto_classified).length
       });
 
     } catch (error) {
@@ -364,20 +417,36 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             {/* Summary Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
                 <p className="text-2xl font-bold text-slate-900">{results.total}</p>
                 <p className="text-xs text-slate-600">Total Rows</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-2xl font-bold text-green-600">{results.imported}</p>
-                <p className="text-xs text-green-700">Successfully Imported</p>
+                <p className="text-xs text-green-700">Imported</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <p className="text-2xl font-bold text-blue-600">{results.autoClassified}</p>
+                <p className="text-xs text-blue-700">Auto-Classified</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
                 <p className="text-2xl font-bold text-red-600">{results.failed}</p>
                 <p className="text-xs text-red-700">Failed</p>
               </div>
             </div>
+
+            {/* Auto-Classification Info */}
+            {results.autoClassified > 0 && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <Info className="w-4 h-4 text-blue-600" />
+                <AlertDescription className="text-sm text-blue-900">
+                  <strong>{results.autoClassified} accounts</strong> were automatically classified based on import data. 
+                  Accounts with foreign tax residencies were marked as <strong>reportable</strong>. 
+                  Accounts with local residency only were marked as <strong>non-reportable</strong>.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Imported Accounts */}
             {results.importedAccounts.length > 0 && (
@@ -389,9 +458,16 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {results.importedAccounts.map((acc, idx) => (
                     <div key={idx} className="flex items-center justify-between text-sm p-2 rounded bg-green-50">
-                      <span className="text-green-900">
-                        Row {acc.row}: {acc.account_holder_name}
-                      </span>
+                      <div className="flex-1">
+                        <span className="text-green-900 font-medium">
+                          Row {acc.row}: {acc.account_holder_name}
+                        </span>
+                        {acc.auto_classified && (
+                          <span className="ml-2 text-xs text-blue-600">
+                            (Auto: {acc.status})
+                          </span>
+                        )}
+                      </div>
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
                         {acc.account_number}
                       </Badge>
@@ -427,8 +503,10 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
             <Alert className="bg-blue-50 border-blue-200">
               <Info className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-sm text-blue-900">
-                <strong>Next Steps:</strong> All imported accounts have status "Pending Review". 
-                Navigate to the Accounts page to classify them for reportability.
+                <strong>Next Steps:</strong> {results.autoClassified > 0 
+                  ? `${results.autoClassified} accounts were auto-classified. Review remaining ${results.imported - results.autoClassified} accounts for manual classification.`
+                  : 'Navigate to the Accounts page to classify imported accounts for reportability.'
+                }
               </AlertDescription>
             </Alert>
 
