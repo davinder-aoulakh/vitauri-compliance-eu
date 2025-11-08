@@ -4,6 +4,7 @@ import SuperAdmin from './pages/SuperAdmin';
 import TenantManagement from './pages/TenantManagement';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import Setup from './pages/Setup';
+import UserManagement from './pages/UserManagement';
 import Layout from './Layout.jsx';
 
 
@@ -14,6 +15,7 @@ export const PAGES = {
     "TenantManagement": TenantManagement,
     "WorkflowBuilder": WorkflowBuilder,
     "Setup": Setup,
+    "UserManagement": UserManagement,
 }
 
 export const pagesConfig = {
