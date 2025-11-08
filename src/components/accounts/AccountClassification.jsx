@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -555,7 +556,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       </Alert>
 
       {/* Step Breadcrumb */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {[...history, currentNodeId].map((stepId, idx) => {
           const step = stepMap[stepId];
           const isCompleted = idx < history.length;
@@ -590,8 +591,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
                       ? 'text-indigo-700' 
                       : 'text-slate-500'
                 }`}>
-                  {step?.step_title?.substring(0, 20) || `Step ${idx + 1}`}
-                  {step?.step_title?.length > 20 && '...'}
+                  {step?.step_title?.substring(0, 15) || `Step ${idx + 1}`}
+                  {step?.step_title?.length > 15 && '...'}
                 </span>
               </div>
               {idx < history.length && (
