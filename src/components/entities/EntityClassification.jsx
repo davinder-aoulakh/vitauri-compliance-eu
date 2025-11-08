@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -64,6 +63,23 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       console.error("Error loading user:", error);
     }
   };
+
+  // Guard clause - check if entity exists
+  if (!entity) {
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-900">
+            Entity data is missing. Please close and try again.
+          </AlertDescription>
+        </Alert>
+        <Button onClick={onCancel} className="mt-4" variant="outline">
+          Close
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -299,22 +315,22 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       rfi_status: rfi_status,
       fi_type: fi_type,
       non_reporting_reason: classification === "non_reporting_fi" ? reason : undefined,
-      entity_type: finalAnswers.frm_select_legal_entity_type || entity.entity_type
+      entity_type: finalAnswers.frm_select_legal_entity_type || entity?.entity_type
     };
 
     // Save classification history record
     try {
       await base44.entities.EntityClassificationHistory.create({
-        tenant_id: entity.tenant_id,
-        entity_id: entity.id,
+        tenant_id: entity?.tenant_id,
+        entity_id: entity?.id,
         classification_date: new Date().toISOString(),
         classification_result: rfi_status,
         classification_reason: reason,
         fi_type: fi_type,
         workflow_answers: finalAnswers,
         performed_by: user?.email || "unknown",
-        entity_name: entity.entity_name,
-        entity_type: finalAnswers.frm_select_legal_entity_type || entity.entity_type
+        entity_name: entity?.entity_name || "Unknown Entity",
+        entity_type: finalAnswers.frm_select_legal_entity_type || entity?.entity_type
       });
     } catch (error) {
       console.error("Error saving classification history:", error);
@@ -410,7 +426,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Classification Complete</h2>
           <p className="text-slate-600">
-            Review your answers and confirm the classification for <strong>{entity.entity_name}</strong>
+            Review your answers and confirm the classification for <strong>{entity?.entity_name || "this entity"}</strong>
           </p>
         </div>
 
