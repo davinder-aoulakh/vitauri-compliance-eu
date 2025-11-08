@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,8 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +44,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import EntityForm from "../components/entities/EntityForm";
 import EntityClassification from "../components/entities/EntityClassification";
+import ClassificationHistory from "../components/entities/ClassificationHistory";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
@@ -49,6 +52,7 @@ export default function EntitiesPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -81,6 +85,14 @@ export default function EntitiesPage() {
     enabled: !!user?.tenant_id
   });
 
+  const { data: classificationHistory = [] } = useQuery({
+    queryKey: ['classification-history', selectedEntity?.id],
+    queryFn: () => selectedEntity?.id
+      ? base44.entities.EntityClassificationHistory.filter({ entity_id: selectedEntity.id })
+      : [],
+    enabled: !!selectedEntity?.id && showHistory
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Entity.create({ ...data, tenant_id: user.tenant_id }),
     onSuccess: () => {
@@ -110,6 +122,11 @@ export default function EntitiesPage() {
   const handleClassify = (entity) => {
     setSelectedEntity(entity);
     setShowClassification(true);
+  };
+
+  const handleViewHistory = (entity) => {
+    setSelectedEntity(entity);
+    setShowHistory(true);
   };
 
   const handleEdit = (entity) => {
@@ -312,12 +329,20 @@ export default function EntitiesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewHistory(entity)}>
+                                <History className="w-4 h-4 mr-2" />
+                                View History
+                              </DropdownMenuItem>
                               {entity.rfi_status === "pending_classification" && (
                                 <DropdownMenuItem onClick={() => handleClassify(entity)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Classify Entity
                                 </DropdownMenuItem>
                               )}
+                              <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                Re-classify Entity
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(entity)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Details
@@ -379,6 +404,19 @@ export default function EntitiesPage() {
               updateMutation.mutate({ id: selectedEntity.id, data });
             }}
             onCancel={() => setShowClassification(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Classification History Dialog */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Classification History: {selectedEntity?.entity_name}</DialogTitle>
+          </DialogHeader>
+          <ClassificationHistory 
+            history={classificationHistory}
+            entity={selectedEntity}
           />
         </DialogContent>
       </Dialog>
