@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, XCircle, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { XCircle, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 export default function InviteUserForm({ tenant, onComplete, onCancel }) {
@@ -78,7 +77,6 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     setMessage(null);
 
     try {
-      // Create the user record with tenant assignment and permissions
       await base44.entities.User.create({
         email: formData.email,
         full_name: formData.full_name,
@@ -204,7 +202,6 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
           </Select>
         </div>
 
-        {/* Permissions */}
         <div className="border-t pt-4">
           <Label className="text-base mb-3 block">Permissions</Label>
           <div className="space-y-3 bg-slate-50 rounded-lg p-4">
