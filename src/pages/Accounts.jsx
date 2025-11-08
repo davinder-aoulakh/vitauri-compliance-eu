@@ -13,7 +13,9 @@ import {
   Edit,
   Trash2,
   AlertTriangle,
-  FileText
+  FileText,
+  Eye, // Added
+  History // Added
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AccountForm from "../components/accounts/AccountForm.jsx";
 import AccountDetails from "../components/accounts/AccountDetails.jsx";
+import AccountClassification from "../components/accounts/AccountClassification.jsx"; // Added
+import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory.jsx"; // Added
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -50,6 +54,8 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showClassification, setShowClassification] = useState(false); // Added
+  const [showHistory, setShowHistory] = useState(false); // Added
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -90,6 +96,14 @@ export default function AccountsPage() {
     enabled: !!user?.tenant_id
   });
 
+  const { data: classificationHistory = [] } = useQuery({
+    queryKey: ['account-classification-history', selectedAccount?.id],
+    queryFn: () => selectedAccount?.id
+      ? base44.entities.AccountClassificationHistory.filter({ account_id: selectedAccount.id })
+      : [],
+    enabled: !!selectedAccount?.id && showHistory // Only fetch when dialog is open and account is selected
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Account.create({ ...data, tenant_id: user.tenant_id }),
     onSuccess: () => {
@@ -105,6 +119,7 @@ export default function AccountsPage() {
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
       setSelectedAccount(null);
+      setShowClassification(false); // Close classification form if updated from there
     }
   });
 
@@ -123,6 +138,16 @@ export default function AccountsPage() {
   const handleViewDetails = (account) => {
     setSelectedAccount(account);
     setShowDetails(true);
+  };
+
+  const handleClassify = (account) => { // Added
+    setSelectedAccount(account);
+    setShowClassification(true);
+  };
+
+  const handleViewHistory = (account) => { // Added
+    setSelectedAccount(account);
+    setShowHistory(true);
   };
 
   const handleDelete = async (id) => {
@@ -398,6 +423,25 @@ export default function AccountsPage() {
                                   <FileText className="w-4 h-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleViewHistory(account)}>
+                                  <History className="w-4 h-4 mr-2" />
+                                  View History
+                                </DropdownMenuItem>
+                                {account.account_holder_type === "individual" && (
+                                  <>
+                                    {account.reportability_status === "pending_review" && (
+                                      <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Classify Account
+                                      </DropdownMenuItem>
+                                    )}
+                                    {/* Re-classify is always an option for individual accounts, regardless of current status */}
+                                    <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      Re-classify Account
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuItem onClick={() => handleEdit(account)}>
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit Account
@@ -458,6 +502,41 @@ export default function AccountsPage() {
               setShowForm(false);
               setSelectedAccount(null);
             }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Classification Dialog */}
+      <Dialog open={showClassification} onOpenChange={setShowClassification}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Reportability Assessment: {selectedAccount?.account_holder_name}</DialogTitle>
+          </DialogHeader>
+          <AccountClassification
+            account={selectedAccount}
+            onComplete={(data) => {
+              updateMutation.mutate({ id: selectedAccount.id, data });
+              setShowClassification(false); // Close dialog on completion
+              setSelectedAccount(null); // Clear selected account
+              queryClient.invalidateQueries(['accounts']); // Re-fetch accounts to update status in table
+            }}
+            onCancel={() => {
+              setShowClassification(false);
+              setSelectedAccount(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Classification History Dialog */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Classification History: {selectedAccount?.account_holder_name}</DialogTitle>
+          </DialogHeader>
+          <AccountClassificationHistory 
+            history={classificationHistory}
+            account={selectedAccount}
           />
         </DialogContent>
       </Dialog>
