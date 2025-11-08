@@ -11,7 +11,6 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Eye,
   AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import AccountForm from "../components/accounts/AccountForm";
+import AccountForm from "../components/accounts/AccountForm.jsx";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
