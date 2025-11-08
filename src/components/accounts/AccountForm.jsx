@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { XCircle, Save } from "lucide-react";
+import { XCircle, Save, Info } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TaxResidencyManager from "./TaxResidencyManager";
 import DocumentUpload from "./DocumentUpload";
 
@@ -25,6 +25,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     account_holder_type: "individual",
     account_holder_name: "",
     date_of_birth: "",
+    is_pre_existing: false,
+    account_holder_is_alive: true,
     account_balance: 0,
     currency: "USD",
     reporting_year: new Date().getFullYear().toString(),
@@ -42,8 +44,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     self_certification_document_url: null,
     self_certification_document_name: null,
     self_certification_upload_date: null,
-    self_certification_obtained: false, // Default to false
-    self_certification_date: null // Default to null
+    self_certification_obtained: false,
+    self_certification_date: null
   });
 
   const [detectedChanges, setDetectedChanges] = useState([]);
@@ -55,16 +57,23 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   }, [account]);
 
+  // Auto-determine if account is pre-existing based on created date
+  useEffect(() => {
+    if (account?.created_date) {
+      const createdDate = new Date(account.created_date);
+      const crsThresholdDate = new Date('2018-01-01');
+      const isPreExisting = createdDate < crsThresholdDate;
+      
+      if (formData.is_pre_existing !== isPreExisting) {
+        setFormData(prev => ({ ...prev, is_pre_existing: isPreExisting }));
+      }
+    }
+  }, [account?.created_date]);
+
   useEffect(() => {
     if (!initialData || !account) return;
 
     const changes = [];
-    // const significantFields = [ // This was commented out in the original, keeping it that way
-    //   'account_holder_address.country',
-    //   'tax_residencies',
-    //   'entity_classification',
-    //   'account_holder_type'
-    // ];
 
     // Check address country change
     if (initialData.account_holder_address?.country !== formData.account_holder_address?.country) {
@@ -346,6 +355,89 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   <SelectItem value="excluded">Excluded</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* CRS-Specific Fields */}
+          <div className="mt-6 p-4 border-2 border-blue-100 rounded-lg bg-blue-50/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="w-4 h-4 text-blue-600" />
+              <h3 className="text-sm font-semibold text-blue-900">CRS Classification Information</h3>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Pre-existing Account */}
+              <div>
+                <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
+                  Pre-existing Account (opened before Jan 1, 2018)
+                </Label>
+                {account?.created_date ? (
+                  <Alert className="mt-2 bg-slate-50 border-slate-200">
+                    <Info className="w-4 h-4 text-slate-600" />
+                    <AlertDescription className="text-xs text-slate-700">
+                      Auto-determined based on account creation date: {new Date(account.created_date).toLocaleDateString()}
+                      <br />
+                      <strong>Status:</strong> {formData.is_pre_existing ? "Pre-existing (before 2018)" : "New Account (2018 or later)"}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="mt-2">
+                    <RadioGroup
+                      value={formData.is_pre_existing ? "yes" : "no"}
+                      onValueChange={(value) => handleChange("is_pre_existing", value === "yes")}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="pre_existing_yes" />
+                        <Label htmlFor="pre_existing_yes" className="font-normal cursor-pointer">
+                          Yes (opened before Jan 1, 2018)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="pre_existing_no" />
+                        <Label htmlFor="pre_existing_no" className="font-normal cursor-pointer">
+                          No (opened Jan 1, 2018 or later)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Pre-existing accounts may have different due diligence requirements under CRS
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Account Holder Status - Only for Individual Accounts */}
+              {formData.account_holder_type === "individual" && (
+                <div>
+                  <Label htmlFor="account_holder_is_alive" className="text-sm font-medium text-slate-700">
+                    Account Holder Status
+                  </Label>
+                  <div className="mt-2">
+                    <RadioGroup
+                      value={formData.account_holder_is_alive ? "alive" : "deceased"}
+                      onValueChange={(value) => handleChange("account_holder_is_alive", value === "alive")}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="alive" id="holder_alive" />
+                        <Label htmlFor="holder_alive" className="font-normal cursor-pointer">
+                          Alive
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="deceased" id="holder_deceased" />
+                        <Label htmlFor="holder_deceased" className="font-normal cursor-pointer">
+                          Deceased
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-slate-500 mt-1">
+                      CRS reporting may differ for accounts of deceased individuals
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>

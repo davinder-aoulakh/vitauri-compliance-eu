@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -65,6 +64,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
   }, [workflows, workflow, account]);
+
+  // Pre-populate answers with account data for conditional logic
+  useEffect(() => {
+    if (account && !answers._account_data_loaded) {
+      setAnswers(prev => ({
+        ...prev,
+        _account_data_loaded: true,
+        _is_pre_existing: account.is_pre_existing,
+        _account_holder_is_alive: account.account_holder_is_alive,
+        _account_holder_type: account.account_holder_type
+      }));
+    }
+  }, [account]);
 
   const loadUser = async () => {
     try {
@@ -190,7 +202,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {
-      const fieldValue = answers[condition.field];
+      let fieldValue = answers[condition.field];
+      
+      // Handle special account data fields
+      if (condition.field === '_is_pre_existing') {
+        fieldValue = account?.is_pre_existing;
+      } else if (condition.field === '_account_holder_is_alive') {
+        fieldValue = account?.account_holder_is_alive;
+      } else if (condition.field === '_account_holder_type') {
+        fieldValue = account?.account_holder_type;
+      }
+
       let conditionMet = false;
 
       switch (condition.operator) {
@@ -201,10 +223,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = fieldValue != condition.value;
           break;
         case "in":
-          conditionMet = condition.value.split(",").map(v => v.trim()).includes(fieldValue);
+          conditionMet = condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
           break;
         case "not_in":
-          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(fieldValue);
+          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
           break;
         case "contains":
           conditionMet = String(fieldValue).includes(condition.value);
@@ -264,6 +286,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const finalNode = stepMap[history[history.length - 1]] || currentNode;
     const finalAnswers = answers;
 
+    // Remove internal account data fields from saved answers
+    const cleanedAnswers = { ...finalAnswers };
+    delete cleanedAnswers._account_data_loaded;
+    delete cleanedAnswers._is_pre_existing;
+    delete cleanedAnswers._account_holder_is_alive;
+    delete cleanedAnswers._account_holder_type;
+
     // Determine classification based on final node
     let reportabilityStatus = "pending_review";
     let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
@@ -283,7 +312,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     const classificationData = {
-      classification_answers: finalAnswers,
+      classification_answers: cleanedAnswers,
       reportability_status: reportabilityStatus,
       reportability_reason: reason,
       self_certification_obtained: finalNode.step_title?.toLowerCase().includes("self-certification obtained") || false
@@ -298,7 +327,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         reportability_status: reportabilityStatus,
         classification_reason: reason,
         reportable_jurisdictions: [],
-        workflow_answers: finalAnswers,
+        workflow_answers: cleanedAnswers,
         indicia_found: [],
         self_certification_status: classificationData.self_certification_obtained ? "obtained" : "not_obtained",
         performed_by: user?.email || "unknown",
@@ -403,6 +432,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
             Review your answers and confirm the reportability status for account <strong>{account.account_number}</strong>
           </p>
         </div>
+
+        {/* Account Context Info */}
+        {account.account_holder_type === "individual" && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="w-4 h-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-900">
+              <strong>Account Context:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Account Type: {account.is_pre_existing ? "Pre-existing (opened before Jan 1, 2018)" : "New Account (Jan 1, 2018 or later)"}</li>
+                <li>Account Holder Status: {account.account_holder_is_alive ? "Alive" : "Deceased"}</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Classification Result Preview */}
         <Card className={`border-2 ${
@@ -531,7 +574,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
         <div className="flex items-center justify-between text-xs text-slate-500">
           <span>Started</span>
-          <span className="font-medium text-indigo-600">{Object.keys(answers).length} questions answered</span>
+          <span className="font-medium text-indigo-600">{Object.keys(answers).filter(k => !k.startsWith('_')).length} questions answered</span>
           <span>Summary</span>
         </div>
       </div>
@@ -550,6 +593,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
             <Info className="w-4 h-4 text-blue-600" />
             <AlertDescription className="text-sm text-blue-900">
               <strong>Individual Account:</strong> This workflow follows CRS due diligence procedures for individual accounts.
+              {account.is_pre_existing !== undefined && (
+                <span className="block mt-1">
+                  Account Type: <strong>{account.is_pre_existing ? "Pre-existing (before 2018)" : "New (2018+)"}</strong>
+                </span>
+              )}
+              {account.account_holder_is_alive !== undefined && (
+                <span className="block mt-1">
+                  Holder Status: <strong>{account.account_holder_is_alive ? "Alive" : "Deceased"}</strong>
+                </span>
+              )}
             </AlertDescription>
           </>
         )}
@@ -644,16 +697,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       </Card>
 
       {/* Previous Answers Compact View */}
-      {Object.keys(answers).length > 0 && (
+      {Object.keys(answers).filter(k => !k.startsWith('_')).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
             <details className="cursor-pointer">
               <summary className="text-sm font-semibold text-slate-700 flex items-center gap-2 hover:text-indigo-600 transition-colors">
                 <FileCheck className="w-4 h-4" />
-                View Previous Answers ({Object.keys(answers).length})
+                View Previous Answers ({Object.keys(answers).filter(k => !k.startsWith('_')).length})
               </summary>
               <div className="mt-3 space-y-2 pl-6">
-                {Object.entries(answers).map(([key, value]) => {
+                {Object.entries(answers).filter(([key]) => !key.startsWith('_')).map(([key, value]) => {
                   const step = stepMap[key];
                   if (!step) return null;
                   return (

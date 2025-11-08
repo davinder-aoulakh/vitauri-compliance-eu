@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -25,10 +24,10 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const [errors, setErrors] = useState([]);
 
   const downloadTemplate = () => {
-    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,street,city,state,postal_code,country,account_balance,currency,reporting_year,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
-${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,123 Main St,New York,NY,10001,United States,50000,USD,2024,United States,123-45-6789,,
-${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,456 Oak Ave,London,,SW1A 1AA,United Kingdom,75000,GBP,2024,United Kingdom,AB123456C,France,1234567890
-${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corporate Blvd,Tokyo,,100-0001,Japan,1000000,JPY,2024,Japan,1234567890,,`;
+    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,is_pre_existing,account_holder_is_alive,street,city,state,postal_code,country,account_balance,currency,reporting_year,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
+${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,false,true,123 Main St,New York,NY,10001,United States,50000,USD,2024,United States,123-45-6789,,
+${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,true,true,456 Oak Ave,London,,SW1A 1AA,United Kingdom,75000,GBP,2024,United Kingdom,AB123456C,France,1234567890
+${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,false,,789 Corporate Blvd,Tokyo,,100-0001,Japan,1000000,JPY,2024,Japan,1234567890,,`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -105,6 +104,10 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
       account_holder_type: row.account_holder_type,
       account_holder_name: row.account_holder_name,
       date_of_birth: row.date_of_birth || null,
+      is_pre_existing: row.is_pre_existing === 'true' || row.is_pre_existing === '1' || row.is_pre_existing === 'yes',
+      account_holder_is_alive: row.account_holder_type === 'individual' ? 
+        (row.account_holder_is_alive !== 'false' && row.account_holder_is_alive !== '0' && row.account_holder_is_alive !== 'no') : 
+        undefined,
       account_balance: parseFloat(row.account_balance) || 0,
       currency: row.currency || 'USD',
       reporting_year: row.reporting_year || new Date().getFullYear().toString(),
@@ -292,6 +295,12 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corpor
               <li>account_holder_name</li>
               <li>date_of_birth (required for individual accounts)</li>
               <li>country (in address section)</li>
+            </ul>
+            
+            <p className="mt-3"><strong>CRS Fields:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>is_pre_existing (true/false - whether account opened before Jan 1, 2018)</li>
+              <li>account_holder_is_alive (true/false - for individual accounts only)</li>
             </ul>
             
             <p className="mt-3"><strong>Optional Fields:</strong></p>
