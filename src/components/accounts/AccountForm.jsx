@@ -98,7 +98,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     const hasForeignTaxResidency = accountData.tax_residencies?.some(
       r => r.country && r.country !== tenantJurisdiction
     );
-    if (hasForeignTaxResency) {
+    if (hasForeignTaxResidency) {
       indicia.push('foreign_tax_residency');
     }
 
