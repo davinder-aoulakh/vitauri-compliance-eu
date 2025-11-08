@@ -14,7 +14,8 @@ import {
   Edit,
   Trash2,
   Eye,
-  History
+  History,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import EntityForm from "../components/entities/EntityForm";
 import EntityClassification from "../components/entities/EntityClassification";
 import ClassificationHistory from "../components/entities/ClassificationHistory";
+import EntityDetails from "../components/entities/EntityDetails";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
@@ -53,6 +55,7 @@ export default function EntitiesPage() {
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -127,6 +130,11 @@ export default function EntitiesPage() {
   const handleViewHistory = (entity) => {
     setSelectedEntity(entity);
     setShowHistory(true);
+  };
+
+  const handleViewDetails = (entity) => {
+    setSelectedEntity(entity);
+    setShowDetails(true);
   };
 
   const handleEdit = (entity) => {
@@ -329,6 +337,10 @@ export default function EntitiesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(entity)}>
+                                <FileText className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleViewHistory(entity)}>
                                 <History className="w-4 h-4 mr-2" />
                                 View History
@@ -366,6 +378,16 @@ export default function EntitiesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Entity Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Entity Details: {selectedEntity?.entity_name}</DialogTitle>
+          </DialogHeader>
+          <EntityDetails entity={selectedEntity} />
+        </DialogContent>
+      </Dialog>
 
       {/* Entity Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
