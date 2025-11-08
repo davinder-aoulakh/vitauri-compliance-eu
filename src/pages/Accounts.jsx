@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,8 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,12 +42,14 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AccountForm from "../components/accounts/AccountForm.jsx";
+import AccountDetails from "../components/accounts/AccountDetails.jsx";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
   const [tenant, setTenant] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -114,6 +118,11 @@ export default function AccountsPage() {
   const handleEdit = (account) => {
     setSelectedAccount(account);
     setShowForm(true);
+  };
+
+  const handleViewDetails = (account) => {
+    setSelectedAccount(account);
+    setShowDetails(true);
   };
 
   const handleDelete = async (id) => {
@@ -385,6 +394,10 @@ export default function AccountsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewDetails(account)}>
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEdit(account)}>
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit Account
@@ -409,6 +422,19 @@ export default function AccountsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Account Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Account Details: {selectedAccount?.account_holder_name}</DialogTitle>
+          </DialogHeader>
+          <AccountDetails 
+            account={selectedAccount}
+            entity={entities.find(e => e.id === selectedAccount?.entity_id)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Account Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
