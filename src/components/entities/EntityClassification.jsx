@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -267,8 +268,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       classification = "reporting_fi";
       rfi_status = "reporting_fi";
       
-      // Extract FI type from answers
+      // Extract FI type from answers - handle both value and label
       const fiTypeValue = finalAnswers.frm_select_fi_type;
+      
+      // Direct value mapping
       const fiTypeMap = {
         "1": "custodial_institution",
         "2": "depository_institution",
@@ -276,7 +279,18 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         "3b": "investment_entity",
         "4": "specified_insurance_company"
       };
-      fi_type = fiTypeMap[fiTypeValue] || "not_applicable";
+      
+      // Label to value mapping
+      const fiTypeLabelMap = {
+        "Custodial Institution": "custodial_institution",
+        "Depository Institution": "depository_institution",
+        "Investment Entity (3a)": "investment_entity",
+        "Investment Entity (3b)": "investment_entity",
+        "Specified Insurance Company": "specified_insurance_company"
+      };
+      
+      // Try direct mapping first, then label mapping
+      fi_type = fiTypeMap[fiTypeValue] || fiTypeLabelMap[fiTypeValue] || "not_applicable";
     }
 
     const classificationData = {
