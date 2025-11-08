@@ -6,6 +6,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import Setup from './pages/Setup';
 import UserManagement from './pages/UserManagement';
 import Accounts from './pages/Accounts';
+import Reports from './pages/Reports';
 import Layout from './Layout.jsx';
 
 
@@ -18,6 +19,7 @@ export const PAGES = {
     "Setup": Setup,
     "UserManagement": UserManagement,
     "Accounts": Accounts,
+    "Reports": Reports,
 }
 
 export const pagesConfig = {
