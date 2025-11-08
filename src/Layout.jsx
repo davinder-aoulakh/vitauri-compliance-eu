@@ -68,8 +68,13 @@ export default function Layout({ children }) {
     }
   };
 
-  const handleLogout = () => {
-    base44.auth.logout();
+  const handleLogout = async () => {
+    try {
+      await base44.auth.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+      window.location.reload();
+    }
   };
 
   const isSuperAdmin = user?.user_role === "super_admin";
