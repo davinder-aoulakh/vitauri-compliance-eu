@@ -11,7 +11,10 @@ import {
   CheckCircle2,
   Clock,
   Archive,
-  MoreVertical
+  MoreVertical,
+  History,
+  PlayCircle,
+  GitCompare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,12 +35,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import WorkflowForm from "../components/superadmin/WorkflowForm";
+import WorkflowVisualizer from "../components/workflows/WorkflowVisualizer";
+import WorkflowVersionHistory from "../components/workflows/WorkflowVersionHistory";
+import WorkflowTestRunner from "../components/workflows/WorkflowTestRunner";
 
 export default function WorkflowBuilder() {
   const [user, setUser] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showTestRunner, setShowTestRunner] = useState(false);
+  const [selectedWorkflowForVersions, setSelectedWorkflowForVersions] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -79,6 +90,7 @@ export default function WorkflowBuilder() {
       queryClient.invalidateQueries(['workflows']);
       setShowForm(false);
       setSelectedWorkflow(null);
+      setShowVersionHistory(false);
     }
   });
 
@@ -94,14 +106,38 @@ export default function WorkflowBuilder() {
     setShowForm(true);
   };
 
+  const handleViewFlow = (workflow) => {
+    setSelectedWorkflow(workflow);
+    setShowVisualizer(true);
+  };
+
+  const handleViewVersions = (workflow) => {
+    setSelectedWorkflowForVersions(workflow);
+    setShowVersionHistory(true);
+  };
+
+  const handleTestWorkflow = (workflow) => {
+    setSelectedWorkflow(workflow);
+    setShowTestRunner(true);
+  };
+
   const handlePublish = async (workflow) => {
     if (confirm("Publishing will make this workflow available to all tenants. Continue?")) {
+      const changeLog = workflow.change_log || [];
+      changeLog.push({
+        version: workflow.version || "1.0",
+        changed_by: user.email,
+        changed_date: new Date().toISOString(),
+        changes_description: "Workflow published"
+      });
+
       updateMutation.mutate({
         id: workflow.id,
         data: {
           ...workflow,
           status: "published",
-          published_date: new Date().toISOString().split('T')[0]
+          published_date: new Date().toISOString().split('T')[0],
+          change_log: changeLog
         }
       });
     }
@@ -111,7 +147,11 @@ export default function WorkflowBuilder() {
     if (confirm("Archive this workflow? It will no longer be available to tenants.")) {
       updateMutation.mutate({
         id: workflow.id,
-        data: { ...workflow, status: "archived" }
+        data: { 
+          ...workflow, 
+          status: "archived",
+          archived_date: new Date().toISOString().split('T')[0]
+        }
       });
     }
   };
@@ -119,6 +159,71 @@ export default function WorkflowBuilder() {
   const handleDelete = async (id) => {
     if (confirm("Delete this workflow permanently?")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleCreateNewVersion = async (baseWorkflow) => {
+    const currentVersion = parseFloat(baseWorkflow.version || "1.0");
+    const newVersion = (currentVersion + 0.1).toFixed(1);
+    
+    const newWorkflow = {
+      ...baseWorkflow,
+      version: newVersion,
+      parent_workflow_id: baseWorkflow.id,
+      status: "draft",
+      published_date: null,
+      change_log: [
+        ...(baseWorkflow.change_log || []),
+        {
+          version: newVersion,
+          changed_by: user.email,
+          changed_date: new Date().toISOString(),
+          changes_description: `Created new version ${newVersion} based on v${baseWorkflow.version}`
+        }
+      ]
+    };
+    
+    delete newWorkflow.id;
+    delete newWorkflow.created_date;
+    delete newWorkflow.updated_date;
+    delete newWorkflow.created_by;
+    
+    createMutation.mutate(newWorkflow);
+  };
+
+  const handleRestoreVersion = async (versionWorkflow) => {
+    if (confirm(`Restore version ${versionWorkflow.version} as the current active version?`)) {
+      // Create a new version based on the old one
+      const currentMaxVersion = Math.max(
+        ...workflows
+          .filter(w => w.workflow_name === versionWorkflow.workflow_name)
+          .map(w => parseFloat(w.version || "1.0"))
+      );
+      const newVersion = (currentMaxVersion + 0.1).toFixed(1);
+      
+      const restoredWorkflow = {
+        ...versionWorkflow,
+        version: newVersion,
+        parent_workflow_id: versionWorkflow.id,
+        status: "draft",
+        published_date: null,
+        change_log: [
+          ...(versionWorkflow.change_log || []),
+          {
+            version: newVersion,
+            changed_by: user.email,
+            changed_date: new Date().toISOString(),
+            changes_description: `Restored from version ${versionWorkflow.version}`
+          }
+        ]
+      };
+      
+      delete restoredWorkflow.id;
+      delete restoredWorkflow.created_date;
+      delete restoredWorkflow.updated_date;
+      delete restoredWorkflow.created_by;
+      
+      createMutation.mutate(restoredWorkflow);
     }
   };
 
@@ -147,6 +252,11 @@ export default function WorkflowBuilder() {
     return <Badge variant="secondary" className={color}>{label}</Badge>;
   };
 
+  // Get workflow family (all versions of same workflow)
+  const getWorkflowVersions = (workflowName) => {
+    return workflows.filter(w => w.workflow_name === workflowName);
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -163,7 +273,7 @@ export default function WorkflowBuilder() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Workflow Builder</h1>
             <p className="text-indigo-200">
-              Configure compliance questionnaires for entity and account classification
+              Configure and manage compliance questionnaires with visual tools
             </p>
           </div>
           <Button
@@ -178,24 +288,23 @@ export default function WorkflowBuilder() {
           </Button>
         </div>
 
-        {/* Info Alert */}
-        <Alert className="bg-blue-900/30 border-blue-500/50 backdrop-blur-sm">
+        {/* Phase 1 Features Alert */}
+        <Alert className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-500/50 backdrop-blur-sm">
           <GitBranch className="w-4 h-4 text-blue-300" />
           <AlertDescription className="text-blue-100">
-            Workflows define the questionnaires used by tenants to classify entities and accounts for CRS compliance. 
-            Published workflows are immediately available to all tenants.
+            <strong>New:</strong> Visual flow viewer • Version history & rollback • Advanced branching logic • Test mode preview
           </AlertDescription>
         </Alert>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
             <CardContent className="p-6 text-center">
               <CheckCircle2 className="w-8 h-8 mx-auto mb-3 text-green-400" />
               <h3 className="text-2xl font-bold text-white mb-1">
                 {workflows.filter(w => w.status === "published").length}
               </h3>
-              <p className="text-sm text-indigo-200">Published Workflows</p>
+              <p className="text-sm text-indigo-200">Published</p>
             </CardContent>
           </Card>
 
@@ -205,7 +314,17 @@ export default function WorkflowBuilder() {
               <h3 className="text-2xl font-bold text-white mb-1">
                 {workflows.filter(w => w.status === "draft").length}
               </h3>
-              <p className="text-sm text-indigo-200">Draft Workflows</p>
+              <p className="text-sm text-indigo-200">Drafts</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
+            <CardContent className="p-6 text-center">
+              <GitBranch className="w-8 h-8 mx-auto mb-3 text-purple-400" />
+              <h3 className="text-2xl font-bold text-white mb-1">
+                {workflows.length}
+              </h3>
+              <p className="text-sm text-indigo-200">Total Versions</p>
             </CardContent>
           </Card>
 
@@ -215,7 +334,7 @@ export default function WorkflowBuilder() {
               <h3 className="text-2xl font-bold text-white mb-1">
                 {workflows.filter(w => w.status === "archived").length}
               </h3>
-              <p className="text-sm text-indigo-200">Archived Workflows</p>
+              <p className="text-sm text-indigo-200">Archived</p>
             </CardContent>
           </Card>
         </div>
@@ -230,7 +349,7 @@ export default function WorkflowBuilder() {
                   Workflows ({workflows.length})
                 </CardTitle>
                 <CardDescription className="text-indigo-200">
-                  Manage compliance questionnaires and classification logic
+                  Manage compliance questionnaires with advanced features
                 </CardDescription>
               </div>
             </div>
@@ -245,7 +364,7 @@ export default function WorkflowBuilder() {
                 <GitBranch className="w-16 h-16 mx-auto mb-4 text-indigo-300" />
                 <h3 className="text-lg font-semibold text-white mb-2">No workflows configured</h3>
                 <p className="text-indigo-200 mb-6">
-                  Create your first workflow to enable compliance questionnaires for tenants
+                  Create your first workflow to enable compliance questionnaires
                 </p>
                 <Button
                   onClick={() => setShowForm(true)}
@@ -265,7 +384,7 @@ export default function WorkflowBuilder() {
                       <TableHead className="text-indigo-200">Version</TableHead>
                       <TableHead className="text-indigo-200">Steps</TableHead>
                       <TableHead className="text-indigo-200">Status</TableHead>
-                      <TableHead className="text-indigo-200">Published</TableHead>
+                      <TableHead className="text-indigo-200">Last Modified</TableHead>
                       <TableHead className="text-right text-indigo-200">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -289,7 +408,14 @@ export default function WorkflowBuilder() {
                           {getWorkflowTypeBadge(workflow.workflow_type)}
                         </TableCell>
                         <TableCell>
-                          <span className="text-white font-mono text-sm">v{workflow.version || "1.0"}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-mono text-sm">v{workflow.version || "1.0"}</span>
+                            {workflow.parent_workflow_id && (
+                              <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                                Updated
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className="text-white">{workflow.steps?.length || 0} steps</span>
@@ -299,7 +425,9 @@ export default function WorkflowBuilder() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-indigo-200">
-                            {workflow.published_date || "—"}
+                            {workflow.updated_date 
+                              ? new Date(workflow.updated_date).toLocaleDateString()
+                              : "—"}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
@@ -310,9 +438,25 @@ export default function WorkflowBuilder() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewFlow(workflow)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Flow Diagram
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleTestWorkflow(workflow)}>
+                                <PlayCircle className="w-4 h-4 mr-2" />
+                                Test Workflow
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewVersions(workflow)}>
+                                <History className="w-4 h-4 mr-2" />
+                                Version History
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(workflow)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Workflow
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCreateNewVersion(workflow)}>
+                                <GitCompare className="w-4 h-4 mr-2" />
+                                Create New Version
                               </DropdownMenuItem>
                               {workflow.status === "draft" && (
                                 <DropdownMenuItem onClick={() => handlePublish(workflow)}>
@@ -367,6 +511,50 @@ export default function WorkflowBuilder() {
               setShowForm(false);
               setSelectedWorkflow(null);
             }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Visual Flow Diagram Dialog */}
+      <Dialog open={showVisualizer} onOpenChange={setShowVisualizer}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Workflow Flow Diagram: {selectedWorkflow?.workflow_name}
+            </DialogTitle>
+          </DialogHeader>
+          <WorkflowVisualizer workflow={selectedWorkflow} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Version History Dialog */}
+      <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Version History: {selectedWorkflowForVersions?.workflow_name}
+            </DialogTitle>
+          </DialogHeader>
+          <WorkflowVersionHistory
+            workflows={selectedWorkflowForVersions ? getWorkflowVersions(selectedWorkflowForVersions.workflow_name) : []}
+            currentWorkflowId={selectedWorkflowForVersions?.id}
+            onViewVersion={handleViewFlow}
+            onRestoreVersion={handleRestoreVersion}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Runner Dialog */}
+      <Dialog open={showTestRunner} onOpenChange={setShowTestRunner}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Test Workflow: {selectedWorkflow?.workflow_name}
+            </DialogTitle>
+          </DialogHeader>
+          <WorkflowTestRunner
+            workflow={selectedWorkflow}
+            onClose={() => setShowTestRunner(false)}
           />
         </DialogContent>
       </Dialog>
