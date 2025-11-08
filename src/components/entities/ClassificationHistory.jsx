@@ -1,10 +1,51 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 export default function ClassificationHistory({ history, entity }) {
+  // Fetch published entity classification workflows to map answers
+  const { data: workflows = [] } = useQuery({
+    queryKey: ['entity-workflows-for-history'],
+    queryFn: () => base44.entities.Workflow.filter({ 
+      workflow_type: 'entity_rfi_classification',
+      status: 'published'
+    })
+  });
+
+  // Build a step map from all workflows for lookup
+  const stepMap = {};
+  workflows.forEach(workflow => {
+    workflow.steps?.forEach(step => {
+      stepMap[step.step_id] = step;
+    });
+  });
+
+  const getReadableAnswer = (stepId, answerValue) => {
+    const step = stepMap[stepId];
+    if (!step) {
+      return { question: stepId, answer: answerValue };
+    }
+
+    const question = step.step_title || step.question_text || stepId;
+    
+    // Try to find matching option label
+    let answer = answerValue;
+    if (step.options && Array.isArray(step.options)) {
+      const matchingOption = step.options.find(opt => 
+        opt.value === answerValue || opt.label === answerValue
+      );
+      if (matchingOption) {
+        answer = matchingOption.label || matchingOption.value;
+      }
+    }
+
+    return { question, answer };
+  };
+
   if (!history || history.length === 0) {
     return (
       <Card className="border-0 shadow-lg">
@@ -151,19 +192,26 @@ export default function ClassificationHistory({ history, entity }) {
                   )}
                 </div>
 
-                {/* Workflow Answers (Collapsible) */}
+                {/* Workflow Answers (Collapsible) - User Friendly */}
                 {record.workflow_answers && Object.keys(record.workflow_answers).length > 0 && (
                   <details className="mt-3 pt-3 border-t border-slate-200">
                     <summary className="text-xs font-medium text-slate-600 cursor-pointer hover:text-slate-900">
                       View Workflow Answers ({Object.keys(record.workflow_answers).length})
                     </summary>
-                    <div className="mt-2 space-y-1">
-                      {Object.entries(record.workflow_answers).map(([key, value]) => (
-                        <div key={key} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">{key}:</span>
-                          <span className="text-slate-700 font-medium">{value}</span>
-                        </div>
-                      ))}
+                    <div className="mt-3 space-y-3">
+                      {Object.entries(record.workflow_answers).map(([stepId, answerValue]) => {
+                        const { question, answer } = getReadableAnswer(stepId, answerValue);
+                        return (
+                          <div key={stepId} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-700 mb-1">
+                              {question}
+                            </p>
+                            <p className="text-sm text-slate-900 font-semibold">
+                              {answer}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </details>
                 )}
