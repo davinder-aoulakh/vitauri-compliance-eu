@@ -1,0 +1,469 @@
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Upload, 
+  Download, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle, 
+  FileSpreadsheet,
+  Info,
+  Loader2
+} from "lucide-react";
+
+export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
+  const [file, setFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState(null);
+  const [errors, setErrors] = useState([]);
+
+  const downloadTemplate = () => {
+    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,street,city,state,postal_code,country,account_balance,currency,reporting_year,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
+${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,123 Main St,New York,NY,10001,United States,50000,USD,2024,United States,123-45-6789,,
+${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,456 Oak Ave,London,,SW1A 1AA,United Kingdom,75000,GBP,2024,United Kingdom,AB123456C,France,1234567890
+${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,789 Corporate Blvd,Tokyo,,100-0001,Japan,1000000,JPY,2024,Japan,1234567890,,`;
+
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'accounts_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      if (!selectedFile.name.endsWith('.csv')) {
+        alert('Please select a CSV file');
+        return;
+      }
+      setFile(selectedFile);
+      setResults(null);
+      setErrors([]);
+    }
+  };
+
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',');
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index]?.trim() || '';
+      });
+      rows.push(row);
+    }
+
+    return rows;
+  };
+
+  const validateRow = (row, index) => {
+    const errors = [];
+    
+    if (!row.entity_id) errors.push(`Row ${index + 2}: Missing entity_id`);
+    if (!row.account_number) errors.push(`Row ${index + 2}: Missing account_number`);
+    if (!row.account_holder_type) errors.push(`Row ${index + 2}: Missing account_holder_type`);
+    if (!row.account_holder_name) errors.push(`Row ${index + 2}: Missing account_holder_name`);
+    
+    if (row.account_holder_type === 'individual' && !row.date_of_birth) {
+      errors.push(`Row ${index + 2}: Individual accounts require date_of_birth`);
+    }
+    
+    if (!['depository', 'custodial', 'equity_debt_interest', 'cash_value_insurance', 'annuity'].includes(row.account_type)) {
+      errors.push(`Row ${index + 2}: Invalid account_type "${row.account_type}"`);
+    }
+    
+    if (!['individual', 'entity'].includes(row.account_holder_type)) {
+      errors.push(`Row ${index + 2}: Invalid account_holder_type "${row.account_holder_type}"`);
+    }
+
+    return errors;
+  };
+
+  const convertRowToAccount = (row) => {
+    const account = {
+      tenant_id: tenant.id,
+      entity_id: row.entity_id,
+      account_number: row.account_number,
+      account_type: row.account_type,
+      account_holder_type: row.account_holder_type,
+      account_holder_name: row.account_holder_name,
+      date_of_birth: row.date_of_birth || null,
+      account_balance: parseFloat(row.account_balance) || 0,
+      currency: row.currency || 'USD',
+      reporting_year: row.reporting_year || new Date().getFullYear().toString(),
+      reportability_status: 'pending_review',
+      status: 'active',
+      account_holder_address: {
+        street: row.street || '',
+        city: row.city || '',
+        state: row.state || '',
+        postal_code: row.postal_code || '',
+        country: row.country || ''
+      },
+      tax_residencies: []
+    };
+
+    // Parse tax residencies
+    for (let i = 1; i <= 5; i++) {
+      const countryKey = `tax_residency_${i}_country`;
+      const tinKey = `tax_residency_${i}_tin`;
+      
+      if (row[countryKey]) {
+        account.tax_residencies.push({
+          country: row[countryKey],
+          tin: row[tinKey] || '',
+          tin_unavailable_reason: row[tinKey] ? '' : 'Not provided in import'
+        });
+      }
+    }
+
+    return account;
+  };
+
+  const handleImport = async () => {
+    if (!file) return;
+
+    setImporting(true);
+    setProgress(0);
+    setResults(null);
+    setErrors([]);
+
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+
+      if (rows.length === 0) {
+        throw new Error('No data found in CSV file');
+      }
+
+      // Validate all rows first
+      const allErrors = [];
+      rows.forEach((row, index) => {
+        const rowErrors = validateRow(row, index);
+        allErrors.push(...rowErrors);
+      });
+
+      if (allErrors.length > 0) {
+        setErrors(allErrors);
+        setImporting(false);
+        return;
+      }
+
+      // Import accounts
+      const imported = [];
+      const failed = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const accountData = convertRowToAccount(rows[i]);
+          const account = await base44.entities.Account.create(accountData);
+          imported.push({
+            row: i + 2,
+            account_number: accountData.account_number,
+            account_holder_name: accountData.account_holder_name
+          });
+        } catch (error) {
+          failed.push({
+            row: i + 2,
+            account_number: rows[i].account_number,
+            error: error.message
+          });
+        }
+
+        setProgress(Math.round(((i + 1) / rows.length) * 100));
+      }
+
+      setResults({
+        total: rows.length,
+        imported: imported.length,
+        failed: failed.length,
+        importedAccounts: imported,
+        failedAccounts: failed
+      });
+
+    } catch (error) {
+      setErrors([error.message]);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Instructions */}
+      <Card className="border-2 border-blue-100 bg-blue-50/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Info className="w-5 h-5 text-blue-600" />
+            Bulk Import Instructions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2 text-sm text-slate-700">
+            <p><strong>Step 1:</strong> Download the CSV template below</p>
+            <p><strong>Step 2:</strong> Fill in your account data following the template format</p>
+            <p><strong>Step 3:</strong> Upload the completed CSV file</p>
+          </div>
+          
+          <Alert className="bg-amber-50 border-amber-200">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertDescription className="text-sm text-amber-900">
+              <strong>Important:</strong> All imported accounts will have status "Pending Review". 
+              You'll need to run the classification workflow for each account after import.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-2 text-xs text-slate-600">
+            <p><strong>Required Fields:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>entity_id (must match an existing entity)</li>
+              <li>account_number (unique identifier)</li>
+              <li>account_type (depository, custodial, equity_debt_interest, cash_value_insurance, annuity)</li>
+              <li>account_holder_type (individual or entity)</li>
+              <li>account_holder_name</li>
+              <li>date_of_birth (required for individual accounts)</li>
+              <li>country (in address section)</li>
+            </ul>
+            
+            <p className="mt-3"><strong>Optional Fields:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Tax residencies (up to 5 per account)</li>
+              <li>Address details (street, city, state, postal_code)</li>
+              <li>account_balance, currency, reporting_year</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Download Template */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+          <CardTitle className="flex items-center gap-2">
+            <Download className="w-5 h-5 text-indigo-600" />
+            Download Template
+          </CardTitle>
+          <CardDescription>
+            Get a CSV template with example data and proper formatting
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <Button
+            onClick={downloadTemplate}
+            variant="outline"
+            className="w-full border-2 border-indigo-200 hover:bg-indigo-50"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Download accounts_import_template.csv
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Upload File */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5 text-indigo-600" />
+            Upload CSV File
+          </CardTitle>
+          <CardDescription>
+            Select your completed CSV file to import accounts
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50 transition-all">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              className="hidden"
+              id="csv-upload"
+              disabled={importing}
+            />
+            <label htmlFor="csv-upload" className="cursor-pointer">
+              <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+              <p className="text-sm font-medium text-slate-700 mb-1">
+                {file ? file.name : 'Click to select CSV file'}
+              </p>
+              <p className="text-xs text-slate-500">
+                or drag and drop your file here
+              </p>
+            </label>
+          </div>
+
+          {file && !importing && !results && (
+            <Button
+              onClick={handleImport}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+              size="lg"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Start Import
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Progress */}
+      {importing && (
+        <Card className="border-2 border-indigo-200 bg-indigo-50/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+              <span className="text-sm font-medium text-indigo-900">
+                Importing accounts... {progress}%
+              </span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Validation Errors */}
+      {errors.length > 0 && (
+        <Card className="border-2 border-red-200 bg-red-50/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg text-red-900">
+              <XCircle className="w-5 h-5" />
+              Validation Errors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {errors.map((error, idx) => (
+                <p key={idx} className="text-sm text-red-800">• {error}</p>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Results */}
+      {results && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              Import Complete
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <p className="text-2xl font-bold text-slate-900">{results.total}</p>
+                <p className="text-xs text-slate-600">Total Rows</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+                <p className="text-2xl font-bold text-green-600">{results.imported}</p>
+                <p className="text-xs text-green-700">Successfully Imported</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-2xl font-bold text-red-600">{results.failed}</p>
+                <p className="text-xs text-red-700">Failed</p>
+              </div>
+            </div>
+
+            {/* Imported Accounts */}
+            {results.importedAccounts.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Successfully Imported ({results.imported})
+                </h4>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {results.importedAccounts.map((acc, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm p-2 rounded bg-green-50">
+                      <span className="text-green-900">
+                        Row {acc.row}: {acc.account_holder_name}
+                      </span>
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
+                        {acc.account_number}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Failed Accounts */}
+            {results.failedAccounts.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Failed Imports ({results.failed})
+                </h4>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {results.failedAccounts.map((acc, idx) => (
+                    <div key={idx} className="text-sm p-2 rounded bg-red-50 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-red-900 font-medium">
+                          Row {acc.row}: {acc.account_number}
+                        </span>
+                      </div>
+                      <p className="text-xs text-red-700">Error: {acc.error}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Next Steps */}
+            <Alert className="bg-blue-50 border-blue-200">
+              <Info className="w-4 h-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-900">
+                <strong>Next Steps:</strong> All imported accounts have status "Pending Review". 
+                Navigate to the Accounts page to classify them for reportability.
+              </AlertDescription>
+            </Alert>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setFile(null);
+                  setResults(null);
+                  setErrors([]);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Import Another File
+              </Button>
+              <Button
+                onClick={onComplete}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Close & View Accounts
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cancel Button (if no import in progress) */}
+      {!importing && !results && (
+        <div className="flex justify-end pt-4 border-t">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
