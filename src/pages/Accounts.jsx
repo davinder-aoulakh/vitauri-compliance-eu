@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tantml:react-query";
 import { 
   Plus, 
   Wallet, 
@@ -16,7 +15,9 @@ import {
   FileText,
   Eye,
   History,
-  Users // Added
+  Users,
+  Upload,
+  Flag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,11 +45,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AccountForm from "../components/accounts/AccountForm.jsx";
 import AccountDetails from "../components/accounts/AccountDetails.jsx";
 import AccountClassification from "../components/accounts/AccountClassification.jsx";
 import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory.jsx";
-import ControllingPersonsList from "../components/accounts/ControllingPersonsList.jsx"; // Added
+import ControllingPersonsList from "../components/accounts/ControllingPersonsList.jsx";
+import BulkImport from "../components/accounts/BulkImport.jsx";
+import ComplianceFlags from "../components/accounts/ComplianceFlags.jsx";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -58,9 +62,12 @@ export default function AccountsPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [showClassification, setShowClassification] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [showControllingPersons, setShowControllingPersons] = useState(false); // Added
+  const [showControllingPersons, setShowControllingPersons] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showComplianceFlags, setShowComplianceFlags] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("accounts");
 
   const queryClient = useQueryClient();
 
@@ -121,8 +128,8 @@ export default function AccountsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
+      setShowClassification(false);
       setSelectedAccount(null);
-      setShowClassification(false); // Close classification form if updated from there
     }
   });
 
@@ -153,7 +160,7 @@ export default function AccountsPage() {
     setShowHistory(true);
   };
 
-  const handleManageControllingPersons = (account) => { // Added
+  const handleManageControllingPersons = (account) => {
     setSelectedAccount(account);
     setShowControllingPersons(true);
   };
@@ -161,6 +168,20 @@ export default function AccountsPage() {
   const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this account?")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleComplianceFlagSelect = (account) => {
+    setShowComplianceFlags(false);
+    setActiveTab("accounts");
+    
+    // Determine what action to take based on the issue
+    if (account.reportability_status === 'pending_review') {
+      handleClassify(account);
+    } else if (account.entity_classification === 'passive_nfe') {
+      handleManageControllingPersons(account);
+    } else {
+      handleEdit(account);
     }
   };
 
@@ -197,6 +218,13 @@ export default function AccountsPage() {
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
 
+  // Count compliance issues
+  const complianceIssuesCount = accounts.filter(a => 
+    a.reportability_status === 'pending_review' ||
+    (a.entity_classification === 'passive_nfe' && !a.requires_controlling_persons) ||
+    (a.account_holder_type === 'individual' && !a.self_certification_obtained && a.reportability_status !== 'non_reportable')
+  ).length;
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -216,277 +244,313 @@ export default function AccountsPage() {
               Manage account holders and their reportability status
             </p>
           </div>
-          <Button 
-            onClick={() => {
-              setSelectedAccount(null);
-              setShowForm(true);
-            }}
-            className="gap-2 text-white shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Account
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowBulkImport(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Bulk Import
+            </Button>
+            <Button 
+              onClick={() => {
+                setSelectedAccount(null);
+                setShowForm(true);
+              }}
+              className="gap-2 text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+            >
+              <Plus className="w-4 h-4" />
+              Add Account
+            </Button>
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-600">Total Accounts</p>
-                  <p className="text-2xl font-bold text-slate-900">{accounts.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="accounts">
+              <Wallet className="w-4 h-4 mr-2" />
+              Accounts
+            </TabsTrigger>
+            <TabsTrigger value="compliance" className="relative">
+              <Flag className="w-4 h-4 mr-2" />
+              Compliance Flags
+              {complianceIssuesCount > 0 && (
+                <Badge className="ml-2 bg-amber-500 text-white border-0 px-2 py-0 text-xs">
+                  {complianceIssuesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-600">Reportable</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {accounts.filter(a => a.reportability_status === "reportable").length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="accounts" className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600">Total Accounts</p>
+                      <p className="text-2xl font-bold text-slate-900">{accounts.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-600">Pending Review</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {accounts.filter(a => a.reportability_status === "pending_review").length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600">Reportable</p>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {accounts.filter(a => a.reportability_status === "reportable").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-600">Non-Reportable</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {accounts.filter(a => a.reportability_status === "non_reportable").length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600">Pending Review</p>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {accounts.filter(a => a.reportability_status === "pending_review").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Filters */}
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search by account holder or account number..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-64">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="reportable">Reportable</SelectItem>
-                  <SelectItem value="non_reportable">Non-Reportable</SelectItem>
-                  <SelectItem value="pending_review">Pending Review</SelectItem>
-                  <SelectItem value="excluded">Excluded</SelectItem>
-                </SelectContent>
-              </Select>
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-slate-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600">Non-Reportable</p>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {accounts.filter(a => a.reportability_status === "non_reportable").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Accounts Table */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5" style={{ color: primaryColor }} />
-                  Accounts ({filteredAccounts.length})
-                </CardTitle>
-                <CardDescription>
-                  {accounts.filter(a => a.reportability_status === "reportable").length} Reportable, {" "}
-                  {accounts.filter(a => a.reportability_status === "pending_review").length} Pending Review
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-              </div>
-            ) : filteredAccounts.length === 0 ? (
-              <div className="p-12 text-center">
-                <Wallet className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">No accounts found</h3>
-                <p className="text-slate-600 mb-6">
-                  {searchTerm || statusFilter !== "all" 
-                    ? "Try adjusting your filters" 
-                    : "Get started by adding your first account"}
-                </p>
-                {!searchTerm && statusFilter === "all" && (
-                  <Button onClick={() => setShowForm(true)} style={{ backgroundColor: primaryColor }}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add First Account
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/50">
-                      <TableHead>Account Holder</TableHead>
-                      <TableHead>Account Number</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Entity</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredAccounts.map((account) => {
-                      const accountEntity = entities.find(e => e.id === account.entity_id);
-                      const isPassiveNFE = account.entity_classification === "passive_nfe";
-                      
-                      return (
-                        <TableRow key={account.id} className="hover:bg-slate-50/50">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div 
-                                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                                style={{ backgroundColor: `${primaryColor}15` }}
-                              >
-                                {getStatusIcon(account.reportability_status)}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-900">{account.account_holder_name}</p>
-                                <p className="text-xs text-slate-500 capitalize">
-                                  {account.account_holder_type?.replace("_", " ")}
-                                  {isPassiveNFE && (
-                                    <span className="ml-2 text-purple-600 font-medium">(Passive NFE)</span>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm text-slate-700">{account.account_number}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm capitalize text-slate-700">
-                              {account.account_type?.replace(/_/g, " ")}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-semibold text-slate-900">
-                              {formatCurrency(account.account_balance, account.currency)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(account.reportability_status)}
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm text-slate-600">
-                              {accountEntity?.entity_name || "—"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleViewDetails(account)}>
-                                  <FileText className="w-4 h-4 mr-2" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleViewHistory(account)}>
-                                  <History className="w-4 h-4 mr-2" />
-                                  View History
-                                </DropdownMenuItem>
-                                
-                                {/* Classification options for all accounts */}
-                                {account.reportability_status === "pending_review" && (
-                                  <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    Classify Account
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Re-classify Account
-                                </DropdownMenuItem>
-                                
-                                {/* Controlling Persons for entity accounts (especially Passive NFE) */}
-                                {account.account_holder_type === "entity" && (
-                                  <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>
-                                    <Users className="w-4 h-4 mr-2" />
-                                    {isPassiveNFE ? "Manage Controlling Persons ⚠️" : "Controlling Persons"}
-                                  </DropdownMenuItem>
-                                )}
-                                
-                                <DropdownMenuItem onClick={() => handleEdit(account)}>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Edit Account
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  onClick={() => handleDelete(account.id)}
-                                  className="text-red-600"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
+            {/* Filters */}
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search by account holder or account number..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full md:w-64">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="reportable">Reportable</SelectItem>
+                      <SelectItem value="non_reportable">Non-Reportable</SelectItem>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
+                      <SelectItem value="excluded">Excluded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Accounts Table */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wallet className="w-5 h-5" style={{ color: primaryColor }} />
+                      Accounts ({filteredAccounts.length})
+                    </CardTitle>
+                    <CardDescription>
+                      {accounts.filter(a => a.reportability_status === "reportable").length} Reportable, {" "}
+                      {accounts.filter(a => a.reportability_status === "pending_review").length} Pending Review
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                  </div>
+                ) : filteredAccounts.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Wallet className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">No accounts found</h3>
+                    <p className="text-slate-600 mb-6">
+                      {searchTerm || statusFilter !== "all" 
+                        ? "Try adjusting your filters" 
+                        : "Get started by adding your first account"}
+                    </p>
+                    {!searchTerm && statusFilter === "all" && (
+                      <Button onClick={() => setShowForm(true)} style={{ backgroundColor: primaryColor }}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add First Account
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/50">
+                          <TableHead>Account Holder</TableHead>
+                          <TableHead>Account Number</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Balance</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Entity</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAccounts.map((account) => {
+                          const accountEntity = entities.find(e => e.id === account.entity_id);
+                          const isPassiveNFE = account.entity_classification === "passive_nfe";
+                          
+                          return (
+                            <TableRow key={account.id} className="hover:bg-slate-50/50">
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                                    style={{ backgroundColor: `${primaryColor}15` }}
+                                  >
+                                    {getStatusIcon(account.reportability_status)}
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-slate-900">{account.account_holder_name}</p>
+                                    <p className="text-xs text-slate-500 capitalize">
+                                      {account.account_holder_type?.replace("_", " ")}
+                                      {isPassiveNFE && (
+                                        <span className="ml-2 text-purple-600 font-medium">(Passive NFE)</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-mono text-sm text-slate-700">{account.account_number}</span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm capitalize text-slate-700">
+                                  {account.account_type?.replace(/_/g, " ")}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-semibold text-slate-900">
+                                  {formatCurrency(account.account_balance, account.currency)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {getStatusBadge(account.reportability_status)}
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-slate-600">
+                                  {accountEntity?.entity_name || "—"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleViewDetails(account)}>
+                                      <FileText className="w-4 h-4 mr-2" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleViewHistory(account)}>
+                                      <History className="w-4 h-4 mr-2" />
+                                      View History
+                                    </DropdownMenuItem>
+                                    
+                                    {account.reportability_status === "pending_review" && (
+                                      <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Classify Account
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      Re-classify Account
+                                    </DropdownMenuItem>
+                                    
+                                    {account.account_holder_type === "entity" && (
+                                      <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>
+                                        <Users className="w-4 h-4 mr-2" />
+                                        {isPassiveNFE ? "Manage Controlling Persons ⚠️" : "Controlling Persons"}
+                                      </DropdownMenuItem>
+                                    )}
+                                    
+                                    <DropdownMenuItem onClick={() => handleEdit(account)}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Edit Account
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDelete(account.id)}
+                                      className="text-red-600"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="compliance">
+            <ComplianceFlags 
+              tenantId={user?.tenant_id}
+              onSelectAccount={handleComplianceFlagSelect}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Account Details Dialog */}
+      {/* Dialogs remain the same */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -499,7 +563,6 @@ export default function AccountsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Account Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -525,7 +588,6 @@ export default function AccountsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Classification Dialog */}
       <Dialog open={showClassification} onOpenChange={setShowClassification}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -546,7 +608,6 @@ export default function AccountsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Classification History Dialog */}
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -559,7 +620,6 @@ export default function AccountsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Controlling Persons Dialog */}
       <Dialog open={showControllingPersons} onOpenChange={setShowControllingPersons}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -568,6 +628,23 @@ export default function AccountsPage() {
             </DialogTitle>
           </DialogHeader>
           <ControllingPersonsList account={selectedAccount} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Accounts</DialogTitle>
+          </DialogHeader>
+          <BulkImport 
+            tenant={tenant}
+            entities={entities}
+            onComplete={() => {
+              setShowBulkImport(false);
+              queryClient.invalidateQueries(['accounts']);
+            }}
+            onCancel={() => setShowBulkImport(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
