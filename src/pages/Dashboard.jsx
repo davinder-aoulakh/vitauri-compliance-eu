@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -13,12 +14,14 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  Globe
+  Globe,
+  Wrench
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -78,6 +81,69 @@ export default function Dashboard() {
     : 0;
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
+
+  // Show setup prompt if no tenant assigned
+  if (!user?.tenant_id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-2xl border-2 border-indigo-200 shadow-2xl">
+          <CardHeader className="text-center pb-6">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+              <Wrench className="w-8 h-8 text-white" />
+            </div>
+            <CardTitle className="text-2xl">Welcome to CRS Platform!</CardTitle>
+            <CardDescription className="text-base mt-2">
+              You need to set up your role before accessing the dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertDescription className="text-blue-900">
+                <strong>Getting Started:</strong> Click the button below to choose your role. 
+                You can be a Super Admin (manage all tenants) or an ACME tenant user.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-2">🛡️ Super Admin</h4>
+                <p className="text-sm text-slate-600">
+                  Manage all tenants, configure workflows, and access system-wide settings
+                </p>
+              </div>
+              
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-2">👔 ACME Tenant Admin</h4>
+                <p className="text-sm text-slate-600">
+                  Full access to ACME Financial data, entities, accounts, and reports
+                </p>
+              </div>
+              
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-2">👤 ACME Tenant User</h4>
+                <p className="text-sm text-slate-600">
+                  Limited access to ACME - can classify accounts but not manage settings
+                </p>
+              </div>
+            </div>
+
+            <Link to={createPageUrl("Setup")} className="block">
+              <Button 
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg py-6"
+              >
+                <Wrench className="w-5 h-5 mr-2" />
+                Go to Setup Page
+              </Button>
+            </Link>
+
+            <div className="text-center text-sm text-slate-500 pt-4 border-t">
+              You can also find the "Setup / Switch Role" link in the sidebar menu
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
