@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -183,8 +184,21 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [answers, setAnswers] = useState(entity?.classification_answers || {});
   const [selectedValue, setSelectedValue] = useState("");
   const [history, setHistory] = useState([]);
+  const [user, setUser] = useState(null);
 
-  const currentNode = WORKFLOW[currentNodeId];
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+    } catch (error) {
+      console.error("Error loading user:", error);
+    }
+  };
+
   const progress = Math.round((Object.keys(answers).length / 10) * 100);
 
   const handleNext = () => {
@@ -250,7 +264,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     );
   };
 
-  const completeClassification = (actionNode, finalAnswers) => {
+  const completeClassification = async (actionNode, finalAnswers) => {
     const classification = actionNode.classification;
     const reason = typeof actionNode.reason === "function" 
       ? actionNode.reason(finalAnswers) 
@@ -269,8 +283,28 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       entity_type: finalAnswers.legalEntityType || entity.entity_type
     };
 
+    // Save classification history record
+    try {
+      await base44.entities.EntityClassificationHistory.create({
+        tenant_id: entity.tenant_id,
+        entity_id: entity.id,
+        classification_date: new Date().toISOString(),
+        classification_result: rfi_status,
+        classification_reason: reason,
+        fi_type: fi_type,
+        workflow_answers: finalAnswers,
+        performed_by: user?.email || "unknown",
+        entity_name: entity.entity_name,
+        entity_type: finalAnswers.legalEntityType || entity.entity_type
+      });
+    } catch (error) {
+      console.error("Error saving classification history:", error);
+    }
+
     onComplete(classificationData);
   };
+
+  const currentNode = WORKFLOW[currentNodeId];
 
   const renderNode = () => {
     if (currentNode.type === "decision") {
