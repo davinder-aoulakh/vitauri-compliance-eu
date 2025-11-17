@@ -183,8 +183,23 @@ export default function DynamicFormRenderer({
     }
   };
 
-  const getOptionsForField = (fieldName) => {
-    // First try entity-specific options, then fall back to global
+  const getOptionsForField = (fieldConfig) => {
+    const fieldName = fieldConfig.referenced_data_key || fieldConfig.field_name;
+    
+    // If referenced_data_key is explicitly set, use it directly (any entity)
+    if (fieldConfig.referenced_data_key) {
+      const options = referencedData
+        .filter(rd => rd.field_name === fieldName)
+        .sort((a, b) => a.order - b.order);
+      
+      return options.map(opt => ({
+        value: opt.value,
+        label: opt.label,
+        description: opt.description
+      }));
+    }
+    
+    // Otherwise, use legacy logic (entity-specific first, then global)
     let options = referencedData
       .filter(rd => rd.field_name === fieldName && rd.entity_name === entityType)
       .sort((a, b) => a.order - b.order);
@@ -209,7 +224,7 @@ export default function DynamicFormRenderer({
     if (!isVisible) return null;
 
     const value = formData[field.field_name] || "";
-    const options = field.field_type === "select" ? getOptionsForField(field.field_name) : [];
+    const options = field.field_type === "select" ? getOptionsForField(field) : [];
     const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
     const fieldErrors = validationErrors[field.field_name];
 
