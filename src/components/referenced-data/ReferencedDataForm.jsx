@@ -42,9 +42,18 @@ export default function ReferencedDataForm({ item, onSave, onCancel }) {
     { value: "status", label: "Status" }
   ];
 
+  const globalFields = [
+    { value: "country", label: "Country" },
+    { value: "currency", label: "Currency" },
+    { value: "language", label: "Language" },
+    { value: "timezone", label: "Timezone" }
+  ];
+
   const availableFields = formData.entity_name === "Account" 
     ? accountFields 
-    : entityFields;
+    : formData.entity_name === "Entity"
+    ? entityFields
+    : globalFields;
 
   const handleSave = async () => {
     setSaving(true);
@@ -79,6 +88,7 @@ export default function ReferencedDataForm({ item, onSave, onCancel }) {
             <SelectContent>
               <SelectItem value="Account">Account</SelectItem>
               <SelectItem value="Entity">Entity</SelectItem>
+              <SelectItem value="Global">Global (Cross-Entity)</SelectItem>
             </SelectContent>
           </Select>
         </div>
