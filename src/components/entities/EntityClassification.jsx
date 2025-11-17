@@ -329,41 +329,48 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     const finalNode = stepMap[history[history.length - 1]] || currentNode;
     const finalAnswers = answers;
 
+    // Fetch the current entity state to get values set by post-completion actions
+    const currentEntity = await base44.entities.Entity.list();
+    const updatedEntity = currentEntity.find(e => e.id === entity.id);
+
     // Determine classification based on final node
     let classification = "non_reporting_fi";
     let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
-    let rfi_status = "non_reporting_fi";
-    let fi_type = "not_applicable";
+    let rfi_status = updatedEntity?.rfi_status || "non_reporting_fi";
+    let fi_type = updatedEntity?.fi_type || "not_applicable";
 
-    // Parse classification from node title/help text
+    // Parse classification from node title/help text (only if not already set by actions)
     if (finalNode.step_title?.toLowerCase().includes("reporting fi") || 
         finalNode.help_text?.toLowerCase().includes("reporting fi")) {
       classification = "reporting_fi";
-      rfi_status = "reporting_fi";
       
-      // Extract FI type from answers - handle both value and label
-      const fiTypeValue = finalAnswers.frm_select_fi_type;
+      // Only set rfi_status if it wasn't already set by post-completion actions
+      if (!updatedEntity?.rfi_status) {
+        rfi_status = "reporting_fi";
+      }
       
-      // Direct value mapping
-      const fiTypeMap = {
-        "1": "custodial_institution",
-        "2": "depository_institution",
-        "3a": "investment_entity",
-        "3b": "investment_entity",
-        "4": "specified_insurance_company"
-      };
-      
-      // Label to value mapping
-      const fiTypeLabelMap = {
-        "Custodial Institution": "custodial_institution",
-        "Depository Institution": "depository_institution",
-        "Investment Entity (3a)": "investment_entity",
-        "Investment Entity (3b)": "investment_entity",
-        "Specified Insurance Company": "specified_insurance_company"
-      };
-      
-      // Try direct mapping first, then label mapping
-      fi_type = fiTypeMap[fiTypeValue] || fiTypeLabelMap[fiTypeValue] || "not_applicable";
+      // Only determine fi_type if it wasn't already set by post-completion actions
+      if (!updatedEntity?.fi_type || updatedEntity.fi_type === "not_applicable") {
+        const fiTypeValue = finalAnswers.frm_select_fi_type;
+        
+        const fiTypeMap = {
+          "1": "custodial_institution",
+          "2": "depository_institution",
+          "3a": "investment_entity",
+          "3b": "investment_entity",
+          "4": "specified_insurance_company"
+        };
+        
+        const fiTypeLabelMap = {
+          "Custodial Institution": "custodial_institution",
+          "Depository Institution": "depository_institution",
+          "Investment Entity (3a)": "investment_entity",
+          "Investment Entity (3b)": "investment_entity",
+          "Specified Insurance Company": "specified_insurance_company"
+        };
+        
+        fi_type = fiTypeMap[fiTypeValue] || fiTypeLabelMap[fiTypeValue] || "not_applicable";
+      }
     }
 
     const classificationData = {
