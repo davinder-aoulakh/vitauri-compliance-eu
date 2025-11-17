@@ -140,6 +140,12 @@ export default function Layout({ children }) {
       url: createPageUrl("WorkflowBuilder"),
       icon: GitBranch,
       roles: ["super_admin"]
+    },
+    {
+      title: "Form Builder",
+      url: createPageUrl("FormBuilder"),
+      icon: Settings,
+      roles: ["super_admin"]
     }
   ];
 
