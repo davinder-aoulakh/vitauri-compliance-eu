@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,28 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
   });
   const [saving, setSaving] = useState(false);
   const [expandedField, setExpandedField] = useState(null);
+
+  // Fetch all available referenced data lists
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data-all'],
+    queryFn: () => base44.entities.ReferencedData.list()
+  });
+
+  // Get unique field names grouped by entity
+  const availableReferencedLists = React.useMemo(() => {
+    const grouped = referencedData.reduce((acc, item) => {
+      if (!acc[item.entity_name]) {
+        acc[item.entity_name] = new Set();
+      }
+      acc[item.entity_name].add(item.field_name);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([entityName, fieldNames]) => ({
+      entityName,
+      fields: Array.from(fieldNames).sort()
+    }));
+  }, [referencedData]);
 
   const baseAccountFields = [
     { name: "account_number", label: "Account Number", type: "text" },
