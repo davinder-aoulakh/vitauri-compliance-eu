@@ -31,7 +31,7 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
   });
 
   // Fetch country list from global referenced data
-  const { data: referencedData = [] } = useQuery({
+  const { data: countryData = [] } = useQuery({
     queryKey: ['referenced-data-countries'],
     queryFn: () => base44.entities.ReferencedData.filter({
       entity_name: 'Global',
@@ -40,7 +40,21 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
     })
   });
 
-  const countries = referencedData
+  // Fetch entity_type options from referenced data
+  const { data: entityTypeData = [] } = useQuery({
+    queryKey: ['referenced-data-entity-type'],
+    queryFn: () => base44.entities.ReferencedData.filter({
+      entity_name: 'Entity',
+      field_name: 'entity_type',
+      is_published: true
+    })
+  });
+
+  const countries = countryData
+    .sort((a, b) => a.order - b.order)
+    .map(d => ({ value: d.value, label: d.label }));
+
+  const entityTypes = entityTypeData
     .sort((a, b) => a.order - b.order)
     .map(d => ({ value: d.value, label: d.label }));
 
