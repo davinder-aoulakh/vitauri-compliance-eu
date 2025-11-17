@@ -15,7 +15,8 @@ import {
   ChevronDown,
   Shield,
   Menu,
-  Wrench
+  Wrench,
+  Database
 } from "lucide-react";
 import {
   Sidebar,
@@ -145,6 +146,12 @@ export default function Layout({ children }) {
       title: "Form Builder",
       url: createPageUrl("FormBuilder"),
       icon: Settings,
+      roles: ["super_admin"]
+    },
+    {
+      title: "Referenced Data",
+      url: createPageUrl("ReferencedDataManagement"),
+      icon: Database,
       roles: ["super_admin"]
     }
   ];

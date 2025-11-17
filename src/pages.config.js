@@ -8,6 +8,7 @@ import UserManagement from './pages/UserManagement';
 import Accounts from './pages/Accounts';
 import Reports from './pages/Reports';
 import FormBuilder from './pages/FormBuilder';
+import ReferencedDataManagement from './pages/ReferencedDataManagement';
 import __Layout from './Layout.jsx';
 
 
@@ -22,6 +23,7 @@ export const PAGES = {
     "Accounts": Accounts,
     "Reports": Reports,
     "FormBuilder": FormBuilder,
+    "ReferencedDataManagement": ReferencedDataManagement,
 }
 
 export const pagesConfig = {
