@@ -41,14 +41,21 @@ export default function DynamicFormRenderer({
     }
   });
 
-  // Fetch all published referenced data
+  // Fetch all published referenced data (entity-specific + global)
   const { data: referencedData = [], isLoading: dataLoading } = useQuery({
     queryKey: ['referenced-data', entityType],
     queryFn: async () => {
-      return await base44.entities.ReferencedData.filter({
-        entity_name: entityType,
-        is_published: true
-      });
+      const [entitySpecific, globalData] = await Promise.all([
+        base44.entities.ReferencedData.filter({
+          entity_name: entityType,
+          is_published: true
+        }),
+        base44.entities.ReferencedData.filter({
+          entity_name: "Global",
+          is_published: true
+        })
+      ]);
+      return [...entitySpecific, ...globalData];
     }
   });
 
@@ -177,9 +184,17 @@ export default function DynamicFormRenderer({
   };
 
   const getOptionsForField = (fieldName) => {
-    const options = referencedData
-      .filter(rd => rd.field_name === fieldName)
+    // First try entity-specific options, then fall back to global
+    let options = referencedData
+      .filter(rd => rd.field_name === fieldName && rd.entity_name === entityType)
       .sort((a, b) => a.order - b.order);
+    
+    // If no entity-specific options, check for global options
+    if (options.length === 0) {
+      options = referencedData
+        .filter(rd => rd.field_name === fieldName && rd.entity_name === "Global")
+        .sort((a, b) => a.order - b.order);
+    }
     
     return options.map(opt => ({
       value: opt.value,
