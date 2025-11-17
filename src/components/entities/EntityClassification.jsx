@@ -143,7 +143,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     return !step.options.some(opt => opt.next_step);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const newAnswers = { ...answers };
     
     // Store the answer
@@ -157,6 +157,9 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     setAnswers(newAnswers);
     const newHistory = [...history, currentNodeId];
     setHistory(newHistory);
+
+    // Execute post-completion actions
+    await executePostCompletionActions(currentNode, newAnswers);
 
     // Determine next step
     let nextNodeId = null;
@@ -186,6 +189,60 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     // Move to next node
     setCurrentNodeId(nextNodeId);
     setSelectedValue("");
+  };
+
+  const executePostCompletionActions = async (step, allAnswers) => {
+    if (!step.post_completion_actions || step.post_completion_actions.length === 0) {
+      return;
+    }
+
+    for (const action of step.post_completion_actions) {
+      // Check if condition is met (if condition exists)
+      if (action.condition) {
+        const conditionMet = evaluateActionCondition(action.condition, allAnswers);
+        if (!conditionMet) continue;
+      }
+
+      // Determine the value to set
+      let valueToSet = action.value;
+      if (action.value_source === "from_step_answer") {
+        // Get answer from specified step
+        valueToSet = allAnswers[action.value];
+      } else if (action.value_source === "static_value") {
+        valueToSet = action.value;
+      }
+
+      // Update the entity/account
+      try {
+        if (action.target_entity_type === "Entity" && entity?.id) {
+          await base44.entities.Entity.update(entity.id, {
+            [action.field_to_update]: valueToSet
+          });
+        }
+        // Account updates would go here if needed
+      } catch (error) {
+        console.error("Error executing post-completion action:", error);
+      }
+    }
+  };
+
+  const evaluateActionCondition = (condition, answers) => {
+    const fieldValue = answers[condition.field];
+    
+    switch (condition.operator) {
+      case "=":
+        return String(fieldValue) === String(condition.value);
+      case "!=":
+        return String(fieldValue) !== String(condition.value);
+      case "contains":
+        return String(fieldValue).includes(condition.value);
+      case "in":
+        return condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
+      case "not_in":
+        return !condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
+      default:
+        return true;
+    }
   };
 
   const evaluateConditionalLogic = (logic, answers) => {

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { XCircle, Save, Plus, Trash2, MoveUp, MoveDown } from "lucide-react";
+import { XCircle, Save, Plus, Trash2, MoveUp, MoveDown, Zap } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
@@ -47,7 +47,8 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
       ],
       help_text: "",
       regulatory_reference: "",
-      required: true
+      required: true,
+      post_completion_actions: []
     };
     setFormData(prev => ({
       ...prev,
@@ -97,6 +98,37 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
     const newSteps = [...formData.steps];
     newSteps[stepIndex].options[optionIndex] = {
       ...newSteps[stepIndex].options[optionIndex],
+      [field]: value
+    };
+    setFormData(prev => ({ ...prev, steps: newSteps }));
+  };
+
+  const addAction = (stepIndex) => {
+    const newSteps = [...formData.steps];
+    const currentActions = newSteps[stepIndex].post_completion_actions || [];
+    newSteps[stepIndex].post_completion_actions = [
+      ...currentActions,
+      {
+        action_type: "update_entity_field",
+        target_entity_type: "Entity",
+        field_to_update: "",
+        value_source: "from_step_answer",
+        value: ""
+      }
+    ];
+    setFormData(prev => ({ ...prev, steps: newSteps }));
+  };
+
+  const removeAction = (stepIndex, actionIndex) => {
+    const newSteps = [...formData.steps];
+    newSteps[stepIndex].post_completion_actions = newSteps[stepIndex].post_completion_actions.filter((_, i) => i !== actionIndex);
+    setFormData(prev => ({ ...prev, steps: newSteps }));
+  };
+
+  const updateAction = (stepIndex, actionIndex, field, value) => {
+    const newSteps = [...formData.steps];
+    newSteps[stepIndex].post_completion_actions[actionIndex] = {
+      ...newSteps[stepIndex].post_completion_actions[actionIndex],
       [field]: value
     };
     setFormData(prev => ({ ...prev, steps: newSteps }));
@@ -333,6 +365,104 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
                       </div>
                     </div>
                   )}
+
+                  {/* Post-Completion Actions */}
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-amber-600" />
+                        Post-Completion Actions
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addAction(stepIndex)}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Action
+                      </Button>
+                    </div>
+                    {(!step.post_completion_actions || step.post_completion_actions.length === 0) ? (
+                      <p className="text-xs text-slate-500 italic">No actions configured for this step</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {step.post_completion_actions.map((action, actionIndex) => (
+                          <Card key={actionIndex} className="bg-amber-50 border-amber-200">
+                            <CardContent className="p-3 space-y-2">
+                              <div className="flex items-center justify-between mb-2">
+                                <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                                  Action {actionIndex + 1}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeAction(stepIndex, actionIndex)}
+                                  className="h-6 w-6 text-red-600"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-xs">Target Entity</Label>
+                                  <Select
+                                    value={action.target_entity_type}
+                                    onValueChange={(value) => updateAction(stepIndex, actionIndex, "target_entity_type", value)}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Entity">Entity</SelectItem>
+                                      <SelectItem value="Account">Account</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Field to Update</Label>
+                                  <Input
+                                    value={action.field_to_update}
+                                    onChange={(e) => updateAction(stepIndex, actionIndex, "field_to_update", e.target.value)}
+                                    placeholder="e.g., fi_type, rfi_status"
+                                    className="h-8 text-xs mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Value Source</Label>
+                                  <Select
+                                    value={action.value_source}
+                                    onValueChange={(value) => updateAction(stepIndex, actionIndex, "value_source", value)}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="from_step_answer">From Step Answer</SelectItem>
+                                      <SelectItem value="static_value">Static Value</SelectItem>
+                                      <SelectItem value="from_workflow_outcome">From Workflow Outcome</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">
+                                    {action.value_source === "from_step_answer" ? "Step ID" : "Value"}
+                                  </Label>
+                                  <Input
+                                    value={action.value}
+                                    onChange={(e) => updateAction(stepIndex, actionIndex, "value", e.target.value)}
+                                    placeholder={action.value_source === "from_step_answer" ? "step_id" : "value"}
+                                    className="h-8 text-xs mt-1"
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
