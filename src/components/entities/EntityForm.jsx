@@ -96,15 +96,14 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
             onValueChange={(value) => handleChange("entity_type", value)}
           >
             <SelectTrigger className="mt-1.5">
-              <SelectValue />
+              <SelectValue placeholder="Select entity type..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="corporation">Corporation</SelectItem>
-              <SelectItem value="trust">Trust</SelectItem>
-              <SelectItem value="partnership">Partnership</SelectItem>
-              <SelectItem value="fund">Fund</SelectItem>
-              <SelectItem value="branch">Branch</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
+              {entityTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
