@@ -21,7 +21,8 @@ import {
   Save,
   ArrowUp,
   ArrowDown,
-  Info
+  Info,
+  Settings
 } from "lucide-react";
 
 export default function FormConfigEditor({ config, onSave, onCancel }) {
@@ -33,6 +34,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     layout_config: { columns: 2, sections: [] }
   });
   const [saving, setSaving] = useState(false);
+  const [expandedField, setExpandedField] = useState(null);
 
   const baseAccountFields = [
     { name: "account_number", label: "Account Number", type: "text" },

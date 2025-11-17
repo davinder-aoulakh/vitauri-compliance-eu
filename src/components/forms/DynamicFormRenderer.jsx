@@ -25,6 +25,7 @@ export default function DynamicFormRenderer({
 }) {
   const [formData, setFormData] = useState(initialData || {});
   const [loading, setLoading] = useState(true);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Fetch published form configuration
   const { data: formConfigs = [], isLoading: configLoading } = useQuery({
@@ -75,13 +76,104 @@ export default function DynamicFormRenderer({
     );
   }
 
+  const evaluateCondition = (condition, allFormData) => {
+    if (!condition || !condition.field) return true;
+    
+    const fieldValue = allFormData[condition.field];
+    const compareValue = condition.value;
+
+    switch (condition.operator) {
+      case 'equals':
+        return String(fieldValue) === String(compareValue);
+      case 'not_equals':
+        return String(fieldValue) !== String(compareValue);
+      case 'contains':
+        return String(fieldValue).includes(compareValue);
+      case 'in':
+        return compareValue.split(',').map(v => v.trim()).includes(String(fieldValue));
+      case 'not_in':
+        return !compareValue.split(',').map(v => v.trim()).includes(String(fieldValue));
+      case 'greater_than':
+        return parseFloat(fieldValue) > parseFloat(compareValue);
+      case 'less_than':
+        return parseFloat(fieldValue) < parseFloat(compareValue);
+      default:
+        return true;
+    }
+  };
+
+  const validateField = (field, value) => {
+    const errors = [];
+
+    // Check required
+    const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
+    if (isRequired && !value) {
+      errors.push(`${field.display_label} is required`);
+    }
+
+    if (value && field.validation) {
+      // Min/Max length for text
+      if (field.validation.minLength && String(value).length < field.validation.minLength) {
+        errors.push(`Must be at least ${field.validation.minLength} characters`);
+      }
+      if (field.validation.maxLength && String(value).length > field.validation.maxLength) {
+        errors.push(`Must be at most ${field.validation.maxLength} characters`);
+      }
+
+      // Min/Max value for numbers
+      if (field.validation.min !== undefined && parseFloat(value) < field.validation.min) {
+        errors.push(`Must be at least ${field.validation.min}`);
+      }
+      if (field.validation.max !== undefined && parseFloat(value) > field.validation.max) {
+        errors.push(`Must be at most ${field.validation.max}`);
+      }
+
+      // Regex pattern
+      if (field.validation.pattern) {
+        const regex = new RegExp(field.validation.pattern);
+        if (!regex.test(value)) {
+          errors.push(field.validation.patternMessage || 'Invalid format');
+        }
+      }
+    }
+
+    return errors;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate all visible and required fields
+    const errors = {};
+    config.fields_config.forEach(field => {
+      const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
+      if (isVisible) {
+        const fieldErrors = validateField(field, formData[field.field_name]);
+        if (fieldErrors.length > 0) {
+          errors[field.field_name] = fieldErrors;
+        }
+      }
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
     onSubmit(formData);
   };
 
   const handleChange = (fieldName, value) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
+    // Clear validation error for this field
+    if (validationErrors[fieldName]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
+    }
   };
 
   const getOptionsForField = (fieldName) => {
@@ -97,10 +189,14 @@ export default function DynamicFormRenderer({
   };
 
   const renderField = (field) => {
-    if (!field.is_visible) return null;
+    // Check conditional visibility
+    const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
+    if (!isVisible) return null;
 
     const value = formData[field.field_name] || "";
     const options = field.field_type === "select" ? getOptionsForField(field.field_name) : [];
+    const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
+    const fieldErrors = validationErrors[field.field_name];
 
     switch (field.field_type) {
       case "text":
@@ -108,7 +204,7 @@ export default function DynamicFormRenderer({
         return (
           <div key={field.field_name}>
             <Label htmlFor={field.field_name}>
-              {field.display_label} {field.is_required && "*"}
+              {field.display_label} {isRequired && "*"}
             </Label>
             <Input
               id={field.field_name}
@@ -116,10 +212,16 @@ export default function DynamicFormRenderer({
               value={value}
               onChange={(e) => handleChange(field.field_name, e.target.value)}
               placeholder={field.placeholder}
-              required={field.is_required}
-              className="mt-1.5"
+              required={isRequired}
+              minLength={field.validation?.minLength}
+              maxLength={field.validation?.maxLength}
+              pattern={field.validation?.pattern}
+              className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}
             />
-            {field.help_text && (
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+            {!fieldErrors && field.help_text && (
               <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
@@ -129,7 +231,7 @@ export default function DynamicFormRenderer({
         return (
           <div key={field.field_name}>
             <Label htmlFor={field.field_name}>
-              {field.display_label} {field.is_required && "*"}
+              {field.display_label} {isRequired && "*"}
             </Label>
             <Input
               id={field.field_name}
@@ -137,12 +239,15 @@ export default function DynamicFormRenderer({
               value={value}
               onChange={(e) => handleChange(field.field_name, parseFloat(e.target.value) || 0)}
               placeholder={field.placeholder}
-              required={field.is_required}
+              required={isRequired}
               min={field.validation?.min}
               max={field.validation?.max}
-              className="mt-1.5"
+              className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}
             />
-            {field.help_text && (
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+            {!fieldErrors && field.help_text && (
               <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
@@ -152,17 +257,20 @@ export default function DynamicFormRenderer({
         return (
           <div key={field.field_name}>
             <Label htmlFor={field.field_name}>
-              {field.display_label} {field.is_required && "*"}
+              {field.display_label} {isRequired && "*"}
             </Label>
             <Input
               id={field.field_name}
               type="date"
               value={value}
               onChange={(e) => handleChange(field.field_name, e.target.value)}
-              required={field.is_required}
-              className="mt-1.5"
+              required={isRequired}
+              className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}
             />
-            {field.help_text && (
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+            {!fieldErrors && field.help_text && (
               <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
@@ -172,13 +280,13 @@ export default function DynamicFormRenderer({
         return (
           <div key={field.field_name}>
             <Label htmlFor={field.field_name}>
-              {field.display_label} {field.is_required && "*"}
+              {field.display_label} {isRequired && "*"}
             </Label>
             <Select
               value={value}
               onValueChange={(val) => handleChange(field.field_name, val)}
             >
-              <SelectTrigger className="mt-1.5">
+              <SelectTrigger className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}>
                 <SelectValue placeholder={field.placeholder || `Select ${field.display_label}...`} />
               </SelectTrigger>
               <SelectContent>
@@ -189,7 +297,10 @@ export default function DynamicFormRenderer({
                 ))}
               </SelectContent>
             </Select>
-            {field.help_text && (
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+            {!fieldErrors && field.help_text && (
               <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
@@ -197,17 +308,22 @@ export default function DynamicFormRenderer({
 
       case "boolean":
         return (
-          <div key={field.field_name} className="flex items-center gap-2">
-            <Checkbox
-              id={field.field_name}
-              checked={value === true}
-              onCheckedChange={(checked) => handleChange(field.field_name, checked)}
-            />
-            <Label htmlFor={field.field_name} className="cursor-pointer">
-              {field.display_label} {field.is_required && "*"}
-            </Label>
-            {field.help_text && (
-              <p className="text-xs text-slate-500 ml-2">({field.help_text})</p>
+          <div key={field.field_name}>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={field.field_name}
+                checked={value === true}
+                onCheckedChange={(checked) => handleChange(field.field_name, checked)}
+              />
+              <Label htmlFor={field.field_name} className="cursor-pointer">
+                {field.display_label} {isRequired && "*"}
+              </Label>
+            </div>
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+            {!fieldErrors && field.help_text && (
+              <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
         );
@@ -216,18 +332,23 @@ export default function DynamicFormRenderer({
         return (
           <div key={field.field_name}>
             <Label htmlFor={field.field_name}>
-              {field.display_label} {field.is_required && "*"}
+              {field.display_label} {isRequired && "*"}
             </Label>
             <Textarea
               id={field.field_name}
               value={value}
               onChange={(e) => handleChange(field.field_name, e.target.value)}
               placeholder={field.placeholder}
-              required={field.is_required}
-              className="mt-1.5"
+              required={isRequired}
+              minLength={field.validation?.minLength}
+              maxLength={field.validation?.maxLength}
+              className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}
               rows={4}
             />
-            {field.help_text && (
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+            {!fieldErrors && field.help_text && (
               <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
