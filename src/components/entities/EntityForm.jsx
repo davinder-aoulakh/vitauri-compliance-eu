@@ -31,7 +31,7 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
   });
 
   // Fetch country list from global referenced data
-  const { data: referencedData = [] } = useQuery({
+  const { data: countriesData = [] } = useQuery({
     queryKey: ['referenced-data-countries'],
     queryFn: () => base44.entities.ReferencedData.filter({
       entity_name: 'Global',
@@ -40,7 +40,21 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
     })
   });
 
-  const countries = referencedData
+  // Fetch entity types from entity referenced data
+  const { data: entityTypesData = [] } = useQuery({
+    queryKey: ['referenced-data-entity-types'],
+    queryFn: () => base44.entities.ReferencedData.filter({
+      entity_name: 'Entity',
+      field_name: 'entity_type',
+      is_published: true
+    })
+  });
+
+  const countries = countriesData
+    .sort((a, b) => a.order - b.order)
+    .map(d => ({ value: d.value, label: d.label }));
+
+  const entityTypes = entityTypesData
     .sort((a, b) => a.order - b.order)
     .map(d => ({ value: d.value, label: d.label }));
 
@@ -82,15 +96,14 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
             onValueChange={(value) => handleChange("entity_type", value)}
           >
             <SelectTrigger className="mt-1.5">
-              <SelectValue />
+              <SelectValue placeholder="Select entity type..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="corporation">Corporation</SelectItem>
-              <SelectItem value="trust">Trust</SelectItem>
-              <SelectItem value="partnership">Partnership</SelectItem>
-              <SelectItem value="fund">Fund</SelectItem>
-              <SelectItem value="branch">Branch</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
+              {entityTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
