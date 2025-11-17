@@ -31,7 +31,7 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
   });
 
   // Fetch country list from global referenced data
-  const { data: countryData = [] } = useQuery({
+  const { data: referencedData = [] } = useQuery({
     queryKey: ['referenced-data-countries'],
     queryFn: () => base44.entities.ReferencedData.filter({
       entity_name: 'Global',
@@ -40,21 +40,7 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
     })
   });
 
-  // Fetch entity_type options from referenced data
-  const { data: entityTypeData = [] } = useQuery({
-    queryKey: ['referenced-data-entity-type'],
-    queryFn: () => base44.entities.ReferencedData.filter({
-      entity_name: 'Entity',
-      field_name: 'entity_type',
-      is_published: true
-    })
-  });
-
-  const countries = countryData
-    .sort((a, b) => a.order - b.order)
-    .map(d => ({ value: d.value, label: d.label }));
-
-  const entityTypes = entityTypeData
+  const countries = referencedData
     .sort((a, b) => a.order - b.order)
     .map(d => ({ value: d.value, label: d.label }));
 
@@ -96,14 +82,15 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
             onValueChange={(value) => handleChange("entity_type", value)}
           >
             <SelectTrigger className="mt-1.5">
-              <SelectValue placeholder="Select entity type..." />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {entityTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
+              <SelectItem value="corporation">Corporation</SelectItem>
+              <SelectItem value="trust">Trust</SelectItem>
+              <SelectItem value="partnership">Partnership</SelectItem>
+              <SelectItem value="fund">Fund</SelectItem>
+              <SelectItem value="branch">Branch</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
