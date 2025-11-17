@@ -73,6 +73,12 @@ export default function ReferencedDataManagementPage() {
     enabled: !!user
   });
 
+  const { data: crsCountryInfo = [] } = useQuery({
+    queryKey: ['crs-country-info'],
+    queryFn: () => base44.entities.CrsCountryInfo.list(),
+    enabled: !!user
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.ReferencedData.delete(id),
     onSuccess: () => {
@@ -114,6 +120,10 @@ export default function ReferencedDataManagementPage() {
       item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.value.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  const getCrsInfo = (countryCode) => {
+    return crsCountryInfo.find(c => c.country_code === countryCode);
+  };
 
   const groupedData = filteredData.reduce((acc, item) => {
     if (!acc[item.field_name]) {
@@ -311,6 +321,7 @@ export default function ReferencedDataManagementPage() {
                             <TableRow className="bg-slate-50">
                               <TableHead>Value</TableHead>
                               <TableHead>Label</TableHead>
+                              {fieldName === "country" && <TableHead>CRS</TableHead>}
                               <TableHead>Description</TableHead>
                               <TableHead>Order</TableHead>
                               <TableHead>Status</TableHead>
@@ -320,76 +331,92 @@ export default function ReferencedDataManagementPage() {
                           <TableBody>
                             {items
                               .sort((a, b) => a.order - b.order)
-                              .map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell>
-                                    <code className="text-xs bg-slate-100 px-2 py-1 rounded">
-                                      {item.value}
-                                    </code>
-                                  </TableCell>
-                                  <TableCell>
-                                    <span className="font-medium text-slate-900">
-                                      {item.label}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>
-                                    <span className="text-sm text-slate-600">
-                                      {item.description || "-"}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>
-                                    <span className="text-sm text-slate-600">{item.order}</span>
-                                  </TableCell>
-                                  <TableCell>
-                                    {item.is_published ? (
-                                      <Badge className="bg-green-100 text-green-800 border-green-200">
-                                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                                        Published
-                                      </Badge>
-                                    ) : (
-                                      <Badge className="bg-slate-100 text-slate-800 border-slate-200">
-                                        <XCircle className="w-3 h-3 mr-1" />
-                                        Unpublished
-                                      </Badge>
+                              .map((item) => {
+                                const crsInfo = fieldName === "country" ? getCrsInfo(item.value) : null;
+                                return (
+                                  <TableRow key={item.id}>
+                                    <TableCell>
+                                      <code className="text-xs bg-slate-100 px-2 py-1 rounded">
+                                        {item.value}
+                                      </code>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="font-medium text-slate-900">
+                                        {item.label}
+                                      </span>
+                                    </TableCell>
+                                    {fieldName === "country" && (
+                                      <TableCell>
+                                        {crsInfo?.is_crs_country ? (
+                                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                                            Yes
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="bg-slate-100 text-slate-800 border-slate-200">
+                                            No
+                                          </Badge>
+                                        )}
+                                      </TableCell>
                                     )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                          <MoreVertical className="w-4 h-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleEdit(item)}>
-                                          <Edit className="w-4 h-4 mr-2" />
-                                          Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleTogglePublish(item)}>
-                                          {item.is_published ? (
-                                            <>
-                                              <XCircle className="w-4 h-4 mr-2" />
-                                              Unpublish
-                                            </>
-                                          ) : (
-                                            <>
-                                              <CheckCircle2 className="w-4 h-4 mr-2" />
-                                              Publish
-                                            </>
-                                          )}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleDelete(item.id)}
-                                          className="text-red-600"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                                    <TableCell>
+                                      <span className="text-sm text-slate-600">
+                                        {item.description || "-"}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-slate-600">{item.order}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                      {item.is_published ? (
+                                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                                          Published
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-slate-100 text-slate-800 border-slate-200">
+                                          <XCircle className="w-3 h-3 mr-1" />
+                                          Unpublished
+                                        </Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon">
+                                            <MoreVertical className="w-4 h-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => handleEdit(item)}>
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleTogglePublish(item)}>
+                                            {item.is_published ? (
+                                              <>
+                                                <XCircle className="w-4 h-4 mr-2" />
+                                                Unpublish
+                                              </>
+                                            ) : (
+                                              <>
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                Publish
+                                              </>
+                                            )}
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => handleDelete(item.id)}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
                           </TableBody>
                         </Table>
                       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,37 @@ export default function ReferencedDataForm({ item, onSave, onCancel }) {
     order: 0
   });
   const [saving, setSaving] = useState(false);
+  const [crsData, setCrsData] = useState(null);
+  const [loadingCrs, setLoadingCrs] = useState(false);
+
+  const isCountryField = formData.entity_name === "Global" && formData.field_name === "country";
+
+  useEffect(() => {
+    if (isCountryField && item?.value) {
+      loadCrsInfo(item.value);
+    }
+  }, []);
+
+  const loadCrsInfo = async (countryCode) => {
+    if (!countryCode) return;
+    setLoadingCrs(true);
+    try {
+      const crsRecords = await base44.entities.CrsCountryInfo.filter({ country_code: countryCode });
+      if (crsRecords && crsRecords.length > 0) {
+        setCrsData(crsRecords[0]);
+      } else {
+        setCrsData({
+          country_code: countryCode,
+          country_name: formData.label,
+          is_crs_country: false
+        });
+      }
+    } catch (error) {
+      console.error("Error loading CRS info:", error);
+    } finally {
+      setLoadingCrs(false);
+    }
+  };
 
   const accountFields = [
     { value: "account_type", label: "Account Type" },
@@ -63,6 +94,24 @@ export default function ReferencedDataForm({ item, onSave, onCancel }) {
       } else {
         await base44.entities.ReferencedData.create(formData);
       }
+
+      // Save CRS info if editing a country
+      if (isCountryField && crsData) {
+        const crsPayload = {
+          country_code: formData.value,
+          country_name: formData.label,
+          is_crs_country: crsData.is_crs_country,
+          crs_implementation_date: crsData.crs_implementation_date || null,
+          crs_reporting_details: crsData.crs_reporting_details || null
+        };
+
+        if (crsData.id) {
+          await base44.entities.CrsCountryInfo.update(crsData.id, crsPayload);
+        } else {
+          await base44.entities.CrsCountryInfo.create(crsPayload);
+        }
+      }
+
       onSave();
     } catch (error) {
       console.error("Save error:", error);
@@ -182,6 +231,51 @@ export default function ReferencedDataForm({ item, onSave, onCancel }) {
           </Label>
         </div>
       </div>
+
+      {/* CRS Information Section - Only for countries */}
+      {isCountryField && crsData && (
+        <div className="border-t pt-4 space-y-4">
+          <h3 className="font-semibold text-slate-900">CRS Information</h3>
+          
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="is_crs_country"
+              checked={crsData.is_crs_country}
+              onCheckedChange={(checked) => setCrsData({ ...crsData, is_crs_country: checked })}
+            />
+            <Label htmlFor="is_crs_country" className="cursor-pointer">
+              CRS Participating Country
+            </Label>
+          </div>
+
+          {crsData.is_crs_country && (
+            <>
+              <div>
+                <Label htmlFor="crs_implementation_date">CRS Implementation Date</Label>
+                <Input
+                  id="crs_implementation_date"
+                  type="date"
+                  value={crsData.crs_implementation_date || ""}
+                  onChange={(e) => setCrsData({ ...crsData, crs_implementation_date: e.target.value })}
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="crs_reporting_details">CRS Reporting Details (Optional)</Label>
+                <Textarea
+                  id="crs_reporting_details"
+                  value={crsData.crs_reporting_details || ""}
+                  onChange={(e) => setCrsData({ ...crsData, crs_reporting_details: e.target.value })}
+                  placeholder="Additional CRS-specific information"
+                  className="mt-1.5"
+                  rows={2}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancel}>
