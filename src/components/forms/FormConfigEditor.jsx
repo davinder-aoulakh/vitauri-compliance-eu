@@ -40,8 +40,12 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     { name: "account_holder_type", label: "Account Holder Type", type: "select" },
     { name: "account_type", label: "Account Type", type: "select" },
     { name: "account_balance", label: "Account Balance", type: "number" },
+    { name: "currency", label: "Currency", type: "text" },
     { name: "date_of_birth", label: "Date of Birth", type: "date" },
-    { name: "reporting_year", label: "Reporting Year", type: "text" }
+    { name: "reporting_year", label: "Reporting Year", type: "text" },
+    { name: "reportability_status", label: "Reportability Status", type: "select" },
+    { name: "status", label: "Status", type: "select" },
+    { name: "entity_classification", label: "Entity Classification", type: "select" }
   ];
 
   const baseEntityFields = [
@@ -49,7 +53,10 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     { name: "entity_type", label: "Entity Type", type: "select" },
     { name: "country_of_incorporation", label: "Country of Incorporation", type: "text" },
     { name: "tax_id", label: "Tax ID", type: "text" },
-    { name: "giin", label: "GIIN", type: "text" }
+    { name: "giin", label: "GIIN", type: "text" },
+    { name: "rfi_status", label: "RFI Status", type: "select" },
+    { name: "fi_type", label: "FI Type", type: "select" },
+    { name: "status", label: "Status", type: "select" }
   ];
 
   const availableBaseFields = formData.entity_type === "Account" 
@@ -141,7 +148,8 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
         <Info className="w-4 h-4 text-blue-600" />
         <AlertDescription className="text-sm text-blue-900">
           Configure form fields by adding base entity fields or creating custom fields. 
-          Adjust labels, visibility, and ordering. Custom fields will be added to the entity schema when published.
+          For <strong>select</strong> fields, options are dynamically loaded from Referenced Data.
+          Manage dropdown values in the Referenced Data menu.
         </AlertDescription>
       </Alert>
 
@@ -303,7 +311,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                               <SelectItem value="text">Text</SelectItem>
                               <SelectItem value="number">Number</SelectItem>
                               <SelectItem value="date">Date</SelectItem>
-                              <SelectItem value="select">Select</SelectItem>
+                              <SelectItem value="select">Select (Dynamic)</SelectItem>
                               <SelectItem value="boolean">Boolean</SelectItem>
                               <SelectItem value="textarea">Textarea</SelectItem>
                               <SelectItem value="email">Email</SelectItem>
@@ -326,6 +334,11 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                             />
                             <Label className="text-xs">Required</Label>
                           </div>
+                          {field.field_type === 'select' && (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                              Dynamic Options
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
