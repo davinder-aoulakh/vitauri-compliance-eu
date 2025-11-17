@@ -22,7 +22,8 @@ import {
   ArrowUp,
   ArrowDown,
   Info,
-  Settings
+  Settings,
+  CheckCircle2
 } from "lucide-react";
 
 export default function FormConfigEditor({ config, onSave, onCancel }) {
@@ -123,6 +124,31 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     }
   };
 
+  const validateConfiguration = () => {
+    const errors = [];
+    
+    if (!formData.form_name?.trim()) {
+      errors.push("Form name is required");
+    }
+    
+    if (!formData.entity_type) {
+      errors.push("Entity type is required");
+    }
+    
+    if (formData.fields_config.length === 0) {
+      errors.push("At least one field is required");
+    }
+    
+    // Check for duplicate field names
+    const fieldNames = formData.fields_config.map(f => f.field_name);
+    const duplicates = fieldNames.filter((name, index) => fieldNames.indexOf(name) !== index);
+    if (duplicates.length > 0) {
+      errors.push(`Duplicate field names: ${duplicates.join(', ')}`);
+    }
+    
+    return errors;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -135,6 +161,58 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     } catch (error) {
       console.error("Save error:", error);
       alert("Failed to save configuration: " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    const errors = validateConfiguration();
+    
+    if (errors.length > 0) {
+      alert("Cannot publish configuration:\n\n" + errors.join('\n'));
+      return;
+    }
+    
+    if (!confirm("Publish this configuration? This will:\n\n1. Archive any currently published configuration for this entity type\n2. Make this configuration active for all tenants\n3. Set version and publish metadata")) {
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      // First, fetch all published configs for this entity type
+      const publishedConfigs = await base44.entities.FormConfiguration.filter({
+        entity_type: formData.entity_type,
+        is_published: true
+      });
+      
+      // Archive them (unpublish)
+      for (const pubConfig of publishedConfigs) {
+        if (pubConfig.id !== config?.id) {
+          await base44.entities.FormConfiguration.update(pubConfig.id, {
+            is_published: false
+          });
+        }
+      }
+      
+      // Save or update current config with published flag
+      const publishData = {
+        ...formData,
+        is_published: true,
+        published_date: new Date().toISOString(),
+        published_by: (await base44.auth.me()).email
+      };
+      
+      if (config?.id) {
+        await base44.entities.FormConfiguration.update(config.id, publishData);
+      } else {
+        await base44.entities.FormConfiguration.create(publishData);
+      }
+      
+      onSave();
+    } catch (error) {
+      console.error("Publish error:", error);
+      alert("Failed to publish configuration: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -365,14 +443,28 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
       </Card>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-between items-center pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={handleSave} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4 mr-2" />
-          {saving ? "Saving..." : "Save Configuration"}
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            onClick={handleSave} 
+            disabled={saving} 
+            variant="outline"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {saving ? "Saving..." : "Save as Draft"}
+          </Button>
+          <Button 
+            onClick={handlePublish} 
+            disabled={saving}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            {saving ? "Publishing..." : "Publish"}
+          </Button>
+        </div>
       </div>
     </div>
   );
