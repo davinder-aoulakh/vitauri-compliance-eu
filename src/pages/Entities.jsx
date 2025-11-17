@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -87,6 +86,21 @@ export default function EntitiesPage() {
       : [],
     enabled: !!user?.tenant_id
   });
+
+  // Fetch referenced data for labels
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data-labels'],
+    queryFn: () => base44.entities.ReferencedData.list(),
+    enabled: !!user
+  });
+
+  // Helper function to get label from value
+  const getLabel = (entityName, fieldName, value) => {
+    const item = referencedData.find(
+      rd => rd.entity_name === entityName && rd.field_name === fieldName && rd.value === value
+    );
+    return item?.label || value;
+  };
 
   const { data: classificationHistory = [] } = useQuery({
     queryKey: ['classification-history', selectedEntity?.id],
@@ -310,12 +324,14 @@ export default function EntitiesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm capitalize text-slate-700">
-                            {entity.entity_type.replace("_", " ")}
+                          <span className="text-sm text-slate-700">
+                            {getLabel('Entity', 'entity_type', entity.entity_type)}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-slate-700">{entity.country_of_incorporation}</span>
+                          <span className="text-sm text-slate-700">
+                            {getLabel('Global', 'country', entity.country_of_incorporation)}
+                          </span>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(entity.rfi_status)}
