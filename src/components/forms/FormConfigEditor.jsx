@@ -437,11 +437,6 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                             />
                             <Label className="text-xs">Required</Label>
                           </div>
-                          {field.field_type === 'select' && (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                              Dynamic Options
-                            </Badge>
-                          )}
                         </div>
                       </div>
 
@@ -457,6 +452,43 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                         </Button>
                       </div>
                     </div>
+
+                    {/* Referenced Data Key Selection - show when field type is select */}
+                    {field.field_type === 'select' && (
+                      <div className="mt-4 pl-6 border-l-2 border-green-200">
+                        <Label className="text-xs font-semibold text-green-800">Data Source (Referenced List)</Label>
+                        <Select
+                          value={field.referenced_data_key || ""}
+                          onValueChange={(value) => handleUpdateField(index, 'referenced_data_key', value)}
+                        >
+                          <SelectTrigger className="mt-1.5">
+                            <SelectValue placeholder="Select a referenced data list..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableReferencedLists.map((group) => (
+                              <React.Fragment key={group.entityName}>
+                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50">
+                                  {group.entityName}
+                                </div>
+                                {group.fields.map((fieldName) => (
+                                  <SelectItem key={`${group.entityName}-${fieldName}`} value={fieldName}>
+                                    {fieldName}
+                                  </SelectItem>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {field.referenced_data_key && (
+                          <Badge variant="outline" className="mt-2 text-xs bg-green-50 text-green-700 border-green-200">
+                            Using: {field.referenced_data_key}
+                          </Badge>
+                        )}
+                        <p className="text-xs text-slate-500 mt-1">
+                          Choose which referenced data list provides options for this dropdown
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
