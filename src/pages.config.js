@@ -7,7 +7,8 @@ import Setup from './pages/Setup';
 import UserManagement from './pages/UserManagement';
 import Accounts from './pages/Accounts';
 import Reports from './pages/Reports';
-import Layout from './Layout.jsx';
+import FormBuilder from './pages/FormBuilder';
+import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
@@ -20,10 +21,11 @@ export const PAGES = {
     "UserManagement": UserManagement,
     "Accounts": Accounts,
     "Reports": Reports,
+    "FormBuilder": FormBuilder,
 }
 
 export const pagesConfig = {
     mainPage: "Dashboard",
     Pages: PAGES,
-    Layout: Layout,
+    Layout: __Layout,
 };
