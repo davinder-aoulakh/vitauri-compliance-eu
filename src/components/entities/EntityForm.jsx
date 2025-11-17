@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +29,20 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
     },
     status: "active"
   });
+
+  // Fetch country list from global referenced data
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data-countries'],
+    queryFn: () => base44.entities.ReferencedData.filter({
+      entity_name: 'Global',
+      field_name: 'country',
+      is_published: true
+    })
+  });
+
+  const countries = referencedData
+    .sort((a, b) => a.order - b.order)
+    .map(d => ({ value: d.value, label: d.label }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -81,14 +97,21 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
 
         <div>
           <Label htmlFor="country_of_incorporation">Country of Incorporation *</Label>
-          <Input
-            id="country_of_incorporation"
+          <Select
             value={formData.country_of_incorporation}
-            onChange={(e) => handleChange("country_of_incorporation", e.target.value)}
-            placeholder="e.g., United States"
-            required
-            className="mt-1.5"
-          />
+            onValueChange={(value) => handleChange("country_of_incorporation", value)}
+          >
+            <SelectTrigger className="mt-1.5">
+              <SelectValue placeholder="Select country..." />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map((country) => (
+                <SelectItem key={country.value} value={country.value}>
+                  {country.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -155,12 +178,21 @@ export default function EntityForm({ entity, onSubmit, onCancel }) {
           </div>
           <div>
             <Label htmlFor="country">Country</Label>
-            <Input
-              id="country"
+            <Select
               value={formData.address.country}
-              onChange={(e) => handleAddressChange("country", e.target.value)}
-              className="mt-1.5"
-            />
+              onValueChange={(value) => handleAddressChange("country", value)}
+            >
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Select country..." />
+              </SelectTrigger>
+              <SelectContent>
+                {countries.map((country) => (
+                  <SelectItem key={country.value} value={country.value}>
+                    {country.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
