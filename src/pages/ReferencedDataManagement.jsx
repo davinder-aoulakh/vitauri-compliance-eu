@@ -127,7 +127,8 @@ export default function ReferencedDataManagementPage() {
     total: referencedData.length,
     published: referencedData.filter(d => d.is_published).length,
     account: referencedData.filter(d => d.entity_name === 'Account').length,
-    entity: referencedData.filter(d => d.entity_name === 'Entity').length
+    entity: referencedData.filter(d => d.entity_name === 'Entity').length,
+    global: referencedData.filter(d => d.entity_name === 'Global').length
   };
 
   if (!user) {
@@ -170,7 +171,7 @@ export default function ReferencedDataManagementPage() {
         </Alert>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card className="border-0 shadow-lg">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -226,6 +227,20 @@ export default function ReferencedDataManagementPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Database className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-600">Global Lists</p>
+                  <p className="text-2xl font-bold text-slate-900">{stats.global}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search */}
@@ -256,12 +271,15 @@ export default function ReferencedDataManagementPage() {
           </CardHeader>
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full grid grid-cols-2 rounded-none border-b">
+              <TabsList className="w-full grid grid-cols-3 rounded-none border-b">
                 <TabsTrigger value="Account">
                   Account Fields ({stats.account})
                 </TabsTrigger>
                 <TabsTrigger value="Entity">
                   Entity Fields ({stats.entity})
+                </TabsTrigger>
+                <TabsTrigger value="Global">
+                  Global Lists ({stats.global})
                 </TabsTrigger>
               </TabsList>
 
