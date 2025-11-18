@@ -388,8 +388,16 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       reason = "Result: Non-Reporting FI - " + reason;
     }
 
+    // Filter answers to only include actually answered questions from completedPath
+    const actualAnswers = {};
+    completedPath.forEach(stepId => {
+      if (finalAnswers[stepId] !== undefined) {
+        actualAnswers[stepId] = finalAnswers[stepId];
+      }
+    });
+
     const classificationData = {
-      classification_answers: finalAnswers,
+      classification_answers: actualAnswers,
       classification_completed_date: new Date().toISOString().split('T')[0],
       rfi_status: rfi_status,
       fi_type: fi_type,
@@ -406,7 +414,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         classification_result: rfi_status,
         classification_reason: reason,
         fi_type: fi_type,
-        workflow_answers: finalAnswers,
+        workflow_answers: actualAnswers,
         performed_by: user?.email || "unknown",
         entity_name: entity?.entity_name || "Unknown Entity",
         entity_type: finalAnswers.frm_select_legal_entity_type || entity?.entity_type
