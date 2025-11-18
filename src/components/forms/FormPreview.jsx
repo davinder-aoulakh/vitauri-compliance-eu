@@ -14,7 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Info, Upload, FileText, Globe } from "lucide-react";
+import { Eye, Info, Upload, FileText, Globe, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function FormPreview({ config }) {
   if (!config || !config.fields_config) {
@@ -82,19 +83,29 @@ export default function FormPreview({ config }) {
         return (
           <div key={field.field_name} className="col-span-full">
             <Card className="border-slate-200">
-              <CardHeader className="border-b bg-slate-50">
+              <CardHeader className="border-b bg-slate-50 flex flex-row items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Globe className="w-5 h-5 text-indigo-600" />
                   {labelText}
                 </CardTitle>
+                <Button disabled size="sm" variant="outline">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Residency
+                </Button>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-6 space-y-4">
                 <Alert className="bg-blue-50 border-blue-200">
                   <Info className="w-4 h-4 text-blue-600" />
                   <AlertDescription className="text-sm text-blue-900">
-                    {field.help_text || "Tax residency information will be managed here"}
+                    {field.help_text || "Manage tax residency information"}
                   </AlertDescription>
                 </Alert>
+                
+                <div className="text-center py-8 text-slate-500 border-2 border-dashed rounded-lg">
+                  <Globe className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No tax residencies added yet</p>
+                  <p className="text-xs mt-1">Click "Add Residency" to add tax residency information</p>
+                </div>
               </CardContent>
             </Card>
           </div>
