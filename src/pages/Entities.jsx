@@ -327,7 +327,7 @@ export default function EntitiesPage() {
                       <TableHead>Country</TableHead>
                       <TableHead>CRS Status</TableHead>
                       <TableHead>FI Type</TableHead>
-                      <TableHead>Re-classify?</TableHead>
+                      <TableHead>Last Classified</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -373,11 +373,17 @@ export default function EntitiesPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {entity.classification_completed_date &&
-                          moment().diff(moment(entity.classification_completed_date), 'months') >= 10 ? (
-                            <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200">
-                              <AlertCircle className="w-3 h-3 mr-1" /> Re-classify
-                            </Badge>
+                          {entity.classification_completed_date ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm text-slate-700">
+                                {moment(entity.classification_completed_date).format('MMM D, YYYY')}
+                              </span>
+                              {moment().diff(moment(entity.classification_completed_date), 'months') >= 10 && (
+                                <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200 w-fit">
+                                  <AlertCircle className="w-3 h-3 mr-1" /> Re-classify
+                                </Badge>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-sm text-slate-400">—</span>
                           )}
