@@ -393,7 +393,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       classification_completed_date: new Date().toISOString().split('T')[0],
       rfi_status: rfi_status,
       fi_type: fi_type,
-      non_reporting_reason: classification === "non_reporting_fi" ? reason : undefined,
+      non_reporting_reason: rfi_status === "non_reporting_fi" ? reason : undefined,
       entity_type: finalAnswers.frm_select_legal_entity_type || entity?.entity_type
     };
 
