@@ -137,7 +137,10 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
   const handleUpdateField = (index, field, value) => {
     const updatedFields = [...formData.fields_config];
     updatedFields[index] = { ...updatedFields[index], [field]: value };
-    setFormData({ ...formData, fields_config: updatedFields });
+    
+    // Ensure the update is immediately reflected
+    const newFormData = { ...formData, fields_config: updatedFields };
+    setFormData(newFormData);
   };
 
   const handleRemoveField = (index) => {
