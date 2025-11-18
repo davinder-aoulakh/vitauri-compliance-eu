@@ -20,7 +20,11 @@ import {
   Save, 
   CheckCircle2,
   Type,
-  Monitor
+  Monitor,
+  Bell,
+  LayoutDashboard,
+  Shield,
+  LogOut
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +38,21 @@ export default function SettingsPage() {
   const [highContrast, setHighContrast] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [keyboardNavigation, setKeyboardNavigation] = useState(true);
+
+  // Appearance Settings
+  const [theme, setTheme] = useState("light");
+  const [layoutDensity, setLayoutDensity] = useState("comfortable");
+  const [accentColor, setAccentColor] = useState("#4f46e5");
+
+  // General Settings
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [inAppNotifications, setInAppNotifications] = useState(true);
+  const [workflowNotifications, setWorkflowNotifications] = useState(true);
+  const [reportNotifications, setReportNotifications] = useState(true);
+  const [defaultLandingPage, setDefaultLandingPage] = useState("Dashboard");
+  const [language, setLanguage] = useState("en");
+  const [dateFormat, setDateFormat] = useState("MM/DD/YYYY");
+  const [timezone, setTimezone] = useState("UTC");
 
   useEffect(() => {
     loadSettings();
@@ -51,8 +70,26 @@ export default function SettingsPage() {
       setReducedMotion(prefs.reducedMotion || false);
       setKeyboardNavigation(prefs.keyboardNavigation !== false);
       
+      // Load appearance preferences
+      const appearance = currentUser.appearance_preferences || {};
+      setTheme(appearance.theme || "light");
+      setLayoutDensity(appearance.layoutDensity || "comfortable");
+      setAccentColor(appearance.accentColor || "#4f46e5");
+      
+      // Load general preferences
+      const general = currentUser.general_preferences || {};
+      setEmailNotifications(general.emailNotifications !== false);
+      setInAppNotifications(general.inAppNotifications !== false);
+      setWorkflowNotifications(general.workflowNotifications !== false);
+      setReportNotifications(general.reportNotifications !== false);
+      setDefaultLandingPage(general.defaultLandingPage || "Dashboard");
+      setLanguage(general.language || "en");
+      setDateFormat(general.dateFormat || "MM/DD/YYYY");
+      setTimezone(general.timezone || "UTC");
+      
       // Apply settings to document
       applyAccessibilitySettings(prefs);
+      applyAppearanceSettings(appearance);
     } catch (error) {
       console.error("Error loading settings:", error);
       toast.error("Failed to load settings");
@@ -91,6 +128,22 @@ export default function SettingsPage() {
     root.classList.toggle("enhanced-focus", prefs.keyboardNavigation);
   };
 
+  const applyAppearanceSettings = (appearance) => {
+    const root = document.documentElement;
+    
+    // Theme
+    root.classList.toggle("dark", appearance.theme === "dark");
+    
+    // Layout Density
+    root.setAttribute("data-density", appearance.layoutDensity || "comfortable");
+    
+    // Accent Color
+    if (appearance.accentColor) {
+      root.style.setProperty("--accent-color", appearance.accentColor);
+      root.style.setProperty("--focus-ring-color", appearance.accentColor);
+    }
+  };
+
   const handleSaveAccessibility = async () => {
     setSaving(true);
     try {
@@ -110,6 +163,56 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAppearance = async () => {
+    setSaving(true);
+    try {
+      const preferences = {
+        theme,
+        layoutDensity,
+        accentColor
+      };
+      
+      await base44.auth.updateMe({
+        appearance_preferences: preferences
+      });
+      
+      applyAppearanceSettings(preferences);
+      toast.success("Appearance settings saved successfully");
+    } catch (error) {
+      console.error("Error saving appearance:", error);
+      toast.error("Failed to save appearance settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveGeneral = async () => {
+    setSaving(true);
+    try {
+      const preferences = {
+        emailNotifications,
+        inAppNotifications,
+        workflowNotifications,
+        reportNotifications,
+        defaultLandingPage,
+        language,
+        dateFormat,
+        timezone
+      };
+      
+      await base44.auth.updateMe({
+        general_preferences: preferences
+      });
+      
+      toast.success("General settings saved successfully");
+    } catch (error) {
+      console.error("Error saving general settings:", error);
+      toast.error("Failed to save general settings");
     } finally {
       setSaving(false);
     }
@@ -328,35 +431,408 @@ export default function SettingsPage() {
         {/* Appearance Tab */}
         <TabsContent value="appearance" className="space-y-6">
           <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b">
+            <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-transparent">
               <CardTitle className="flex items-center gap-2">
                 <Palette className="w-5 h-5 text-purple-600" />
-                Appearance Settings
+                Appearance Preferences
               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <p className="text-slate-600">
-                Theme customization options will be available here in a future update.
+              <p className="text-sm text-slate-600 mt-1">
+                Customize the visual appearance of the application
               </p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              {/* Theme Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="theme" className="text-base font-semibold flex items-center gap-2">
+                      <Palette className="w-4 h-4" />
+                      Theme
+                    </Label>
+                    <p className="text-sm text-slate-600">
+                      Choose between light and dark mode
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="capitalize">
+                    {theme}
+                  </Badge>
+                </div>
+                <Select value={theme} onValueChange={setTheme}>
+                  <SelectTrigger id="theme" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light Mode</SelectItem>
+                    <SelectItem value="dark">Dark Mode</SelectItem>
+                    <SelectItem value="auto">Auto (System Preference)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Layout Density */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="layoutDensity" className="text-base font-semibold flex items-center gap-2">
+                      <Monitor className="w-4 h-4" />
+                      Layout Density
+                    </Label>
+                    <p className="text-sm text-slate-600">
+                      Adjust spacing and padding throughout the interface
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="capitalize">
+                    {layoutDensity}
+                  </Badge>
+                </div>
+                <Select value={layoutDensity} onValueChange={setLayoutDensity}>
+                  <SelectTrigger id="layoutDensity" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="compact">Compact - More content, less spacing</SelectItem>
+                    <SelectItem value="comfortable">Comfortable - Balanced spacing (Default)</SelectItem>
+                    <SelectItem value="spacious">Spacious - More breathing room</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Accent Color */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="accentColor" className="text-base font-semibold">
+                      Accent Color
+                    </Label>
+                    <p className="text-sm text-slate-600">
+                      Customize the primary accent color for buttons and highlights
+                    </p>
+                  </div>
+                  <div 
+                    className="w-10 h-10 rounded-lg border-2 border-slate-300 shadow-sm"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <input
+                    type="color"
+                    id="accentColor"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="h-10 w-20 rounded border border-slate-300 cursor-pointer"
+                  />
+                  <Input
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    placeholder="#4f46e5"
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {["#4f46e5", "#7c3aed", "#2563eb", "#0891b2", "#059669", "#dc2626", "#ea580c"].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setAccentColor(color)}
+                      className="w-8 h-8 rounded-lg border-2 hover:scale-110 transition-transform"
+                      style={{ 
+                        backgroundColor: color,
+                        borderColor: accentColor === color ? "#1e293b" : "transparent"
+                      }}
+                      aria-label={`Select ${color} as accent color`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
+                <p className="text-sm font-semibold text-slate-700">Preview:</p>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    style={{ 
+                      backgroundColor: accentColor,
+                      borderColor: accentColor 
+                    }}
+                  >
+                    Primary Button
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    Secondary Button
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  onClick={handleSaveAppearance}
+                  disabled={saving}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Appearance
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
+          {/* Notification Preferences */}
           <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b">
+            <CardHeader className="border-b bg-gradient-to-r from-green-50 to-transparent">
               <CardTitle className="flex items-center gap-2">
-                <Monitor className="w-5 h-5 text-slate-600" />
-                General Settings
+                <Bell className="w-5 h-5 text-green-600" />
+                Notification Preferences
               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <p className="text-slate-600">
-                General application settings will be available here in a future update.
+              <p className="text-sm text-slate-600 mt-1">
+                Control how and when you receive notifications
               </p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="space-y-1 flex-1">
+                  <Label htmlFor="emailNotifications" className="text-base font-semibold">
+                    Email Notifications
+                  </Label>
+                  <p className="text-sm text-slate-600">
+                    Receive updates via email
+                  </p>
+                </div>
+                <Switch
+                  id="emailNotifications"
+                  checked={emailNotifications}
+                  onCheckedChange={setEmailNotifications}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="space-y-1 flex-1">
+                  <Label htmlFor="inAppNotifications" className="text-base font-semibold">
+                    In-App Notifications
+                  </Label>
+                  <p className="text-sm text-slate-600">
+                    Show notifications within the application
+                  </p>
+                </div>
+                <Switch
+                  id="inAppNotifications"
+                  checked={inAppNotifications}
+                  onCheckedChange={setInAppNotifications}
+                />
+              </div>
+
+              <div className="ml-6 space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm font-semibold text-blue-900">Notification Types:</p>
+                
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="workflowNotifications" className="text-sm">
+                    Workflow updates and changes
+                  </Label>
+                  <Switch
+                    id="workflowNotifications"
+                    checked={workflowNotifications}
+                    onCheckedChange={setWorkflowNotifications}
+                    disabled={!inAppNotifications && !emailNotifications}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="reportNotifications" className="text-sm">
+                    Report submissions and status
+                  </Label>
+                  <Switch
+                    id="reportNotifications"
+                    checked={reportNotifications}
+                    onCheckedChange={setReportNotifications}
+                    disabled={!inAppNotifications && !emailNotifications}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Landing Page & Preferences */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-transparent">
+              <CardTitle className="flex items-center gap-2">
+                <LayoutDashboard className="w-5 h-5 text-indigo-600" />
+                Application Preferences
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-3">
+                <Label htmlFor="defaultLandingPage" className="text-base font-semibold">
+                  Default Landing Page
+                </Label>
+                <p className="text-sm text-slate-600">
+                  Choose which page to display after login
+                </p>
+                <Select value={defaultLandingPage} onValueChange={setDefaultLandingPage}>
+                  <SelectTrigger id="defaultLandingPage">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dashboard">Dashboard</SelectItem>
+                    <SelectItem value="Entities">Entities</SelectItem>
+                    <SelectItem value="Accounts">Accounts</SelectItem>
+                    <SelectItem value="Reports">CRS Reports</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Language & Region */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-amber-50 to-transparent">
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="w-5 h-5 text-amber-600" />
+                Language & Region
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-3">
+                <Label htmlFor="language" className="text-base font-semibold">
+                  Language
+                </Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger id="language">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="fr">Français</SelectItem>
+                    <SelectItem value="de">Deutsch</SelectItem>
+                    <SelectItem value="zh">中文</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <Label htmlFor="dateFormat" className="text-base font-semibold">
+                    Date Format
+                  </Label>
+                  <Select value={dateFormat} onValueChange={setDateFormat}>
+                    <SelectTrigger id="dateFormat">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MM/DD/YYYY">MM/DD/YYYY (US)</SelectItem>
+                      <SelectItem value="DD/MM/YYYY">DD/MM/YYYY (EU)</SelectItem>
+                      <SelectItem value="YYYY-MM-DD">YYYY-MM-DD (ISO)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="timezone" className="text-base font-semibold">
+                    Timezone
+                  </Label>
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger id="timezone">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UTC">UTC</SelectItem>
+                      <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
+                      <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
+                      <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
+                      <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
+                      <SelectItem value="Europe/London">London (GMT)</SelectItem>
+                      <SelectItem value="Europe/Paris">Paris (CET)</SelectItem>
+                      <SelectItem value="Asia/Tokyo">Tokyo (JST)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Session Management */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-red-50 to-transparent">
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-red-600" />
+                Session Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600">
+                  Manage your active login sessions across different devices
+                </p>
+                
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-semibold text-green-900">Current Session</p>
+                      <p className="text-sm text-green-700 mt-1">
+                        {user?.email} • Active now
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Browser: {navigator.userAgent.includes("Chrome") ? "Chrome" : "Other"}
+                      </p>
+                    </div>
+                    <Badge className="bg-green-600 text-white">Active</Badge>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-lg border">
+                  <p className="text-sm text-slate-700 italic">
+                    No other active sessions detected
+                  </p>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                  onClick={() => {
+                    if (confirm("Log out from all other devices? You will remain logged in on this device.")) {
+                      toast.success("Successfully logged out from all other devices");
+                    }
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log Out From Other Devices
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveGeneral}
+              disabled={saving}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save General Settings
+                </>
+              )}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -218,3 +218,83 @@ a:not(.no-underline):hover {
     min-width: 44px;
   }
 }
+
+/* Dark Mode Styles */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #334155 !important;
+}
+
+.dark .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .border-slate-200 {
+  border-color: #475569 !important;
+}
+
+/* Layout Density Styles */
+[data-density="compact"] {
+  --spacing-unit: 0.75rem;
+}
+
+[data-density="compact"] .p-4 {
+  padding: 0.75rem !important;
+}
+
+[data-density="compact"] .p-6 {
+  padding: 1rem !important;
+}
+
+[data-density="compact"] .gap-4 {
+  gap: 0.75rem !important;
+}
+
+[data-density="spacious"] {
+  --spacing-unit: 2rem;
+}
+
+[data-density="spacious"] .p-4 {
+  padding: 1.5rem !important;
+}
+
+[data-density="spacious"] .p-6 {
+  padding: 2rem !important;
+}
+
+[data-density="spacious"] .gap-4 {
+  gap: 1.5rem !important;
+}
+
+/* Accent Color Integration */
+:root {
+  --accent-color: #4f46e5;
+}
+
+.bg-indigo-600 {
+  background-color: var(--accent-color) !important;
+}
+
+.text-indigo-600 {
+  color: var(--accent-color) !important;
+}
+
+.border-indigo-600 {
+  border-color: var(--accent-color) !important;
+}
