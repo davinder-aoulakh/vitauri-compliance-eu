@@ -496,9 +496,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   if (showSummary) {
     const finalNode = stepMap[completedPath[completedPath.length - 1]];
     
-    const isReportingFI = entityStatus === "reporting_fi" || 
-                          finalNode?.step_title?.toLowerCase().includes("reporting fi") || 
-                          finalNode?.help_text?.toLowerCase().includes("reporting fi");
+    // Only check actual entity status, not text content which can be misleading
+    const isReportingFI = entityStatus === "reporting_fi";
 
     return (
       <div className="space-y-6">
