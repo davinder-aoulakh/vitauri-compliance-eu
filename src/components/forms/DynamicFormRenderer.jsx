@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { XCircle, Save, Loader2 } from "lucide-react";
+import { XCircle, Save, Loader2, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaxResidencyManager from "../accounts/TaxResidencyManager";
@@ -453,6 +453,21 @@ export default function DynamicFormRenderer({
             {fieldErrors && (
               <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
             )}
+          </div>
+        );
+
+      case "info_section":
+        return (
+          <div key={field.field_name} className="col-span-full">
+            <Alert className="bg-blue-50 border-blue-200">
+              <Info className="w-5 h-5 text-blue-600" />
+              <AlertDescription>
+                <h3 className="font-semibold text-blue-900 mb-1">{field.display_label}</h3>
+                {field.help_text && (
+                  <p className="text-sm text-blue-800">{field.help_text}</p>
+                )}
+              </AlertDescription>
+            </Alert>
           </div>
         );
 
