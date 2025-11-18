@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { auditLog } from "@/components/utils/auditLogger";
+import { toast } from "sonner";
 import { 
   Plus, 
   Building2, 
@@ -112,27 +114,35 @@ export default function EntitiesPage() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Entity.create({ ...data, tenant_id: user.tenant_id }),
-    onSuccess: () => {
+    onSuccess: async (newEntity) => {
       queryClient.invalidateQueries(['entities']);
       setShowForm(false);
       setSelectedEntity(null);
+      toast.success("Entity created successfully");
+      await auditLog.entityCreated(newEntity.id, newEntity);
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Entity.update(id, data),
-    onSuccess: () => {
+    onSuccess: async (updatedEntity, variables) => {
+      const beforeData = entities.find(e => e.id === variables.id);
       queryClient.invalidateQueries(['entities']);
       setShowForm(false);
       setShowClassification(false);
       setSelectedEntity(null);
+      toast.success("Entity updated successfully");
+      await auditLog.entityUpdated(variables.id, beforeData, variables.data);
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Entity.delete(id),
-    onSuccess: () => {
+    onSuccess: async (_, entityId) => {
+      const deletedEntity = entities.find(e => e.id === entityId);
       queryClient.invalidateQueries(['entities']);
+      toast.success("Entity deleted successfully");
+      await auditLog.entityDeleted(entityId, deletedEntity);
     }
   });
 
