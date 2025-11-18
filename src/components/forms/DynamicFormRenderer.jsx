@@ -184,22 +184,45 @@ export default function DynamicFormRenderer({
   };
 
   const getOptionsForField = (fieldConfig) => {
-    const fieldName = fieldConfig.referenced_data_key || fieldConfig.field_name;
-    
-    // If referenced_data_key is explicitly set, use it directly (any entity)
+    // Check if referenced_data_key is set (format: "EntityName.field_name")
     if (fieldConfig.referenced_data_key) {
-      const options = referencedData
-        .filter(rd => rd.field_name === fieldName)
-        .sort((a, b) => a.order - b.order);
+      const parts = fieldConfig.referenced_data_key.split('.');
       
-      return options.map(opt => ({
-        value: opt.value,
-        label: opt.label,
-        description: opt.description
-      }));
+      if (parts.length === 2) {
+        // New format: "EntityName.field_name"
+        const [refEntityName, refFieldName] = parts;
+        const options = referencedData
+          .filter(rd => rd.entity_name === refEntityName && rd.field_name === refFieldName)
+          .sort((a, b) => a.order - b.order);
+        
+        return options.map(opt => ({
+          value: opt.value,
+          label: opt.label,
+          description: opt.description
+        }));
+      } else {
+        // Old format: just "field_name" - check current entity, then Global
+        const fieldName = fieldConfig.referenced_data_key;
+        let options = referencedData
+          .filter(rd => rd.field_name === fieldName && rd.entity_name === entityType)
+          .sort((a, b) => a.order - b.order);
+        
+        if (options.length === 0) {
+          options = referencedData
+            .filter(rd => rd.field_name === fieldName && rd.entity_name === "Global")
+            .sort((a, b) => a.order - b.order);
+        }
+        
+        return options.map(opt => ({
+          value: opt.value,
+          label: opt.label,
+          description: opt.description
+        }));
+      }
     }
     
-    // Otherwise, use legacy logic (entity-specific first, then global)
+    // Legacy fallback: use field_name to lookup (entity-specific first, then global)
+    const fieldName = fieldConfig.field_name;
     let options = referencedData
       .filter(rd => rd.field_name === fieldName && rd.entity_name === entityType)
       .sort((a, b) => a.order - b.order);
