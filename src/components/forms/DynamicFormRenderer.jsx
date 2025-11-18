@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { XCircle, Save, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DynamicFormRenderer({ 
   entityType, 
@@ -425,6 +426,24 @@ export default function DynamicFormRenderer({
     .sort((a, b) => a.order - b.order);
 
   const columns = config.layout_config?.columns || 2;
+  const sections = config.layout_config?.sections || [];
+  const hasSections = sections.length > 0;
+
+  // Group fields by section if sections are defined
+  const fieldsBySection = hasSections 
+    ? sections.reduce((acc, section) => {
+        acc[section.section_name] = visibleFields.filter(
+          f => f.section === section.section_name
+        );
+        return acc;
+      }, {})
+    : { main: visibleFields };
+
+  const renderFieldGrid = (fields) => (
+    <div className={`grid grid-cols-1 md:grid-cols-${columns} gap-4`}>
+      {fields.map(field => renderField(field))}
+    </div>
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -434,9 +453,28 @@ export default function DynamicFormRenderer({
         </AlertDescription>
       </Alert>
 
-      <div className={`grid grid-cols-1 md:grid-cols-${columns} gap-4`}>
-        {visibleFields.map(field => renderField(field))}
-      </div>
+      {hasSections ? (
+        <Tabs defaultValue={sections[0]?.section_name} className="space-y-4">
+          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))` }}>
+            {sections
+              .sort((a, b) => a.order - b.order)
+              .map(section => (
+                <TabsTrigger key={section.section_name} value={section.section_name}>
+                  {section.section_label}
+                </TabsTrigger>
+              ))}
+          </TabsList>
+          {sections
+            .sort((a, b) => a.order - b.order)
+            .map(section => (
+              <TabsContent key={section.section_name} value={section.section_name} className="space-y-4">
+                {renderFieldGrid(fieldsBySection[section.section_name] || [])}
+              </TabsContent>
+            ))}
+        </Tabs>
+      ) : (
+        renderFieldGrid(visibleFields)
+      )}
 
       {additionalFields && (
         <div className="border-t pt-6">
