@@ -1,21 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { XCircle, Save, Info } from "lucide-react";
+import { XCircle, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TaxResidencyManager from "./TaxResidencyManager";
 import DocumentUpload from "./DocumentUpload";
+import DynamicFormRenderer from "../forms/DynamicFormRenderer";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant }) {
   const [formData, setFormData] = useState(account || {
@@ -172,10 +163,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <>
       {/* Change Detection Alert */}
       {detectedChanges.length > 0 && (
-        <Alert className="bg-amber-50 border-amber-200">
+        <Alert className="bg-amber-50 border-amber-200 mb-4">
           <AlertTriangle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="text-sm text-amber-900">
             <strong>Significant changes detected:</strong>
@@ -192,14 +183,21 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       )}
 
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
-          <TabsTrigger value="address">Address</TabsTrigger>
           <TabsTrigger value="tax">Tax Information</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4 mt-4">
+          <DynamicFormRenderer
+            entityType="Account"
+            initialData={formData}
+            onSubmit={(data) => {
+              setFormData(data);
+            }}
+            onCancel={onCancel}
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="entity_id">Related Entity *</Label>
@@ -440,104 +438,3 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               )}
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="address" className="space-y-4 mt-4">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">Account Holder Address</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="street">Street Address</Label>
-                <Input
-                  id="street"
-                  value={formData.account_holder_address.street}
-                  onChange={(e) => handleAddressChange("street", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={formData.account_holder_address.city}
-                  onChange={(e) => handleAddressChange("city", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="state">State/Province</Label>
-                <Input
-                  id="state"
-                  value={formData.account_holder_address.state}
-                  onChange={(e) => handleAddressChange("state", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="postal_code">Postal Code</Label>
-                <Input
-                  id="postal_code"
-                  value={formData.account_holder_address.postal_code}
-                  onChange={(e) => handleAddressChange("postal_code", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={formData.account_holder_address.country}
-                  onChange={(e) => handleAddressChange("country", e.target.value)}
-                  placeholder="e.g., United States"
-                  className="mt-1.5"
-                />
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="tax" className="space-y-4 mt-4">
-          <TaxResidencyManager
-            residencies={formData.tax_residencies}
-            onChange={handleTaxResidenciesChange}
-            accountHolderType={formData.account_holder_type}
-          />
-        </TabsContent>
-
-        <TabsContent value="documents" className="space-y-4 mt-4">
-          <DocumentUpload
-            documentUrl={formData.self_certification_document_url}
-            onUploadComplete={handleDocumentUpload}
-            onDelete={handleDocumentDelete}
-            label="Self-Certification Document"
-            description="Upload the account holder's self-certification form (PDF, JPG, or PNG up to 10MB)"
-          />
-
-          {formData.self_certification_document_url && formData.self_certification_upload_date && (
-            <div className="text-xs text-slate-600 mt-2">
-              <p>
-                <strong>Uploaded:</strong> {new Date(formData.self_certification_upload_date).toLocaleString()}
-              </p>
-              {formData.self_certification_document_name && (
-                <p>
-                  <strong>Filename:</strong> {formData.self_certification_document_name}
-                </p>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <div className="flex justify-end gap-3 pt-6 border-t">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          <XCircle className="w-4 h-4 mr-2" />
-          Cancel
-        </Button>
-        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4 mr-2" />
-          {account ? "Update Account" : "Create Account"}
-        </Button>
-      </div>
-    </form>
-  );
-}
