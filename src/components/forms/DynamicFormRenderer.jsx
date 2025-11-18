@@ -184,6 +184,10 @@ export default function DynamicFormRenderer({
   };
 
   const getOptionsForField = (fieldConfig) => {
+    console.log("getOptionsForField called for:", fieldConfig.field_name);
+    console.log("referenced_data_key:", fieldConfig.referenced_data_key);
+    console.log("Available referencedData count:", referencedData.length);
+    
     // Check if referenced_data_key is set (format: "EntityName.field_name")
     if (fieldConfig.referenced_data_key) {
       const parts = fieldConfig.referenced_data_key.split('.');
@@ -191,9 +195,13 @@ export default function DynamicFormRenderer({
       if (parts.length === 2) {
         // New format: "EntityName.field_name"
         const [refEntityName, refFieldName] = parts;
+        console.log(`Looking for: entity_name=${refEntityName}, field_name=${refFieldName}`);
+        
         const options = referencedData
           .filter(rd => rd.entity_name === refEntityName && rd.field_name === refFieldName)
           .sort((a, b) => a.order - b.order);
+        
+        console.log(`Found ${options.length} options:`, options);
         
         return options.map(opt => ({
           value: opt.value,
