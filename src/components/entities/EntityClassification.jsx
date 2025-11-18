@@ -333,16 +333,13 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     const currentEntity = await base44.entities.Entity.list();
     const updatedEntity = currentEntity.find(e => e.id === entity.id);
 
-    // Determine classification based on final node
-    let classification = "non_reporting_fi";
-    let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
+    // Use entity's current state as source of truth (set by post-completion actions or defaults)
     let rfi_status = updatedEntity?.rfi_status || "non_reporting_fi";
     let fi_type = updatedEntity?.fi_type || "not_applicable";
 
     // Parse classification from node title/help text (only if not already set by actions)
     if (finalNode.step_title?.toLowerCase().includes("reporting fi") || 
         finalNode.help_text?.toLowerCase().includes("reporting fi")) {
-      classification = "reporting_fi";
       
       // Only set rfi_status if it wasn't already set by post-completion actions
       if (!updatedEntity?.rfi_status) {
@@ -371,6 +368,12 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         
         fi_type = fiTypeMap[fiTypeValue] || fiTypeLabelMap[fiTypeValue] || "not_applicable";
       }
+    }
+
+    // Set reason based on actual rfi_status
+    let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
+    if (rfi_status === "non_reporting_fi" && reason.toLowerCase().includes("reporting fi")) {
+      reason = "Result: Non-Reporting FI - " + reason;
     }
 
     const classificationData = {
@@ -472,7 +475,21 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   // Summary Screen
   if (showSummary) {
     const finalNode = stepMap[completedPath[completedPath.length - 1]];
-    const isReportingFI = finalNode?.step_title?.toLowerCase().includes("reporting fi") || 
+    
+    // Determine status from entity's actual rfi_status if available
+    const [entityStatus, setEntityStatus] = useState(null);
+    
+    useEffect(() => {
+      const fetchStatus = async () => {
+        const entities = await base44.entities.Entity.list();
+        const currentEntity = entities.find(e => e.id === entity.id);
+        setEntityStatus(currentEntity?.rfi_status);
+      };
+      fetchStatus();
+    }, []);
+    
+    const isReportingFI = entityStatus === "reporting_fi" || 
+                          finalNode?.step_title?.toLowerCase().includes("reporting fi") || 
                           finalNode?.help_text?.toLowerCase().includes("reporting fi");
 
     return (
@@ -541,7 +558,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           <CardHeader className="border-b bg-slate-50">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileCheck className="w-5 h-5" />
-              Complete Answer Summary
+              Complete Answer Summary ({Object.keys(answers).length} questions answered)
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -549,26 +566,39 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
               {completedPath.map((stepId, idx) => {
                 const step = stepMap[stepId];
                 const answer = answers[stepId];
+                
+                // Only show steps that have answers
                 if (!step || !answer) return null;
 
                 const answerLabel = step.options?.find(o => o.value === answer)?.label || answer;
+                const isLastStep = idx === completedPath.length - 1;
 
                 return (
-                  <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
-                      {idx + 1}
+                  <div key={stepId}>
+                    <div className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-900 mb-1">
+                          {step.step_title}
+                        </p>
+                        {step.question_text && (
+                          <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
+                        )}
+                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                          {answerLabel}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-900 mb-1">
-                        {step.step_title}
-                      </p>
-                      {step.question_text && (
-                        <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
-                      )}
-                      <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
-                        {answerLabel}
-                      </Badge>
-                    </div>
+                    {isLastStep && (
+                      <Alert className="mt-4 bg-green-50 border-green-200">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <AlertDescription className="text-sm text-green-900">
+                          <strong>Workflow concluded at this step</strong> - Classification determination complete
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                 );
               })}
