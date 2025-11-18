@@ -471,7 +471,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                                   {group.entityName}
                                 </div>
                                 {group.fields.map((fieldName) => (
-                                  <SelectItem key={`${group.entityName}-${fieldName}`} value={fieldName}>
+                                  <SelectItem key={`${group.entityName}.${fieldName}`} value={`${group.entityName}.${fieldName}`}>
                                     {fieldName}
                                   </SelectItem>
                                 ))}
@@ -481,7 +481,8 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                         </Select>
                         {field.referenced_data_key && (
                           <Badge variant="outline" className="mt-2 text-xs bg-green-50 text-green-700 border-green-200">
-                            Using: {field.referenced_data_key}
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Using: {field.referenced_data_key.split('.')[1] || field.referenced_data_key}
                           </Badge>
                         )}
                         <p className="text-xs text-slate-500 mt-1">
