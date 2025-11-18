@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, Map } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import WorkflowFlowChart from "../workflows/WorkflowFlowChart";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -26,6 +27,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [entityStatus, setEntityStatus] = useState(null);
+  const [showFlowChart, setShowFlowChart] = useState(false);
 
   // Fetch published entity classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -648,13 +650,34 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
             {workflow.workflow_name} v{workflow.version}
           </Badge>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium text-slate-700">
-            Step {currentStepIndex + 1}
-          </p>
-          <p className="text-xs text-slate-500">{progress}% Complete</p>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFlowChart(!showFlowChart)}
+            className="gap-2"
+          >
+            <Map className="w-4 h-4" />
+            {showFlowChart ? 'Hide' : 'Show'} Flowchart
+          </Button>
+          <div className="text-right">
+            <p className="text-sm font-medium text-slate-700">
+              Step {currentStepIndex + 1}
+            </p>
+            <p className="text-xs text-slate-500">{progress}% Complete</p>
+          </div>
         </div>
       </div>
+
+      {/* Flowchart Visualization */}
+      {showFlowChart && (
+        <WorkflowFlowChart
+          workflow={workflow}
+          currentStepId={currentNodeId}
+          completedSteps={history}
+          answers={answers}
+        />
+      )}
 
       {/* Enhanced Progress Bar */}
       <div className="space-y-2">
