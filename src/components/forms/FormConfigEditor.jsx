@@ -225,6 +225,11 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
       const currentFormData = JSON.parse(JSON.stringify(formData));
       
       console.log("Publishing form config:", currentFormData);
+      console.log("ALL FIELDS:", currentFormData.fields_config.map(f => ({
+        field_name: f.field_name,
+        field_type: f.field_type,
+        referenced_data_key: f.referenced_data_key || 'NOT SET'
+      })));
       console.log("Fields with referenced_data_key:", 
         currentFormData.fields_config.filter(f => f.referenced_data_key).map(f => ({
           field_name: f.field_name,
