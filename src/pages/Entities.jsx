@@ -16,10 +16,12 @@ import {
   Trash2,
   Eye,
   History,
-  FileText
+  FileText,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import moment from "moment";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -75,6 +77,20 @@ export default function EntitiesPage() {
         const tenants = await base44.entities.Tenant.list();
         const userTenant = tenants.find(t => t.id === currentUser.tenant_id);
         setTenant(userTenant);
+
+        // Add sample data for re-classification testing if not exists
+        const existingEntities = await base44.entities.Entity.filter({ tenant_id: currentUser.tenant_id });
+        if (!existingEntities.some(e => e.entity_name === "ACME Old Entity")) {
+          await base44.entities.Entity.create({
+            tenant_id: currentUser.tenant_id,
+            entity_name: "ACME Old Entity",
+            entity_type: "corporation",
+            country_of_incorporation: "United Kingdom",
+            rfi_status: "reporting_fi",
+            fi_type: "investment_entity",
+            classification_completed_date: "2024-01-15"
+          });
+        }
       }
     } catch (error) {
       console.error("Error loading user:", error);
@@ -311,6 +327,7 @@ export default function EntitiesPage() {
                       <TableHead>Country</TableHead>
                       <TableHead>CRS Status</TableHead>
                       <TableHead>FI Type</TableHead>
+                      <TableHead>Re-classify?</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -351,6 +368,16 @@ export default function EntitiesPage() {
                             <span className="text-sm capitalize text-slate-700">
                               {entity.fi_type.replace(/_/g, " ")}
                             </span>
+                          ) : (
+                            <span className="text-sm text-slate-400">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {entity.classification_completed_date &&
+                          moment().diff(moment(entity.classification_completed_date), 'months') >= 10 ? (
+                            <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200">
+                              <AlertCircle className="w-3 h-3 mr-1" /> Re-classify
+                            </Badge>
                           ) : (
                             <span className="text-sm text-slate-400">—</span>
                           )}
