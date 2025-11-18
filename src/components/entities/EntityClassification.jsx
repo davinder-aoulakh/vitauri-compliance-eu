@@ -25,6 +25,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [workflow, setWorkflow] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
+  const [entityStatus, setEntityStatus] = useState(null);
 
   // Fetch published entity classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -38,6 +39,17 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   useEffect(() => {
     loadUser();
   }, []);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      if (entity?.id && showSummary) {
+        const entities = await base44.entities.Entity.list();
+        const currentEntity = entities.find(e => e.id === entity.id);
+        setEntityStatus(currentEntity?.rfi_status);
+      }
+    };
+    fetchStatus();
+  }, [showSummary, entity?.id]);
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow) {
@@ -475,18 +487,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   // Summary Screen
   if (showSummary) {
     const finalNode = stepMap[completedPath[completedPath.length - 1]];
-    
-    // Determine status from entity's actual rfi_status if available
-    const [entityStatus, setEntityStatus] = useState(null);
-    
-    useEffect(() => {
-      const fetchStatus = async () => {
-        const entities = await base44.entities.Entity.list();
-        const currentEntity = entities.find(e => e.id === entity.id);
-        setEntityStatus(currentEntity?.rfi_status);
-      };
-      fetchStatus();
-    }, []);
     
     const isReportingFI = entityStatus === "reporting_fi" || 
                           finalNode?.step_title?.toLowerCase().includes("reporting fi") || 
