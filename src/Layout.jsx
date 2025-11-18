@@ -16,7 +16,8 @@ import {
   Shield,
   Menu,
   Wrench,
-  Database
+  Database,
+  Eye
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,7 +51,36 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     loadUserData();
+    applyAccessibilitySettings();
   }, []);
+
+  const applyAccessibilitySettings = () => {
+    // Apply saved accessibility preferences on load
+    const prefs = user?.accessibility_preferences || {};
+    const root = document.documentElement;
+    
+    if (prefs.fontSize) {
+      const fontSizeMap = {
+        small: "14px",
+        medium: "16px",
+        large: "18px",
+        xlarge: "20px"
+      };
+      root.style.setProperty("--base-font-size", fontSizeMap[prefs.fontSize]);
+    }
+    
+    if (prefs.highContrast) {
+      root.classList.add("high-contrast");
+    }
+    
+    if (prefs.reducedMotion) {
+      root.classList.add("reduced-motion");
+    }
+    
+    if (prefs.keyboardNavigation !== false) {
+      root.classList.add("enhanced-focus");
+    }
+  };
 
   const loadUserData = async () => {
     try {
@@ -119,7 +149,7 @@ export default function Layout({ children }) {
       title: "Settings",
       url: createPageUrl("Settings"),
       icon: Settings,
-      roles: ["tenant_admin"]
+      roles: ["tenant_admin", "tenant_user"]
     }
   ];
 
@@ -173,25 +203,32 @@ export default function Layout({ children }) {
 
   return (
     <SidebarProvider>
+      {/* Skip to main content link for keyboard navigation */}
+      <a href="#main-content" className="skip-to-main">
+        Skip to main content
+      </a>
+
       <style>{`
         :root {
           --tenant-primary: ${primaryColor};
           --tenant-font: ${fontFamily};
+          --focus-ring-color: ${primaryColor};
         }
         body {
           font-family: var(--tenant-font);
         }
       `}</style>
 
-      <div className="min-h-screen flex w-full bg-slate-50">
-        <Sidebar className="border-r border-slate-200 bg-white">
+      <div className="min-h-screen flex w-full bg-slate-50" role="application" aria-label="CRS Platform">
+        <Sidebar className="border-r border-slate-200 bg-white" role="navigation" aria-label="Main navigation">
           <SidebarHeader className="border-b border-slate-100 p-5">
             <div className="flex items-center gap-3">
               {tenant?.branding?.logo_url ? (
                 <img 
                   src={tenant.branding.logo_url} 
-                  alt={tenant.name}
+                  alt={`${tenant.name} logo`}
                   className="h-8 w-auto object-contain"
+                  role="img"
                 />
               ) : (
                 <div 
@@ -339,15 +376,18 @@ export default function Layout({ children }) {
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between lg:hidden">
-            <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors">
-              <Menu className="w-5 h-5" />
+        <main className="flex-1 flex flex-col overflow-hidden" id="main-content" role="main">
+          <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between lg:hidden" role="banner">
+            <SidebarTrigger 
+              className="hover:bg-slate-100 p-2 rounded-lg transition-colors"
+              aria-label="Toggle navigation menu"
+            >
+              <Menu className="w-5 h-5" aria-hidden="true" />
             </SidebarTrigger>
             <h1 className="text-lg font-semibold text-slate-900">
               {tenant?.short_name || "CRS Platform"}
             </h1>
-            <div className="w-10"></div>
+            <div className="w-10" aria-hidden="true"></div>
           </header>
 
           <div className="flex-1 overflow-auto">

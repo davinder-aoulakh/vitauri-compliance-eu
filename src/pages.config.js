@@ -9,6 +9,7 @@ import Accounts from './pages/Accounts';
 import Reports from './pages/Reports';
 import FormBuilder from './pages/FormBuilder';
 import ReferencedDataManagement from './pages/ReferencedDataManagement';
+import Settings from './pages/Settings';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +25,7 @@ export const PAGES = {
     "Reports": Reports,
     "FormBuilder": FormBuilder,
     "ReferencedDataManagement": ReferencedDataManagement,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
