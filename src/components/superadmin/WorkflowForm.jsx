@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { XCircle, Save, Plus, Trash2, MoveUp, MoveDown, Zap } from "lucide-react";
+import { XCircle, Save, Plus, Trash2, MoveUp, MoveDown, Zap, GitBranch } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import ConditionalLogicBuilder from "../workflows/ConditionalLogicBuilder";
 
 export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
   const [formData, setFormData] = useState(workflow || {
@@ -344,7 +345,7 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
                                 <Input
                                   value={option.next_step}
                                   onChange={(e) => updateOption(stepIndex, optionIndex, "next_step", e.target.value)}
-                                  placeholder="Next step ID or 'complete_rfi', 'complete_non_rfi', etc."
+                                  placeholder="Next step ID or leave empty if using conditional logic"
                                   size="sm"
                                 />
                               </div>
@@ -365,6 +366,28 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
                       </div>
                     </div>
                   )}
+
+                  {/* Advanced Conditional Logic */}
+                  <div className="border-t pt-4">
+                    <details className="group">
+                      <summary className="cursor-pointer list-none">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-purple-700 hover:text-purple-900">
+                          <GitBranch className="w-4 h-4" />
+                          <span>Advanced Conditional Logic (Multi-Condition Branching)</span>
+                          <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700">
+                            {step.conditional_logic?.conditions?.length || 0} conditions
+                          </Badge>
+                        </div>
+                      </summary>
+                      <div className="mt-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <ConditionalLogicBuilder
+                          conditionalLogic={step.conditional_logic}
+                          onChange={(logic) => updateStep(stepIndex, "conditional_logic", logic)}
+                          availableSteps={formData.steps.filter((_, i) => i !== stepIndex)}
+                        />
+                      </div>
+                    </details>
+                  </div>
 
                   {/* Post-Completion Actions */}
                   <div className="border-t pt-4">
