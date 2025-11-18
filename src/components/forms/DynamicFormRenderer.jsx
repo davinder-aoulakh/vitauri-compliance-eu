@@ -16,6 +16,8 @@ import {
 import { XCircle, Save, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TaxResidencyManager from "../accounts/TaxResidencyManager";
+import DocumentUpload from "../accounts/DocumentUpload";
 
 export default function DynamicFormRenderer({ 
   entityType, 
@@ -416,10 +418,48 @@ export default function DynamicFormRenderer({
           </div>
         );
 
+      case "tax_residency":
+        return (
+          <div key={field.field_name} className="col-span-full">
+            <TaxResidencyManager
+              residencies={value || []}
+              onChange={(residencies) => handleChange(field.field_name, residencies)}
+              accountHolderType={formData.account_holder_type || "individual"}
+            />
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+          </div>
+        );
+
+      case "file_upload":
+        return (
+          <div key={field.field_name} className="col-span-full">
+            <DocumentUpload
+              documentUrl={value || formData[`${field.field_name}_url`]}
+              onUploadComplete={(url, fileName) => {
+                handleChange(`${field.field_name}_url`, url);
+                handleChange(`${field.field_name}_name`, fileName);
+                handleChange(`${field.field_name}_upload_date`, new Date().toISOString());
+              }}
+              onDelete={() => {
+                handleChange(`${field.field_name}_url`, null);
+                handleChange(`${field.field_name}_name`, null);
+                handleChange(`${field.field_name}_upload_date`, null);
+              }}
+              label={field.display_label}
+              description={field.help_text || "Upload PDF, JPG, or PNG files (max 10MB)"}
+            />
+            {fieldErrors && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
+            )}
+          </div>
+        );
+
       default:
         return null;
-    }
-  };
+      }
+      };
 
   const visibleFields = config.fields_config
     .filter(f => f.is_visible)

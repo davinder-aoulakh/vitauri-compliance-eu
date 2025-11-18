@@ -668,6 +668,8 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                               <SelectItem value="boolean">Boolean</SelectItem>
                               <SelectItem value="textarea">Textarea</SelectItem>
                               <SelectItem value="email">Email</SelectItem>
+                              <SelectItem value="tax_residency">Tax Residency Manager</SelectItem>
+                              <SelectItem value="file_upload">File Upload</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
