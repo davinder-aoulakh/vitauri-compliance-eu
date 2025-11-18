@@ -28,15 +28,24 @@ import {
 } from "lucide-react";
 
 export default function FormConfigEditor({ config, onSave, onCancel }) {
-  const [formData, setFormData] = useState(config || {
-    form_name: "",
-    entity_type: "Account",
-    version: "1.0",
-    fields_config: [],
-    layout_config: { columns: 2, sections: [] }
-  });
+  const [formData, setFormData] = useState(
+    config ? JSON.parse(JSON.stringify(config)) : {
+      form_name: "",
+      entity_type: "Account",
+      version: "1.0",
+      fields_config: [],
+      layout_config: { columns: 2, sections: [] }
+    }
+  );
   const [saving, setSaving] = useState(false);
   const [expandedField, setExpandedField] = useState(null);
+
+  // Update formData when config changes
+  useEffect(() => {
+    if (config) {
+      setFormData(JSON.parse(JSON.stringify(config)));
+    }
+  }, [config]);
 
   // Fetch all available referenced data lists
   const { data: referencedData = [] } = useQuery({
