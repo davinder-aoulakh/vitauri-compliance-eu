@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Eye, Info, Upload, FileText, Globe } from "lucide-react";
 
 export default function FormPreview({ config }) {
   if (!config || !config.fields_config) {
@@ -21,6 +23,8 @@ export default function FormPreview({ config }) {
 
   const visibleFields = config.fields_config.filter(f => f.is_visible);
   const columns = config.layout_config?.columns || 2;
+  const sections = config.layout_config?.sections || [];
+  const hasSections = sections.length > 0;
 
   const renderField = (field) => {
     const labelText = field.display_label + (field.is_required ? ' *' : '');
@@ -46,6 +50,9 @@ export default function FormPreview({ config }) {
           <div key={field.field_name} className="flex items-center gap-2">
             <Checkbox disabled />
             <Label>{labelText}</Label>
+            {field.help_text && (
+              <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
+            )}
           </div>
         );
 
@@ -71,6 +78,61 @@ export default function FormPreview({ config }) {
           </div>
         );
 
+      case 'tax_residency':
+        return (
+          <div key={field.field_name} className="col-span-full">
+            <Card className="border-slate-200">
+              <CardHeader className="border-b bg-slate-50">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-indigo-600" />
+                  {labelText}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Info className="w-4 h-4 text-blue-600" />
+                  <AlertDescription className="text-sm text-blue-900">
+                    {field.help_text || "Tax residency information will be managed here"}
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 'file_upload':
+        return (
+          <div key={field.field_name} className="col-span-full">
+            <Label>{labelText}</Label>
+            <div className="border-2 border-dashed rounded-lg p-6 text-center mt-2 border-slate-300 bg-slate-50">
+              <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mx-auto mb-3">
+                <Upload className="w-6 h-6 text-indigo-600" />
+              </div>
+              <p className="text-sm font-medium text-slate-700 mb-1">
+                {field.help_text || "File upload area"}
+              </p>
+              <p className="text-xs text-slate-500">
+                PDF, JPG, PNG up to 10MB
+              </p>
+            </div>
+          </div>
+        );
+
+      case 'info_section':
+        return (
+          <div key={field.field_name} className="col-span-full">
+            <Alert className="bg-blue-50 border-blue-200">
+              <Info className="w-5 h-5 text-blue-600" />
+              <AlertDescription>
+                <h3 className="font-semibold text-blue-900 mb-1">{field.display_label}</h3>
+                {field.help_text && (
+                  <p className="text-sm text-blue-800">{field.help_text}</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          </div>
+        );
+
       default:
         return (
           <div key={field.field_name}>
@@ -88,6 +150,28 @@ export default function FormPreview({ config }) {
         );
     }
   };
+
+  const fieldsBySection = hasSections 
+    ? sections.reduce((acc, section) => {
+        acc[section.section_name] = visibleFields.filter(
+          f => f.section === section.section_name
+        );
+        return acc;
+      }, {})
+    : { main: visibleFields };
+
+  const renderFieldGrid = (fields) => (
+    <div 
+      className="grid gap-4"
+      style={{ 
+        gridTemplateColumns: `repeat(${columns}, 1fr)` 
+      }}
+    >
+      {fields
+        .sort((a, b) => a.order - b.order)
+        .map(renderField)}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -107,16 +191,28 @@ export default function FormPreview({ config }) {
 
       <Card className="border-0 shadow-lg">
         <CardContent className="p-6">
-          <div 
-            className="grid gap-4"
-            style={{ 
-              gridTemplateColumns: `repeat(${columns}, 1fr)` 
-            }}
-          >
-            {visibleFields
-              .sort((a, b) => a.order - b.order)
-              .map(renderField)}
-          </div>
+          {hasSections ? (
+            <Tabs defaultValue={sections[0]?.section_name} className="space-y-4">
+              <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))` }}>
+                {sections
+                  .sort((a, b) => a.order - b.order)
+                  .map(section => (
+                    <TabsTrigger key={section.section_name} value={section.section_name}>
+                      {section.section_label}
+                    </TabsTrigger>
+                  ))}
+              </TabsList>
+              {sections
+                .sort((a, b) => a.order - b.order)
+                .map(section => (
+                  <TabsContent key={section.section_name} value={section.section_name} className="space-y-4">
+                    {renderFieldGrid(fieldsBySection[section.section_name] || [])}
+                  </TabsContent>
+                ))}
+            </Tabs>
+          ) : (
+            renderFieldGrid(visibleFields)
+          )}
         </CardContent>
       </Card>
 
