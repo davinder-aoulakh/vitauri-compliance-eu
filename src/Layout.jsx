@@ -135,6 +135,12 @@ export default function Layout({ children }) {
       url: createPageUrl("Reports"),
       icon: FileText,
       roles: ["tenant_admin", "tenant_user"]
+    },
+    {
+      title: "Activity Log",
+      url: createPageUrl("Activity"),
+      icon: Eye,
+      roles: ["tenant_admin"]
     }
   ];
 

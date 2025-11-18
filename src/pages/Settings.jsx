@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { auditLog } from "@/utils/auditLogger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,6 +149,7 @@ export default function SettingsPage() {
   const handleSaveAccessibility = async () => {
     setSaving(true);
     try {
+      const before = user?.accessibility_preferences || {};
       const preferences = {
         fontSize,
         highContrast,
@@ -160,6 +162,7 @@ export default function SettingsPage() {
       });
       
       applyAccessibilitySettings(preferences);
+      await auditLog.settingsChanged('accessibility', before, preferences);
       toast.success("Accessibility settings saved successfully");
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -172,6 +175,7 @@ export default function SettingsPage() {
   const handleSaveAppearance = async () => {
     setSaving(true);
     try {
+      const before = user?.appearance_preferences || {};
       const preferences = {
         theme,
         layoutDensity,
@@ -183,6 +187,7 @@ export default function SettingsPage() {
       });
       
       applyAppearanceSettings(preferences);
+      await auditLog.settingsChanged('appearance', before, preferences);
       toast.success("Appearance settings saved successfully");
     } catch (error) {
       console.error("Error saving appearance:", error);
@@ -195,6 +200,7 @@ export default function SettingsPage() {
   const handleSaveGeneral = async () => {
     setSaving(true);
     try {
+      const before = user?.general_preferences || {};
       const preferences = {
         emailNotifications,
         inAppNotifications,
@@ -210,6 +216,7 @@ export default function SettingsPage() {
         general_preferences: preferences
       });
       
+      await auditLog.settingsChanged('general', before, preferences);
       toast.success("General settings saved successfully");
     } catch (error) {
       console.error("Error saving general settings:", error);
