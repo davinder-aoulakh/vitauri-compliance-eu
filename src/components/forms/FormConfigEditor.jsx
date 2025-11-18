@@ -187,10 +187,16 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Make a deep copy to ensure we have the latest state
+      const saveData = JSON.parse(JSON.stringify(formData));
+      
+      console.log("Saving form config:", saveData);
+      console.log("Fields config:", saveData.fields_config);
+      
       if (config?.id) {
-        await base44.entities.FormConfiguration.update(config.id, formData);
+        await base44.entities.FormConfiguration.update(config.id, saveData);
       } else {
-        await base44.entities.FormConfiguration.create(formData);
+        await base44.entities.FormConfiguration.create(saveData);
       }
       onSave();
     } catch (error) {
@@ -215,9 +221,20 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     
     setSaving(true);
     try {
+      // Make a deep copy to ensure we have the absolute latest state
+      const currentFormData = JSON.parse(JSON.stringify(formData));
+      
+      console.log("Publishing form config:", currentFormData);
+      console.log("Fields with referenced_data_key:", 
+        currentFormData.fields_config.filter(f => f.referenced_data_key).map(f => ({
+          field_name: f.field_name,
+          referenced_data_key: f.referenced_data_key
+        }))
+      );
+      
       // First, fetch all published configs for this entity type
       const publishedConfigs = await base44.entities.FormConfiguration.filter({
-        entity_type: formData.entity_type,
+        entity_type: currentFormData.entity_type,
         is_published: true
       });
       
@@ -232,16 +249,20 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
       
       // Save or update current config with published flag
       const publishData = {
-        ...formData,
+        ...currentFormData,
         is_published: true,
         published_date: new Date().toISOString(),
         published_by: (await base44.auth.me()).email
       };
       
+      console.log("Final publishData being saved:", publishData);
+      
       if (config?.id) {
         await base44.entities.FormConfiguration.update(config.id, publishData);
+        console.log("Updated existing config:", config.id);
       } else {
-        await base44.entities.FormConfiguration.create(publishData);
+        const created = await base44.entities.FormConfiguration.create(publishData);
+        console.log("Created new config:", created);
       }
       
       onSave();
