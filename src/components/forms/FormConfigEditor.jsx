@@ -24,7 +24,9 @@ import {
   ArrowDown,
   Info,
   Settings,
-  CheckCircle2
+  CheckCircle2,
+  Columns,
+  LayoutGrid
 } from "lucide-react";
 
 export default function FormConfigEditor({ config, onSave, onCancel }) {
@@ -39,6 +41,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
   );
   const [saving, setSaving] = useState(false);
   const [expandedField, setExpandedField] = useState(null);
+  const [showLayoutSettings, setShowLayoutSettings] = useState(false);
 
   // Update formData when config changes
   useEffect(() => {
@@ -99,6 +102,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     : baseEntityFields;
 
   const handleAddField = () => {
+    const firstSection = formData.layout_config?.sections?.[0]?.section_name || "main";
     const newField = {
       field_name: "custom_field_" + Date.now(),
       display_label: "New Field",
@@ -107,7 +111,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
       is_required: false,
       is_custom: true,
       order: formData.fields_config.length,
-      section: "basic"
+      section: firstSection
     };
 
     setFormData({
@@ -116,7 +120,76 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
     });
   };
 
+  const handleAddSection = () => {
+    const newSection = {
+      section_name: "section_" + Date.now(),
+      section_label: "New Section",
+      order: formData.layout_config.sections.length,
+      collapsible: false
+    };
+
+    setFormData({
+      ...formData,
+      layout_config: {
+        ...formData.layout_config,
+        sections: [...formData.layout_config.sections, newSection]
+      }
+    });
+  };
+
+  const handleUpdateSection = (index, field, value) => {
+    const updatedSections = [...formData.layout_config.sections];
+    updatedSections[index] = { ...updatedSections[index], [field]: value };
+    setFormData({
+      ...formData,
+      layout_config: {
+        ...formData.layout_config,
+        sections: updatedSections
+      }
+    });
+  };
+
+  const handleRemoveSection = (index) => {
+    const sectionToRemove = formData.layout_config.sections[index];
+    const updatedSections = formData.layout_config.sections.filter((_, i) => i !== index);
+    
+    // Reset fields that were in this section to the first remaining section or "main"
+    const defaultSection = updatedSections[0]?.section_name || "main";
+    const updatedFields = formData.fields_config.map(field => 
+      field.section === sectionToRemove.section_name 
+        ? { ...field, section: defaultSection }
+        : field
+    );
+
+    setFormData({
+      ...formData,
+      fields_config: updatedFields,
+      layout_config: {
+        ...formData.layout_config,
+        sections: updatedSections
+      }
+    });
+  };
+
+  const handleMoveSection = (index, direction) => {
+    const updatedSections = [...formData.layout_config.sections];
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (newIndex >= 0 && newIndex < updatedSections.length) {
+      [updatedSections[index], updatedSections[newIndex]] = [updatedSections[newIndex], updatedSections[index]];
+      updatedSections.forEach((section, i) => section.order = i);
+      setFormData({
+        ...formData,
+        layout_config: {
+          ...formData.layout_config,
+          sections: updatedSections
+        }
+      });
+    }
+  };
+
   const handleAddBaseField = (baseField) => {
+    const firstSection = formData.layout_config?.sections?.[0]?.section_name || "main";
     const newField = {
       field_name: baseField.name,
       display_label: baseField.label,
@@ -125,7 +198,7 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
       is_required: false,
       is_custom: false,
       order: formData.fields_config.length,
-      section: "basic"
+      section: firstSection
     };
 
     setFormData({
@@ -338,6 +411,145 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
         </CardContent>
       </Card>
 
+      {/* Layout Configuration */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="border-b bg-slate-50 flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4" />
+            Layout & Sections
+          </CardTitle>
+          <Button
+            type="button"
+            onClick={() => setShowLayoutSettings(!showLayoutSettings)}
+            variant="ghost"
+            size="sm"
+          >
+            {showLayoutSettings ? 'Hide' : 'Show'}
+          </Button>
+        </CardHeader>
+        {showLayoutSettings && (
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <Label>Form Columns</Label>
+              <Select
+                value={String(formData.layout_config?.columns || 2)}
+                onValueChange={(value) => setFormData({
+                  ...formData,
+                  layout_config: { ...formData.layout_config, columns: parseInt(value) }
+                })}
+              >
+                <SelectTrigger className="mt-1.5 w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 Column</SelectItem>
+                  <SelectItem value="2">2 Columns</SelectItem>
+                  <SelectItem value="3">3 Columns</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-base font-semibold">Sections (Tabs)</Label>
+                <Button
+                  type="button"
+                  onClick={handleAddSection}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Section
+                </Button>
+              </div>
+
+              {formData.layout_config?.sections?.length === 0 ? (
+                <Alert className="bg-slate-50">
+                  <AlertDescription className="text-sm text-slate-600">
+                    No sections defined. Add sections to organize fields into tabs.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-2">
+                  {formData.layout_config?.sections?.map((section, index) => (
+                    <Card key={index} className="border">
+                      <CardContent className="p-3">
+                        <div className="grid grid-cols-12 gap-3 items-center">
+                          {/* Order Controls */}
+                          <div className="col-span-1 flex flex-col gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleMoveSection(index, 'up')}
+                              disabled={index === 0}
+                              className="h-6 w-6"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleMoveSection(index, 'down')}
+                              disabled={index === formData.layout_config.sections.length - 1}
+                              className="h-6 w-6"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </Button>
+                          </div>
+
+                          {/* Section Config */}
+                          <div className="col-span-10 grid grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-xs">Section ID</Label>
+                              <Input
+                                value={section.section_name}
+                                onChange={(e) => handleUpdateSection(index, 'section_name', e.target.value)}
+                                className="mt-1 h-8"
+                                size="sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tab Label</Label>
+                              <Input
+                                value={section.section_label}
+                                onChange={(e) => handleUpdateSection(index, 'section_label', e.target.value)}
+                                className="mt-1 h-8"
+                                size="sm"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={section.collapsible}
+                                  onCheckedChange={(checked) => handleUpdateSection(index, 'collapsible', checked)}
+                                />
+                                <Label className="text-xs">Collapsible</Label>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Delete */}
+                          <div className="col-span-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveSection(index)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Add Fields */}
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b bg-slate-50">
@@ -476,6 +688,31 @@ export default function FormConfigEditor({ config, onSave, onCancel }) {
                             <Label className="text-xs">Required</Label>
                           </div>
                         </div>
+                        </div>
+
+                        {/* Section Assignment */}
+                        {formData.layout_config?.sections?.length > 0 && (
+                        <div className="col-span-11 col-start-2 mt-2">
+                          <Label className="text-xs">Section/Tab</Label>
+                          <Select
+                            value={field.section || formData.layout_config.sections[0]?.section_name}
+                            onValueChange={(value) => handleUpdateField(index, 'section', value)}
+                          >
+                            <SelectTrigger className="mt-1 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {formData.layout_config.sections.map((section) => (
+                                <SelectItem key={section.section_name} value={section.section_name}>
+                                  {section.section_label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        )}
+
+                        <div className="col-span-11 col-start-2">
                       </div>
 
                       {/* Delete */}
