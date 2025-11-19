@@ -380,6 +380,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     queryKey: ['account-schema'],
     queryFn: async () => {
       const schema = await base44.entities.Account.schema();
+      console.log('Account Schema:', schema);
       return schema;
     },
     staleTime: Infinity
@@ -389,15 +390,33 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     queryKey: ['entity-schema'],
     queryFn: async () => {
       const schema = await base44.entities.Entity.schema();
+      console.log('Entity Schema:', schema);
       return schema;
     },
     staleTime: Infinity
   });
 
   // Generate field options
-  const accountFields = accountSchema ? generateFieldPaths(accountSchema) : [];
-  const entityFields = entitySchema ? generateFieldPaths(entitySchema) : [];
+  const accountFields = React.useMemo(() => {
+    if (!accountSchema) return [];
+    const fields = generateFieldPaths(accountSchema);
+    console.log('Generated Account Fields:', fields);
+    return fields;
+  }, [accountSchema]);
+
+  const entityFields = React.useMemo(() => {
+    if (!entitySchema) return [];
+    const fields = generateFieldPaths(entitySchema);
+    console.log('Generated Entity Fields:', fields);
+    return fields;
+  }, [entitySchema]);
+
   const isLoadingFields = accountLoading || entityLoading;
+
+  React.useEffect(() => {
+    console.log('Account Fields Count:', accountFields.length);
+    console.log('Entity Fields Count:', entityFields.length);
+  }, [accountFields, entityFields]);
 
   const handleChange = (field, value) => {
     setEditedStep({ ...editedStep, [field]: value });
