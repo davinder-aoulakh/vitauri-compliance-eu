@@ -52,6 +52,8 @@ import WorkflowAnalyticsDashboard from "../components/workflows/WorkflowAnalytic
 import JurisdictionOverrides from "../components/workflows/JurisdictionOverrides"; // New import
 import FormulaBuilder from "../components/workflows/FormulaBuilder"; // New import
 import IntegrationManager from "../components/workflows/IntegrationManager"; // New import
+import WorkflowTriggerConfig from "../components/workflows/WorkflowTriggerConfig";
+import { Zap } from "lucide-react";
 
 export default function WorkflowBuilder() {
   const [user, setUser] = useState(null);
@@ -68,6 +70,7 @@ export default function WorkflowBuilder() {
   // const [showIntegrationManager, setShowIntegrationManager] = useState(false); // Not used for dialogs, rendered in Tabs
   const [selectedWorkflowForVersions, setSelectedWorkflowForVersions] = useState(null);
   const [activeTab, setActiveTab] = useState("workflows"); // New state
+  const [showTriggerConfig, setShowTriggerConfig] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -498,6 +501,13 @@ export default function WorkflowBuilder() {
                                     <Globe className="w-4 h-4 mr-2" />
                                     Jurisdictions
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    setSelectedWorkflow(workflow);
+                                    setShowTriggerConfig(true);
+                                  }}>
+                                    <Zap className="w-4 h-4 mr-2" />
+                                    Auto-Trigger Config
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleEdit(workflow)}>
                                     <Edit className="w-4 h-4 mr-2" />
                                     Edit Details {/* Renamed */}
@@ -679,6 +689,27 @@ export default function WorkflowBuilder() {
             console.log("Formula saved:", formula);
             setShowFormulaBuilder(false);
           }} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Workflow Auto-Trigger Configuration Dialog */}
+      <Dialog open={showTriggerConfig} onOpenChange={setShowTriggerConfig}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Auto-Trigger Configuration: {selectedWorkflow?.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <WorkflowTriggerConfig
+            triggerConditions={selectedWorkflow?.trigger_conditions}
+            onUpdate={async (triggerConfig) => {
+              if (selectedWorkflow) {
+                await base44.entities.Workflow.update(selectedWorkflow.id, {
+                  trigger_conditions: triggerConfig
+                });
+                queryClient.invalidateQueries(['workflows']);
+                setShowTriggerConfig(false);
+              }
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>
