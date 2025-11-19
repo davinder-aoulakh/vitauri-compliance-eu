@@ -23,6 +23,56 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const [results, setResults] = useState(null);
   const [errors, setErrors] = useState([]);
 
+  // Field mapping: label -> technical name
+  const labelToField = {
+    "Entity ID": "entity_id",
+    "Account Number": "account_number",
+    "Account Type": "account_type",
+    "Account Holder Type": "account_holder_type",
+    "Account Holder Name": "account_holder_name",
+    "Date of Birth": "date_of_birth",
+    "Place of Birth": "place_of_birth",
+    "Pre-existing Account": "is_pre_existing",
+    "Account Holder Alive": "account_holder_is_alive",
+    "Account Closed During Period": "account_closed_during_period",
+    "Street Address": "street",
+    "City": "city",
+    "State/Province": "state",
+    "Postal Code": "postal_code",
+    "Country": "country",
+    "Current Street Address": "current_street",
+    "Current City": "current_city",
+    "Current State/Province": "current_state",
+    "Current Postal Code": "current_postal_code",
+    "Current Country": "current_country",
+    "Country of Residence": "country_of_residence",
+    "Email Address": "current_email",
+    "Phone Number": "current_phone",
+    "Year-end Cash Value": "year_end_cash_value",
+    "Year-end Value Currency": "year_end_cash_value_currency",
+    "Gross Payments": "gross_payments",
+    "Gross Payments Currency": "gross_payments_currency",
+    "Reporting Year": "reporting_year",
+    "Deceased During Period": "account_holder_deceased_during_period",
+    "Death Certificate Requested": "death_certificate_requested",
+    "Death Cert. Requested Date": "death_certificate_requested_date",
+    "Death Certificate Received": "death_certificate_received",
+    "Death Cert. Received Date": "death_certificate_received_date",
+    "Will/Inheritance Requested": "will_or_inheritance_requested",
+    "Will/Inheritance Requested Date": "will_or_inheritance_requested_date",
+    "Will/Inheritance Received": "will_or_inheritance_received",
+    "Will/Inheritance Received Date": "will_or_inheritance_received_date",
+    "Legacy Settled": "legacy_of_deceased_settled",
+    "Legacy Settlement Date": "legacy_settlement_date",
+    "Managed by Fiduciary Trust": "entity_managed_by_fiduciary_trust",
+    "Managed by Asset Manager": "entity_managed_by_asset_manager",
+    "Income >50% from Financial Assets": "gross_income_from_financial_assets",
+    "Tax Residency 1 - Country": "tax_residency_1_country",
+    "Tax Residency 1 - TIN": "tax_residency_1_tin",
+    "Tax Residency 2 - Country": "tax_residency_2_country",
+    "Tax Residency 2 - TIN": "tax_residency_2_tin"
+  };
+
   const downloadTemplate = () => {
     // Create header row with user-friendly labels
     const headers = [
@@ -81,7 +131,9 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
       const values = lines[i].split(',');
       const row = {};
       headers.forEach((header, index) => {
-        row[header] = values[index]?.trim() || '';
+        // Map user-friendly label to technical field name
+        const fieldName = labelToField[header] || header;
+        row[fieldName] = values[index]?.trim() || '';
       });
       rows.push(row);
     }
@@ -333,30 +385,30 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
           <div className="space-y-2 text-xs text-slate-600">
             <p><strong>Required Fields:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>entity_id (must match an existing entity)</li>
-              <li>account_number (unique identifier)</li>
-              <li>account_type (depository, custodial, equity_debt_interest, cash_value_insurance, annuity)</li>
-              <li>account_holder_type (individual or entity)</li>
-              <li>account_holder_name</li>
-              <li>date_of_birth (required for individual accounts)</li>
-              <li>country (in address section)</li>
+              <li>Entity ID (must match an existing entity)</li>
+              <li>Account Number (unique identifier)</li>
+              <li>Account Type (depository, custodial, equity_debt_interest, cash_value_insurance, annuity)</li>
+              <li>Account Holder Type (individual or entity)</li>
+              <li>Account Holder Name</li>
+              <li>Date of Birth (required for individual accounts)</li>
+              <li>Country (in address section)</li>
             </ul>
             
             <p className="mt-3"><strong>CRS Fields:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>is_pre_existing (true/false - whether account opened before Jan 1, 2018)</li>
-              <li>account_holder_is_alive (true/false - for individual accounts only)</li>
+              <li>Pre-existing Account (true/false - whether account opened before Jan 1, 2018)</li>
+              <li>Account Holder Alive (true/false - for individual accounts only)</li>
             </ul>
             
             <p className="mt-3"><strong>Optional Fields:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Tax residencies (up to 5 per account)</li>
-              <li>Address details (street, city, state, postal_code)</li>
-              <li>Current address (current_street, current_city, current_state, current_postal_code, current_country)</li>
-              <li>place_of_birth, country_of_residence, current_email, current_phone</li>
-              <li>year_end_cash_value, year_end_cash_value_currency</li>
-              <li>gross_payments, gross_payments_currency</li>
-              <li>reporting_year</li>
+              <li>Tax residencies (up to 2 per account)</li>
+              <li>Address details (Street Address, City, State/Province, Postal Code)</li>
+              <li>Current address (Current Street, City, State, Postal Code, Country)</li>
+              <li>Place of Birth, Country of Residence, Email Address, Phone Number</li>
+              <li>Year-end Cash Value, Year-end Value Currency</li>
+              <li>Gross Payments, Gross Payments Currency</li>
+              <li>Reporting Year</li>
               <li>CRS Classification fields (deceased information, entity management)</li>
             </ul>
           </div>
