@@ -488,7 +488,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     return fields;
   }, [entitySchema]);
 
-  const isLoadingFields = accountLoading || entityLoading;
+
 
   React.useEffect(() => {
     console.log('Account Fields Count:', accountFields.length);
