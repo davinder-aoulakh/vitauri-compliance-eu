@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { auditLog } from "../utils/auditLogger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -141,25 +142,22 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
     return rows;
   };
 
-  const validateRow = (row, index, existingAccountNumbers, validEntityIds) => {
+  const validateRow = (row, index, validEntityIds) => {
     const errors = [];
     const rowNum = index + 2;
-    
+
     // Required field validation
     if (!row.entity_id) errors.push(`Row ${rowNum}: Missing Entity ID`);
     if (!row.account_number) errors.push(`Row ${rowNum}: Missing Account Number`);
     if (!row.account_holder_type) errors.push(`Row ${rowNum}: Missing Account Holder Type`);
     if (!row.account_holder_name) errors.push(`Row ${rowNum}: Missing Account Holder Name`);
-    
+
     // Referential integrity - validate entity_id exists
     if (row.entity_id && !validEntityIds.includes(row.entity_id)) {
       errors.push(`Row ${rowNum}: Entity ID "${row.entity_id}" does not exist`);
     }
-    
-    // Uniqueness constraint - check account_number
-    if (row.account_number && existingAccountNumbers.includes(row.account_number)) {
-      errors.push(`Row ${rowNum}: Account Number "${row.account_number}" already exists`);
-    }
+
+    // Note: Removed uniqueness check - duplicates will trigger updates instead of errors
     
     // Lookup data validation - account_type
     const validAccountTypes = ['depository', 'custodial', 'equity_debt_interest', 'cash_value_insurance', 'annuity'];
@@ -426,7 +424,7 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
       // Validate all rows first
       const allErrors = [];
       rows.forEach((row, index) => {
-        const rowErrors = validateRow(row, index, existingAccountNumbers, validEntityIds);
+        const rowErrors = validateRow(row, index, validEntityIds);
         allErrors.push(...rowErrors);
       });
 
@@ -436,26 +434,64 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
         return;
       }
 
-      // Import accounts with auto-classification
+      // Import/Update accounts with auto-classification
       const imported = [];
+      const updated = [];
       const failed = [];
+
+      // Create a map of existing accounts by account_number for quick lookup
+      const existingAccountsMap = new Map(
+        existingAccounts.map(acc => [acc.account_number, acc])
+      );
 
       for (let i = 0; i < rows.length; i++) {
         try {
           const accountData = convertRowToAccount(rows[i]);
-          
+
           // Apply auto-classification
           const autoClassification = autoClassifyAccount(accountData, tenant.jurisdiction);
           Object.assign(accountData, autoClassification);
 
-          const account = await base44.entities.Account.create(accountData);
-          imported.push({
-            row: i + 2,
-            account_number: accountData.account_number,
-            account_holder_name: accountData.account_holder_name,
-            auto_classified: autoClassification.reportability_status !== 'pending_review',
-            status: autoClassification.reportability_status
-          });
+          // Check if account already exists
+          const existingAccount = existingAccountsMap.get(accountData.account_number);
+
+          if (existingAccount) {
+            // Update existing account
+            const changes = {};
+            Object.keys(accountData).forEach(key => {
+              if (JSON.stringify(existingAccount[key]) !== JSON.stringify(accountData[key])) {
+                changes[key] = {
+                  old: existingAccount[key],
+                  new: accountData[key]
+                };
+              }
+            });
+
+            await base44.entities.Account.update(existingAccount.id, accountData);
+
+            // Log the update
+            await auditLog.accountUpdated(existingAccount.id, changes);
+
+            updated.push({
+              row: i + 2,
+              account_number: accountData.account_number,
+              account_holder_name: accountData.account_holder_name,
+              auto_classified: autoClassification.reportability_status !== 'pending_review',
+              status: autoClassification.reportability_status,
+              changes: Object.keys(changes).length
+            });
+          } else {
+            // Create new account
+            const account = await base44.entities.Account.create(accountData);
+
+            imported.push({
+              row: i + 2,
+              account_number: accountData.account_number,
+              account_holder_name: accountData.account_holder_name,
+              auto_classified: autoClassification.reportability_status !== 'pending_review',
+              status: autoClassification.reportability_status
+            });
+          }
         } catch (error) {
           failed.push({
             row: i + 2,
@@ -470,8 +506,10 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
       setResults({
         total: rows.length,
         imported: imported.length,
+        updated: updated.length,
         failed: failed.length,
         importedAccounts: imported,
+        updatedAccounts: updated,
         failedAccounts: failed,
         autoClassified: imported.filter(a => a.auto_classified).length
       });
@@ -654,14 +692,18 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             {/* Summary Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
                 <p className="text-2xl font-bold text-slate-900">{results.total}</p>
                 <p className="text-xs text-slate-600">Total Rows</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-2xl font-bold text-green-600">{results.imported}</p>
-                <p className="text-xs text-green-700">Imported</p>
+                <p className="text-xs text-green-700">Created</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-amber-50 border border-amber-200">
+                <p className="text-2xl font-bold text-amber-600">{results.updated}</p>
+                <p className="text-xs text-amber-700">Updated</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-2xl font-bold text-blue-600">{results.autoClassified}</p>
@@ -685,12 +727,12 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
               </Alert>
             )}
 
-            {/* Imported Accounts */}
+            {/* Created Accounts */}
             {results.importedAccounts.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
-                  Successfully Imported ({results.imported})
+                  Successfully Created ({results.imported})
                 </h4>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {results.importedAccounts.map((acc, idx) => (
@@ -706,6 +748,33 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
                         )}
                       </div>
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
+                        {acc.account_number}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Updated Accounts */}
+            {results.updatedAccounts?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Successfully Updated ({results.updated})
+                </h4>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {results.updatedAccounts.map((acc, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm p-2 rounded bg-amber-50">
+                      <div className="flex-1">
+                        <span className="text-amber-900 font-medium">
+                          Row {acc.row}: {acc.account_holder_name}
+                        </span>
+                        <span className="ml-2 text-xs text-slate-600">
+                          ({acc.changes} field{acc.changes !== 1 ? 's' : ''} changed)
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
                         {acc.account_number}
                       </Badge>
                     </div>
@@ -740,10 +809,9 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
             <Alert className="bg-blue-50 border-blue-200">
               <Info className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-sm text-blue-900">
-                <strong>Next Steps:</strong> {results.autoClassified > 0 
-                  ? `${results.autoClassified} accounts were auto-classified. Review remaining ${results.imported - results.autoClassified} accounts for manual classification.`
-                  : 'Navigate to the Accounts page to classify imported accounts for reportability.'
-                }
+                <strong>Summary:</strong> {results.imported} created, {results.updated} updated. 
+                {results.autoClassified > 0 && ` ${results.autoClassified} accounts were auto-classified.`}
+                {results.updated > 0 && ` All updates have been logged in the audit trail.`}
               </AlertDescription>
             </Alert>
 
