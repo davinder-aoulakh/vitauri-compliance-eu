@@ -24,7 +24,24 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const [errors, setErrors] = useState([]);
 
   const downloadTemplate = () => {
-    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,place_of_birth,is_pre_existing,account_holder_is_alive,account_closed_during_period,street,city,state,postal_code,country,current_street,current_city,current_state,current_postal_code,current_country,country_of_residence,current_email,current_phone,year_end_cash_value,year_end_cash_value_currency,gross_payments,gross_payments_currency,reporting_year,account_holder_deceased_during_period,death_certificate_requested,death_certificate_requested_date,death_certificate_received,death_certificate_received_date,will_or_inheritance_requested,will_or_inheritance_requested_date,will_or_inheritance_received,will_or_inheritance_received_date,legacy_of_deceased_settled,legacy_settlement_date,entity_managed_by_fiduciary_trust,entity_managed_by_asset_manager,gross_income_from_financial_assets,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
+    // Create header row with user-friendly labels
+    const headers = [
+      "Entity ID", "Account Number", "Account Type", "Account Holder Type", "Account Holder Name",
+      "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive", "Account Closed During Period",
+      "Street Address", "City", "State/Province", "Postal Code", "Country",
+      "Current Street Address", "Current City", "Current State/Province", "Current Postal Code", "Current Country",
+      "Country of Residence", "Email Address", "Phone Number",
+      "Year-end Cash Value", "Year-end Value Currency", "Gross Payments", "Gross Payments Currency", "Reporting Year",
+      "Deceased During Period", "Death Certificate Requested", "Death Cert. Requested Date",
+      "Death Certificate Received", "Death Cert. Received Date",
+      "Will/Inheritance Requested", "Will/Inheritance Requested Date",
+      "Will/Inheritance Received", "Will/Inheritance Received Date",
+      "Legacy Settled", "Legacy Settlement Date",
+      "Managed by Fiduciary Trust", "Managed by Asset Manager", "Income >50% from Financial Assets",
+      "Tax Residency 1 - Country", "Tax Residency 1 - TIN", "Tax Residency 2 - Country", "Tax Residency 2 - TIN"
+    ];
+    
+    const template = `${headers.join(',')}
 ${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,
 ${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890
 ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,false,789 Corporate Blvd,Tokyo,,100-0001,Japan,789 Corporate Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,,,,,,,,,,,false,false,true,Japan,1234567890,,`;
