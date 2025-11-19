@@ -141,27 +141,134 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
     return rows;
   };
 
-  const validateRow = (row, index) => {
+  const validateRow = (row, index, existingAccountNumbers, validEntityIds) => {
     const errors = [];
+    const rowNum = index + 2;
     
-    if (!row.entity_id) errors.push(`Row ${index + 2}: Missing entity_id`);
-    if (!row.account_number) errors.push(`Row ${index + 2}: Missing account_number`);
-    if (!row.account_holder_type) errors.push(`Row ${index + 2}: Missing account_holder_type`);
-    if (!row.account_holder_name) errors.push(`Row ${index + 2}: Missing account_holder_name`);
+    // Required field validation
+    if (!row.entity_id) errors.push(`Row ${rowNum}: Missing Entity ID`);
+    if (!row.account_number) errors.push(`Row ${rowNum}: Missing Account Number`);
+    if (!row.account_holder_type) errors.push(`Row ${rowNum}: Missing Account Holder Type`);
+    if (!row.account_holder_name) errors.push(`Row ${rowNum}: Missing Account Holder Name`);
     
-    if (row.account_holder_type === 'individual' && !row.date_of_birth) {
-      errors.push(`Row ${index + 2}: Individual accounts require date_of_birth`);
+    // Referential integrity - validate entity_id exists
+    if (row.entity_id && !validEntityIds.includes(row.entity_id)) {
+      errors.push(`Row ${rowNum}: Entity ID "${row.entity_id}" does not exist`);
     }
     
-    if (!['depository', 'custodial', 'equity_debt_interest', 'cash_value_insurance', 'annuity'].includes(row.account_type)) {
-      errors.push(`Row ${index + 2}: Invalid account_type "${row.account_type}"`);
+    // Uniqueness constraint - check account_number
+    if (row.account_number && existingAccountNumbers.includes(row.account_number)) {
+      errors.push(`Row ${rowNum}: Account Number "${row.account_number}" already exists`);
     }
     
-    if (!['individual', 'entity'].includes(row.account_holder_type)) {
-      errors.push(`Row ${index + 2}: Invalid account_holder_type "${row.account_holder_type}"`);
+    // Lookup data validation - account_type
+    const validAccountTypes = ['depository', 'custodial', 'equity_debt_interest', 'cash_value_insurance', 'annuity'];
+    if (row.account_type && !validAccountTypes.includes(row.account_type)) {
+      errors.push(`Row ${rowNum}: Invalid Account Type "${row.account_type}". Must be one of: ${validAccountTypes.join(', ')}`);
     }
+    
+    // Lookup data validation - account_holder_type
+    const validHolderTypes = ['individual', 'entity'];
+    if (row.account_holder_type && !validHolderTypes.includes(row.account_holder_type)) {
+      errors.push(`Row ${rowNum}: Invalid Account Holder Type "${row.account_holder_type}". Must be: individual or entity`);
+    }
+    
+    // Conditional validation - individual accounts
+    if (row.account_holder_type === 'individual') {
+      if (!row.date_of_birth) {
+        errors.push(`Row ${rowNum}: Date of Birth is required for individual accounts`);
+      }
+      
+      // Validate account_holder_is_alive for individuals
+      if (row.account_holder_is_alive && !['true', 'false', '1', '0', 'yes', 'no', ''].includes(row.account_holder_is_alive.toLowerCase())) {
+        errors.push(`Row ${rowNum}: Account Holder Alive must be true/false`);
+      }
+      
+      // Conditional: if deceased, validate deceased-related fields
+      const isDeceased = row.account_holder_is_alive === 'false' || row.account_holder_is_alive === '0' || row.account_holder_is_alive === 'no';
+      if (isDeceased) {
+        if (row.death_certificate_requested === 'true' || row.death_certificate_requested === '1' || row.death_certificate_requested === 'yes') {
+          if (row.death_certificate_requested_date && !isValidDate(row.death_certificate_requested_date)) {
+            errors.push(`Row ${rowNum}: Invalid Death Certificate Requested Date format. Use YYYY-MM-DD`);
+          }
+        }
+        if (row.death_certificate_received === 'true' || row.death_certificate_received === '1' || row.death_certificate_received === 'yes') {
+          if (row.death_certificate_received_date && !isValidDate(row.death_certificate_received_date)) {
+            errors.push(`Row ${rowNum}: Invalid Death Certificate Received Date format. Use YYYY-MM-DD`);
+          }
+        }
+      }
+    }
+    
+    // Date format validation
+    if (row.date_of_birth && !isValidDate(row.date_of_birth)) {
+      errors.push(`Row ${rowNum}: Invalid Date of Birth format. Use YYYY-MM-DD`);
+    }
+    
+    if (row.date_of_birth && isValidDate(row.date_of_birth)) {
+      const birthDate = new Date(row.date_of_birth);
+      const today = new Date();
+      if (birthDate > today) {
+        errors.push(`Row ${rowNum}: Date of Birth cannot be in the future`);
+      }
+      const age = today.getFullYear() - birthDate.getFullYear();
+      if (age < 0 || age > 150) {
+        errors.push(`Row ${rowNum}: Date of Birth results in invalid age (${age} years)`);
+      }
+    }
+    
+    // Email format validation
+    if (row.current_email && !isValidEmail(row.current_email)) {
+      errors.push(`Row ${rowNum}: Invalid Email Address format`);
+    }
+    
+    // Number validation
+    if (row.year_end_cash_value && isNaN(parseFloat(row.year_end_cash_value))) {
+      errors.push(`Row ${rowNum}: Year-end Cash Value must be a number`);
+    }
+    if (row.gross_payments && isNaN(parseFloat(row.gross_payments))) {
+      errors.push(`Row ${rowNum}: Gross Payments must be a number`);
+    }
+    
+    // Currency validation
+    if (row.year_end_cash_value && parseFloat(row.year_end_cash_value) < 0) {
+      errors.push(`Row ${rowNum}: Year-end Cash Value cannot be negative`);
+    }
+    if (row.gross_payments && parseFloat(row.gross_payments) < 0) {
+      errors.push(`Row ${rowNum}: Gross Payments cannot be negative`);
+    }
+    
+    // Boolean field validation
+    const boolFields = [
+      'is_pre_existing', 'account_closed_during_period', 
+      'account_holder_deceased_during_period', 'death_certificate_requested',
+      'death_certificate_received', 'will_or_inheritance_requested',
+      'will_or_inheritance_received', 'legacy_of_deceased_settled',
+      'entity_managed_by_fiduciary_trust', 'entity_managed_by_asset_manager',
+      'gross_income_from_financial_assets'
+    ];
+    
+    boolFields.forEach(field => {
+      if (row[field] && !['true', 'false', '1', '0', 'yes', 'no', ''].includes(String(row[field]).toLowerCase())) {
+        errors.push(`Row ${rowNum}: ${field.replace(/_/g, ' ')} must be true/false/yes/no`);
+      }
+    });
 
     return errors;
+  };
+  
+  const isValidDate = (dateString) => {
+    if (!dateString) return false;
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+  };
+  
+  const isValidEmail = (email) => {
+    if (!email) return false;
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
   };
 
   const convertRowToAccount = (row) => {
@@ -297,10 +404,29 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
         throw new Error('No data found in CSV file');
       }
 
+      // Fetch existing accounts for uniqueness check
+      const existingAccounts = await base44.entities.Account.filter({ tenant_id: tenant.id });
+      const existingAccountNumbers = existingAccounts.map(a => a.account_number);
+      
+      // Get valid entity IDs for referential integrity
+      const validEntityIds = entities.map(e => e.id);
+      
+      // Check for duplicate account numbers within the CSV
+      const csvAccountNumbers = rows.map(r => r.account_number).filter(Boolean);
+      const duplicatesInCsv = csvAccountNumbers.filter((num, index) => 
+        csvAccountNumbers.indexOf(num) !== index
+      );
+      
+      if (duplicatesInCsv.length > 0) {
+        setErrors([`Duplicate Account Numbers found in CSV: ${[...new Set(duplicatesInCsv)].join(', ')}`]);
+        setImporting(false);
+        return;
+      }
+
       // Validate all rows first
       const allErrors = [];
       rows.forEach((row, index) => {
-        const rowErrors = validateRow(row, index);
+        const rowErrors = validateRow(row, index, existingAccountNumbers, validEntityIds);
         allErrors.push(...rowErrors);
       });
 
