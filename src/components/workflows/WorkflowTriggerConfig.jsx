@@ -24,6 +24,33 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     priority: 0
   });
 
+  // Available fields for Account and Entity
+  const accountFields = [
+    { value: 'account_holder_is_alive', label: 'Account Holder Is Alive' },
+    { value: 'account_holder_type', label: 'Account Holder Type' },
+    { value: 'account_type', label: 'Account Type' },
+    { value: 'year_end_cash_value', label: 'Year-end Cash Value' },
+    { value: 'gross_payments', label: 'Gross Payments' },
+    { value: 'reportability_status', label: 'Reportability Status' },
+    { value: 'entity_classification', label: 'Entity Classification' },
+    { value: 'is_pre_existing', label: 'Pre-existing Account' },
+    { value: 'account_closed_during_period', label: 'Account Closed During Period' },
+    { value: 'self_certification_obtained', label: 'Self Certification Obtained' },
+    { value: 'country_of_residence', label: 'Country of Residence' },
+    { value: 'account_holder_address.country', label: 'Account Holder Address Country' },
+    { value: 'status', label: 'Status' }
+  ];
+
+  const entityFields = [
+    { value: 'entity_type', label: 'Entity Type' },
+    { value: 'rfi_status', label: 'RFI Status' },
+    { value: 'fi_type', label: 'FI Type' },
+    { value: 'country_of_incorporation', label: 'Country of Incorporation' },
+    { value: 'status', label: 'Status' }
+  ];
+
+  const availableFields = config.trigger_event?.includes('account') ? accountFields : entityFields;
+
   const handleAddCondition = () => {
     setConfig({
       ...config,
@@ -173,12 +200,21 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                         <CardContent className="p-3">
                           <div className="grid grid-cols-12 gap-3 items-center">
                             <div className="col-span-3">
-                              <Input
-                                placeholder="Field name (e.g., account_holder_is_alive)"
+                              <Select
                                 value={condition.field}
-                                onChange={(e) => handleUpdateCondition(index, 'field', e.target.value)}
-                                size="sm"
-                              />
+                                onValueChange={(value) => handleUpdateCondition(index, 'field', value)}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="Select field..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableFields.map((field) => (
+                                    <SelectItem key={field.value} value={field.value}>
+                                      {field.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="col-span-3">
                               <Select
@@ -272,6 +308,9 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                                 onChange={(e) => handleUpdateComputedCondition(index, 'expression', e.target.value)}
                                 size="sm"
                               />
+                              <p className="text-xs text-slate-500 mt-1">
+                                Available fields: {availableFields.filter(f => f.value.includes('value') || f.value.includes('payments')).map(f => f.value).join(', ')}
+                              </p>
                             </div>
                             <div className="col-span-2">
                               <Select
