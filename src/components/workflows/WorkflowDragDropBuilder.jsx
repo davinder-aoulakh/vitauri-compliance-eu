@@ -649,6 +649,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <SelectItem value="text_input">Text Input</SelectItem>
             <SelectItem value="number_input">Number Input</SelectItem>
             <SelectItem value="date_input">Date Input</SelectItem>
+            <SelectItem value="file_upload">File Upload</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,6 +26,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [workflow, setWorkflow] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   // Fetch published account classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -158,6 +159,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (currentNode.question_type === "single_choice" || 
         currentNode.question_type === "yes_no" ||
         currentNode.question_type === "multiple_choice") {
+      if (!selectedValue) return;
+      newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "file_upload") {
+      // For file uploads, selectedValue should contain the upload metadata
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
     }
@@ -311,12 +316,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
+    // Check if there's a file upload answer for self-certification
+    const fileUploadAnswer = Object.values(cleanedAnswers).find(ans => 
+      ans && typeof ans === 'object' && ans.file_url
+    );
+
     const classificationData = {
       classification_answers: cleanedAnswers,
       reportability_status: reportabilityStatus,
       reportability_reason: reason,
-      self_certification_obtained: finalNode.step_title?.toLowerCase().includes("self-certification obtained") || false
+      self_certification_obtained: finalNode.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
+
+    // If file was uploaded during workflow, update account with file details
+    if (fileUploadAnswer) {
+      classificationData.self_certification_document_url = fileUploadAnswer.file_url;
+      classificationData.self_certification_document_name = fileUploadAnswer.file_name;
+      classificationData.self_certification_upload_date = fileUploadAnswer.upload_date;
+      classificationData.self_certification_uploaded_by_email = user?.email;
+      classificationData.self_certification_obtained = true;
+    }
 
     // Save classification history record
     try {
@@ -402,6 +421,87 @@ export default function AccountClassification({ account, onComplete, onCancel })
             {currentNode.help_text || "Classification complete!"}
           </AlertDescription>
         </Alert>
+      );
+    }
+
+    if (currentNode.question_type === "file_upload") {
+      const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingFile(true);
+        try {
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          
+          const uploadMetadata = {
+            file_url,
+            file_name: file.name,
+            upload_date: new Date().toISOString(),
+            uploaded_by: user?.email
+          };
+          
+          setSelectedValue(uploadMetadata);
+        } catch (error) {
+          console.error("Error uploading file:", error);
+          alert("Failed to upload file. Please try again.");
+        } finally {
+          setUploadingFile(false);
+        }
+      };
+
+      return (
+        <div className="space-y-3">
+          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-indigo-400 hover:bg-indigo-50/30 transition-all">
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="file-upload"
+              accept=".pdf,.jpg,.jpeg,.png"
+              disabled={uploadingFile}
+            />
+            <label htmlFor="file-upload" className="cursor-pointer">
+              {uploadingFile ? (
+                <>
+                  <Loader2 className="w-12 h-12 mx-auto mb-4 text-indigo-600 animate-spin" />
+                  <p className="text-sm font-medium text-slate-700 mb-1">Uploading...</p>
+                </>
+              ) : selectedValue?.file_url ? (
+                <>
+                  <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-green-600" />
+                  <p className="text-sm font-medium text-green-900 mb-1">
+                    {selectedValue.file_name}
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Uploaded successfully
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('file-upload').click();
+                    }}
+                  >
+                    Upload Different File
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                  <p className="text-sm font-medium text-slate-700 mb-1">
+                    Click to upload self-certification document
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    PDF, JPG, or PNG (Max 10MB)
+                  </p>
+                </>
+              )}
+            </label>
+          </div>
+        </div>
       );
     }
 

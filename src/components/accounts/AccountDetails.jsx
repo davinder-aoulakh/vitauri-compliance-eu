@@ -225,6 +225,11 @@ export default function AccountDetails({ account, entity }) {
                       Uploaded: {new Date(account.self_certification_upload_date).toLocaleString()}
                     </p>
                   )}
+                  {account.self_certification_uploaded_by_email && (
+                    <p className="text-xs text-green-700">
+                      By: {account.self_certification_uploaded_by_email}
+                    </p>
+                  )}
                   {account.self_certification_date && (
                     <p className="text-xs text-green-700">
                       Certified: {new Date(account.self_certification_date).toLocaleDateString()}
