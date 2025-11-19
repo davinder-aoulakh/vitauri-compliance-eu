@@ -337,7 +337,13 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
 
 // Step Editor Component
 function StepEditor({ step, allSteps, onUpdate, onClose }) {
-  const [editedStep, setEditedStep] = useState({ ...step });
+  const [editedStep, setEditedStep] = useState({ 
+    ...step,
+    conditional_logic: step.conditional_logic || { conditions: [], next_step: "", else_step: "" }
+  });
+  const [showAdvancedLogic, setShowAdvancedLogic] = useState(
+    step.conditional_logic?.conditions?.length > 0
+  );
 
   const handleChange = (field, value) => {
     setEditedStep({ ...editedStep, [field]: value });
@@ -390,6 +396,53 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     const newActions = [...editedStep.post_completion_actions];
     newActions[index] = { ...newActions[index], [field]: value };
     setEditedStep({ ...editedStep, post_completion_actions: newActions });
+  };
+
+  const handleAddCondition = () => {
+    const newConditions = [
+      ...(editedStep.conditional_logic?.conditions || []),
+      { field: "", operator: "=", value: "", logic_operator: "AND" }
+    ];
+    setEditedStep({
+      ...editedStep,
+      conditional_logic: {
+        ...editedStep.conditional_logic,
+        conditions: newConditions
+      }
+    });
+  };
+
+  const handleRemoveCondition = (index) => {
+    const newConditions = editedStep.conditional_logic.conditions.filter((_, i) => i !== index);
+    setEditedStep({
+      ...editedStep,
+      conditional_logic: {
+        ...editedStep.conditional_logic,
+        conditions: newConditions
+      }
+    });
+  };
+
+  const handleConditionChange = (index, field, value) => {
+    const newConditions = [...editedStep.conditional_logic.conditions];
+    newConditions[index] = { ...newConditions[index], [field]: value };
+    setEditedStep({
+      ...editedStep,
+      conditional_logic: {
+        ...editedStep.conditional_logic,
+        conditions: newConditions
+      }
+    });
+  };
+
+  const handleConditionalLogicChange = (field, value) => {
+    setEditedStep({
+      ...editedStep,
+      conditional_logic: {
+        ...editedStep.conditional_logic,
+        [field]: value
+      }
+    });
   };
 
   const handleSave = () => {
@@ -516,6 +569,219 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
           </div>
         </div>
       )}
+
+      {/* Advanced Conditional Logic */}
+      <div className="border-t pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <Label className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-purple-600" />
+            Advanced Conditional Logic (Multi-Condition Branching)
+          </Label>
+          <Badge variant="outline" className="text-xs">
+            {editedStep.conditional_logic?.conditions?.length || 0} conditions
+          </Badge>
+        </div>
+
+        {!showAdvancedLogic ? (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setShowAdvancedLogic(true)}
+            className="w-full"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Enable Advanced Conditional Logic
+          </Button>
+        ) : (
+          <div className="space-y-4 p-4 border-2 border-purple-100 rounded-lg bg-purple-50/30">
+            <div className="flex items-start gap-2 text-xs text-slate-600 bg-white p-3 rounded border border-purple-200">
+              <HelpCircle className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+              <p>
+                <strong>Conditional Logic:</strong> Define complex branching rules based on multiple conditions. 
+                Use AND/OR operators to combine conditions. If all conditions match, go to "Then" step, 
+                otherwise go to "Else" step.
+              </p>
+            </div>
+
+            {/* Conditions */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-sm">Conditions ({editedStep.conditional_logic?.conditions?.length || 0})</Label>
+                <Button size="sm" onClick={handleAddCondition} variant="outline">
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Condition
+                </Button>
+              </div>
+
+              {(!editedStep.conditional_logic?.conditions || editedStep.conditional_logic.conditions.length === 0) ? (
+                <p className="text-xs text-slate-500 italic p-3 bg-white rounded border">
+                  No conditions defined. Add a condition to enable multi-condition branching.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {editedStep.conditional_logic.conditions.map((condition, index) => (
+                    <div key={index} className="p-3 bg-white border-2 border-purple-200 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                          Condition {index + 1}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveCondition(index)}
+                          className="h-6 w-6 text-red-600"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-xs">Step ID / Field</Label>
+                          <Select
+                            value={condition.field}
+                            onValueChange={(value) => handleConditionChange(index, "field", value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue placeholder="Select step..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allSteps
+                                .filter(s => s.step_id !== editedStep.step_id)
+                                .map(s => (
+                                  <SelectItem key={s.step_id} value={s.step_id}>
+                                    {s.step_title}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs">Operator</Label>
+                          <Select
+                            value={condition.operator}
+                            onValueChange={(value) => handleConditionChange(index, "operator", value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="=">Equals (=)</SelectItem>
+                              <SelectItem value="!=">Not Equals (≠)</SelectItem>
+                              <SelectItem value=">">Greater Than (&gt;)</SelectItem>
+                              <SelectItem value="<">Less Than (&lt;)</SelectItem>
+                              <SelectItem value=">=">Greater or Equal (≥)</SelectItem>
+                              <SelectItem value="<=">Less or Equal (≤)</SelectItem>
+                              <SelectItem value="contains">Contains</SelectItem>
+                              <SelectItem value="in">In</SelectItem>
+                              <SelectItem value="not_in">Not In</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs">Value</Label>
+                          <Input
+                            value={condition.value}
+                            onChange={(e) => handleConditionChange(index, "value", e.target.value)}
+                            placeholder="value or values"
+                            className="h-8 text-xs mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      {index < editedStep.conditional_logic.conditions.length - 1 && (
+                        <div>
+                          <Label className="text-xs">Logic Operator (with next condition)</Label>
+                          <Select
+                            value={condition.logic_operator || "AND"}
+                            onValueChange={(value) => handleConditionChange(index, "logic_operator", value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AND">AND</SelectItem>
+                              <SelectItem value="OR">OR</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Then/Else Steps */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-green-700 font-semibold">
+                  Then (conditions match)
+                </Label>
+                <Select
+                  value={editedStep.conditional_logic?.next_step || ""}
+                  onValueChange={(value) => handleConditionalLogicChange("next_step", value)}
+                >
+                  <SelectTrigger className="h-8 text-xs mt-1 border-green-300 focus:ring-green-500">
+                    <SelectValue placeholder="Select next step..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None (End)</SelectItem>
+                    {allSteps
+                      .filter(s => s.step_id !== editedStep.step_id)
+                      .map(s => (
+                        <SelectItem key={s.step_id} value={s.step_id}>
+                          {s.step_title}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-red-700 font-semibold">
+                  Else (conditions don't match)
+                </Label>
+                <Select
+                  value={editedStep.conditional_logic?.else_step || ""}
+                  onValueChange={(value) => handleConditionalLogicChange("else_step", value)}
+                >
+                  <SelectTrigger className="h-8 text-xs mt-1 border-red-300 focus:ring-red-500">
+                    <SelectValue placeholder="Select next step..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None (End)</SelectItem>
+                    {allSteps
+                      .filter(s => s.step_id !== editedStep.step_id)
+                      .map(s => (
+                        <SelectItem key={s.step_id} value={s.step_id}>
+                          {s.step_title}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => {
+                setShowAdvancedLogic(false);
+                setEditedStep({
+                  ...editedStep,
+                  conditional_logic: { conditions: [], next_step: "", else_step: "" }
+                });
+              }}
+              className="w-full text-xs text-slate-600"
+            >
+              Disable Advanced Logic
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Post-Completion Actions */}
       <div className="border-t pt-4">
