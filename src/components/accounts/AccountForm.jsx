@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TaxResidencyManager from "./TaxResidencyManager";
 import DocumentUpload from "./DocumentUpload";
 import CountrySelect from "../shared/CountrySelect";
+import CurrencySelect from "../shared/CurrencySelect";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant }) {
   const [formData, setFormData] = useState(account || {
@@ -467,21 +468,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
               <div>
                 <Label htmlFor="year_end_cash_value_currency">Year-end Value Currency</Label>
-                <Select
-                  value={formData.year_end_cash_value_currency}
-                  onValueChange={(value) => handleChange("year_end_cash_value_currency", value)}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="CHF">CHF</SelectItem>
-                    <SelectItem value="JPY">JPY</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-1.5">
+                  <CurrencySelect
+                    value={formData.year_end_cash_value_currency}
+                    onValueChange={(value) => handleChange("year_end_cash_value_currency", value)}
+                  />
+                </div>
               </div>
 
               <div>
@@ -499,21 +491,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
               <div>
                 <Label htmlFor="gross_payments_currency">Gross Payments Currency</Label>
-                <Select
-                  value={formData.gross_payments_currency}
-                  onValueChange={(value) => handleChange("gross_payments_currency", value)}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="CHF">CHF</SelectItem>
-                    <SelectItem value="JPY">JPY</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-1.5">
+                  <CurrencySelect
+                    value={formData.gross_payments_currency}
+                    onValueChange={(value) => handleChange("gross_payments_currency", value)}
+                  />
+                </div>
               </div>
             </div>
 
