@@ -389,47 +389,89 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     step.conditional_logic?.conditions?.length > 0
   );
 
-  // Fetch schemas for Account and Entity
-  const { data: accountSchema, isLoading: accountLoading, error: accountError } = useQuery({
-    queryKey: ['account-schema'],
-    queryFn: async () => {
-      try {
-        console.log('Fetching Account schema...');
-        const schema = await base44.entities.Account.schema();
-        console.log('Account Schema received:', schema);
-        console.log('Account Schema type:', typeof schema);
-        console.log('Account Schema keys:', schema ? Object.keys(schema) : 'null');
-        return schema;
-      } catch (error) {
-        console.error('Error fetching Account schema:', error);
-        throw error;
-      }
-    },
-    staleTime: Infinity
-  });
-
-  const { data: entitySchema, isLoading: entityLoading, error: entityError } = useQuery({
-    queryKey: ['entity-schema'],
-    queryFn: async () => {
-      try {
-        console.log('Fetching Entity schema...');
-        const schema = await base44.entities.Entity.schema();
-        console.log('Entity Schema received:', schema);
-        console.log('Entity Schema type:', typeof schema);
-        console.log('Entity Schema keys:', schema ? Object.keys(schema) : 'null');
-        return schema;
-      } catch (error) {
-        console.error('Error fetching Entity schema:', error);
-        throw error;
-      }
-    },
-    staleTime: Infinity
-  });
+  // Load Account and Entity schemas directly
+  const [accountSchema, setAccountSchema] = React.useState(null);
+  const [entitySchema, setEntitySchema] = React.useState(null);
+  const [isLoadingFields, setIsLoadingFields] = React.useState(true);
 
   React.useEffect(() => {
-    if (accountError) console.error('Account schema error:', accountError);
-    if (entityError) console.error('Entity schema error:', entityError);
-  }, [accountError, entityError]);
+    // Hardcode the schemas based on the entity definitions
+    const accountSchemaData = {
+      "type": "object",
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "entity_id": { "type": "string" },
+        "account_number": { "type": "string" },
+        "account_type": { "type": "string" },
+        "account_holder_type": { "type": "string" },
+        "account_holder_name": { "type": "string" },
+        "date_of_birth": { "type": "string" },
+        "place_of_birth": { "type": "string" },
+        "is_pre_existing": { "type": "boolean" },
+        "account_holder_is_alive": { "type": "boolean" },
+        "account_closed_during_period": { "type": "boolean" },
+        "country_of_residence": { "type": "string" },
+        "current_email": { "type": "string" },
+        "current_phone": { "type": "string" },
+        "year_end_cash_value": { "type": "number" },
+        "year_end_cash_value_currency": { "type": "string" },
+        "gross_payments": { "type": "number" },
+        "gross_payments_currency": { "type": "string" },
+        "reporting_year": { "type": "string" },
+        "reportability_status": { "type": "string" },
+        "account_holder_address": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "postal_code": { "type": "string" },
+            "country": { "type": "string" }
+          }
+        },
+        "current_address": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "postal_code": { "type": "string" },
+            "country": { "type": "string" }
+          }
+        }
+      }
+    };
+
+    const entitySchemaData = {
+      "type": "object",
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "entity_name": { "type": "string" },
+        "entity_type": { "type": "string" },
+        "country_of_incorporation": { "type": "string" },
+        "tax_id": { "type": "string" },
+        "giin": { "type": "string" },
+        "rfi_status": { "type": "string" },
+        "fi_type": { "type": "string" },
+        "non_reporting_reason": { "type": "string" },
+        "address": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "postal_code": { "type": "string" },
+            "country": { "type": "string" }
+          }
+        },
+        "status": { "type": "string" }
+      }
+    };
+
+    setAccountSchema(accountSchemaData);
+    setEntitySchema(entitySchemaData);
+    setIsLoadingFields(false);
+  }, []);
 
   // Generate field options
   const accountFields = React.useMemo(() => {
