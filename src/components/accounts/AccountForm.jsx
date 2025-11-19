@@ -215,8 +215,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       )}
 
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
+          <TabsTrigger value="crs">CRS Classification</TabsTrigger>
           <TabsTrigger value="tax">Tax Information</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
@@ -530,8 +531,11 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
           </div>
 
+        </TabsContent>
+
+        <TabsContent value="crs" className="space-y-4 mt-4">
           {/* CRS-Specific Fields */}
-          <div className="mt-6 p-4 border-2 border-blue-100 rounded-lg bg-blue-50/30">
+          <div className="p-4 border-2 border-blue-100 rounded-lg bg-blue-50/30">
             <div className="flex items-center gap-2 mb-3">
               <Info className="w-4 h-4 text-blue-600" />
               <h3 className="text-sm font-semibold text-blue-900">CRS Classification Information</h3>
