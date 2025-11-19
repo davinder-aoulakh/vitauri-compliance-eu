@@ -16,6 +16,7 @@ import { AlertTriangle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TaxResidencyManager from "./TaxResidencyManager";
 import DocumentUpload from "./DocumentUpload";
+import CountrySelect from "../shared/CountrySelect";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant }) {
   const [formData, setFormData] = useState(account || {
@@ -317,25 +318,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="place_of_birth">Place of Birth</Label>
-                  <Select
-                    value={formData.place_of_birth}
-                    onValueChange={(value) => handleChange("place_of_birth", value)}
-                  >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Select country..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="United States">United States</SelectItem>
-                      <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                      <SelectItem value="Canada">Canada</SelectItem>
-                      <SelectItem value="France">France</SelectItem>
-                      <SelectItem value="Germany">Germany</SelectItem>
-                      <SelectItem value="Japan">Japan</SelectItem>
-                      <SelectItem value="China">China</SelectItem>
-                      <SelectItem value="India">India</SelectItem>
-                      <SelectItem value="Australia">Australia</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="mt-1.5">
+                    <CountrySelect
+                      value={formData.place_of_birth}
+                      onValueChange={(value) => handleChange("place_of_birth", value)}
+                      placeholder="Select country..."
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -364,25 +353,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
             <div>
               <Label htmlFor="country_of_residence">Country of Residence</Label>
-              <Select
-                value={formData.country_of_residence}
-                onValueChange={(value) => handleChange("country_of_residence", value)}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Select country..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="United States">United States</SelectItem>
-                  <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                  <SelectItem value="Canada">Canada</SelectItem>
-                  <SelectItem value="France">France</SelectItem>
-                  <SelectItem value="Germany">Germany</SelectItem>
-                  <SelectItem value="Japan">Japan</SelectItem>
-                  <SelectItem value="China">China</SelectItem>
-                  <SelectItem value="India">India</SelectItem>
-                  <SelectItem value="Australia">Australia</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="mt-1.5">
+                <CountrySelect
+                  value={formData.country_of_residence}
+                  onValueChange={(value) => handleChange("country_of_residence", value)}
+                  placeholder="Select country..."
+                />
+              </div>
             </div>
 
             <div>
@@ -460,25 +437,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
               <div>
                 <Label htmlFor="current_country">Country *</Label>
-                <Select
-                  value={formData.current_address?.country || ""}
-                  onValueChange={(value) => handleCurrentAddressChange("country", value)}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="Select country..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="United States">United States</SelectItem>
-                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                    <SelectItem value="Canada">Canada</SelectItem>
-                    <SelectItem value="France">France</SelectItem>
-                    <SelectItem value="Germany">Germany</SelectItem>
-                    <SelectItem value="Japan">Japan</SelectItem>
-                    <SelectItem value="China">China</SelectItem>
-                    <SelectItem value="India">India</SelectItem>
-                    <SelectItem value="Australia">Australia</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-1.5">
+                  <CountrySelect
+                    value={formData.current_address?.country || ""}
+                    onValueChange={(value) => handleCurrentAddressChange("country", value)}
+                    placeholder="Select country..."
+                  />
+                </div>
               </div>
             </div>
           </div>
