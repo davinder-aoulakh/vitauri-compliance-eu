@@ -31,6 +31,20 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     is_pre_existing: false,
     account_holder_is_alive: true,
     account_closed_during_period: false,
+    account_holder_deceased_during_period: false,
+    death_certificate_requested: false,
+    death_certificate_requested_date: "",
+    death_certificate_received: false,
+    death_certificate_received_date: "",
+    will_or_inheritance_requested: false,
+    will_or_inheritance_requested_date: "",
+    will_or_inheritance_received: false,
+    will_or_inheritance_received_date: "",
+    legacy_of_deceased_settled: false,
+    legacy_settlement_date: "",
+    entity_managed_by_fiduciary_trust: false,
+    entity_managed_by_asset_manager: false,
+    gross_income_from_financial_assets: false,
     current_address: {
       street: "",
       city: "",
@@ -616,6 +630,239 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               )}
             </div>
           </div>
+
+          {/* Deceased Account Holder Information */}
+          {formData.account_holder_type === "individual" && (
+            <div className="p-4 border-2 border-slate-200 rounded-lg bg-slate-50/30">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Deceased Account Holder Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Account Holder Deceased During Period?</Label>
+                  <RadioGroup
+                    value={formData.account_holder_deceased_during_period ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("account_holder_deceased_during_period", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="deceased_period_yes" />
+                      <Label htmlFor="deceased_period_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="deceased_period_no" />
+                      <Label htmlFor="deceased_period_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label>Death Certificate Requested?</Label>
+                  <RadioGroup
+                    value={formData.death_certificate_requested ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("death_certificate_requested", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="death_cert_req_yes" />
+                      <Label htmlFor="death_cert_req_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="death_cert_req_no" />
+                      <Label htmlFor="death_cert_req_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label htmlFor="death_certificate_requested_date">Date Death Certificate Requested</Label>
+                  <Input
+                    id="death_certificate_requested_date"
+                    type="date"
+                    value={formData.death_certificate_requested_date}
+                    onChange={(e) => handleChange("death_certificate_requested_date", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label>Death Certificate Received?</Label>
+                  <RadioGroup
+                    value={formData.death_certificate_received ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("death_certificate_received", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="death_cert_rec_yes" />
+                      <Label htmlFor="death_cert_rec_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="death_cert_rec_no" />
+                      <Label htmlFor="death_cert_rec_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label htmlFor="death_certificate_received_date">Date Death Certificate Received</Label>
+                  <Input
+                    id="death_certificate_received_date"
+                    type="date"
+                    value={formData.death_certificate_received_date}
+                    onChange={(e) => handleChange("death_certificate_received_date", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label>Will or Certificate of Inheritance Requested?</Label>
+                  <RadioGroup
+                    value={formData.will_or_inheritance_requested ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("will_or_inheritance_requested", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="will_req_yes" />
+                      <Label htmlFor="will_req_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="will_req_no" />
+                      <Label htmlFor="will_req_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label htmlFor="will_or_inheritance_requested_date">Date Will/Inheritance Requested</Label>
+                  <Input
+                    id="will_or_inheritance_requested_date"
+                    type="date"
+                    value={formData.will_or_inheritance_requested_date}
+                    onChange={(e) => handleChange("will_or_inheritance_requested_date", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label>Will or Certificate of Inheritance Received?</Label>
+                  <RadioGroup
+                    value={formData.will_or_inheritance_received ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("will_or_inheritance_received", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="will_rec_yes" />
+                      <Label htmlFor="will_rec_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="will_rec_no" />
+                      <Label htmlFor="will_rec_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label htmlFor="will_or_inheritance_received_date">Date Will/Inheritance Received</Label>
+                  <Input
+                    id="will_or_inheritance_received_date"
+                    type="date"
+                    value={formData.will_or_inheritance_received_date}
+                    onChange={(e) => handleChange("will_or_inheritance_received_date", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label>Legacy of Deceased Settled?</Label>
+                  <RadioGroup
+                    value={formData.legacy_of_deceased_settled ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("legacy_of_deceased_settled", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="legacy_settled_yes" />
+                      <Label htmlFor="legacy_settled_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="legacy_settled_no" />
+                      <Label htmlFor="legacy_settled_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label htmlFor="legacy_settlement_date">Settlement Date of Legacy</Label>
+                  <Input
+                    id="legacy_settlement_date"
+                    type="date"
+                    value={formData.legacy_settlement_date}
+                    onChange={(e) => handleChange("legacy_settlement_date", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Entity Account Holder Information */}
+          {formData.account_holder_type === "entity" && (
+            <div className="p-4 border-2 border-slate-200 rounded-lg bg-slate-50/30">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Entity Account Holder Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Entity Professionally Managed by Fiduciary Trust?</Label>
+                  <RadioGroup
+                    value={formData.entity_managed_by_fiduciary_trust ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("entity_managed_by_fiduciary_trust", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="fiduciary_yes" />
+                      <Label htmlFor="fiduciary_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="fiduciary_no" />
+                      <Label htmlFor="fiduciary_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label>Entity Professionally Managed by Asset Manager?</Label>
+                  <RadioGroup
+                    value={formData.entity_managed_by_asset_manager ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("entity_managed_by_asset_manager", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="asset_mgr_yes" />
+                      <Label htmlFor="asset_mgr_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="asset_mgr_no" />
+                      <Label htmlFor="asset_mgr_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label>Gross Income &gt;50% from (Re)-Investing/Trading in Financial Assets?</Label>
+                  <RadioGroup
+                    value={formData.gross_income_from_financial_assets ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("gross_income_from_financial_assets", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="gross_income_yes" />
+                      <Label htmlFor="gross_income_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="gross_income_no" />
+                      <Label htmlFor="gross_income_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="tax" className="space-y-4 mt-4">

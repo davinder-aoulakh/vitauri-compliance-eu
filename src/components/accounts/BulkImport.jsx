@@ -24,10 +24,10 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const [errors, setErrors] = useState([]);
 
   const downloadTemplate = () => {
-    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,place_of_birth,is_pre_existing,account_holder_is_alive,account_closed_during_period,street,city,state,postal_code,country,current_street,current_city,current_state,current_postal_code,current_country,country_of_residence,current_email,current_phone,year_end_cash_value,year_end_cash_value_currency,gross_payments,gross_payments_currency,reporting_year,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
-${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,United States,123-45-6789,,
-${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,United Kingdom,AB123456C,France,1234567890
-${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,false,789 Corporate Blvd,Tokyo,,100-0001,Japan,789 Corporate Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,Japan,1234567890,,`;
+    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,place_of_birth,is_pre_existing,account_holder_is_alive,account_closed_during_period,street,city,state,postal_code,country,current_street,current_city,current_state,current_postal_code,current_country,country_of_residence,current_email,current_phone,year_end_cash_value,year_end_cash_value_currency,gross_payments,gross_payments_currency,reporting_year,account_holder_deceased_during_period,death_certificate_requested,death_certificate_requested_date,death_certificate_received,death_certificate_received_date,will_or_inheritance_requested,will_or_inheritance_requested_date,will_or_inheritance_received,will_or_inheritance_received_date,legacy_of_deceased_settled,legacy_settlement_date,entity_managed_by_fiduciary_trust,entity_managed_by_asset_manager,gross_income_from_financial_assets,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
+${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,
+${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890
+${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,false,789 Corporate Blvd,Tokyo,,100-0001,Japan,789 Corporate Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,,,,,,,,,,,false,false,true,Japan,1234567890,,`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -118,6 +118,20 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
       gross_payments: parseFloat(row.gross_payments) || 0,
       gross_payments_currency: row.gross_payments_currency || 'USD',
       reporting_year: row.reporting_year || new Date().getFullYear().toString(),
+      account_holder_deceased_during_period: row.account_holder_deceased_during_period === 'true' || row.account_holder_deceased_during_period === '1' || row.account_holder_deceased_during_period === 'yes',
+      death_certificate_requested: row.death_certificate_requested === 'true' || row.death_certificate_requested === '1' || row.death_certificate_requested === 'yes',
+      death_certificate_requested_date: row.death_certificate_requested_date || null,
+      death_certificate_received: row.death_certificate_received === 'true' || row.death_certificate_received === '1' || row.death_certificate_received === 'yes',
+      death_certificate_received_date: row.death_certificate_received_date || null,
+      will_or_inheritance_requested: row.will_or_inheritance_requested === 'true' || row.will_or_inheritance_requested === '1' || row.will_or_inheritance_requested === 'yes',
+      will_or_inheritance_requested_date: row.will_or_inheritance_requested_date || null,
+      will_or_inheritance_received: row.will_or_inheritance_received === 'true' || row.will_or_inheritance_received === '1' || row.will_or_inheritance_received === 'yes',
+      will_or_inheritance_received_date: row.will_or_inheritance_received_date || null,
+      legacy_of_deceased_settled: row.legacy_of_deceased_settled === 'true' || row.legacy_of_deceased_settled === '1' || row.legacy_of_deceased_settled === 'yes',
+      legacy_settlement_date: row.legacy_settlement_date || null,
+      entity_managed_by_fiduciary_trust: row.entity_managed_by_fiduciary_trust === 'true' || row.entity_managed_by_fiduciary_trust === '1' || row.entity_managed_by_fiduciary_trust === 'yes',
+      entity_managed_by_asset_manager: row.entity_managed_by_asset_manager === 'true' || row.entity_managed_by_asset_manager === '1' || row.entity_managed_by_asset_manager === 'yes',
+      gross_income_from_financial_assets: row.gross_income_from_financial_assets === 'true' || row.gross_income_from_financial_assets === '1' || row.gross_income_from_financial_assets === 'yes',
       reportability_status: 'pending_review',
       status: 'active',
       account_holder_address: {
@@ -326,6 +340,7 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
               <li>year_end_cash_value, year_end_cash_value_currency</li>
               <li>gross_payments, gross_payments_currency</li>
               <li>reporting_year</li>
+              <li>CRS Classification fields (deceased information, entity management)</li>
             </ul>
           </div>
         </CardContent>
