@@ -54,6 +54,7 @@ import AccountClassificationHistory from "../components/accounts/AccountClassifi
 import ControllingPersonsList from "../components/accounts/ControllingPersonsList";
 import BulkImport from "../components/accounts/BulkImport";
 import ComplianceFlags from "../components/accounts/ComplianceFlags";
+import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluator";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -119,20 +120,34 @@ export default function AccountsPage() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Account.create({ ...data, tenant_id: user.tenant_id }),
-    onSuccess: () => {
+    onSuccess: async (newAccount) => {
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
       setSelectedAccount(null);
+      
+      // Check for workflow triggers
+      const suggestedWorkflows = await suggestWorkflows(newAccount, 'account_created');
+      if (suggestedWorkflows.length > 0) {
+        console.log(`${suggestedWorkflows.length} workflow(s) triggered for new account:`, suggestedWorkflows);
+        // Could show a toast notification here
+      }
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Account.update(id, data),
-    onSuccess: () => {
+    onSuccess: async (updatedAccount) => {
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
       setShowClassification(false);
       setSelectedAccount(null);
+      
+      // Check for workflow triggers
+      const suggestedWorkflows = await suggestWorkflows(updatedAccount, 'account_updated');
+      if (suggestedWorkflows.length > 0) {
+        console.log(`${suggestedWorkflows.length} workflow(s) triggered for updated account:`, suggestedWorkflows);
+        // Could show a toast notification here
+      }
     }
   });
 
