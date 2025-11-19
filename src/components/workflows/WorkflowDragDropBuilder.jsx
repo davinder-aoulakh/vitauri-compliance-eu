@@ -488,8 +488,6 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     return fields;
   }, [entitySchema]);
 
-
-
   React.useEffect(() => {
     console.log('Account Fields Count:', accountFields.length);
     console.log('Entity Fields Count:', entityFields.length);
