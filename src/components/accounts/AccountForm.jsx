@@ -25,10 +25,24 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     account_holder_type: "individual",
     account_holder_name: "",
     date_of_birth: "",
+    place_of_birth: "",
     is_pre_existing: false,
     account_holder_is_alive: true,
-    account_balance: 0,
-    currency: "USD",
+    account_closed_during_period: false,
+    current_address: {
+      street: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      country: ""
+    },
+    country_of_residence: "",
+    current_email: "",
+    current_phone: "",
+    year_end_cash_value: 0,
+    year_end_cash_value_currency: "USD",
+    gross_payments: 0,
+    gross_payments_currency: "USD",
     reporting_year: new Date().getFullYear().toString(),
     reportability_status: "pending_review",
     status: "active",
@@ -167,6 +181,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }));
   };
 
+  const handleCurrentAddressChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      current_address: { ...prev.current_address, [field]: value }
+    }));
+  };
+
   const handleTaxResidenciesChange = (residencies) => {
     setFormData(prev => ({ ...prev, tax_residencies: residencies }));
   };
@@ -282,49 +303,217 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             {formData.account_holder_type === "individual" && (
-              <div>
-                <Label htmlFor="date_of_birth">Date of Birth</Label>
-                <Input
-                  id="date_of_birth"
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={(e) => handleChange("date_of_birth", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
+              <>
+                <div>
+                  <Label htmlFor="date_of_birth">Date of Birth</Label>
+                  <Input
+                    id="date_of_birth"
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={(e) => handleChange("date_of_birth", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="place_of_birth">Place of Birth</Label>
+                  <Input
+                    id="place_of_birth"
+                    value={formData.place_of_birth}
+                    onChange={(e) => handleChange("place_of_birth", e.target.value)}
+                    placeholder="Country"
+                    className="mt-1.5"
+                  />
+                </div>
+              </>
             )}
 
             <div>
-              <Label htmlFor="account_balance">Account Balance *</Label>
+              <Label htmlFor="account_closed_during_period">Account Closed During Period?</Label>
+              <RadioGroup
+                value={formData.account_closed_during_period ? "yes" : "no"}
+                onValueChange={(value) => handleChange("account_closed_during_period", value === "yes")}
+                className="flex gap-4 mt-1.5"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="closed_yes" />
+                  <Label htmlFor="closed_yes" className="font-normal cursor-pointer">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="closed_no" />
+                  <Label htmlFor="closed_no" className="font-normal cursor-pointer">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label htmlFor="country_of_residence">Country of Residence</Label>
               <Input
-                id="account_balance"
-                type="number"
-                step="0.01"
-                value={formData.account_balance}
-                onChange={(e) => handleChange("account_balance", parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                required
+                id="country_of_residence"
+                value={formData.country_of_residence}
+                onChange={(e) => handleChange("country_of_residence", e.target.value)}
+                placeholder="Country"
                 className="mt-1.5"
               />
             </div>
 
             <div>
-              <Label htmlFor="currency">Currency</Label>
-              <Select
-                value={formData.currency}
-                onValueChange={(value) => handleChange("currency", value)}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                  <SelectItem value="CHF">CHF</SelectItem>
-                  <SelectItem value="JPY">JPY</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="current_email">Current Email Address</Label>
+              <Input
+                id="current_email"
+                type="email"
+                value={formData.current_email}
+                onChange={(e) => handleChange("current_email", e.target.value)}
+                placeholder="email@example.com"
+                className="mt-1.5"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="current_phone">Current Phone Number</Label>
+              <Input
+                id="current_phone"
+                type="tel"
+                value={formData.current_phone}
+                onChange={(e) => handleChange("current_phone", e.target.value)}
+                placeholder="+1234567890"
+                className="mt-1.5"
+              />
+            </div>
+          </div>
+
+          {/* Current Address Section */}
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Current Address</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="current_street">Street Address</Label>
+                <Input
+                  id="current_street"
+                  value={formData.current_address?.street || ""}
+                  onChange={(e) => handleCurrentAddressChange("street", e.target.value)}
+                  placeholder="123 Main Street"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="current_city">City</Label>
+                <Input
+                  id="current_city"
+                  value={formData.current_address?.city || ""}
+                  onChange={(e) => handleCurrentAddressChange("city", e.target.value)}
+                  placeholder="City"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="current_state">State/Province</Label>
+                <Input
+                  id="current_state"
+                  value={formData.current_address?.state || ""}
+                  onChange={(e) => handleCurrentAddressChange("state", e.target.value)}
+                  placeholder="State/Province"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="current_postal_code">Postal Code</Label>
+                <Input
+                  id="current_postal_code"
+                  value={formData.current_address?.postal_code || ""}
+                  onChange={(e) => handleCurrentAddressChange("postal_code", e.target.value)}
+                  placeholder="Postal Code"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="current_country">Country *</Label>
+                <Input
+                  id="current_country"
+                  value={formData.current_address?.country || ""}
+                  onChange={(e) => handleCurrentAddressChange("country", e.target.value)}
+                  placeholder="Country"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* CRS Reporting Values */}
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">CRS Reporting Values</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="year_end_cash_value">Year-end Cash or Surrender Value</Label>
+                <Input
+                  id="year_end_cash_value"
+                  type="number"
+                  step="0.01"
+                  value={formData.year_end_cash_value}
+                  onChange={(e) => handleChange("year_end_cash_value", parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="year_end_cash_value_currency">Year-end Value Currency</Label>
+                <Select
+                  value={formData.year_end_cash_value_currency}
+                  onValueChange={(value) => handleChange("year_end_cash_value_currency", value)}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                    <SelectItem value="CHF">CHF</SelectItem>
+                    <SelectItem value="JPY">JPY</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="gross_payments">Gross Payments (Redemptions, Annuities)</Label>
+                <Input
+                  id="gross_payments"
+                  type="number"
+                  step="0.01"
+                  value={formData.gross_payments}
+                  onChange={(e) => handleChange("gross_payments", parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="gross_payments_currency">Gross Payments Currency</Label>
+                <Select
+                  value={formData.gross_payments_currency}
+                  onValueChange={(value) => handleChange("gross_payments_currency", value)}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                    <SelectItem value="CHF">CHF</SelectItem>
+                    <SelectItem value="JPY">JPY</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>

@@ -24,10 +24,10 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const [errors, setErrors] = useState([]);
 
   const downloadTemplate = () => {
-    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,is_pre_existing,account_holder_is_alive,street,city,state,postal_code,country,account_balance,currency,reporting_year,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
-${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,false,true,123 Main St,New York,NY,10001,United States,50000,USD,2024,United States,123-45-6789,,
-${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,true,true,456 Oak Ave,London,,SW1A 1AA,United Kingdom,75000,GBP,2024,United Kingdom,AB123456C,France,1234567890
-${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,false,,789 Corporate Blvd,Tokyo,,100-0001,Japan,1000000,JPY,2024,Japan,1234567890,,`;
+    const template = `entity_id,account_number,account_type,account_holder_type,account_holder_name,date_of_birth,place_of_birth,is_pre_existing,account_holder_is_alive,account_closed_during_period,street,city,state,postal_code,country,current_street,current_city,current_state,current_postal_code,current_country,country_of_residence,current_email,current_phone,year_end_cash_value,year_end_cash_value_currency,gross_payments,gross_payments_currency,reporting_year,tax_residency_1_country,tax_residency_1_tin,tax_residency_2_country,tax_residency_2_tin
+${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,United States,123-45-6789,,
+${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,United Kingdom,AB123456C,France,1234567890
+${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,false,789 Corporate Blvd,Tokyo,,100-0001,Japan,789 Corporate Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,Japan,1234567890,,`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -104,12 +104,19 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,false,,789
       account_holder_type: row.account_holder_type,
       account_holder_name: row.account_holder_name,
       date_of_birth: row.date_of_birth || null,
+      place_of_birth: row.place_of_birth || null,
       is_pre_existing: row.is_pre_existing === 'true' || row.is_pre_existing === '1' || row.is_pre_existing === 'yes',
       account_holder_is_alive: row.account_holder_type === 'individual' ? 
         (row.account_holder_is_alive !== 'false' && row.account_holder_is_alive !== '0' && row.account_holder_is_alive !== 'no') : 
         undefined,
-      account_balance: parseFloat(row.account_balance) || 0,
-      currency: row.currency || 'USD',
+      account_closed_during_period: row.account_closed_during_period === 'true' || row.account_closed_during_period === '1' || row.account_closed_during_period === 'yes',
+      country_of_residence: row.country_of_residence || '',
+      current_email: row.current_email || '',
+      current_phone: row.current_phone || '',
+      year_end_cash_value: parseFloat(row.year_end_cash_value) || 0,
+      year_end_cash_value_currency: row.year_end_cash_value_currency || 'USD',
+      gross_payments: parseFloat(row.gross_payments) || 0,
+      gross_payments_currency: row.gross_payments_currency || 'USD',
       reporting_year: row.reporting_year || new Date().getFullYear().toString(),
       reportability_status: 'pending_review',
       status: 'active',
@@ -119,6 +126,13 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,false,,789
         state: row.state || '',
         postal_code: row.postal_code || '',
         country: row.country || ''
+      },
+      current_address: {
+        street: row.current_street || '',
+        city: row.current_city || '',
+        state: row.current_state || '',
+        postal_code: row.current_postal_code || '',
+        country: row.current_country || ''
       },
       tax_residencies: []
     };
@@ -307,7 +321,11 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,false,,789
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Tax residencies (up to 5 per account)</li>
               <li>Address details (street, city, state, postal_code)</li>
-              <li>account_balance, currency, reporting_year</li>
+              <li>Current address (current_street, current_city, current_state, current_postal_code, current_country)</li>
+              <li>place_of_birth, country_of_residence, current_email, current_phone</li>
+              <li>year_end_cash_value, year_end_cash_value_currency</li>
+              <li>gross_payments, gross_payments_currency</li>
+              <li>reporting_year</li>
             </ul>
           </div>
         </CardContent>
