@@ -390,25 +390,46 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   );
 
   // Fetch schemas for Account and Entity
-  const { data: accountSchema, isLoading: accountLoading } = useQuery({
+  const { data: accountSchema, isLoading: accountLoading, error: accountError } = useQuery({
     queryKey: ['account-schema'],
     queryFn: async () => {
-      const schema = await base44.entities.Account.schema();
-      console.log('Account Schema:', schema);
-      return schema;
+      try {
+        console.log('Fetching Account schema...');
+        const schema = await base44.entities.Account.schema();
+        console.log('Account Schema received:', schema);
+        console.log('Account Schema type:', typeof schema);
+        console.log('Account Schema keys:', schema ? Object.keys(schema) : 'null');
+        return schema;
+      } catch (error) {
+        console.error('Error fetching Account schema:', error);
+        throw error;
+      }
     },
     staleTime: Infinity
   });
 
-  const { data: entitySchema, isLoading: entityLoading } = useQuery({
+  const { data: entitySchema, isLoading: entityLoading, error: entityError } = useQuery({
     queryKey: ['entity-schema'],
     queryFn: async () => {
-      const schema = await base44.entities.Entity.schema();
-      console.log('Entity Schema:', schema);
-      return schema;
+      try {
+        console.log('Fetching Entity schema...');
+        const schema = await base44.entities.Entity.schema();
+        console.log('Entity Schema received:', schema);
+        console.log('Entity Schema type:', typeof schema);
+        console.log('Entity Schema keys:', schema ? Object.keys(schema) : 'null');
+        return schema;
+      } catch (error) {
+        console.error('Error fetching Entity schema:', error);
+        throw error;
+      }
     },
     staleTime: Infinity
   });
+
+  React.useEffect(() => {
+    if (accountError) console.error('Account schema error:', accountError);
+    if (entityError) console.error('Entity schema error:', entityError);
+  }, [accountError, entityError]);
 
   // Generate field options
   const accountFields = React.useMemo(() => {
