@@ -376,21 +376,28 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   );
 
   // Fetch schemas for Account and Entity
-  const { data: accountSchema } = useQuery({
+  const { data: accountSchema, isLoading: accountLoading } = useQuery({
     queryKey: ['account-schema'],
-    queryFn: () => base44.entities.Account.schema(),
+    queryFn: async () => {
+      const schema = await base44.entities.Account.schema();
+      return schema;
+    },
     staleTime: Infinity
   });
 
-  const { data: entitySchema } = useQuery({
+  const { data: entitySchema, isLoading: entityLoading } = useQuery({
     queryKey: ['entity-schema'],
-    queryFn: () => base44.entities.Entity.schema(),
+    queryFn: async () => {
+      const schema = await base44.entities.Entity.schema();
+      return schema;
+    },
     staleTime: Infinity
   });
 
   // Generate field options
   const accountFields = accountSchema ? generateFieldPaths(accountSchema) : [];
   const entityFields = entitySchema ? generateFieldPaths(entitySchema) : [];
+  const isLoadingFields = accountLoading || entityLoading;
 
   const handleChange = (field, value) => {
     setEditedStep({ ...editedStep, [field]: value });
@@ -706,29 +713,44 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                               onValueChange={(value) => handleConditionChange(index, "field", value)}
                             >
                               <SelectTrigger className="h-8 text-xs mt-1">
-                                <SelectValue placeholder="Select field..." />
+                                <SelectValue placeholder={isLoadingFields ? "Loading fields..." : "Select field..."} />
                               </SelectTrigger>
                               <SelectContent className="max-h-[300px]">
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
-                                {allSteps
-                                  .filter(s => s.step_id !== editedStep.step_id)
-                                  .map(s => (
-                                    <SelectItem key={s.step_id} value={s.step_id}>
-                                      {s.step_title}
-                                    </SelectItem>
-                                  ))}
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
-                                {accountFields.map(field => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label} {field.isCountry && '🌍'}
-                                  </SelectItem>
-                                ))}
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
-                                {entityFields.map(field => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label} {field.isCountry && '🌍'}
-                                  </SelectItem>
-                                ))}
+                                {allSteps.filter(s => s.step_id !== editedStep.step_id).length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
+                                    {allSteps
+                                      .filter(s => s.step_id !== editedStep.step_id)
+                                      .map(s => (
+                                        <SelectItem key={`step-${s.step_id}`} value={s.step_id}>
+                                          {s.step_title}
+                                        </SelectItem>
+                                      ))}
+                                  </>
+                                )}
+                                {accountFields.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
+                                    {accountFields.map(field => (
+                                      <SelectItem key={`account-${field.value}`} value={field.value}>
+                                        {field.label} {field.isCountry && '🌍'}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {entityFields.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
+                                    {entityFields.map(field => (
+                                      <SelectItem key={`entity-${field.value}`} value={field.value}>
+                                        {field.label} {field.isCountry && '🌍'}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {isLoadingFields && (
+                                  <div className="px-2 py-1.5 text-xs text-slate-500 italic">Loading fields...</div>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
@@ -795,29 +817,44 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                               onValueChange={(value) => handleConditionChange(index, "value", value)}
                             >
                               <SelectTrigger className="h-8 text-xs mt-1">
-                                <SelectValue placeholder="Select field to compare..." />
+                                <SelectValue placeholder={isLoadingFields ? "Loading fields..." : "Select field to compare..."} />
                               </SelectTrigger>
                               <SelectContent className="max-h-[300px]">
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
-                                {allSteps
-                                  .filter(s => s.step_id !== editedStep.step_id)
-                                  .map(s => (
-                                    <SelectItem key={s.step_id} value={s.step_id}>
-                                      {s.step_title}
-                                    </SelectItem>
-                                  ))}
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
-                                {accountFields.map(field => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label}
-                                  </SelectItem>
-                                ))}
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
-                                {entityFields.map(field => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label}
-                                  </SelectItem>
-                                ))}
+                                {allSteps.filter(s => s.step_id !== editedStep.step_id).length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
+                                    {allSteps
+                                      .filter(s => s.step_id !== editedStep.step_id)
+                                      .map(s => (
+                                        <SelectItem key={`refstep-${s.step_id}`} value={s.step_id}>
+                                          {s.step_title}
+                                        </SelectItem>
+                                      ))}
+                                  </>
+                                )}
+                                {accountFields.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
+                                    {accountFields.map(field => (
+                                      <SelectItem key={`refaccount-${field.value}`} value={field.value}>
+                                        {field.label}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {entityFields.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
+                                    {entityFields.map(field => (
+                                      <SelectItem key={`refentity-${field.value}`} value={field.value}>
+                                        {field.label}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {isLoadingFields && (
+                                  <div className="px-2 py-1.5 text-xs text-slate-500 italic">Loading fields...</div>
+                                )}
                               </SelectContent>
                             </Select>
                           ) : (
