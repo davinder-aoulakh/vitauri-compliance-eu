@@ -1,10 +1,13 @@
 import React, { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -335,6 +338,33 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   );
 }
 
+// Helper to generate field paths from schema
+const generateFieldPaths = (schema, prefix = '') => {
+  const paths = [];
+  
+  if (!schema || !schema.properties) return paths;
+  
+  Object.keys(schema.properties).forEach(key => {
+    const field = schema.properties[key];
+    const fullPath = prefix ? `${prefix}.${key}` : key;
+    
+    // Add the field itself
+    paths.push({
+      value: fullPath,
+      label: fullPath,
+      type: field.type,
+      isCountry: key.includes('country') || key === 'place_of_birth' || key === 'country_of_residence'
+    });
+    
+    // If it's an object with nested properties, recurse
+    if (field.type === 'object' && field.properties) {
+      paths.push(...generateFieldPaths(field, fullPath));
+    }
+  });
+  
+  return paths;
+};
+
 // Step Editor Component
 function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const [editedStep, setEditedStep] = useState({ 
@@ -344,6 +374,23 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const [showAdvancedLogic, setShowAdvancedLogic] = useState(
     step.conditional_logic?.conditions?.length > 0
   );
+
+  // Fetch schemas for Account and Entity
+  const { data: accountSchema } = useQuery({
+    queryKey: ['account-schema'],
+    queryFn: () => base44.entities.Account.schema(),
+    staleTime: Infinity
+  });
+
+  const { data: entitySchema } = useQuery({
+    queryKey: ['entity-schema'],
+    queryFn: () => base44.entities.Entity.schema(),
+    staleTime: Infinity
+  });
+
+  // Generate field options
+  const accountFields = accountSchema ? generateFieldPaths(accountSchema) : [];
+  const entityFields = entitySchema ? generateFieldPaths(entitySchema) : [];
 
   const handleChange = (field, value) => {
     setEditedStep({ ...editedStep, [field]: value });
@@ -426,6 +473,18 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const handleConditionChange = (index, field, value) => {
     const newConditions = [...editedStep.conditional_logic.conditions];
     newConditions[index] = { ...newConditions[index], [field]: value };
+    
+    // Reset operator if field changes and it's a CRS-specific operator
+    if (field === 'field') {
+      const selectedField = [...accountFields, ...entityFields].find(f => f.value === value);
+      const currentOperator = newConditions[index].operator;
+      
+      // If switching away from a country field and operator is CRS-specific, reset operator
+      if (!selectedField?.isCountry && (currentOperator === 'is_crs' || currentOperator === 'is_not_crs')) {
+        newConditions[index].operator = '=';
+      }
+    }
+    
     setEditedStep({
       ...editedStep,
       conditional_logic: {
@@ -614,82 +673,163 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               </div>
 
               {(!editedStep.conditional_logic?.conditions || editedStep.conditional_logic.conditions.length === 0) ? (
-                <p className="text-xs text-slate-500 italic p-3 bg-white rounded border">
-                  No conditions defined. Add a condition to enable multi-condition branching.
-                </p>
+              <p className="text-xs text-slate-500 italic p-3 bg-white rounded border">
+              No conditions defined. Add a condition to enable multi-condition branching.
+              </p>
               ) : (
-                <div className="space-y-3">
-                  {editedStep.conditional_logic.conditions.map((condition, index) => (
-                    <div key={index} className="p-3 bg-white border-2 border-purple-200 rounded-lg space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="bg-purple-100 text-purple-800">
-                          Condition {index + 1}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveCondition(index)}
-                          className="h-6 w-6 text-red-600"
+              <div className="space-y-3">
+              {editedStep.conditional_logic.conditions.map((condition, index) => {
+                const selectedField = [...accountFields, ...entityFields].find(f => f.value === condition.field);
+                const isCountryField = selectedField?.isCountry;
+
+                return (
+                  <div key={index} className="p-3 bg-white border-2 border-purple-200 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                        Condition {index + 1}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveCondition(index)}
+                        className="h-6 w-6 text-red-600"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-xs">Step ID / Field</Label>
+                        <Select
+                          value={condition.field}
+                          onValueChange={(value) => handleConditionChange(index, "field", value)}
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue placeholder="Select field..." />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
+                            {allSteps
+                              .filter(s => s.step_id !== editedStep.step_id)
+                              .map(s => (
+                                <SelectItem key={s.step_id} value={s.step_id}>
+                                  {s.step_title}
+                                </SelectItem>
+                              ))}
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
+                            {accountFields.map(field => (
+                              <SelectItem key={field.value} value={field.value}>
+                                {field.label} {field.isCountry && '🌍'}
+                              </SelectItem>
+                            ))}
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
+                            {entityFields.map(field => (
+                              <SelectItem key={field.value} value={field.value}>
+                                {field.label} {field.isCountry && '🌍'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label className="text-xs">Step ID / Field</Label>
-                          <Select
-                            value={condition.field}
-                            onValueChange={(value) => handleConditionChange(index, "field", value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs mt-1">
-                              <SelectValue placeholder="Select step..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allSteps
-                                .filter(s => s.step_id !== editedStep.step_id)
-                                .map(s => (
-                                  <SelectItem key={s.step_id} value={s.step_id}>
-                                    {s.step_title}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Operator</Label>
-                          <Select
-                            value={condition.operator}
-                            onValueChange={(value) => handleConditionChange(index, "operator", value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="=">Equals (=)</SelectItem>
-                              <SelectItem value="!=">Not Equals (≠)</SelectItem>
-                              <SelectItem value=">">Greater Than (&gt;)</SelectItem>
-                              <SelectItem value="<">Less Than (&lt;)</SelectItem>
-                              <SelectItem value=">=">Greater or Equal (≥)</SelectItem>
-                              <SelectItem value="<=">Less or Equal (≤)</SelectItem>
-                              <SelectItem value="contains">Contains</SelectItem>
-                              <SelectItem value="in">In</SelectItem>
-                              <SelectItem value="not_in">Not In</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Value</Label>
-                          <Input
-                            value={condition.value}
-                            onChange={(e) => handleConditionChange(index, "value", e.target.value)}
-                            placeholder="value or values"
-                            className="h-8 text-xs mt-1"
-                          />
-                        </div>
+                      <div>
+                        <Label className="text-xs">Operator</Label>
+                        <Select
+                          value={condition.operator}
+                          onValueChange={(value) => handleConditionChange(index, "operator", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="=">Equals (=)</SelectItem>
+                            <SelectItem value="!=">Not Equals (≠)</SelectItem>
+                            <SelectItem value=">">Greater Than (&gt;)</SelectItem>
+                            <SelectItem value="<">Less Than (&lt;)</SelectItem>
+                            <SelectItem value=">=">Greater or Equal (≥)</SelectItem>
+                            <SelectItem value="<=">Less or Equal (≤)</SelectItem>
+                            <SelectItem value="contains">Contains</SelectItem>
+                            <SelectItem value="in">In</SelectItem>
+                            <SelectItem value="not_in">Not In</SelectItem>
+                            {isCountryField && (
+                              <>
+                                <SelectItem value="is_crs">Is CRS Country 🌍</SelectItem>
+                                <SelectItem value="is_not_crs">Is Not CRS Country 🌍</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
                       </div>
+
+                      <div>
+                        <Label className="text-xs">Value Type</Label>
+                        <RadioGroup
+                          value={condition.value_type || 'static'}
+                          onValueChange={(value) => handleConditionChange(index, "value_type", value)}
+                          className="flex gap-2 mt-1"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="static" id={`static-${index}`} className="h-3 w-3" />
+                            <Label htmlFor={`static-${index}`} className="text-xs font-normal cursor-pointer">
+                              Static
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="field_reference" id={`field-${index}`} className="h-3 w-3" />
+                            <Label htmlFor={`field-${index}`} className="text-xs font-normal cursor-pointer">
+                              Field
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">
+                        {condition.value_type === 'field_reference' ? 'Reference Field' : 'Value'}
+                      </Label>
+                      {condition.value_type === 'field_reference' ? (
+                        <Select
+                          value={condition.value}
+                          onValueChange={(value) => handleConditionChange(index, "value", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue placeholder="Select field to compare..." />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
+                            {allSteps
+                              .filter(s => s.step_id !== editedStep.step_id)
+                              .map(s => (
+                                <SelectItem key={s.step_id} value={s.step_id}>
+                                  {s.step_title}
+                                </SelectItem>
+                              ))}
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
+                            {accountFields.map(field => (
+                              <SelectItem key={field.value} value={field.value}>
+                                {field.label}
+                              </SelectItem>
+                            ))}
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
+                            {entityFields.map(field => (
+                              <SelectItem key={field.value} value={field.value}>
+                                {field.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={condition.value}
+                          onChange={(e) => handleConditionChange(index, "value", e.target.value)}
+                          placeholder="value or values"
+                          className="h-8 text-xs mt-1"
+                          disabled={condition.operator === 'is_crs' || condition.operator === 'is_not_crs'}
+                        />
+                      )}
+                    </div>
 
                       {index < editedStep.conditional_logic.conditions.length - 1 && (
                         <div>

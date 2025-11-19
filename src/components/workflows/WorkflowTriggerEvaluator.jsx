@@ -5,27 +5,27 @@ import { base44 } from "@/api/base44Client";
  * @param {Object} entityData - The account or entity data to evaluate
  * @param {string} eventType - The trigger event (e.g., 'account_created', 'account_updated')
  * @param {Array} workflows - Array of published workflows to check
- * @returns {Array} - Array of matching workflows sorted by priority
+ * @returns {Promise<Array>} - Array of matching workflows sorted by priority
  */
-export const evaluateWorkflowTriggers = (entityData, eventType, workflows) => {
+export const evaluateWorkflowTriggers = async (entityData, eventType, workflows) => {
   const matchingWorkflows = [];
 
-  workflows.forEach(workflow => {
+  for (const workflow of workflows) {
     const triggerConfig = workflow.trigger_conditions;
     
     // Skip if triggers not enabled or wrong event type
     if (!triggerConfig?.enabled || triggerConfig.trigger_event !== eventType) {
-      return;
+      continue;
     }
 
     // Evaluate all conditions
-    if (evaluateConditions(entityData, triggerConfig)) {
+    if (await evaluateConditions(entityData, triggerConfig)) {
       matchingWorkflows.push({
         workflow,
         priority: triggerConfig.priority || 0
       });
     }
-  });
+  }
 
   // Sort by priority (highest first)
   return matchingWorkflows
@@ -37,9 +37,9 @@ export const evaluateWorkflowTriggers = (entityData, eventType, workflows) => {
  * Evaluates a set of conditions against entity data
  * @param {Object} entityData - The data to evaluate
  * @param {Object} triggerConfig - The trigger configuration with conditions
- * @returns {boolean} - Whether all conditions are met
+ * @returns {Promise<boolean>} - Whether all conditions are met
  */
-const evaluateConditions = (entityData, triggerConfig) => {
+const evaluateConditions = async (entityData, triggerConfig) => {
   const { conditions = [], computed_conditions = [] } = triggerConfig;
   
   // Evaluate regular conditions
@@ -48,7 +48,7 @@ const evaluateConditions = (entityData, triggerConfig) => {
   
   for (let i = 0; i < conditions.length; i++) {
     const condition = conditions[i];
-    const conditionResult = evaluateSingleCondition(entityData, condition);
+    const conditionResult = await evaluateSingleCondition(entityData, condition);
     
     if (i === 0) {
       result = conditionResult;
@@ -85,22 +85,33 @@ const evaluateConditions = (entityData, triggerConfig) => {
 /**
  * Evaluates a single condition
  */
-const evaluateSingleCondition = (entityData, condition) => {
+const evaluateSingleCondition = async (entityData, condition) => {
   const fieldValue = getNestedValue(entityData, condition.field);
-  const compareValue = condition.value;
+  
+  // Check if compareValue is a field reference or static value
+  let compareValue = condition.value;
+  if (condition.value_type === 'field_reference') {
+    compareValue = getNestedValue(entityData, condition.value);
+  }
   
   switch (condition.operator) {
     case 'equals':
+    case '=':
       return String(fieldValue) === String(compareValue);
     case 'not_equals':
+    case '!=':
       return String(fieldValue) !== String(compareValue);
     case 'greater_than':
+    case '>':
       return parseFloat(fieldValue) > parseFloat(compareValue);
     case 'less_than':
+    case '<':
       return parseFloat(fieldValue) < parseFloat(compareValue);
     case 'greater_than_or_equal':
+    case '>=':
       return parseFloat(fieldValue) >= parseFloat(compareValue);
     case 'less_than_or_equal':
+    case '<=':
       return parseFloat(fieldValue) <= parseFloat(compareValue);
     case 'contains':
       return String(fieldValue).toLowerCase().includes(String(compareValue).toLowerCase());
@@ -108,8 +119,33 @@ const evaluateSingleCondition = (entityData, condition) => {
       return compareValue.split(',').map(v => v.trim()).includes(String(fieldValue));
     case 'not_in':
       return !compareValue.split(',').map(v => v.trim()).includes(String(fieldValue));
+    case 'is_crs':
+      return await checkIsCrsCountry(fieldValue);
+    case 'is_not_crs':
+      return !(await checkIsCrsCountry(fieldValue));
     default:
       return false;
+  }
+};
+
+/**
+ * Checks if a country is a CRS participating country
+ * @param {string} countryCode - The country code to check
+ * @returns {Promise<boolean>} - True if the country is a CRS country
+ */
+const checkIsCrsCountry = async (countryCode) => {
+  try {
+    if (!countryCode) return false;
+    
+    const crsCountries = await base44.entities.CrsCountryInfo.filter({
+      country_code: countryCode,
+      is_crs_country: true
+    });
+    
+    return crsCountries.length > 0;
+  } catch (error) {
+    console.error('Error checking CRS country:', error);
+    return false;
   }
 };
 
