@@ -342,10 +342,23 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
 const generateFieldPaths = (schema, prefix = '') => {
   const paths = [];
   
-  if (!schema || !schema.properties) return paths;
+  console.log('generateFieldPaths called with:', { schema, prefix });
   
-  Object.keys(schema.properties).forEach(key => {
-    const field = schema.properties[key];
+  if (!schema) {
+    console.log('No schema provided');
+    return paths;
+  }
+  
+  // Handle both direct properties and nested schema structure
+  const properties = schema.properties || schema;
+  
+  if (!properties || typeof properties !== 'object') {
+    console.log('No properties found in schema');
+    return paths;
+  }
+  
+  Object.keys(properties).forEach(key => {
+    const field = properties[key];
     const fullPath = prefix ? `${prefix}.${key}` : key;
     
     // Add the field itself
@@ -362,6 +375,7 @@ const generateFieldPaths = (schema, prefix = '') => {
     }
   });
   
+  console.log('Generated paths:', paths);
   return paths;
 };
 
