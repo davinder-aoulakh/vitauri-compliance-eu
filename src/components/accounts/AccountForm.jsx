@@ -317,13 +317,25 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="place_of_birth">Place of Birth</Label>
-                  <Input
-                    id="place_of_birth"
+                  <Select
                     value={formData.place_of_birth}
-                    onChange={(e) => handleChange("place_of_birth", e.target.value)}
-                    placeholder="Country"
-                    className="mt-1.5"
-                  />
+                    onValueChange={(value) => handleChange("place_of_birth", value)}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select country..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="United States">United States</SelectItem>
+                      <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                      <SelectItem value="Canada">Canada</SelectItem>
+                      <SelectItem value="France">France</SelectItem>
+                      <SelectItem value="Germany">Germany</SelectItem>
+                      <SelectItem value="Japan">Japan</SelectItem>
+                      <SelectItem value="China">China</SelectItem>
+                      <SelectItem value="India">India</SelectItem>
+                      <SelectItem value="Australia">Australia</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </>
             )}
@@ -352,13 +364,25 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
             <div>
               <Label htmlFor="country_of_residence">Country of Residence</Label>
-              <Input
-                id="country_of_residence"
+              <Select
                 value={formData.country_of_residence}
-                onChange={(e) => handleChange("country_of_residence", e.target.value)}
-                placeholder="Country"
-                className="mt-1.5"
-              />
+                onValueChange={(value) => handleChange("country_of_residence", value)}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Select country..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="United States">United States</SelectItem>
+                  <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                  <SelectItem value="Canada">Canada</SelectItem>
+                  <SelectItem value="France">France</SelectItem>
+                  <SelectItem value="Germany">Germany</SelectItem>
+                  <SelectItem value="Japan">Japan</SelectItem>
+                  <SelectItem value="China">China</SelectItem>
+                  <SelectItem value="India">India</SelectItem>
+                  <SelectItem value="Australia">Australia</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -436,13 +460,25 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
               <div>
                 <Label htmlFor="current_country">Country *</Label>
-                <Input
-                  id="current_country"
+                <Select
                   value={formData.current_address?.country || ""}
-                  onChange={(e) => handleCurrentAddressChange("country", e.target.value)}
-                  placeholder="Country"
-                  className="mt-1.5"
-                />
+                  onValueChange={(value) => handleCurrentAddressChange("country", value)}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select country..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="United States">United States</SelectItem>
+                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                    <SelectItem value="Canada">Canada</SelectItem>
+                    <SelectItem value="France">France</SelectItem>
+                    <SelectItem value="Germany">Germany</SelectItem>
+                    <SelectItem value="Japan">Japan</SelectItem>
+                    <SelectItem value="China">China</SelectItem>
+                    <SelectItem value="India">India</SelectItem>
+                    <SelectItem value="Australia">Australia</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
