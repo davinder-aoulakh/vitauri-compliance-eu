@@ -326,6 +326,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
           </DialogHeader>
           {selectedStep && (
             <StepEditor
+              key={`step-editor-${selectedStep.step_id}-${steps.length}`}
               step={selectedStep}
               allSteps={steps}
               onUpdate={handleUpdateStep}
