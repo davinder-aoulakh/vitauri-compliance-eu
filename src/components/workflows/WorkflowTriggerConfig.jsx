@@ -24,29 +24,29 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     priority: 0
   });
 
-  // Available fields for Account and Entity
+  // Available fields for Account and Entity with type information
   const accountFields = [
-    { value: 'account_holder_is_alive', label: 'Account Holder Is Alive' },
-    { value: 'account_holder_type', label: 'Account Holder Type' },
-    { value: 'account_type', label: 'Account Type' },
-    { value: 'year_end_cash_value', label: 'Year-end Cash Value' },
-    { value: 'gross_payments', label: 'Gross Payments' },
-    { value: 'reportability_status', label: 'Reportability Status' },
-    { value: 'entity_classification', label: 'Entity Classification' },
-    { value: 'is_pre_existing', label: 'Pre-existing Account' },
-    { value: 'account_closed_during_period', label: 'Account Closed During Period' },
-    { value: 'self_certification_obtained', label: 'Self Certification Obtained' },
-    { value: 'country_of_residence', label: 'Country of Residence' },
-    { value: 'account_holder_address.country', label: 'Account Holder Address Country' },
-    { value: 'status', label: 'Status' }
+    { value: 'account_holder_is_alive', label: 'Account Holder Is Alive', type: 'boolean', options: ['true', 'false'] },
+    { value: 'account_holder_type', label: 'Account Holder Type', type: 'enum', options: ['individual', 'entity'] },
+    { value: 'account_type', label: 'Account Type', type: 'enum', options: ['depository', 'custodial', 'equity_debt_interest', 'cash_value_insurance', 'annuity'] },
+    { value: 'year_end_cash_value', label: 'Year-end Cash Value', type: 'number' },
+    { value: 'gross_payments', label: 'Gross Payments', type: 'number' },
+    { value: 'reportability_status', label: 'Reportability Status', type: 'enum', options: ['pending_review', 'reportable', 'non_reportable', 'excluded'] },
+    { value: 'entity_classification', label: 'Entity Classification', type: 'enum', options: ['financial_institution', 'active_nfe', 'passive_nfe', 'not_applicable'] },
+    { value: 'is_pre_existing', label: 'Pre-existing Account', type: 'boolean', options: ['true', 'false'] },
+    { value: 'account_closed_during_period', label: 'Account Closed During Period', type: 'boolean', options: ['true', 'false'] },
+    { value: 'self_certification_obtained', label: 'Self Certification Obtained', type: 'boolean', options: ['true', 'false'] },
+    { value: 'country_of_residence', label: 'Country of Residence', type: 'string' },
+    { value: 'account_holder_address.country', label: 'Account Holder Address Country', type: 'string' },
+    { value: 'status', label: 'Status', type: 'enum', options: ['active', 'closed', 'dormant'] }
   ];
 
   const entityFields = [
-    { value: 'entity_type', label: 'Entity Type' },
-    { value: 'rfi_status', label: 'RFI Status' },
-    { value: 'fi_type', label: 'FI Type' },
-    { value: 'country_of_incorporation', label: 'Country of Incorporation' },
-    { value: 'status', label: 'Status' }
+    { value: 'entity_type', label: 'Entity Type', type: 'enum', options: ['corporation', 'trust', 'partnership', 'fund', 'branch', 'other'] },
+    { value: 'rfi_status', label: 'RFI Status', type: 'enum', options: ['pending_classification', 'reporting_fi', 'non_reporting_fi', 'nfe_active', 'nfe_passive'] },
+    { value: 'fi_type', label: 'FI Type', type: 'enum', options: ['custodial_institution', 'depository_institution', 'investment_entity', 'specified_insurance_company', 'not_applicable'] },
+    { value: 'country_of_incorporation', label: 'Country of Incorporation', type: 'string' },
+    { value: 'status', label: 'Status', type: 'enum', options: ['active', 'inactive'] }
   ];
 
   const availableFields = config.trigger_event?.includes('account') ? accountFields : entityFields;
@@ -238,12 +238,55 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                               </Select>
                             </div>
                             <div className="col-span-3">
-                              <Input
-                                placeholder="Value"
-                                value={condition.value}
-                                onChange={(e) => handleUpdateCondition(index, 'value', e.target.value)}
-                                size="sm"
-                              />
+                              {(() => {
+                                const selectedField = availableFields.find(f => f.value === condition.field);
+                                const fieldType = selectedField?.type;
+                                const fieldOptions = selectedField?.options;
+
+                                // Render dropdown for enum and boolean fields
+                                if ((fieldType === 'enum' || fieldType === 'boolean') && fieldOptions) {
+                                  return (
+                                    <Select
+                                      value={condition.value}
+                                      onValueChange={(value) => handleUpdateCondition(index, 'value', value)}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue placeholder="Select value..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {fieldOptions.map((option) => (
+                                          <SelectItem key={option} value={option}>
+                                            {option}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  );
+                                }
+
+                                // Render number input for number fields
+                                if (fieldType === 'number') {
+                                  return (
+                                    <Input
+                                      type="number"
+                                      placeholder="Value"
+                                      value={condition.value}
+                                      onChange={(e) => handleUpdateCondition(index, 'value', e.target.value)}
+                                      size="sm"
+                                    />
+                                  );
+                                }
+
+                                // Default text input for string fields and others
+                                return (
+                                  <Input
+                                    placeholder="Value"
+                                    value={condition.value}
+                                    onChange={(e) => handleUpdateCondition(index, 'value', e.target.value)}
+                                    size="sm"
+                                  />
+                                );
+                              })()}
                             </div>
                             <div className="col-span-2">
                               <Select
