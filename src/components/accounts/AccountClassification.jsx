@@ -204,6 +204,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const evaluateConditionalLogic = (logic, answers) => {
     if (!logic.conditions || logic.conditions.length === 0) return false;
 
+    // Check if there's a trigger condition
+    if (logic.trigger_field && logic.trigger_value) {
+      const triggerAnswer = answers[logic.trigger_field];
+      // If trigger condition is not met, skip evaluation and return false
+      if (String(triggerAnswer) !== String(logic.trigger_value)) {
+        return false;
+      }
+    }
+
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {

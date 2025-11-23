@@ -764,6 +764,48 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               </p>
             </div>
 
+            {/* Trigger Configuration */}
+            <div className="bg-white p-3 rounded border border-purple-200">
+              <Label className="text-xs font-semibold text-purple-700 mb-2 block">
+                Trigger (Optional)
+              </Label>
+              <p className="text-xs text-slate-600 mb-3">
+                Only evaluate advanced conditions when a specific answer is selected
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Trigger on Step</Label>
+                  <Select
+                    value={editedStep.conditional_logic?.trigger_field || ""}
+                    onValueChange={(value) => handleConditionalLogicChange("trigger_field", value)}
+                  >
+                    <SelectTrigger className="h-8 text-xs mt-1">
+                      <SelectValue placeholder="Select step..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>None (Always Evaluate)</SelectItem>
+                      {allSteps
+                        .filter(s => s.step_id !== editedStep.step_id)
+                        .map(s => (
+                          <SelectItem key={s.step_id} value={s.step_id}>
+                            {s.step_title}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">When Answer Equals</Label>
+                  <Input
+                    value={editedStep.conditional_logic?.trigger_value || ""}
+                    onChange={(e) => handleConditionalLogicChange("trigger_value", e.target.value)}
+                    placeholder="e.g., NO, YES"
+                    className="h-8 text-xs mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Conditions */}
             <div>
               <div className="flex items-center justify-between mb-3">
