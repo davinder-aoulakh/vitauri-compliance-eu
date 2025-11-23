@@ -785,13 +785,11 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={null}>None (Always Evaluate)</SelectItem>
-                      {allSteps
-                        .filter(s => s.step_id !== editedStep.step_id)
-                        .map(s => (
-                          <SelectItem key={s.step_id} value={s.step_id}>
-                            {s.step_title}
-                          </SelectItem>
-                        ))}
+                      {allSteps.map(s => (
+                        <SelectItem key={s.step_id} value={s.step_id}>
+                          {s.step_title}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
