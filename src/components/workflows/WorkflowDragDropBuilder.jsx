@@ -961,8 +961,15 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               ) : (
                 <div className="space-y-3">
                   {editedStep.conditional_logic.conditions.map((condition, index) => {
-                    const selectedField = [...accountFields, ...entityFields].find(f => f.value === condition.field);
+                    const selectedField = availableConditionFields.find(f => f.value === condition.field);
                     const isCountryField = selectedField?.isCountry;
+
+                    // Group fields by their group property
+                    const groupedFields = availableConditionFields.reduce((acc, field) => {
+                      if (!acc[field.group]) acc[field.group] = [];
+                      acc[field.group].push(field);
+                      return acc;
+                    }, {});
 
                     return (
                       <div key={index} className="p-3 bg-white border-2 border-purple-200 rounded-lg space-y-3">
@@ -991,38 +998,18 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                                 <SelectValue placeholder={isLoadingFields ? "Loading fields..." : "Select field..."} />
                               </SelectTrigger>
                               <SelectContent className="max-h-[300px]">
-                                {allSteps.filter(s => s.step_id !== editedStep.step_id).length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
-                                    {allSteps
-                                      .filter(s => s.step_id !== editedStep.step_id)
-                                      .map(s => (
-                                        <SelectItem key={`step-${s.step_id}`} value={s.step_id}>
-                                          {s.step_title}
-                                        </SelectItem>
-                                      ))}
-                                  </>
-                                )}
-                                {accountFields.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
-                                    {accountFields.map(field => (
-                                      <SelectItem key={`account-${field.value}`} value={field.value}>
+                                {Object.entries(groupedFields).map(([group, fields]) => (
+                                  <React.Fragment key={group}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1 first:border-t-0 first:mt-0">
+                                      {group}
+                                    </div>
+                                    {fields.map(field => (
+                                      <SelectItem key={`field-${field.value}`} value={field.value}>
                                         {field.label} {field.isCountry && '🌍'}
                                       </SelectItem>
                                     ))}
-                                  </>
-                                )}
-                                {entityFields.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
-                                    {entityFields.map(field => (
-                                      <SelectItem key={`entity-${field.value}`} value={field.value}>
-                                        {field.label} {field.isCountry && '🌍'}
-                                      </SelectItem>
-                                    ))}
-                                  </>
-                                )}
+                                  </React.Fragment>
+                                ))}
                                 {isLoadingFields && (
                                   <div className="px-2 py-1.5 text-xs text-slate-500 italic">Loading fields...</div>
                                 )}
@@ -1095,38 +1082,18 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                                 <SelectValue placeholder={isLoadingFields ? "Loading fields..." : "Select field to compare..."} />
                               </SelectTrigger>
                               <SelectContent className="max-h-[300px]">
-                                {allSteps.filter(s => s.step_id !== editedStep.step_id).length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">Workflow Steps</div>
-                                    {allSteps
-                                      .filter(s => s.step_id !== editedStep.step_id)
-                                      .map(s => (
-                                        <SelectItem key={`refstep-${s.step_id}`} value={s.step_id}>
-                                          {s.step_title}
-                                        </SelectItem>
-                                      ))}
-                                  </>
-                                )}
-                                {accountFields.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Account Fields</div>
-                                    {accountFields.map(field => (
-                                      <SelectItem key={`refaccount-${field.value}`} value={field.value}>
-                                        {field.label}
+                                {Object.entries(groupedFields).map(([group, fields]) => (
+                                  <React.Fragment key={`ref-${group}`}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1 first:border-t-0 first:mt-0">
+                                      {group}
+                                    </div>
+                                    {fields.map(field => (
+                                      <SelectItem key={`ref-${field.value}`} value={field.value}>
+                                        {field.label} {field.isCountry && '🌍'}
                                       </SelectItem>
                                     ))}
-                                  </>
-                                )}
-                                {entityFields.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">Entity Fields</div>
-                                    {entityFields.map(field => (
-                                      <SelectItem key={`refentity-${field.value}`} value={field.value}>
-                                        {field.label}
-                                      </SelectItem>
-                                    ))}
-                                  </>
-                                )}
+                                  </React.Fragment>
+                                ))}
                                 {isLoadingFields && (
                                   <div className="px-2 py-1.5 text-xs text-slate-500 italic">Loading fields...</div>
                                 )}
@@ -1134,9 +1101,10 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                             </Select>
                           ) : (
                             <Input
+                              type={selectedField?.type === 'number' ? 'number' : 'text'}
                               value={condition.value}
                               onChange={(e) => handleConditionChange(index, "value", e.target.value)}
-                              placeholder="value or values"
+                              placeholder={condition.operator === 'is_crs' || condition.operator === 'is_not_crs' ? 'N/A (CRS lookup)' : 'value or values'}
                               className="h-8 text-xs mt-1"
                               disabled={condition.operator === 'is_crs' || condition.operator === 'is_not_crs'}
                             />
