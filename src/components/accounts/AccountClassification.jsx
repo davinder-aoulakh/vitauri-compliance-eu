@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -27,6 +28,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [multiFieldValues, setMultiFieldValues] = useState({});
+  const [multiFieldErrors, setMultiFieldErrors] = useState({});
 
   // Fetch published account classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -154,7 +157,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const handleNext = () => {
     const newAnswers = { ...answers };
-    
+
     // Store the answer
     if (currentNode.question_type === "single_choice" || 
         currentNode.question_type === "yes_no" ||
@@ -165,6 +168,24 @@ export default function AccountClassification({ account, onComplete, onCancel })
       // For file uploads, selectedValue should contain the upload metadata
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "multi_field_input") {
+      // Validate required fields
+      const errors = {};
+      const multiFields = currentNode.multi_fields || [];
+
+      multiFields.forEach(field => {
+        if (field.is_required && !multiFieldValues[field.field_id]) {
+          errors[field.field_id] = `${field.display_label} is required`;
+        }
+      });
+
+      if (Object.keys(errors).length > 0) {
+        setMultiFieldErrors(errors);
+        return;
+      }
+
+      setMultiFieldErrors({});
+      newAnswers[currentNodeId] = multiFieldValues;
     }
 
     setAnswers(newAnswers);
@@ -199,7 +220,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Move to next node
     setCurrentNodeId(nextNodeId);
     setSelectedValue("");
-  };
+    setMultiFieldValues({});
+    setMultiFieldErrors({});
+    };
 
   const evaluateConditionalLogic = (logic, answers) => {
     if (!logic.conditions || logic.conditions.length === 0) return false;
@@ -441,14 +464,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
         setUploadingFile(true);
         try {
           const { file_url } = await base44.integrations.Core.UploadFile({ file });
-          
+
           const uploadMetadata = {
             file_url,
             file_name: file.name,
             upload_date: new Date().toISOString(),
             uploaded_by: user?.email
           };
-          
+
           setSelectedValue(uploadMetadata);
         } catch (error) {
           console.error("Error uploading file:", error);
@@ -514,8 +537,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
+    if (currentNode.question_type === "multi_field_input") {
+      return (
+        <div className="space-y-3">
+          <MultiFieldRenderer
+            fields={currentNode.multi_fields || []}
+            values={multiFieldValues}
+            onChange={setMultiFieldValues}
+            errors={multiFieldErrors}
+          />
+        </div>
+      );
+    }
+
     return null;
-  };
+    };
 
   // Summary Screen
   if (showSummary) {
@@ -848,7 +884,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </Button>
         <Button 
           onClick={handleNext}
-          disabled={!selectedValue && !isActionNode(currentNode)}
+          disabled={
+            !isActionNode(currentNode) && 
+            !selectedValue && 
+            !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0)
+          }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >

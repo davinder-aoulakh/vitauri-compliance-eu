@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MultiFieldEditor from "./MultiFieldEditor";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   const [steps, setSteps] = useState(workflow?.steps || []);
@@ -652,12 +653,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <SelectItem value="number_input">Number Input</SelectItem>
             <SelectItem value="date_input">Date Input</SelectItem>
             <SelectItem value="file_upload">File Upload</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectItem value="multi_field_input">Multi-Field Input</SelectItem>
+            </SelectContent>
+            </Select>
+            </div>
 
-      <div>
-        <Label htmlFor="help_text">Help Text</Label>
+            <div>
+            <Label htmlFor="help_text">Help Text</Label>
         <Textarea
           id="help_text"
           value={editedStep.help_text}
@@ -733,11 +735,22 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
         </div>
       )}
 
+      {/* Multi-Field Input Configuration */}
+      {editedStep.question_type === "multi_field_input" && (
+        <div className="border-t pt-4">
+          <MultiFieldEditor
+            fields={editedStep.multi_fields || []}
+            onChange={(fields) => setEditedStep({ ...editedStep, multi_fields: fields })}
+          />
+        </div>
+      )}
+
       {/* Next Step for non-option question types */}
       {(editedStep.question_type === "text_input" || 
         editedStep.question_type === "number_input" || 
         editedStep.question_type === "date_input" || 
-        editedStep.question_type === "file_upload") && (
+        editedStep.question_type === "file_upload" ||
+        editedStep.question_type === "multi_field_input") && (
         <div className="p-4 border rounded-lg bg-slate-50">
           <div className="flex items-center gap-2">
             <LinkIcon className="w-4 h-4 text-slate-400" />
