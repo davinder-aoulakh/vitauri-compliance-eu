@@ -29,6 +29,7 @@ import {
   HelpCircle,
   Zap
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
