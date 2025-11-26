@@ -836,6 +836,117 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               </div>
             </div>
 
+            {/* Selection Count Condition for Multiple Choice */}
+            {editedStep.question_type === "multiple_choice" && (
+              <div className="bg-white p-3 rounded border border-blue-200">
+                <Label className="text-xs font-semibold text-blue-700 mb-2 block">
+                  Selection Count Branching (for Multiple Choice)
+                </Label>
+                <p className="text-xs text-slate-600 mb-3">
+                  Navigate based on how many options the user selects
+                </p>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={editedStep.conditional_logic?.use_selection_count || false}
+                    onCheckedChange={(checked) => handleConditionalLogicChange("use_selection_count", checked)}
+                    id="use-selection-count"
+                  />
+                  <Label htmlFor="use-selection-count" className="text-xs cursor-pointer">
+                    Enable selection count branching
+                  </Label>
+                </div>
+                
+                {editedStep.conditional_logic?.use_selection_count && (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-xs">Operator</Label>
+                        <Select
+                          value={editedStep.conditional_logic?.selection_count_operator || "="}
+                          onValueChange={(value) => handleConditionalLogicChange("selection_count_operator", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="=">Equals (=)</SelectItem>
+                            <SelectItem value="!=">Not Equals (≠)</SelectItem>
+                            <SelectItem value=">">Greater Than (&gt;)</SelectItem>
+                            <SelectItem value="<">Less Than (&lt;)</SelectItem>
+                            <SelectItem value=">=">Greater or Equal (≥)</SelectItem>
+                            <SelectItem value="<=">Less or Equal (≤)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Count</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={editedStep.conditional_logic?.selection_count_value || ""}
+                          onChange={(e) => handleConditionalLogicChange("selection_count_value", parseInt(e.target.value) || 0)}
+                          placeholder="e.g., 3"
+                          className="h-8 text-xs mt-1"
+                        />
+                      </div>
+                      <div className="text-xs text-slate-500 flex items-end pb-2">
+                        of {editedStep.options?.length || 0} total options
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                      <div>
+                        <Label className="text-xs text-green-700 font-semibold">
+                          If condition met → Go to:
+                        </Label>
+                        <Select
+                          value={editedStep.conditional_logic?.selection_count_next_step || ""}
+                          onValueChange={(value) => handleConditionalLogicChange("selection_count_next_step", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1 border-green-300">
+                            <SelectValue placeholder="Select step..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={null}>None (End)</SelectItem>
+                            {allSteps
+                              .filter(s => s.step_id !== editedStep.step_id)
+                              .map(s => (
+                                <SelectItem key={s.step_id} value={s.step_id}>
+                                  {s.step_title}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-red-700 font-semibold">
+                          Otherwise → Go to:
+                        </Label>
+                        <Select
+                          value={editedStep.conditional_logic?.selection_count_else_step || ""}
+                          onValueChange={(value) => handleConditionalLogicChange("selection_count_else_step", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1 border-red-300">
+                            <SelectValue placeholder="Select step..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={null}>None (End)</SelectItem>
+                            {allSteps
+                              .filter(s => s.step_id !== editedStep.step_id)
+                              .map(s => (
+                                <SelectItem key={s.step_id} value={s.step_id}>
+                                  {s.step_title}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Conditions */}
             <div>
               <div className="flex items-center justify-between mb-3">
