@@ -563,7 +563,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     
     // Reset operator if field changes and it's a CRS-specific operator
     if (field === 'field') {
-      const selectedField = [...accountFields, ...entityFields].find(f => f.value === value);
+      const selectedField = availableConditionFields.find(f => f.value === value);
       const currentOperator = newConditions[index].operator;
       
       // If switching away from a country field and operator is CRS-specific, reset operator
