@@ -26,6 +26,7 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
 
   // Field mapping: label -> technical name
   const labelToField = {
+    "Account Creation Date": "created_date",
     "Entity ID": "entity_id",
     "Account Number": "account_number",
     "Account Type": "account_type",
@@ -77,7 +78,7 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const downloadTemplate = () => {
     // Create header row with user-friendly labels
     const headers = [
-      "Entity ID", "Account Number", "Account Type", "Account Holder Type", "Account Holder Name",
+      "Account Creation Date", "Entity ID", "Account Number", "Account Type", "Account Holder Type", "Account Holder Name",
       "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive", "Account Closed During Period",
       "Street Address", "City", "State/Province", "Postal Code", "Country",
       "Current Street Address", "Current City", "Current State/Province", "Current Postal Code", "Current Country",
@@ -93,9 +94,9 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
     ];
     
     const template = `${headers.join(',')}
-${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,
-${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890
-${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,false,789 Corporate Blvd,Tokyo,,100-0001,Japan,789 Corporate Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,,,,,,,,,,,false,false,true,Japan,1234567890,,`;
+2017-06-15,${entities[0]?.id || 'ENTITY_ID'},ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,
+2019-03-22,${entities[0]?.id || 'ENTITY_ID'},ACC-002,custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890
+2020-01-10,${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,false,789 Corporate Blvd,Tokyo,,100-0001,Japan,789 Corporate Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,,,,,,,,,,,false,false,true,Japan,1234567890,,`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -566,6 +567,7 @@ ${entities[0]?.id || 'ENTITY_ID'},ACC-003,depository,entity,ABC Corp,,,false,,fa
             
             <p className="mt-3"><strong>Optional Fields:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Account Creation Date (YYYY-MM-DD format - used to determine pre-existing status)</li>
               <li>Tax residencies (up to 2 per account)</li>
               <li>Address details (Street Address, City, State/Province, Postal Code)</li>
               <li>Current address (Current Street, City, State, Postal Code, Country)</li>

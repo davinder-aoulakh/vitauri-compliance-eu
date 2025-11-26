@@ -237,6 +237,19 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4 mt-4">
+          {/* Account Creation Date - Read Only */}
+          {account?.created_date && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <Info className="w-4 h-4 text-slate-500" />
+                <span className="text-slate-600">Account Created:</span>
+                <span className="font-medium text-slate-900">
+                  {new Date(account.created_date).toLocaleDateString()} at {new Date(account.created_date).toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="entity_id">Related Entity *</Label>
