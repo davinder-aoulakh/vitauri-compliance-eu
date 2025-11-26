@@ -393,108 +393,91 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   );
 
   // Load Account and Entity schemas directly
-  const [accountSchema, setAccountSchema] = React.useState(null);
-  const [entitySchema, setEntitySchema] = React.useState(null);
-  const [isLoadingFields, setIsLoadingFields] = React.useState(true);
+  const [isLoadingFields, setIsLoadingFields] = React.useState(false);
 
-  React.useEffect(() => {
-    // Hardcode the schemas based on the entity definitions
-    const accountSchemaData = {
-      "type": "object",
-      "properties": {
-        "tenant_id": { "type": "string" },
-        "entity_id": { "type": "string" },
-        "account_number": { "type": "string" },
-        "account_type": { "type": "string" },
-        "account_holder_type": { "type": "string" },
-        "account_holder_name": { "type": "string" },
-        "date_of_birth": { "type": "string" },
-        "place_of_birth": { "type": "string" },
-        "is_pre_existing": { "type": "boolean" },
-        "account_holder_is_alive": { "type": "boolean" },
-        "account_closed_during_period": { "type": "boolean" },
-        "country_of_residence": { "type": "string" },
-        "current_email": { "type": "string" },
-        "current_phone": { "type": "string" },
-        "year_end_cash_value": { "type": "number" },
-        "year_end_cash_value_currency": { "type": "string" },
-        "gross_payments": { "type": "number" },
-        "gross_payments_currency": { "type": "string" },
-        "reporting_year": { "type": "string" },
-        "reportability_status": { "type": "string" },
-        "account_holder_address": {
-          "type": "object",
-          "properties": {
-            "street": { "type": "string" },
-            "city": { "type": "string" },
-            "state": { "type": "string" },
-            "postal_code": { "type": "string" },
-            "country": { "type": "string" }
-          }
-        },
-        "current_address": {
-          "type": "object",
-          "properties": {
-            "street": { "type": "string" },
-            "city": { "type": "string" },
-            "state": { "type": "string" },
-            "postal_code": { "type": "string" },
-            "country": { "type": "string" }
-          }
-        }
-      }
-    };
-
-    const entitySchemaData = {
-      "type": "object",
-      "properties": {
-        "tenant_id": { "type": "string" },
-        "entity_name": { "type": "string" },
-        "entity_type": { "type": "string" },
-        "country_of_incorporation": { "type": "string" },
-        "tax_id": { "type": "string" },
-        "giin": { "type": "string" },
-        "rfi_status": { "type": "string" },
-        "fi_type": { "type": "string" },
-        "non_reporting_reason": { "type": "string" },
-        "address": {
-          "type": "object",
-          "properties": {
-            "street": { "type": "string" },
-            "city": { "type": "string" },
-            "state": { "type": "string" },
-            "postal_code": { "type": "string" },
-            "country": { "type": "string" }
-          }
-        },
-        "status": { "type": "string" }
-      }
-    };
-
-    setAccountSchema(accountSchemaData);
-    setEntitySchema(entitySchemaData);
-    setIsLoadingFields(false);
+  // Account schema fields
+  const accountFields = React.useMemo(() => {
+    return [
+      { value: "account_number", label: "Account Number", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_type", label: "Account Type", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_type", label: "Account Holder Type", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_name", label: "Account Holder Name", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "date_of_birth", label: "Date of Birth", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true, group: "Account Fields" },
+      { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_is_alive", label: "Account Holder Is Alive", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "account_closed_during_period", label: "Account Closed During Period", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "country_of_residence", label: "Country of Residence", type: "string", isCountry: true, group: "Account Fields" },
+      { value: "year_end_cash_value", label: "Year End Cash Value", type: "number", isCountry: false, group: "Account Fields" },
+      { value: "gross_payments", label: "Gross Payments", type: "number", isCountry: false, group: "Account Fields" },
+      { value: "reportability_status", label: "Reportability Status", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_address.country", label: "Account Holder Address Country", type: "string", isCountry: true, group: "Account Fields" },
+      { value: "current_address.country", label: "Current Address Country", type: "string", isCountry: true, group: "Account Fields" },
+    ];
   }, []);
 
-  // Generate field options
-  const accountFields = React.useMemo(() => {
-    if (!accountSchema) return [];
-    const fields = generateFieldPaths(accountSchema);
-    console.log('Generated Account Fields:', fields);
-    return fields;
-  }, [accountSchema]);
-
+  // Entity schema fields
   const entityFields = React.useMemo(() => {
-    if (!entitySchema) return [];
-    const fields = generateFieldPaths(entitySchema);
-    console.log('Generated Entity Fields:', fields);
-    return fields;
-  }, [entitySchema]);
+    return [
+      { value: "entity_name", label: "Entity Name", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "entity_type", label: "Entity Type", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "country_of_incorporation", label: "Country of Incorporation", type: "string", isCountry: true, group: "Entity Fields" },
+      { value: "tax_id", label: "Tax ID", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "giin", label: "GIIN", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "rfi_status", label: "RFI Status", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "fi_type", label: "FI Type", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "address.country", label: "Address Country", type: "string", isCountry: true, group: "Entity Fields" },
+      { value: "status", label: "Status", type: "string", isCountry: false, group: "Entity Fields" },
+    ];
+  }, []);
 
-  React.useEffect(() => {
-    console.log('Account Fields Count:', accountFields.length);
-    console.log('Entity Fields Count:', entityFields.length);
-  }, [accountFields, entityFields]);
+  // Generate consolidated available condition fields including multi-field sub-fields from previous steps
+  const availableConditionFields = React.useMemo(() => {
+    const fields = [];
+    const currentStepIndex = allSteps.findIndex(s => s.step_id === editedStep.step_id);
+
+    // 1. Add answers from preceding workflow steps
+    allSteps.slice(0, currentStepIndex).forEach(s => {
+      // Add step ID itself as a field (for simple question types)
+      fields.push({
+        value: s.step_id,
+        label: `Step: ${s.step_title}`,
+        type: s.question_type,
+        isCountry: false,
+        group: 'Workflow Steps'
+      });
+
+      // If it's a multi_field_input, add its sub-fields
+      if (s.question_type === 'multi_field_input' && s.multi_fields?.length > 0) {
+        s.multi_fields.forEach(mf => {
+          const isCountryField = mf.field_type === 'select' && (
+            mf.referenced_data_key?.toLowerCase().includes('country') ||
+            mf.display_label?.toLowerCase().includes('country')
+          );
+          
+          fields.push({
+            value: `${s.step_id}.${mf.field_id}`,
+            label: `${s.step_title} → ${mf.display_label}`,
+            type: mf.field_type,
+            isCountry: isCountryField,
+            group: 'Multi-Field Inputs'
+          });
+        });
+      }
+    });
+
+    // 2. Add Account fields
+    accountFields.forEach(field => {
+      fields.push({ ...field, group: 'Account Fields' });
+    });
+
+    // 3. Add Entity fields
+    entityFields.forEach(field => {
+      fields.push({ ...field, group: 'Entity Fields' });
+    });
+
+    return fields;
+  }, [allSteps, editedStep.step_id, accountFields, entityFields]);
 
   const handleChange = (field, value) => {
     setEditedStep({ ...editedStep, [field]: value });
