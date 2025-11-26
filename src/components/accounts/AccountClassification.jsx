@@ -40,6 +40,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
     })
   });
 
+  // Fetch CRS countries for condition evaluation
+  const { data: crsCountries = [] } = useQuery({
+    queryKey: ['crs-countries-for-evaluation'],
+    queryFn: async () => {
+      const countries = await base44.entities.CrsCountryInfo.filter({ is_crs_country: true });
+      return countries.map(c => c.country_code?.toUpperCase());
+    },
+    staleTime: Infinity
+  });
+
   useEffect(() => {
     loadUser();
   }, []);
