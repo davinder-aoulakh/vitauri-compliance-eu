@@ -732,6 +732,37 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
         </div>
       )}
 
+      {/* Next Step for non-option question types */}
+      {(editedStep.question_type === "text_input" || 
+        editedStep.question_type === "number_input" || 
+        editedStep.question_type === "date_input" || 
+        editedStep.question_type === "file_upload") && (
+        <div className="p-4 border rounded-lg bg-slate-50">
+          <div className="flex items-center gap-2">
+            <LinkIcon className="w-4 h-4 text-slate-400" />
+            <Label className="text-sm font-medium text-slate-700">Next Step (after this input is completed):</Label>
+          </div>
+          <Select
+            value={editedStep.default_next_step || ""}
+            onValueChange={(value) => handleChange("default_next_step", value)}
+          >
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Select next step..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={null}>None (End Workflow)</SelectItem>
+              {allSteps
+                .filter(s => s.step_id !== editedStep.step_id)
+                .map(s => (
+                  <SelectItem key={s.step_id} value={s.step_id}>
+                    {s.step_title}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Advanced Conditional Logic */}
       <div className="border-t pt-4">
         <div className="flex items-center justify-between mb-3">
