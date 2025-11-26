@@ -224,6 +224,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
     setMultiFieldErrors({});
     };
 
+  // Fetch CRS countries for condition evaluation
+  const { data: crsCountries = [] } = useQuery({
+    queryKey: ['crs-countries-for-evaluation'],
+    queryFn: async () => {
+      const countries = await base44.entities.CrsCountryInfo.filter({ is_crs_country: true });
+      return countries.map(c => c.country_code?.toUpperCase());
+    },
+    staleTime: Infinity
+  });
+
   const evaluateConditionalLogic = (logic, answers) => {
     if (!logic.conditions || logic.conditions.length === 0) return false;
 
@@ -236,49 +246,107 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
+    // Helper to get field value from various sources
+    const getFieldValue = (fieldPath) => {
+      // Check if it's a multi-field input reference (step_id.field_id)
+      if (fieldPath.includes('.')) {
+        const parts = fieldPath.split('.');
+
+        // Check if first part is a step ID
+        const stepAnswer = answers[parts[0]];
+        if (stepAnswer && typeof stepAnswer === 'object') {
+          // It's a multi-field input answer
+          return stepAnswer[parts[1]];
+        }
+
+        // Check account nested fields
+        if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
+          return account?.[parts[0]]?.[parts[1]];
+        }
+        if (parts[0] === 'address') {
+          // Entity address - would need entity context
+          return null;
+        }
+      }
+
+      // Check direct answers
+      if (answers[fieldPath] !== undefined) {
+        return answers[fieldPath];
+      }
+
+      // Handle special account data fields
+      if (fieldPath === '_is_pre_existing' || fieldPath === 'is_pre_existing') {
+        return account?.is_pre_existing;
+      } else if (fieldPath === '_account_holder_is_alive' || fieldPath === 'account_holder_is_alive') {
+        return account?.account_holder_is_alive;
+      } else if (fieldPath === '_account_holder_type' || fieldPath === 'account_holder_type') {
+        return account?.account_holder_type;
+      } else if (fieldPath === 'country_of_residence') {
+        return account?.country_of_residence;
+      } else if (fieldPath === 'place_of_birth') {
+        return account?.place_of_birth;
+      }
+
+      // Check other account fields
+      if (account?.[fieldPath] !== undefined) {
+        return account[fieldPath];
+      }
+
+      return null;
+    };
+
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {
-      let fieldValue = answers[condition.field];
-      
-      // Handle special account data fields
-      if (condition.field === '_is_pre_existing') {
-        fieldValue = account?.is_pre_existing;
-      } else if (condition.field === '_account_holder_is_alive') {
-        fieldValue = account?.account_holder_is_alive;
-      } else if (condition.field === '_account_holder_type') {
-        fieldValue = account?.account_holder_type;
+      let fieldValue = getFieldValue(condition.field);
+
+      // Get comparison value (could be static or field reference)
+      let comparisonValue = condition.value;
+      if (condition.value_type === 'field_reference') {
+        comparisonValue = getFieldValue(condition.value);
       }
 
       let conditionMet = false;
 
       switch (condition.operator) {
         case "=":
-          conditionMet = fieldValue == condition.value;
+          conditionMet = String(fieldValue).toLowerCase() === String(comparisonValue).toLowerCase();
           break;
         case "!=":
-          conditionMet = fieldValue != condition.value;
+          conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
           break;
         case "in":
-          conditionMet = condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
+          const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
+          conditionMet = inValues.includes(String(fieldValue).toLowerCase());
           break;
         case "not_in":
-          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
+          const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
+          conditionMet = !notInValues.includes(String(fieldValue).toLowerCase());
           break;
         case "contains":
-          conditionMet = String(fieldValue).includes(condition.value);
+          conditionMet = String(fieldValue).toLowerCase().includes(String(comparisonValue).toLowerCase());
           break;
         case ">":
-          conditionMet = parseFloat(fieldValue) > parseFloat(condition.value);
+          conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
           break;
         case "<":
-          conditionMet = parseFloat(fieldValue) < parseFloat(condition.value);
+          conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
           break;
         case ">=":
-          conditionMet = parseFloat(fieldValue) >= parseFloat(condition.value);
+          conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
           break;
         case "<=":
-          conditionMet = parseFloat(fieldValue) <= parseFloat(condition.value);
+          conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
+          break;
+        case "is_crs":
+          // Check if the country value is in CRS participating countries
+          const countryCodeCrs = String(fieldValue).toUpperCase();
+          conditionMet = crsCountries.includes(countryCodeCrs);
+          break;
+        case "is_not_crs":
+          // Check if the country value is NOT in CRS participating countries
+          const countryCodeNotCrs = String(fieldValue).toUpperCase();
+          conditionMet = !crsCountries.includes(countryCodeNotCrs);
           break;
         default:
           conditionMet = false;
