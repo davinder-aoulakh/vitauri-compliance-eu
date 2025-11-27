@@ -63,6 +63,14 @@ export default function WorkflowVisualizer({ workflow }) {
       });
     }
     
+    // Handle default_next_step for non-option question types (text_input, number_input, date_input, file_upload, multi_field_input)
+    if (step.default_next_step && stepMap[step.default_next_step]) {
+      connections.push({
+        to: step.default_next_step,
+        label: "Next"
+      });
+    }
+    
     if (step.conditional_logic) {
       if (step.conditional_logic.next_step) {
         connections.push({
