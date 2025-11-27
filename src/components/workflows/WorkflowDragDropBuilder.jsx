@@ -386,6 +386,7 @@ const generateFieldPaths = (schema, prefix = '') => {
 function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const [editedStep, setEditedStep] = useState({ 
     ...step,
+    default_next_step: step.default_next_step || "",
     conditional_logic: step.conditional_logic || { conditions: [], next_step: "", else_step: "" }
   });
   const [showAdvancedLogic, setShowAdvancedLogic] = useState(
