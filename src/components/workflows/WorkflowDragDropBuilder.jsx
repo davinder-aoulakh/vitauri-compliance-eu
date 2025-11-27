@@ -34,7 +34,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import MultiFieldEditor from "./MultiFieldEditor";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
-  const [steps, setSteps] = useState(workflow?.steps || []);
+  // Ensure all steps have default_next_step initialized from saved data
+  const initialSteps = (workflow?.steps || []).map(step => ({
+    ...step,
+    default_next_step: step.default_next_step || ""
+  }));
+  const [steps, setSteps] = useState(initialSteps);
   const [selectedStep, setSelectedStep] = useState(null);
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [workflowName, setWorkflowName] = useState(workflow?.workflow_name || "");
