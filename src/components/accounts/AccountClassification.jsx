@@ -45,12 +45,29 @@ export default function AccountClassification({ account, onComplete, onCancel })
     enabled: !!account
   });
 
-  // Fetch CRS countries for condition evaluation
-  const { data: crsCountries = [] } = useQuery({
-    queryKey: ['crs-countries-for-evaluation'],
+  // Fetch CRS countries for condition evaluation - now includes both name and code lookup
+  const { data: crsCountryMap = {} } = useQuery({
+    queryKey: ['crs-country-map-for-evaluation'],
     queryFn: async () => {
-      const countries = await base44.entities.CrsCountryInfo.filter({ is_crs_country: true });
-      return countries.map(c => c.country_code?.toUpperCase());
+      const countries = await base44.entities.CrsCountryInfo.list();
+      const map = {};
+      countries.forEach(c => {
+        // Map by country name (lowercase)
+        if (c.country_name) {
+          map[c.country_name.toLowerCase()] = {
+            code: c.country_code?.toUpperCase(),
+            isCrs: c.is_crs_country
+          };
+        }
+        // Map by country code (lowercase)
+        if (c.country_code) {
+          map[c.country_code.toLowerCase()] = {
+            code: c.country_code?.toUpperCase(),
+            isCrs: c.is_crs_country
+          };
+        }
+      });
+      return map;
     },
     staleTime: Infinity,
     enabled: !!account
@@ -59,12 +76,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // Evaluate if a workflow's trigger conditions match the account data
   const evaluateTriggerConditions = (triggerConfig, accountData) => {
     if (!triggerConfig?.enabled) return false;
-    if (!triggerConfig.conditions || triggerConfig.conditions.length === 0) return true; // Enabled but no conditions = always match
+    if (!triggerConfig.conditions || triggerConfig.conditions.length === 0) return true;
 
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
       
-      // Handle nested fields (e.g., account_holder_address.country)
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
         let value = accountData;
@@ -143,9 +159,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow && account) {
-      // Find workflows that match based on trigger_conditions
       const matchingWorkflows = workflows.filter(w => {
-        // Check if workflow has enabled trigger conditions
         if (w.trigger_conditions?.enabled) {
           return evaluateTriggerConditions(w.trigger_conditions, account);
         }
@@ -155,7 +169,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       let selectedWorkflow = null;
 
       if (matchingWorkflows.length > 0) {
-        // Sort by priority (higher first), then by version (latest first)
         const sortedWorkflows = matchingWorkflows.sort((a, b) => {
           const priorityA = a.trigger_conditions?.priority || 0;
           const priorityB = b.trigger_conditions?.priority || 0;
@@ -164,8 +177,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         });
         selectedWorkflow = sortedWorkflows[0];
       } else {
-        // Fallback: if no workflows have matching trigger conditions, 
-        // try to find any workflow that matches account holder type by name
         const isIndividual = account?.account_holder_type === "individual";
         const fallbackWorkflows = workflows.filter(w => {
           const nameMatch = isIndividual 
@@ -191,7 +202,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   }, [workflows, workflow, account]);
 
-  // Pre-populate answers with account data for conditional logic
   useEffect(() => {
     if (account && !answers._account_data_loaded) {
       setAnswers(prev => ({
@@ -213,212 +223,34 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
-
-  if (!workflow) {
-    const accountType = account?.account_holder_type === "individual" ? "individual" : "entity";
-    return (
-      <div className="p-12 text-center">
-        <Alert className="bg-amber-50 border-amber-200">
-          <AlertCircle className="w-4 h-4 text-amber-600" />
-          <AlertDescription className="text-amber-900">
-            No published {accountType} account reportability workflow found. Please contact your administrator to publish the workflow.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (!currentNodeId && !showSummary) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
-
-  // Build step map
-  const stepMap = {};
-  workflow.steps.forEach(step => {
-    stepMap[step.step_id] = step;
-  });
-
-  const currentNode = showSummary ? null : stepMap[currentNodeId];
-  
-  if (!currentNode && !showSummary) {
-    return (
-      <div className="p-12 text-center">
-        <Alert className="bg-red-50 border-red-200">
-          <AlertDescription className="text-red-900">
-            Workflow configuration error. Current step not found.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  const isEntityWorkflow = account?.account_holder_type === "entity";
-  const currentStepIndex = history.length;
-  const totalSteps = completedPath.length || history.length + 1;
-  const progress = Math.round((currentStepIndex / totalSteps) * 100);
-
-  // Determine if current node is an action (end) node
-  const isActionNode = (step) => {
-    if (!step) return false;
-    
-    // Input types with default_next_step are NOT action nodes
-    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input"];
-    if (inputTypes.includes(step.question_type)) {
-      // If it has a default_next_step, it's not an end node
-      if (step.default_next_step) return false;
-      // text_input without next step is typically an end/result node
-      if (step.question_type === "text_input") return true;
-      // Other input types without next_step should still allow proceeding
-      return false;
-    }
-    
-    // For choice-based questions, check if any option has a next_step
-    if (!step.options || step.options.length === 0) {
-      return true;
-    }
-    return !step.options.some(opt => opt.next_step);
-  };
-
-  const handleNext = () => {
-    const newAnswers = { ...answers };
-
-    // Store the answer
-    if (currentNode.question_type === "single_choice" || 
-        currentNode.question_type === "yes_no" ||
-        currentNode.question_type === "multiple_choice") {
-      if (!selectedValue) return;
-      newAnswers[currentNodeId] = selectedValue;
-    } else if (currentNode.question_type === "date_input" || 
-               currentNode.question_type === "number_input") {
-      if (!selectedValue) return;
-      newAnswers[currentNodeId] = selectedValue;
-    } else if (currentNode.question_type === "file_upload") {
-      // For file uploads, selectedValue should contain the upload metadata
-      if (!selectedValue) return;
-      newAnswers[currentNodeId] = selectedValue;
-    } else if (currentNode.question_type === "multi_field_input") {
-      // Validate required fields
-      const errors = {};
-      const multiFields = currentNode.multi_fields || [];
-
-      multiFields.forEach(field => {
-        if (field.is_required && !multiFieldValues[field.field_id]) {
-          errors[field.field_id] = `${field.display_label} is required`;
-        }
-      });
-
-      if (Object.keys(errors).length > 0) {
-        setMultiFieldErrors(errors);
-        return;
-      }
-
-      setMultiFieldErrors({});
-      newAnswers[currentNodeId] = multiFieldValues;
-    }
-
-    setAnswers(newAnswers);
-    const newHistory = [...history, currentNodeId];
-    setHistory(newHistory);
-
-    // Determine next step
-    let nextNodeId = null;
-
-    // First check if there's a selected option with next_step (for yes_no, single_choice, multiple_choice)
-    if (selectedValue && currentNode.options && currentNode.options.length > 0) {
-      const selectedOption = currentNode.options.find(opt => 
-        opt.value === selectedValue || opt.label === selectedValue
-      );
-      if (selectedOption?.next_step) {
-        nextNodeId = selectedOption.next_step;
-      }
-    }
-    
-    // If no next step from options, check default_next_step (for input types)
-    if (!nextNodeId && currentNode.default_next_step) {
-      nextNodeId = currentNode.default_next_step;
-    }
-
-    // Check conditional logic if still no next step determined
-    if (!nextNodeId && currentNode.conditional_logic?.conditions?.length > 0) {
-      const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
-      nextNodeId = conditionMet 
-        ? currentNode.conditional_logic.next_step 
-        : currentNode.conditional_logic.else_step;
-    }
-
-    // Validate that the next step actually exists in the workflow
-    if (nextNodeId && !stepMap[nextNodeId]) {
-      console.warn(`Next step "${nextNodeId}" not found in workflow, showing summary`);
-      nextNodeId = null;
-    }
-
-    // If this is an action node or no valid next step, show summary
-    if (!nextNodeId || isActionNode(currentNode)) {
-      setCompletedPath([...newHistory, currentNodeId]);
-      setShowSummary(true);
-      return;
-    }
-
-    // Move to next node
-    setCurrentNodeId(nextNodeId);
-    setSelectedValue("");
-    setDateValue("");
-    setMultiFieldValues({});
-    setMultiFieldErrors({});
-    };
-
-  const evaluateConditionalLogic = (logic, answers) => {
+  const evaluateConditionalLogic = (logic, currentAnswers) => {
     if (!logic.conditions || logic.conditions.length === 0) return false;
 
     // Check if there's a trigger condition
     if (logic.trigger_field && logic.trigger_value) {
-      const triggerAnswer = answers[logic.trigger_field];
-      // If trigger condition is not met, skip evaluation and return false
+      const triggerAnswer = currentAnswers[logic.trigger_field];
       if (String(triggerAnswer) !== String(logic.trigger_value)) {
         return false;
       }
     }
 
-    // Helper to get field value from various sources
     const getFieldValue = (fieldPath) => {
-      // Check if it's a multi-field input reference (step_id.field_id)
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
-
-        // Check if first part is a step ID
-        const stepAnswer = answers[parts[0]];
+        const stepAnswer = currentAnswers[parts[0]];
         if (stepAnswer && typeof stepAnswer === 'object') {
-          // It's a multi-field input answer
           return stepAnswer[parts[1]];
         }
-
-        // Check account nested fields
         if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
           return account?.[parts[0]]?.[parts[1]];
         }
-        if (parts[0] === 'address') {
-          // Entity address - would need entity context
-          return null;
-        }
+        return null;
       }
 
-      // Check direct answers
-      if (answers[fieldPath] !== undefined) {
-        return answers[fieldPath];
+      if (currentAnswers[fieldPath] !== undefined) {
+        return currentAnswers[fieldPath];
       }
 
-      // Handle special account data fields
       if (fieldPath === '_is_pre_existing' || fieldPath === 'is_pre_existing') {
         return account?.is_pre_existing;
       } else if (fieldPath === '_account_holder_is_alive' || fieldPath === 'account_holder_is_alive') {
@@ -431,7 +263,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return account?.place_of_birth;
       }
 
-      // Check other account fields
       if (account?.[fieldPath] !== undefined) {
         return account[fieldPath];
       }
@@ -443,8 +274,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     logic.conditions.forEach((condition, idx) => {
       let fieldValue = getFieldValue(condition.field);
-
-      // Get comparison value (could be static or field reference)
       let comparisonValue = condition.value;
       if (condition.value_type === 'field_reference') {
         comparisonValue = getFieldValue(condition.value);
@@ -483,14 +312,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
           break;
         case "is_crs":
-          // Check if the country value is in CRS participating countries
-          const countryCodeCrs = String(fieldValue).toUpperCase();
-          conditionMet = crsCountries.includes(countryCodeCrs);
+          // Check if country is a CRS participating country - now supports both name and code
+          const countryLookup = crsCountryMap[String(fieldValue).toLowerCase()];
+          conditionMet = countryLookup?.isCrs === true;
           break;
         case "is_not_crs":
-          // Check if the country value is NOT in CRS participating countries
-          const countryCodeNotCrs = String(fieldValue).toUpperCase();
-          conditionMet = !crsCountries.includes(countryCodeNotCrs);
+          // Check if country is NOT a CRS participating country
+          const countryLookupNot = crsCountryMap[String(fieldValue).toLowerCase()];
+          conditionMet = countryLookupNot?.isCrs === false;
           break;
         default:
           conditionMet = false;
@@ -508,6 +337,118 @@ export default function AccountClassification({ account, onComplete, onCancel })
     });
 
     return result;
+  };
+
+  // Build step map - must be before any conditional returns that use it
+  const stepMap = {};
+  if (workflow?.steps) {
+    workflow.steps.forEach(step => {
+      stepMap[step.step_id] = step;
+    });
+  }
+
+  const isActionNode = (step) => {
+    if (!step) return false;
+    
+    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input"];
+    if (inputTypes.includes(step.question_type)) {
+      if (step.default_next_step) return false;
+      if (step.question_type === "text_input") return true;
+      return false;
+    }
+    
+    if (!step.options || step.options.length === 0) {
+      return true;
+    }
+    return !step.options.some(opt => opt.next_step);
+  };
+
+  const handleNext = () => {
+    const currentNode = stepMap[currentNodeId];
+    if (!currentNode) return;
+
+    const newAnswers = { ...answers };
+
+    if (currentNode.question_type === "single_choice" || 
+        currentNode.question_type === "yes_no" ||
+        currentNode.question_type === "multiple_choice") {
+      if (!selectedValue) return;
+      newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "date_input" || 
+               currentNode.question_type === "number_input") {
+      if (!selectedValue) return;
+      newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "file_upload") {
+      if (!selectedValue) return;
+      newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "multi_field_input") {
+      const errors = {};
+      const multiFields = currentNode.multi_fields || [];
+
+      multiFields.forEach(field => {
+        if (field.is_required && !multiFieldValues[field.field_id]) {
+          errors[field.field_id] = `${field.display_label} is required`;
+        }
+      });
+
+      if (Object.keys(errors).length > 0) {
+        setMultiFieldErrors(errors);
+        return;
+      }
+
+      setMultiFieldErrors({});
+      newAnswers[currentNodeId] = multiFieldValues;
+    }
+
+    setAnswers(newAnswers);
+    const newHistory = [...history, currentNodeId];
+    setHistory(newHistory);
+
+    // Determine next step - CONDITIONAL LOGIC FIRST (highest priority)
+    let nextNodeId = null;
+
+    // Check conditional logic first
+    if (currentNode.conditional_logic?.conditions?.length > 0) {
+      const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
+      if (conditionMet) {
+        nextNodeId = currentNode.conditional_logic.next_step;
+      } else {
+        nextNodeId = currentNode.conditional_logic.else_step;
+      }
+    }
+
+    // If no next step from conditional logic, check selected option
+    if (!nextNodeId && selectedValue && currentNode.options && currentNode.options.length > 0) {
+      const selectedOption = currentNode.options.find(opt => 
+        opt.value === selectedValue || opt.label === selectedValue
+      );
+      if (selectedOption?.next_step) {
+        nextNodeId = selectedOption.next_step;
+      }
+    }
+    
+    // If still no next step, check default_next_step
+    if (!nextNodeId && currentNode.default_next_step) {
+      nextNodeId = currentNode.default_next_step;
+    }
+
+    // Validate next step exists
+    if (nextNodeId && !stepMap[nextNodeId]) {
+      console.warn(`Next step "${nextNodeId}" not found in workflow, showing summary`);
+      nextNodeId = null;
+    }
+
+    if (!nextNodeId || isActionNode(currentNode)) {
+      setCompletedPath([...newHistory, currentNodeId]);
+      setShowSummary(true);
+      return;
+    }
+
+    setCurrentNodeId(nextNodeId);
+    setSelectedValue("");
+    setDateValue("");
+    setMultiFieldValues({});
+    setMultiFieldErrors({});
   };
 
   const handleBack = () => {
@@ -532,23 +473,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const completeClassification = async () => {
-    const finalNode = stepMap[history[history.length - 1]] || currentNode;
+    const finalNode = stepMap[history[history.length - 1]] || stepMap[currentNodeId];
     const finalAnswers = answers;
 
-    // Remove internal account data fields from saved answers
     const cleanedAnswers = { ...finalAnswers };
     delete cleanedAnswers._account_data_loaded;
     delete cleanedAnswers._is_pre_existing;
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
-    // Determine classification based on final node
     let reportabilityStatus = "pending_review";
-    let reason = finalNode.help_text || finalNode.step_title || "Classification completed";
+    let reason = finalNode?.help_text || finalNode?.step_title || "Classification completed";
 
-    // Parse classification from node title/help text
-    if (finalNode.step_title?.toLowerCase().includes("reportable") || 
-        finalNode.help_text?.toLowerCase().includes("reportable")) {
+    if (finalNode?.step_title?.toLowerCase().includes("reportable") || 
+        finalNode?.help_text?.toLowerCase().includes("reportable")) {
       if (finalNode.step_title?.toLowerCase().includes("non-reportable") || 
           finalNode.help_text?.toLowerCase().includes("non-reportable")) {
         reportabilityStatus = "non_reportable";
@@ -560,7 +498,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Check if there's a file upload answer for self-certification
     const fileUploadAnswer = Object.values(cleanedAnswers).find(ans => 
       ans && typeof ans === 'object' && ans.file_url
     );
@@ -569,10 +506,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
       classification_answers: cleanedAnswers,
       reportability_status: reportabilityStatus,
       reportability_reason: reason,
-      self_certification_obtained: finalNode.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
+      self_certification_obtained: finalNode?.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
 
-    // If file was uploaded during workflow, update account with file details
     if (fileUploadAnswer) {
       classificationData.self_certification_document_url = fileUploadAnswer.file_url;
       classificationData.self_certification_document_name = fileUploadAnswer.file_name;
@@ -581,7 +517,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       classificationData.self_certification_obtained = true;
     }
 
-    // Save classification history record
     try {
       await base44.entities.AccountClassificationHistory.create({
         tenant_id: account.tenant_id,
@@ -605,21 +540,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
     onComplete(classificationData);
   };
 
-  // Early return if no account provided - MUST be after all hooks
-  if (!account) {
-    return (
-      <div className="p-12 text-center">
-        <Alert className="bg-red-50 border-red-200">
-          <AlertCircle className="w-4 h-4 text-red-600" />
-          <AlertDescription className="text-red-900">
-            No account data provided. Please select an account to classify.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   const renderNode = () => {
+    const currentNode = stepMap[currentNodeId];
+    if (!currentNode) return null;
+
     if (currentNode.question_type === "yes_no") {
       const options = currentNode.options || [
         { value: "YES", label: "Yes" },
@@ -807,7 +731,70 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     return null;
-    };
+  };
+
+  // Early returns - MUST be after all hooks and function definitions
+  if (!account) {
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-900">
+            No account data provided. Please select an account to classify.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  if (!workflow) {
+    const accountType = account?.account_holder_type === "individual" ? "individual" : "entity";
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertCircle className="w-4 h-4 text-amber-600" />
+          <AlertDescription className="text-amber-900">
+            No published {accountType} account reportability workflow found. Please contact your administrator to publish the workflow.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!currentNodeId && !showSummary) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  const currentNode = showSummary ? null : stepMap[currentNodeId];
+  
+  if (!currentNode && !showSummary) {
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertDescription className="text-red-900">
+            Workflow configuration error. Current step not found.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const isEntityWorkflow = account?.account_holder_type === "entity";
+  const currentStepIndex = history.length;
+  const totalSteps = completedPath.length || history.length + 1;
+  const progress = Math.round((currentStepIndex / totalSteps) * 100);
 
   // Summary Screen
   if (showSummary) {
@@ -817,7 +804,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     return (
       <div className="space-y-6">
-        {/* Header */}
         <div className="text-center">
           <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${
             isReportable ? 'bg-amber-100' : 'bg-green-100'
@@ -834,7 +820,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           </p>
         </div>
 
-        {/* Account Context Info */}
         {account.account_holder_type === "individual" && (
           <Alert className="bg-blue-50 border-blue-200">
             <Info className="w-4 h-4 text-blue-600" />
@@ -848,7 +833,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           </Alert>
         )}
 
-        {/* Classification Result Preview */}
         <Card className={`border-2 ${
           isReportable 
             ? 'bg-amber-50 border-amber-200' 
@@ -882,7 +866,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           </CardContent>
         </Card>
 
-        {/* All Answers Summary */}
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b bg-slate-50">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -922,7 +905,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           </CardContent>
         </Card>
 
-        {/* Actions */}
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button 
             type="button" 
@@ -949,7 +931,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // Main workflow screen
   return (
     <div className="space-y-6">
-      {/* Workflow Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">Account Reportability Assessment</h2>
@@ -976,7 +957,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
       </div>
 
-      {/* Flowchart Dialog */}
       <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -986,7 +966,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </DialogContent>
       </Dialog>
 
-      {/* Enhanced Progress Bar */}
       <div className="space-y-2">
         <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
           <div 
@@ -1001,7 +980,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
       </div>
 
-      {/* Workflow Type Indicator */}
       <Alert className={isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}>
         {isEntityWorkflow ? (
           <>
@@ -1030,55 +1008,36 @@ export default function AccountClassification({ account, onComplete, onCancel })
         )}
       </Alert>
 
-      {/* Step Breadcrumb */}
       <div className="flex items-center gap-2 flex-wrap">
-        {[...history, currentNodeId].map((stepId, idx) => {
+        {history.map((stepId, idx) => {
           const step = stepMap[stepId];
-          const isCompleted = idx < history.length;
-          const isCurrent = idx === history.length;
           
           return (
             <React.Fragment key={stepId}>
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                isCompleted 
-                  ? 'bg-green-50 border-green-200' 
-                  : isCurrent 
-                    ? 'bg-indigo-50 border-indigo-300' 
-                    : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  isCompleted 
-                    ? 'bg-green-600' 
-                    : isCurrent 
-                      ? 'bg-indigo-600' 
-                      : 'bg-slate-300'
-                }`}>
-                  {isCompleted ? (
-                    <Check className="w-4 h-4 text-white" />
-                  ) : (
-                    <span className="text-white text-xs font-bold">{idx + 1}</span>
-                  )}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-green-50 border-green-200">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-green-600">
+                  <Check className="w-4 h-4 text-white" />
                 </div>
-                <span className={`text-xs font-medium whitespace-nowrap ${
-                  isCompleted 
-                    ? 'text-green-700' 
-                    : isCurrent 
-                      ? 'text-indigo-700' 
-                      : 'text-slate-500'
-                }`}>
+                <span className="text-xs font-medium whitespace-nowrap text-green-700">
                   {step?.step_title?.substring(0, 15) || `Step ${idx + 1}`}
                   {step?.step_title?.length > 15 && '...'}
                 </span>
               </div>
-              {idx < history.length && (
-                <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              )}
+              <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
             </React.Fragment>
           );
         })}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-indigo-50 border-indigo-300">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
+            <span className="text-white text-xs font-bold">{history.length + 1}</span>
+          </div>
+          <span className="text-xs font-medium whitespace-nowrap text-indigo-700">
+            {currentNode?.step_title?.substring(0, 15) || `Step ${history.length + 1}`}
+            {currentNode?.step_title?.length > 15 && '...'}
+          </span>
+        </div>
       </div>
 
-      {/* Question Card */}
       <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30 shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-5">
@@ -1110,7 +1069,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
               </div>
             </div>
 
-            {/* Render current node */}
             <div className="pl-16">
               {renderNode()}
             </div>
@@ -1118,7 +1076,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </CardContent>
       </Card>
 
-      {/* Previous Answers Compact View */}
       {Object.keys(answers).filter(k => !k.startsWith('_')).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
@@ -1148,7 +1105,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </Card>
       )}
 
-      {/* Navigation */}
       <div className="flex justify-between gap-3 pt-4 border-t">
         <Button 
           type="button" 
