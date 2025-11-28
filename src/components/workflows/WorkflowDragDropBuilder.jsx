@@ -44,7 +44,17 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [workflowName, setWorkflowName] = useState(workflow?.workflow_name || "");
   const [workflowType, setWorkflowType] = useState(workflow?.workflow_type || "custom");
-  const [outcomeRules, setOutcomeRules] = useState(workflow?.outcome_rules || []);
+  const [outcomeRules, setOutcomeRules] = useState(() => {
+    // Initialize from workflow prop, ensuring all fields have defaults
+    const rules = workflow?.outcome_rules || [];
+    return rules.map(rule => ({
+      condition: rule.condition || "",
+      result_classification: rule.result_classification || "",
+      result_description: rule.result_description || "",
+      account_context_items: rule.account_context_items || [],
+      status_color: rule.status_color || "green"
+    }));
+  });
 
   const nodeTypes = [
     { 
