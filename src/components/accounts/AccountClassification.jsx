@@ -563,7 +563,25 @@ export default function AccountClassification({ account, onComplete, onCancel })
     setAnswers(newAnswers);
     setHistory(history.slice(0, -1));
     setCurrentNodeId(previousNodeId);
-    setSelectedValue(answers[previousNodeId] || "");
+    
+    // Restore previous step's values
+    const previousAnswer = answers[previousNodeId];
+    if (previousAnswer && typeof previousAnswer === 'object' && previousAnswer._address_config) {
+      // Restore address values
+      const { _address_config, ...savedAddress } = previousAnswer;
+      setAddressValues(savedAddress);
+      setSelectedValue("");
+      setMultiFieldValues({});
+    } else if (previousAnswer && typeof previousAnswer === 'object' && !previousAnswer.file_url) {
+      // Restore multi-field values
+      setMultiFieldValues(previousAnswer);
+      setSelectedValue("");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+    } else {
+      setSelectedValue(previousAnswer || "");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setMultiFieldValues({});
+    }
   };
 
   const completeClassification = async () => {
