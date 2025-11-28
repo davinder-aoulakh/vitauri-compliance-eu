@@ -169,7 +169,9 @@ export default function AccountsPage() {
   };
 
   const handleClassify = (account) => {
-    setSelectedAccount(account);
+    // Ensure we get the latest account data from the list
+    const latestAccount = accounts.find(a => a.id === account.id) || account;
+    setSelectedAccount(latestAccount);
     setShowClassification(true);
   };
 
