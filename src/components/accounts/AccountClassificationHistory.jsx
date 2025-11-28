@@ -204,11 +204,11 @@ export default function AccountClassificationHistory({ history, account }) {
                     {getSelfCertBadge(record.self_certification_status)}
                   </div>
 
-                  {record.account_balance !== undefined && (
+                  {record.account_balance !== undefined && record.account_balance !== null && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Balance:</span>
                       <span className="text-sm font-semibold text-slate-800">
-                        ${record.account_balance.toLocaleString()}
+                        ${Number(record.account_balance).toLocaleString()}
                       </span>
                     </div>
                   )}
