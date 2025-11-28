@@ -82,6 +82,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
   const [detectedChanges, setDetectedChanges] = useState([]);
   const [initialData, setInitialData] = useState(null);
+  const [accountNumberError, setAccountNumberError] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
 
   useEffect(() => {
     if (account) {
