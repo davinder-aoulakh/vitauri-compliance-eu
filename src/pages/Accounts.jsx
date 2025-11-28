@@ -694,7 +694,7 @@ export default function AccountsPage() {
       </Dialog>
 
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Classification History: {selectedAccount?.account_holder_name}</DialogTitle>
           </DialogHeader>
