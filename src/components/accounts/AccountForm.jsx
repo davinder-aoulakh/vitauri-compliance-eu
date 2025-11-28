@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TaxResidencyManager from "./TaxResidencyManager";
-import DocumentUpload from "./DocumentUpload";
+import DocumentsManager from "./DocumentsManager";
 import CountrySelect from "../shared/CountrySelect";
 import CurrencySelect from "../shared/CurrencySelect";
 
@@ -75,7 +75,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     self_certification_document_name: null,
     self_certification_upload_date: null,
     self_certification_obtained: false,
-    self_certification_date: null
+    self_certification_date: null,
+    documents: []
   });
 
   const [detectedChanges, setDetectedChanges] = useState([]);
@@ -144,25 +145,15 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     return indicia;
   };
 
-  const handleDocumentUpload = (fileUrl, fileName) => {
+  const handleDocumentsChange = (newDocuments) => {
+    // Check if any self-certification document exists
+    const hasSelfCert = newDocuments.some(d => d.document_type === "self_certification");
+    
     setFormData(prev => ({
       ...prev,
-      self_certification_document_url: fileUrl,
-      self_certification_document_name: fileName,
-      self_certification_upload_date: new Date().toISOString(),
-      self_certification_obtained: true,
-      self_certification_date: new Date().toISOString().split('T')[0]
-    }));
-  };
-
-  const handleDocumentDelete = () => {
-    setFormData(prev => ({
-      ...prev,
-      self_certification_document_url: null,
-      self_certification_document_name: null,
-      self_certification_upload_date: null,
-      self_certification_obtained: false,
-      self_certification_date: null
+      documents: newDocuments,
+      self_certification_obtained: hasSelfCert,
+      self_certification_date: hasSelfCert ? new Date().toISOString().split('T')[0] : null
     }));
   };
 
@@ -887,26 +878,20 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4 mt-4">
-          <DocumentUpload
-            documentUrl={formData.self_certification_document_url}
-            onUploadComplete={handleDocumentUpload}
-            onDelete={handleDocumentDelete}
-            label="Self-Certification Document"
-            description="Upload the account holder's self-certification form (PDF, JPG, or PNG up to 10MB)"
+          <DocumentsManager
+            documents={formData.documents || []}
+            onDocumentsChange={handleDocumentsChange}
+            legacyDocument={
+              formData.self_certification_document_url && !formData.documents?.length
+                ? {
+                    document_url: formData.self_certification_document_url,
+                    document_name: formData.self_certification_document_name,
+                    upload_date: formData.self_certification_upload_date,
+                    uploaded_by_email: formData.self_certification_uploaded_by_email
+                  }
+                : null
+            }
           />
-
-          {formData.self_certification_document_url && formData.self_certification_upload_date && (
-            <div className="text-xs text-slate-600 mt-2">
-              <p>
-                <strong>Uploaded:</strong> {new Date(formData.self_certification_upload_date).toLocaleString()}
-              </p>
-              {formData.self_certification_document_name && (
-                <p>
-                  <strong>Filename:</strong> {formData.self_certification_document_name}
-                </p>
-              )}
-            </div>
-          )}
         </TabsContent>
       </Tabs>
 
