@@ -706,7 +706,7 @@ export default function AccountsPage() {
       </Dialog>
 
       <Dialog open={showControllingPersons} onOpenChange={setShowControllingPersons}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               Controlling Persons: {selectedAccount?.account_holder_name}
