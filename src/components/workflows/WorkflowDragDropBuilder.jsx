@@ -44,6 +44,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [workflowName, setWorkflowName] = useState(workflow?.workflow_name || "");
   const [workflowType, setWorkflowType] = useState(workflow?.workflow_type || "custom");
+  const [outcomeRules, setOutcomeRules] = useState(workflow?.outcome_rules || []);
 
   const nodeTypes = [
     { 
