@@ -470,6 +470,26 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
           });
         });
       }
+
+      // If it's an address_input, add its sub-fields (street, city, state, postal_code, country)
+      if (s.question_type === 'address_input') {
+        const addressSubFields = [
+          { id: 'street', label: 'Street Address', isCountry: false },
+          { id: 'city', label: 'City', isCountry: false },
+          { id: 'state', label: 'State/Province', isCountry: false },
+          { id: 'postal_code', label: 'Postal Code', isCountry: false },
+          { id: 'country', label: 'Country', isCountry: true },
+        ];
+        addressSubFields.forEach(subField => {
+          fields.push({
+            value: `${s.step_id}.${subField.id}`,
+            label: `${s.step_title} → ${subField.label}`,
+            type: 'string',
+            isCountry: subField.isCountry,
+            group: 'Address Inputs'
+          });
+        });
+      }
     });
 
     // 2. Add Account fields
