@@ -717,7 +717,7 @@ export default function AccountsPage() {
       </Dialog>
 
       <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Bulk Import Accounts</DialogTitle>
           </DialogHeader>
