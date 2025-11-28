@@ -668,7 +668,7 @@ export default function AccountsPage() {
       </Dialog>
 
       <Dialog open={showClassification} onOpenChange={setShowClassification}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               {selectedAccount?.account_holder_type === "entity" 
