@@ -523,11 +523,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     setCurrentNodeId(nextNodeId);
-    setSelectedValue("");
+    
+    // Restore values if navigating to a step that already has an answer
+    const existingAnswer = newAnswers[nextNodeId];
+    if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
+      // Restore address values
+      const { _address_config, ...savedAddress } = existingAnswer;
+      setAddressValues(savedAddress);
+      setSelectedValue("");
+    } else if (existingAnswer && typeof existingAnswer === 'object' && !existingAnswer.file_url) {
+      // Restore multi-field values
+      setMultiFieldValues(existingAnswer);
+      setSelectedValue("");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+    } else {
+      setSelectedValue(existingAnswer || "");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setMultiFieldValues({});
+    }
     setDateValue("");
-    setMultiFieldValues({});
     setMultiFieldErrors({});
-    setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
   };
 
   const handleBack = () => {
