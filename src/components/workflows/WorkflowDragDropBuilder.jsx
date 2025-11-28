@@ -346,45 +346,101 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   );
 }
 
-// Helper to generate field paths from schema
-const generateFieldPaths = (schema, prefix = '') => {
-  const paths = [];
-  
-  console.log('generateFieldPaths called with:', { schema, prefix });
-  
-  if (!schema) {
-    console.log('No schema provided');
-    return paths;
+// Define Entity and Account field schemas with their possible values
+const ENTITY_FIELDS_SCHEMA = {
+  rfi_status: {
+    label: "RFI Status",
+    type: "enum",
+    enum: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"]
+  },
+  fi_type: {
+    label: "FI Type",
+    type: "enum",
+    enum: ["custodial_institution", "depository_institution", "investment_entity", "specified_insurance_company", "not_applicable"]
+  },
+  entity_type: {
+    label: "Entity Type",
+    type: "enum",
+    enum: ["corporation", "trust", "partnership", "fund", "branch", "other"]
+  },
+  status: {
+    label: "Status",
+    type: "enum",
+    enum: ["active", "inactive"]
+  },
+  entity_name: { label: "Entity Name", type: "string" },
+  country_of_incorporation: { label: "Country of Incorporation", type: "string" },
+  tax_id: { label: "Tax ID", type: "string" },
+  giin: { label: "GIIN", type: "string" },
+  non_reporting_reason: { label: "Non-Reporting Reason", type: "string" },
+  classification_completed_date: { label: "Classification Completed Date", type: "date" }
+};
+
+const ACCOUNT_FIELDS_SCHEMA = {
+  reportability_status: {
+    label: "Reportability Status",
+    type: "enum",
+    enum: ["pending_review", "reportable", "non_reportable", "excluded"]
+  },
+  account_type: {
+    label: "Account Type",
+    type: "enum",
+    enum: ["depository", "custodial", "equity_debt_interest", "cash_value_insurance", "annuity"]
+  },
+  account_holder_type: {
+    label: "Account Holder Type",
+    type: "enum",
+    enum: ["individual", "entity"]
+  },
+  entity_classification: {
+    label: "Entity Classification",
+    type: "enum",
+    enum: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"]
+  },
+  status: {
+    label: "Status",
+    type: "enum",
+    enum: ["active", "closed", "dormant"]
+  },
+  account_number: { label: "Account Number", type: "string" },
+  account_holder_name: { label: "Account Holder Name", type: "string" },
+  date_of_birth: { label: "Date of Birth", type: "date" },
+  place_of_birth: { label: "Place of Birth", type: "string" },
+  country_of_residence: { label: "Country of Residence", type: "string" },
+  reporting_year: { label: "Reporting Year", type: "string" },
+  reportability_reason: { label: "Reportability Reason", type: "string" },
+  year_end_cash_value: { label: "Year End Cash Value", type: "number" },
+  gross_payments: { label: "Gross Payments", type: "number" },
+  is_pre_existing: { label: "Is Pre-existing", type: "boolean" },
+  account_holder_is_alive: { label: "Account Holder Is Alive", type: "boolean" },
+  account_closed_during_period: { label: "Account Closed During Period", type: "boolean" },
+  self_certification_obtained: { label: "Self-Certification Obtained", type: "boolean" },
+  self_certification_date: { label: "Self-Certification Date", type: "date" },
+  needs_reclassification: { label: "Needs Reclassification", type: "boolean" }
+};
+
+// Helper function to get fields for a target entity type
+const getFieldsForEntity = (entityType) => {
+  return entityType === "Entity" ? ENTITY_FIELDS_SCHEMA : ACCOUNT_FIELDS_SCHEMA;
+};
+
+// Helper function to get suggested values for a field
+const getSuggestedValuesForField = (entityType, fieldName) => {
+  const schema = getFieldsForEntity(entityType);
+  const field = schema[fieldName];
+  if (field?.enum) {
+    return field.enum.map(val => ({
+      value: val,
+      label: val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    }));
   }
-  
-  // Handle both direct properties and nested schema structure
-  const properties = schema.properties || schema;
-  
-  if (!properties || typeof properties !== 'object') {
-    console.log('No properties found in schema');
-    return paths;
+  if (field?.type === "boolean") {
+    return [
+      { value: "true", label: "True" },
+      { value: "false", label: "False" }
+    ];
   }
-  
-  Object.keys(properties).forEach(key => {
-    const field = properties[key];
-    const fullPath = prefix ? `${prefix}.${key}` : key;
-    
-    // Add the field itself
-    paths.push({
-      value: fullPath,
-      label: fullPath,
-      type: field.type,
-      isCountry: key.includes('country') || key === 'place_of_birth' || key === 'country_of_residence'
-    });
-    
-    // If it's an object with nested properties, recurse
-    if (field.type === 'object' && field.properties) {
-      paths.push(...generateFieldPaths(field, fullPath));
-    }
-  });
-  
-  console.log('Generated paths:', paths);
-  return paths;
+  return null; // No suggestions - free text input
 };
 
 // Step Editor Component
