@@ -643,9 +643,62 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <SelectItem value="date_input">Date Input</SelectItem>
             <SelectItem value="file_upload">File Upload</SelectItem>
             <SelectItem value="multi_field_input">Multi-Field Input</SelectItem>
+            <SelectItem value="address_input">Address Input</SelectItem>
             </SelectContent>
             </Select>
             </div>
+
+      {/* Address Input Configuration */}
+      {editedStep.question_type === "address_input" && (
+        <div className="p-4 border-2 border-teal-100 rounded-lg bg-teal-50/30">
+          <div className="flex items-start gap-2 text-xs text-slate-600 bg-white p-3 rounded border border-teal-200 mb-4">
+            <HelpCircle className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>Address Input:</strong> This step will display fields for Street, City, State/Province, Postal Code, and Country. 
+              The collected address will update the Account's address field and create an audit log entry with the previous and new values.
+            </p>
+          </div>
+          <div>
+            <Label className="text-sm">Target Address Field</Label>
+            <Select
+              value={editedStep.address_config?.target_field || "current_address"}
+              onValueChange={(value) => setEditedStep({
+                ...editedStep,
+                address_config: { ...editedStep.address_config, target_field: value }
+              })}
+            >
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current_address">Current Address</SelectItem>
+                <SelectItem value="account_holder_address">Account Holder Address</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-500 mt-1">
+              Select which address field on the Account will be updated with the collected address.
+            </p>
+          </div>
+          <div className="mt-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={editedStep.address_config?.track_changes !== false}
+                onCheckedChange={(checked) => setEditedStep({
+                  ...editedStep,
+                  address_config: { ...editedStep.address_config, track_changes: checked }
+                })}
+                id="track-address-changes"
+              />
+              <Label htmlFor="track-address-changes" className="text-sm cursor-pointer">
+                Track address changes in audit log
+              </Label>
+            </div>
+            <p className="text-xs text-slate-500 mt-1 ml-6">
+              When enabled, an audit log entry will be created showing the previous and new address values.
+            </p>
+          </div>
+        </div>
+      )}
 
             <div>
             <Label htmlFor="help_text">Help Text</Label>
@@ -739,7 +792,8 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
         editedStep.question_type === "number_input" || 
         editedStep.question_type === "date_input" || 
         editedStep.question_type === "file_upload" ||
-        editedStep.question_type === "multi_field_input") && (
+        editedStep.question_type === "multi_field_input" ||
+        editedStep.question_type === "address_input") && (
         <div className="p-4 border rounded-lg bg-slate-50">
           <div className="flex items-center gap-2">
             <LinkIcon className="w-4 h-4 text-slate-400" />
