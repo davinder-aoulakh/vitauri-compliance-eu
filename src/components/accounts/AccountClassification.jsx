@@ -530,8 +530,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
     };
 
     // Append new document to the documents array instead of overwriting
+    // Use the latest account data to ensure we have up-to-date documents
     if (fileUploadAnswer) {
-      const existingDocuments = account.documents || [];
+      const currentAccount = latestAccountData || account;
+      const existingDocuments = currentAccount.documents || [];
       const newDocument = {
         id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         document_url: fileUploadAnswer.file_url,
