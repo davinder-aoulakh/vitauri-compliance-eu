@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -445,8 +446,33 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Determine next step - CONDITIONAL LOGIC FIRST (highest priority)
     let nextNodeId = null;
 
-    // Check conditional logic first
-    if (currentNode.conditional_logic?.conditions?.length > 0) {
+    // Check selection count branching for multiple_choice first
+    if (currentNode.question_type === "multiple_choice" && currentNode.conditional_logic?.use_selection_count) {
+      const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
+      const selectionCount = selectedOptions.length;
+      const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
+      const countValue = currentNode.conditional_logic.selection_count_value || 0;
+
+      let countConditionMet = false;
+      switch (countOperator) {
+        case "=": countConditionMet = selectionCount === countValue; break;
+        case "!=": countConditionMet = selectionCount !== countValue; break;
+        case ">": countConditionMet = selectionCount > countValue; break;
+        case "<": countConditionMet = selectionCount < countValue; break;
+        case ">=": countConditionMet = selectionCount >= countValue; break;
+        case "<=": countConditionMet = selectionCount <= countValue; break;
+        default: countConditionMet = false;
+      }
+
+      if (countConditionMet) {
+        nextNodeId = currentNode.conditional_logic.selection_count_next_step;
+      } else {
+        nextNodeId = currentNode.conditional_logic.selection_count_else_step;
+      }
+    }
+
+    // Check conditional logic if no selection count branching matched
+    if (!nextNodeId && currentNode.conditional_logic?.conditions?.length > 0) {
       const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
       if (conditionMet) {
         nextNodeId = currentNode.conditional_logic.next_step;
