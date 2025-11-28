@@ -113,12 +113,32 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
     setSteps([...steps, newStep]);
   };
 
+  const handleAddOutcomeRule = () => {
+    setOutcomeRules(prev => [
+      ...prev,
+      { condition: "", result_classification: "", result_description: "" }
+    ]);
+  };
+
+  const handleRemoveOutcomeRule = (index) => {
+    setOutcomeRules(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleOutcomeRuleChange = (index, field, value) => {
+    setOutcomeRules(prev => {
+      const newRules = [...prev];
+      newRules[index] = { ...newRules[index], [field]: value };
+      return newRules;
+    });
+  };
+
   const handleSave = () => {
     const workflowData = {
       ...workflow,
       workflow_name: workflowName,
       workflow_type: workflowType,
       steps: steps,
+      outcome_rules: outcomeRules,
       last_modified_by: "current_user"
     };
     onSave(workflowData);
