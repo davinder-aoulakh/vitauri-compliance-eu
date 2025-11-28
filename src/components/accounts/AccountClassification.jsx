@@ -56,12 +56,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow) {
-      // Find workflow based on account holder type
-      const workflowName = account?.account_holder_type === "individual" 
-        ? "Individual Account Reportability (CRS)"
-        : "Entity Account Reportability (CRS)";
+      // Find workflow based on account holder type - match by workflow_type and check name contains relevant keywords
+      const isIndividual = account?.account_holder_type === "individual";
       
-      const matchingWorkflows = workflows.filter(w => w.workflow_name === workflowName);
+      const matchingWorkflows = workflows.filter(w => {
+        const nameMatch = isIndividual 
+          ? w.workflow_name?.toLowerCase().includes("individual")
+          : w.workflow_name?.toLowerCase().includes("entity");
+        return nameMatch;
+      });
       
       if (matchingWorkflows.length > 0) {
         // Get the latest version
