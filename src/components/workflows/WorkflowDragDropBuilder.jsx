@@ -638,9 +638,9 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     setEditedStep({ ...editedStep, post_completion_actions: newActions });
   };
 
-  const handleActionChange = (index, field, value) => {
+  const handleActionChange = (index, field, value, additionalUpdates = {}) => {
     const newActions = [...editedStep.post_completion_actions];
-    newActions[index] = { ...newActions[index], [field]: value };
+    newActions[index] = { ...newActions[index], [field]: value, ...additionalUpdates };
     setEditedStep({ ...editedStep, post_completion_actions: newActions });
   };
 
