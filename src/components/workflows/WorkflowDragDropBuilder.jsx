@@ -1415,16 +1415,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                     <div>
                       <Label className="text-xs">Target Entity</Label>
                       <Select
-                        value={action.target_entity_type}
+                        value={action.target_entity_type || "Entity"}
                         onValueChange={(value) => {
-                          handleActionChange(index, "target_entity_type", value);
-                          // Reset field and value when target entity changes
-                          handleActionChange(index, "field_to_update", "");
-                          handleActionChange(index, "value", "");
+                          handleActionChange(index, "target_entity_type", value, { field_to_update: "", value: "" });
                         }}
                       >
                         <SelectTrigger className="h-8 text-xs mt-1">
-                          <SelectValue />
+                          <SelectValue placeholder="Select entity..." />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Entity">Entity</SelectItem>
@@ -1435,11 +1432,9 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                     <div>
                       <Label className="text-xs">Field to Update</Label>
                       <Select
-                        value={action.field_to_update}
+                        value={action.field_to_update || ""}
                         onValueChange={(value) => {
-                          handleActionChange(index, "field_to_update", value);
-                          // Reset value when field changes
-                          handleActionChange(index, "value", "");
+                          handleActionChange(index, "field_to_update", value, { value: "" });
                         }}
                       >
                         <SelectTrigger className="h-8 text-xs mt-1">
@@ -1447,7 +1442,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
                           {fieldOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
+                            <SelectItem key={`field-${opt.value}`} value={opt.value}>
                               {opt.label}
                             </SelectItem>
                           ))}
