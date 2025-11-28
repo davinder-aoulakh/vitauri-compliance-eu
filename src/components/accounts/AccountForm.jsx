@@ -955,8 +955,16 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           <XCircle className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4 mr-2" />
+        <Button 
+          type="submit" 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          disabled={isValidating || !!accountNumberError}
+        >
+          {isValidating ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
           {account ? "Update Account" : "Create Account"}
         </Button>
       </div>
