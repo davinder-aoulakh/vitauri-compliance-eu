@@ -232,6 +232,32 @@ export default function WorkflowBuilder() {
     createMutation.mutate(newWorkflow);
   };
 
+  const handleDuplicateWorkflow = async (baseWorkflow) => {
+    const newWorkflow = {
+      ...baseWorkflow,
+      workflow_name: `${baseWorkflow.workflow_name} (Copy)`,
+      version: "1.0",
+      parent_workflow_id: null,
+      status: "draft",
+      published_date: null,
+      change_log: [
+        {
+          version: "1.0",
+          changed_by: user.email,
+          changed_date: new Date().toISOString(),
+          changes_description: `Duplicated from "${baseWorkflow.workflow_name}" v${baseWorkflow.version}`
+        }
+      ]
+    };
+    
+    delete newWorkflow.id;
+    delete newWorkflow.created_date;
+    delete newWorkflow.updated_date;
+    delete newWorkflow.created_by;
+    
+    createMutation.mutate(newWorkflow);
+  };
+
   const handleRestoreVersion = async (versionWorkflow) => {
     if (confirm(`Restore version ${versionWorkflow.version} as the current active version?`)) {
       // Create a new version based on the old one
