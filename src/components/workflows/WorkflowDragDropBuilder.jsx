@@ -496,6 +496,32 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       }
     });
 
+    // Also add all address_input steps' sub-fields (regardless of position) for flexible branching
+    allSteps.forEach(s => {
+      if (s.question_type === 'address_input') {
+        // Check if we already added this step's fields
+        const alreadyAdded = fields.some(f => f.value === `${s.step_id}.country`);
+        if (!alreadyAdded) {
+          const addressSubFields = [
+            { id: 'street', label: 'Street Address', isCountry: false },
+            { id: 'city', label: 'City', isCountry: false },
+            { id: 'state', label: 'State/Province', isCountry: false },
+            { id: 'postal_code', label: 'Postal Code', isCountry: false },
+            { id: 'country', label: 'Country', isCountry: true },
+          ];
+          addressSubFields.forEach(subField => {
+            fields.push({
+              value: `${s.step_id}.${subField.id}`,
+              label: `${s.step_title} → ${subField.label}`,
+              type: 'string',
+              isCountry: subField.isCountry,
+              group: 'Address Inputs'
+            });
+          });
+        }
+      }
+    });
+
     // 2. Add Account fields
     accountFields.forEach(field => {
       fields.push({ ...field, group: 'Account Fields' });
