@@ -440,7 +440,7 @@ export default function EntitiesPage() {
 
       {/* Entity Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Entity Details: {selectedEntity?.entity_name}</DialogTitle>
           </DialogHeader>
@@ -450,7 +450,7 @@ export default function EntitiesPage() {
 
       {/* Entity Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               {selectedEntity ? "Edit Entity" : "Add New Entity"}
@@ -475,7 +475,7 @@ export default function EntitiesPage() {
 
       {/* Classification Dialog */}
       <Dialog open={showClassification} onOpenChange={setShowClassification}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>RFI Classification: {selectedEntity?.entity_name}</DialogTitle>
           </DialogHeader>
@@ -491,7 +491,7 @@ export default function EntitiesPage() {
 
       {/* Classification History Dialog */}
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Classification History: {selectedEntity?.entity_name}</DialogTitle>
           </DialogHeader>
