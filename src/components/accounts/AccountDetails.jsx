@@ -133,29 +133,29 @@ export default function AccountDetails({ account, entity }) {
           </CardContent>
         </Card>
 
-        {/* Holder Address */}
-        {account.account_holder_address && (
+        {/* Current Address */}
+        {account.current_address && (
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-slate-50">
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-indigo-600" />
-                Account Holder Address
+                Current Address
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               <div className="space-y-1 text-sm">
-                {account.account_holder_address.street && (
-                  <p className="text-slate-900">{account.account_holder_address.street}</p>
+                {account.current_address.street && (
+                  <p className="text-slate-900">{account.current_address.street}</p>
                 )}
                 <p className="text-slate-900">
                   {[
-                    account.account_holder_address.city,
-                    account.account_holder_address.state,
-                    account.account_holder_address.postal_code
+                    account.current_address.city,
+                    account.current_address.state,
+                    account.current_address.postal_code
                   ].filter(Boolean).join(", ")}
                 </p>
-                {account.account_holder_address.country && (
-                  <p className="font-medium text-slate-900">{account.account_holder_address.country}</p>
+                {account.current_address.country && (
+                  <p className="font-medium text-slate-900">{account.current_address.country}</p>
                 )}
               </div>
             </CardContent>
