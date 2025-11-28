@@ -281,6 +281,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // Determine if current node is an action (end) node
   const isActionNode = (step) => {
     if (!step) return false;
+    
+    // Input types with default_next_step are NOT action nodes
+    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input"];
+    if (inputTypes.includes(step.question_type)) {
+      // If it has a default_next_step, it's not an end node
+      if (step.default_next_step) return false;
+      // text_input without next step is typically an end/result node
+      if (step.question_type === "text_input") return true;
+      // Other input types without next_step should still allow proceeding
+      return false;
+    }
+    
+    // For choice-based questions, check if any option has a next_step
     if (!step.options || step.options.length === 0) {
       return true;
     }
