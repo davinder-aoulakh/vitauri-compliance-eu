@@ -189,8 +189,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
       {/* Builder Interface */}
       <div className="grid grid-cols-12 gap-6">
         {/* Node Palette */}
-        <div className="col-span-3">
-          <Card className="border-0 shadow-lg sticky top-6">
+        <div className="col-span-3 space-y-6">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
               <CardTitle className="text-sm">Node Palette</CardTitle>
             </CardHeader>
