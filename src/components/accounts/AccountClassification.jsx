@@ -34,6 +34,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [multiFieldErrors, setMultiFieldErrors] = useState({});
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [dateValue, setDateValue] = useState("");
+  const [latestAccountData, setLatestAccountData] = useState(null);
+
+  // Fetch the latest account data to ensure we have up-to-date documents
+  const { data: freshAccountData } = useQuery({
+    queryKey: ['account-fresh', account?.id],
+    queryFn: async () => {
+      if (!account?.id) return null;
+      const accounts = await base44.entities.Account.filter({ id: account.id });
+      return accounts[0] || null;
+    },
+    enabled: !!account?.id,
+    staleTime: 0, // Always fetch fresh data
+  });
+
+  // Use fresh data if available, otherwise fall back to prop
+  useEffect(() => {
+    if (freshAccountData) {
+      setLatestAccountData(freshAccountData);
+    }
+  }, [freshAccountData]);
 
   // Fetch published account classification workflows
   const { data: workflows = [], isLoading } = useQuery({
