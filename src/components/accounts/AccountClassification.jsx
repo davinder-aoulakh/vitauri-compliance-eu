@@ -56,26 +56,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     enabled: !!account
   });
 
-  useEffect(() => {
-    if (account) {
-      loadUser();
-    }
-  }, [account]);
-
-  // Early return if no account provided - MUST be after all hooks
-  if (!account) {
-    return (
-      <div className="p-12 text-center">
-        <Alert className="bg-red-50 border-red-200">
-          <AlertCircle className="w-4 h-4 text-red-600" />
-          <AlertDescription className="text-red-900">
-            No account data provided. Please select an account to classify.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   // Evaluate if a workflow's trigger conditions match the account data
   const evaluateTriggerConditions = (triggerConfig, accountData) => {
     if (!triggerConfig?.enabled) return false;
