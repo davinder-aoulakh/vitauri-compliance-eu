@@ -310,11 +310,25 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               <Input
                 id="account_number"
                 value={formData.account_number}
-                onChange={(e) => handleChange("account_number", e.target.value)}
+                onChange={(e) => {
+                  handleChange("account_number", e.target.value);
+                  setAccountNumberError(""); // Clear error on change
+                }}
+                onBlur={() => {
+                  if (formData.account_number && formData.entity_id) {
+                    validateAccountNumber(formData.account_number, formData.entity_id);
+                  }
+                }}
                 placeholder="e.g., ACC-123456"
                 required
-                className="mt-1.5"
+                className={`mt-1.5 ${accountNumberError ? 'border-red-500 focus:ring-red-500' : ''}`}
               />
+              {accountNumberError && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  {accountNumberError}
+                </p>
+              )}
             </div>
 
             <div>
