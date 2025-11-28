@@ -509,11 +509,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
       self_certification_obtained: finalNode?.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
 
+    // Append new document to the documents array instead of overwriting
     if (fileUploadAnswer) {
-      classificationData.self_certification_document_url = fileUploadAnswer.file_url;
-      classificationData.self_certification_document_name = fileUploadAnswer.file_name;
-      classificationData.self_certification_upload_date = fileUploadAnswer.upload_date;
-      classificationData.self_certification_uploaded_by_email = user?.email;
+      const existingDocuments = account.documents || [];
+      const newDocument = {
+        id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        document_url: fileUploadAnswer.file_url,
+        document_name: fileUploadAnswer.file_name,
+        document_type: "self_certification",
+        upload_date: fileUploadAnswer.upload_date || new Date().toISOString(),
+        uploaded_by_email: user?.email || "Unknown",
+        uploaded_by_name: user?.full_name || "Unknown User",
+        notes: "Uploaded via classification workflow"
+      };
+      classificationData.documents = [...existingDocuments, newDocument];
       classificationData.self_certification_obtained = true;
     }
 
