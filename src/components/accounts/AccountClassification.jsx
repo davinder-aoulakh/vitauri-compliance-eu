@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload, GitBranch } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
+import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -30,6 +32,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [uploadingFile, setUploadingFile] = useState(false);
   const [multiFieldValues, setMultiFieldValues] = useState({});
   const [multiFieldErrors, setMultiFieldErrors] = useState({});
+  const [showFlowchart, setShowFlowchart] = useState(false);
+  const [dateValue, setDateValue] = useState("");
 
   // Early return if no account provided
   if (!account) {
@@ -292,6 +296,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
         currentNode.question_type === "multiple_choice") {
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "date_input" || 
+               currentNode.question_type === "number_input") {
+      if (!selectedValue) return;
+      newAnswers[currentNodeId] = selectedValue;
     } else if (currentNode.question_type === "file_upload") {
       // For file uploads, selectedValue should contain the upload metadata
       if (!selectedValue) return;
@@ -362,6 +370,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Move to next node
     setCurrentNodeId(nextNodeId);
     setSelectedValue("");
+    setDateValue("");
     setMultiFieldValues({});
     setMultiFieldErrors({});
     };
@@ -656,6 +665,36 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
+    if (currentNode.question_type === "date_input") {
+      return (
+        <div className="space-y-3">
+          <Input
+            type="date"
+            value={dateValue}
+            onChange={(e) => {
+              setDateValue(e.target.value);
+              setSelectedValue(e.target.value);
+            }}
+            className="w-full h-12"
+          />
+        </div>
+      );
+    }
+
+    if (currentNode.question_type === "number_input") {
+      return (
+        <div className="space-y-3">
+          <Input
+            type="number"
+            value={selectedValue}
+            onChange={(e) => setSelectedValue(e.target.value)}
+            placeholder="Enter a number..."
+            className="w-full h-12"
+          />
+        </div>
+      );
+    }
+
     if (currentNode.question_type === "file_upload") {
       const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -897,9 +936,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">Account Reportability Assessment</h2>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            {workflow.workflow_name} v{workflow.version}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              {workflow.workflow_name} v{workflow.version}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFlowchart(true)}
+              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            >
+              <GitBranch className="w-4 h-4 mr-1" />
+              Show Flowchart
+            </Button>
+          </div>
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">
@@ -908,6 +958,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
           <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
+
+      {/* Flowchart Dialog */}
+      <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <WorkflowVisualizer workflow={workflow} />
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Progress Bar */}
       <div className="space-y-2">
