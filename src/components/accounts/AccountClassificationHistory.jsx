@@ -229,7 +229,9 @@ export default function AccountClassificationHistory({ history, account }) {
                               {question}
                             </p>
                             <p className="text-sm text-slate-900 font-semibold">
-                              {Array.isArray(answer) ? answer.join(', ') : answer}
+                              {typeof answer === 'object' && answer !== null
+                                ? (answer.file_name || JSON.stringify(answer))
+                                : (Array.isArray(answer) ? answer.join(', ') : String(answer || ''))}
                             </p>
                           </div>
                         );
