@@ -678,7 +678,13 @@ export default function AccountsPage() {
           <AccountClassification
             account={selectedAccount}
             onComplete={(data) => {
-              updateMutation.mutate({ id: selectedAccount.id, data });
+              // Merge classification data with existing account data to preserve documents
+              const mergedData = {
+                ...data,
+                // If classification adds new documents, they're already in data.documents
+                // which was built from existing account.documents + new upload
+              };
+              updateMutation.mutate({ id: selectedAccount.id, data: mergedData });
             }}
             onCancel={() => setShowClassification(false)}
           />
