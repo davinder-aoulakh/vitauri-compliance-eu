@@ -19,6 +19,7 @@ import {
 import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import CountrySelect from "../shared/CountrySelect";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -35,6 +36,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [dateValue, setDateValue] = useState("");
   const [latestAccountData, setLatestAccountData] = useState(null);
+  const [addressValues, setAddressValues] = useState({
+    street: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: ""
+  });
 
   // Fetch the latest account data to ensure we have up-to-date documents
   const { data: freshAccountData } = useQuery({
@@ -418,6 +426,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       setMultiFieldErrors({});
       newAnswers[currentNodeId] = multiFieldValues;
+    } else if (currentNode.question_type === "address_input") {
+      // Validate required country field
+      if (!addressValues.country) {
+        alert("Country is required");
+        return;
+      }
+      newAnswers[currentNodeId] = {
+        ...addressValues,
+        _address_config: currentNode.address_config || { target_field: "current_address", track_changes: true }
+      };
     }
 
     setAnswers(newAnswers);
@@ -469,6 +487,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     setDateValue("");
     setMultiFieldValues({});
     setMultiFieldErrors({});
+    setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
   };
 
   const handleBack = () => {
@@ -546,6 +565,43 @@ export default function AccountClassification({ account, onComplete, onCancel })
       };
       classificationData.documents = [...existingDocuments, newDocument];
       classificationData.self_certification_obtained = true;
+    }
+
+    // Handle address input - update account address and create audit log
+    const addressAnswer = Object.values(cleanedAnswers).find(ans => 
+      ans && typeof ans === 'object' && ans._address_config
+    );
+
+    if (addressAnswer) {
+      const { _address_config, ...newAddress } = addressAnswer;
+      const targetField = _address_config.target_field || "current_address";
+      const currentAccount = latestAccountData || account;
+      const previousAddress = currentAccount[targetField] || {};
+
+      // Update the address field
+      classificationData[targetField] = newAddress;
+
+      // Create audit log entry if tracking is enabled
+      if (_address_config.track_changes !== false) {
+        try {
+          await base44.entities.AuditLog.create({
+            tenant_id: account.tenant_id,
+            action_type: "account_updated",
+            actor_email: user?.email || "unknown",
+            actor_role: user?.user_role || "unknown",
+            target_entity_type: "Account",
+            target_entity_id: account.id,
+            changes: {
+              field: targetField,
+              previous_value: previousAddress,
+              new_value: newAddress
+            },
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error("Error creating address change audit log:", error);
+        }
+      }
     }
 
     try {
@@ -761,8 +817,96 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
+    if (currentNode.question_type === "address_input") {
+      const targetField = currentNode.address_config?.target_field || "current_address";
+      const currentAccount = latestAccountData || account;
+      const existingAddress = currentAccount[targetField] || {};
+
+      return (
+        <div className="space-y-4">
+          {/* Show existing address if available */}
+          {(existingAddress.street || existingAddress.city || existingAddress.country) && (
+            <Alert className="bg-slate-50 border-slate-200">
+              <Info className="w-4 h-4 text-slate-600" />
+              <AlertDescription className="text-sm text-slate-700">
+                <strong>Current {targetField === "current_address" ? "Address" : "Account Holder Address"}:</strong>
+                <br />
+                {existingAddress.street && <span>{existingAddress.street}<br /></span>}
+                {(existingAddress.city || existingAddress.state || existingAddress.postal_code) && (
+                  <span>
+                    {[existingAddress.city, existingAddress.state, existingAddress.postal_code].filter(Boolean).join(", ")}
+                    <br />
+                  </span>
+                )}
+                {existingAddress.country && <span>{existingAddress.country}</span>}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="address_street" className="text-sm font-medium text-slate-700">Street Address</Label>
+              <Input
+                id="address_street"
+                value={addressValues.street}
+                onChange={(e) => setAddressValues({ ...addressValues, street: e.target.value })}
+                placeholder="123 Main Street"
+                className="mt-1.5"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="address_city" className="text-sm font-medium text-slate-700">City</Label>
+                <Input
+                  id="address_city"
+                  value={addressValues.city}
+                  onChange={(e) => setAddressValues({ ...addressValues, city: e.target.value })}
+                  placeholder="City"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address_state" className="text-sm font-medium text-slate-700">State/Province</Label>
+                <Input
+                  id="address_state"
+                  value={addressValues.state}
+                  onChange={(e) => setAddressValues({ ...addressValues, state: e.target.value })}
+                  placeholder="State/Province"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="address_postal" className="text-sm font-medium text-slate-700">Postal Code</Label>
+                <Input
+                  id="address_postal"
+                  value={addressValues.postal_code}
+                  onChange={(e) => setAddressValues({ ...addressValues, postal_code: e.target.value })}
+                  placeholder="Postal Code"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address_country" className="text-sm font-medium text-slate-700">Country *</Label>
+                <div className="mt-1.5">
+                  <CountrySelect
+                    value={addressValues.country}
+                    onValueChange={(value) => setAddressValues({ ...addressValues, country: value })}
+                    placeholder="Select country..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return null;
-  };
+    };
 
   // Early returns - MUST be after all hooks and function definitions
   if (!account) {
@@ -1157,7 +1301,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
           disabled={
             !isActionNode(currentNode) && 
             !selectedValue && 
-            !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0)
+            !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0) &&
+            !(currentNode.question_type === "address_input" && addressValues.country)
           }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
