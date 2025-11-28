@@ -160,8 +160,46 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }));
   };
 
-  const handleSubmit = (e) => {
+  // Validate account number uniqueness within tenant and entity
+  const validateAccountNumber = async (accountNumber, entityId) => {
+    if (!accountNumber || !entityId || !tenant?.id) return true;
+    
+    setIsValidating(true);
+    setAccountNumberError("");
+    
+    try {
+      const existingAccounts = await base44.entities.Account.filter({
+        tenant_id: tenant.id,
+        entity_id: entityId,
+        account_number: accountNumber
+      });
+      
+      // If editing, exclude the current account from the check
+      const duplicates = account 
+        ? existingAccounts.filter(a => a.id !== account.id)
+        : existingAccounts;
+      
+      if (duplicates.length > 0) {
+        const entityName = entities.find(e => e.id === entityId)?.entity_name || "this entity";
+        setAccountNumberError(`Account number "${accountNumber}" already exists for ${entityName}. Please use a unique account number.`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error validating account number:", error);
+      return true; // Don't block on error
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate account number uniqueness
+    const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
+    if (!isValid) return;
     
     // Auto-detect indicia
     const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
