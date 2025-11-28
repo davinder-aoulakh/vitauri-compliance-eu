@@ -663,7 +663,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
-    if (currentNode.question_type === "single_choice" || currentNode.question_type === "multiple_choice") {
+    if (currentNode.question_type === "single_choice") {
       return (
         <div className="space-y-4">
           <Select value={selectedValue} onValueChange={setSelectedValue}>
@@ -678,6 +678,57 @@ export default function AccountClassification({ account, onComplete, onCancel })
               ))}
             </SelectContent>
           </Select>
+        </div>
+      );
+    }
+
+    if (currentNode.question_type === "multiple_choice") {
+      // Parse selected values - stored as comma-separated string
+      const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
+
+      const handleCheckboxChange = (optionValue, checked) => {
+        let newSelected;
+        if (checked) {
+          newSelected = [...selectedOptions, optionValue];
+        } else {
+          newSelected = selectedOptions.filter(v => v !== optionValue);
+        }
+        setSelectedValue(newSelected.join(','));
+      };
+
+      return (
+        <div className="space-y-3">
+          {currentNode.options?.map((option) => (
+            <div 
+              key={option.value}
+              className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                selectedOptions.includes(option.value)
+                  ? 'border-indigo-400 bg-indigo-50'
+                  : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+              }`}
+              onClick={() => handleCheckboxChange(option.value, !selectedOptions.includes(option.value))}
+            >
+              <Checkbox 
+                checked={selectedOptions.includes(option.value)}
+                onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
+                id={`option-${option.value}`}
+              />
+              <Label 
+                htmlFor={`option-${option.value}`}
+                className="flex-1 cursor-pointer font-medium text-slate-900"
+              >
+                {option.label}
+              </Label>
+              {selectedOptions.includes(option.value) && (
+                <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+              )}
+            </div>
+          ))}
+          {selectedOptions.length > 0 && (
+            <p className="text-sm text-slate-600 mt-2">
+              {selectedOptions.length} option(s) selected
+            </p>
+          )}
         </div>
       );
     }
