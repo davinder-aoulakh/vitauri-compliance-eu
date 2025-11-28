@@ -1473,7 +1473,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                       </Label>
                       {action.value_source === "from_step_answer" ? (
                         <Select
-                          value={action.value}
+                          value={action.value || ""}
                           onValueChange={(value) => handleActionChange(index, "value", value)}
                         >
                           <SelectTrigger className="h-8 text-xs mt-1">
@@ -1481,7 +1481,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                           </SelectTrigger>
                           <SelectContent>
                             {allSteps.map(s => (
-                              <SelectItem key={s.step_id} value={s.step_id}>
+                              <SelectItem key={`step-${s.step_id}`} value={s.step_id}>
                                 {s.step_title}
                               </SelectItem>
                             ))}
@@ -1489,7 +1489,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </Select>
                       ) : suggestedValues ? (
                         <Select
-                          value={action.value}
+                          value={action.value || ""}
                           onValueChange={(value) => handleActionChange(index, "value", value)}
                         >
                           <SelectTrigger className="h-8 text-xs mt-1">
@@ -1497,7 +1497,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                           </SelectTrigger>
                           <SelectContent>
                             {suggestedValues.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>
+                              <SelectItem key={`val-${opt.value}`} value={opt.value}>
                                 {opt.label}
                               </SelectItem>
                             ))}
@@ -1505,7 +1505,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </Select>
                       ) : (
                         <Input
-                          value={action.value}
+                          value={action.value || ""}
                           onChange={(e) => handleActionChange(index, "value", e.target.value)}
                           placeholder="Enter value..."
                           className="h-8 text-xs mt-1"
