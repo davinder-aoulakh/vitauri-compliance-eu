@@ -911,7 +911,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 const answer = answers[stepId];
                 if (!step || !answer) return null;
 
-                const answerLabel = step.options?.find(o => o.value === answer)?.label || (typeof answer === 'object' ? JSON.stringify(answer) : String(answer || ''));
+                const answerLabel = step.options?.find(o => o.value === answer)?.label || 
+                  (typeof answer === 'object' && answer !== null 
+                    ? (answer.file_name || JSON.stringify(answer)) 
+                    : String(answer || ''));
 
                 return (
                   <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
@@ -1125,7 +1128,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                         {step.step_title || key}
                       </span>
                       <Badge variant="outline" className="capitalize text-xs">
-                        {step.options?.find(o => o.value === value)?.label || (typeof value === 'object' ? JSON.stringify(value) : String(value || ''))}
+                        {step.options?.find(o => o.value === value)?.label || 
+                          (typeof value === 'object' && value !== null 
+                            ? (value.file_name || JSON.stringify(value)) 
+                            : String(value || ''))}
                       </Badge>
                     </div>
                   );
