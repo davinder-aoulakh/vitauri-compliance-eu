@@ -457,8 +457,8 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
           const autoClassification = autoClassifyAccount(accountData, tenant.jurisdiction);
           Object.assign(accountData, autoClassification);
 
-          // Check if account already exists
-          const existingAccount = existingAccountsMap.get(accountData.account_number);
+          // Check if account already exists (unique per entity + account_number)
+          const existingAccount = existingAccountsMap.get(`${accountData.entity_id}|${accountData.account_number}`);
 
           if (existingAccount) {
             // Update existing account
