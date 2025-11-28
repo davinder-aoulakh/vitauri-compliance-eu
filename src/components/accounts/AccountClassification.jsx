@@ -379,11 +379,25 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const isActionNode = (step) => {
     if (!step) return false;
     
-    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input"];
+    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input"];
     if (inputTypes.includes(step.question_type)) {
       if (step.default_next_step) return false;
       if (step.question_type === "text_input") return true;
       return false;
+    }
+    
+    // Check for selection count branching on multiple_choice
+    if (step.question_type === "multiple_choice" && step.conditional_logic?.use_selection_count) {
+      if (step.conditional_logic.selection_count_next_step || step.conditional_logic.selection_count_else_step) {
+        return false;
+      }
+    }
+    
+    // Check for conditional logic with next steps
+    if (step.conditional_logic?.conditions?.length > 0) {
+      if (step.conditional_logic.next_step || step.conditional_logic.else_step) {
+        return false;
+      }
     }
     
     if (!step.options || step.options.length === 0) {
