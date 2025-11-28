@@ -201,71 +201,88 @@ export default function AccountDetails({ account, entity }) {
         </Card>
       )}
 
-      {/* Self-Certification Document */}
-      {account.self_certification_document_url && (
-        <Card className="border-2 border-green-200 bg-green-50/30">
-          <CardHeader className="border-b border-green-200">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileCheck className="w-5 h-5 text-green-600" />
-              Self-Certification Document
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-green-600" />
+      {/* Self-Certification Document - Show latest from documents array or legacy field */}
+      {(() => {
+        // Get the latest self-certification document from documents array
+        const selfCertDocs = (account.documents || [])
+          .filter(d => d.document_type === 'self_certification')
+          .sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
+        
+        const latestDoc = selfCertDocs[0];
+        
+        // Fall back to legacy field if no documents in array
+        const docUrl = latestDoc?.document_url || account.self_certification_document_url;
+        const docName = latestDoc?.document_name || account.self_certification_document_name || 'Self-Certification Form';
+        const uploadDate = latestDoc?.upload_date || account.self_certification_upload_date;
+        const uploadedBy = latestDoc?.uploaded_by_email || account.self_certification_uploaded_by_email;
+        
+        if (!docUrl) return null;
+        
+        return (
+          <Card className="border-2 border-green-200 bg-green-50/30">
+            <CardHeader className="border-b border-green-200">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-green-600" />
+                Self-Certification Document
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-green-900">
+                      {docName}
+                    </p>
+                    {uploadDate && (
+                      <p className="text-xs text-green-700">
+                        Uploaded: {new Date(uploadDate).toLocaleString()}
+                      </p>
+                    )}
+                    {uploadedBy && (
+                      <p className="text-xs text-green-700">
+                        By: {uploadedBy}
+                      </p>
+                    )}
+                    {account.self_certification_date && (
+                      <p className="text-xs text-green-700">
+                        Certified: {new Date(account.self_certification_date).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-green-900">
-                    {account.self_certification_document_name || 'Self-Certification Form'}
-                  </p>
-                  {account.self_certification_upload_date && (
-                    <p className="text-xs text-green-700">
-                      Uploaded: {account.self_certification_upload_date ? new Date(account.self_certification_upload_date).toLocaleString() : "—"}
-                    </p>
-                  )}
-                  {account.self_certification_uploaded_by_email && (
-                    <p className="text-xs text-green-700">
-                      By: {account.self_certification_uploaded_by_email}
-                    </p>
-                  )}
-                  {account.self_certification_date && (
-                    <p className="text-xs text-green-700">
-                      Certified: {account.self_certification_date ? new Date(account.self_certification_date).toLocaleDateString() : "—"}
-                    </p>
-                  )}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(docUrl, '_blank')}
+                    className="border-green-300 text-green-700 hover:bg-green-100"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = docUrl;
+                      link.download = docName;
+                      link.click();
+                    }}
+                    className="border-green-300 text-green-700 hover:bg-green-100"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.open(account.self_certification_document_url, '_blank')}
-                  className="border-green-300 text-green-700 hover:bg-green-100"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = account.self_certification_document_url;
-                    link.download = account.self_certification_document_name || 'self-certification.pdf';
-                    link.click();
-                  }}
-                  className="border-green-300 text-green-700 hover:bg-green-100"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Reportability Information */}
       <Card className="border-0 shadow-lg">
