@@ -405,19 +405,23 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
 
       // Fetch existing accounts for uniqueness check
       const existingAccounts = await base44.entities.Account.filter({ tenant_id: tenant.id });
-      const existingAccountNumbers = existingAccounts.map(a => a.account_number);
       
       // Get valid entity IDs for referential integrity
       const validEntityIds = entities.map(e => e.id);
       
-      // Check for duplicate account numbers within the CSV
-      const csvAccountNumbers = rows.map(r => r.account_number).filter(Boolean);
-      const duplicatesInCsv = csvAccountNumbers.filter((num, index) => 
-        csvAccountNumbers.indexOf(num) !== index
+      // Check for duplicate account numbers within the same entity in CSV
+      const csvAccountEntityCombos = rows.map(r => `${r.entity_id}|${r.account_number}`).filter(c => c !== '|');
+      const duplicatesInCsv = csvAccountEntityCombos.filter((combo, index) => 
+        csvAccountEntityCombos.indexOf(combo) !== index
       );
       
       if (duplicatesInCsv.length > 0) {
-        setErrors([`Duplicate Account Numbers found in CSV: ${[...new Set(duplicatesInCsv)].join(', ')}`]);
+        const duplicateDetails = [...new Set(duplicatesInCsv)].map(combo => {
+          const [entityId, accNum] = combo.split('|');
+          const entityName = entities.find(e => e.id === entityId)?.entity_name || entityId;
+          return `${accNum} (${entityName})`;
+        });
+        setErrors([`Duplicate Account Numbers found in CSV for the same entity: ${duplicateDetails.join(', ')}`]);
         setImporting(false);
         return;
       }
