@@ -120,7 +120,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={new Date(account.date_of_birth).toLocaleDateString()}
+                value={account.date_of_birth ? new Date(account.date_of_birth).toLocaleDateString() : "—"}
               />
             )}
             {entity && (
@@ -222,7 +222,7 @@ export default function AccountDetails({ account, entity }) {
                   </p>
                   {account.self_certification_upload_date && (
                     <p className="text-xs text-green-700">
-                      Uploaded: {new Date(account.self_certification_upload_date).toLocaleString()}
+                      Uploaded: {account.self_certification_upload_date ? new Date(account.self_certification_upload_date).toLocaleString() : "—"}
                     </p>
                   )}
                   {account.self_certification_uploaded_by_email && (
@@ -232,7 +232,7 @@ export default function AccountDetails({ account, entity }) {
                   )}
                   {account.self_certification_date && (
                     <p className="text-xs text-green-700">
-                      Certified: {new Date(account.self_certification_date).toLocaleDateString()}
+                      Certified: {account.self_certification_date ? new Date(account.self_certification_date).toLocaleDateString() : "—"}
                     </p>
                   )}
                 </div>
@@ -302,7 +302,7 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Certification Date"
-              value={new Date(account.self_certification_date).toLocaleDateString()}
+              value={account.self_certification_date ? new Date(account.self_certification_date).toLocaleDateString() : "—"}
             />
           )}
           {account.indicia_found && account.indicia_found.length > 0 && (
@@ -337,14 +337,14 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Created"
-              value={new Date(account.created_date).toLocaleString()}
+              value={account.created_date ? new Date(account.created_date).toLocaleString() : "—"}
             />
           )}
           {account.updated_date && (
             <InfoRow
               icon={Calendar}
               label="Last Updated"
-              value={new Date(account.updated_date).toLocaleString()}
+              value={account.updated_date ? new Date(account.updated_date).toLocaleString() : "—"}
             />
           )}
           {account.created_by && (
