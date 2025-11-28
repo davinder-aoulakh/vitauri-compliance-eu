@@ -54,29 +54,130 @@ export default function AccountClassification({ account, onComplete, onCancel })
     loadUser();
   }, []);
 
+  // Evaluate if a workflow's trigger conditions match the account data
+  const evaluateTriggerConditions = (triggerConfig, accountData) => {
+    if (!triggerConfig?.enabled) return false;
+    if (!triggerConfig.conditions || triggerConfig.conditions.length === 0) return true; // Enabled but no conditions = always match
+
+    const getFieldValue = (fieldPath) => {
+      if (!fieldPath) return null;
+      
+      // Handle nested fields (e.g., account_holder_address.country)
+      if (fieldPath.includes('.')) {
+        const parts = fieldPath.split('.');
+        let value = accountData;
+        for (const part of parts) {
+          value = value?.[part];
+          if (value === undefined) return null;
+        }
+        return value;
+      }
+      
+      return accountData?.[fieldPath];
+    };
+
+    let result = true;
+
+    for (let idx = 0; idx < triggerConfig.conditions.length; idx++) {
+      const condition = triggerConfig.conditions[idx];
+      const fieldValue = getFieldValue(condition.field);
+      const comparisonValue = condition.value;
+      let conditionMet = false;
+
+      switch (condition.operator) {
+        case "equals":
+          conditionMet = String(fieldValue).toLowerCase() === String(comparisonValue).toLowerCase();
+          break;
+        case "not_equals":
+          conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
+          break;
+        case "greater_than":
+          conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
+          break;
+        case "less_than":
+          conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
+          break;
+        case "greater_than_or_equal":
+          conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
+          break;
+        case "less_than_or_equal":
+          conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
+          break;
+        case "contains":
+          conditionMet = String(fieldValue).toLowerCase().includes(String(comparisonValue).toLowerCase());
+          break;
+        case "in":
+          const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
+          conditionMet = inValues.includes(String(fieldValue).toLowerCase());
+          break;
+        case "not_in":
+          const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
+          conditionMet = !notInValues.includes(String(fieldValue).toLowerCase());
+          break;
+        default:
+          conditionMet = false;
+      }
+
+      if (idx === 0) {
+        result = conditionMet;
+      } else {
+        const logicOp = triggerConfig.conditions[idx - 1]?.logic_operator || "AND";
+        if (logicOp === "AND") {
+          result = result && conditionMet;
+        } else if (logicOp === "OR") {
+          result = result || conditionMet;
+        }
+      }
+    }
+
+    return result;
+  };
+
   useEffect(() => {
-    if (workflows.length > 0 && !workflow) {
-      // Find workflow based on account holder type - match by workflow_type and check name contains relevant keywords
-      const isIndividual = account?.account_holder_type === "individual";
-      
+    if (workflows.length > 0 && !workflow && account) {
+      // Find workflows that match based on trigger_conditions
       const matchingWorkflows = workflows.filter(w => {
-        const nameMatch = isIndividual 
-          ? w.workflow_name?.toLowerCase().includes("individual")
-          : w.workflow_name?.toLowerCase().includes("entity");
-        return nameMatch;
+        // Check if workflow has enabled trigger conditions
+        if (w.trigger_conditions?.enabled) {
+          return evaluateTriggerConditions(w.trigger_conditions, account);
+        }
+        return false;
       });
-      
+
+      let selectedWorkflow = null;
+
       if (matchingWorkflows.length > 0) {
-        // Get the latest version
-        const sortedWorkflows = matchingWorkflows.sort((a, b) => 
-          parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
-        );
-        const latestWorkflow = sortedWorkflows[0];
-        setWorkflow(latestWorkflow);
+        // Sort by priority (higher first), then by version (latest first)
+        const sortedWorkflows = matchingWorkflows.sort((a, b) => {
+          const priorityA = a.trigger_conditions?.priority || 0;
+          const priorityB = b.trigger_conditions?.priority || 0;
+          if (priorityB !== priorityA) return priorityB - priorityA;
+          return parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0");
+        });
+        selectedWorkflow = sortedWorkflows[0];
+      } else {
+        // Fallback: if no workflows have matching trigger conditions, 
+        // try to find any workflow that matches account holder type by name
+        const isIndividual = account?.account_holder_type === "individual";
+        const fallbackWorkflows = workflows.filter(w => {
+          const nameMatch = isIndividual 
+            ? w.workflow_name?.toLowerCase().includes("individual")
+            : w.workflow_name?.toLowerCase().includes("entity");
+          return nameMatch;
+        });
         
-        // Set initial node
-        if (latestWorkflow.steps && latestWorkflow.steps.length > 0) {
-          setCurrentNodeId(latestWorkflow.steps[0].step_id);
+        if (fallbackWorkflows.length > 0) {
+          const sortedFallback = fallbackWorkflows.sort((a, b) => 
+            parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
+          );
+          selectedWorkflow = sortedFallback[0];
+        }
+      }
+
+      if (selectedWorkflow) {
+        setWorkflow(selectedWorkflow);
+        if (selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
+          setCurrentNodeId(selectedWorkflow.steps[0].step_id);
         }
       }
     }
