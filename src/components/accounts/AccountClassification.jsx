@@ -136,6 +136,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   useEffect(() => {
+    if (account) {
+      loadUser();
+    }
+  }, [account]);
+
+  useEffect(() => {
     if (workflows.length > 0 && !workflow && account) {
       // Find workflows that match based on trigger_conditions
       const matchingWorkflows = workflows.filter(w => {
