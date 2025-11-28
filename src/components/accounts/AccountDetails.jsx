@@ -315,6 +315,92 @@ export default function AccountDetails({ account, entity }) {
             }
             color={account.self_certification_obtained ? "text-green-600" : "text-red-600"}
           />
+          {account.reportability_status === "reportable" && (
+            <div className="pt-4 mt-4 border-t border-slate-200">
+              <h4 className="text-sm font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-600" />
+                Reportable Data
+              </h4>
+              
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mt-3 mb-2">RFI General Information</p>
+              <InfoRow
+                icon={FileText}
+                label="The Tax number of the RFI"
+                value={entity?.tax_id || "—"}
+              />
+              <InfoRow
+                icon={Building2}
+                label="The name of the RFI"
+                value={entity?.entity_name || "—"}
+              />
+
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mt-4 mb-2">Account Holder General Information</p>
+              <InfoRow
+                icon={CreditCard}
+                label="Account number with the RFI of the Account Holder"
+                value={account.account_number}
+              />
+              <InfoRow
+                icon={User}
+                label="Name of the account holder"
+                value={account.account_holder_name}
+              />
+              <InfoRow
+                icon={MapPin}
+                label="Current Address of the account holder"
+                value={
+                  account.current_address
+                    ? [
+                        account.current_address.street,
+                        account.current_address.city,
+                        account.current_address.state,
+                        account.current_address.postal_code,
+                        account.current_address.country
+                      ].filter(Boolean).join(', ')
+                    : "—"
+                }
+              />
+              <InfoRow
+                icon={Calendar}
+                label="Date of birth of the account holder"
+                value={account.date_of_birth ? new Date(account.date_of_birth).toLocaleDateString() : "—"}
+              />
+              <InfoRow
+                icon={Globe}
+                label="Place of birth of the account holder"
+                value={account.place_of_birth || "—"}
+              />
+              <InfoRow
+                icon={Globe}
+                label="Jurisdiction of residence of the account holder"
+                value={account.country_of_residence || "—"}
+              />
+              <InfoRow
+                icon={FileText}
+                label="TIN of the account holder"
+                value={account.tax_residencies?.[0]?.tin || "—"}
+              />
+
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mt-4 mb-2">Account Holder Financial Information</p>
+              <InfoRow
+                icon={CreditCard}
+                label="Year End Cash or Surrender Value"
+                value={formatCurrency(account.year_end_cash_value, account.year_end_cash_value_currency || "USD")}
+              />
+              <InfoRow
+                icon={CreditCard}
+                label="Income: Gross Payments (Redemptions, Annuities)"
+                value={formatCurrency(account.gross_payments, account.gross_payments_currency || "USD")}
+              />
+              {account.account_closed_during_period && (
+                <InfoRow
+                  icon={Calendar}
+                  label="Date of Account Closing"
+                  value={account.updated_date ? new Date(account.updated_date).toLocaleDateString() : "—"}
+                />
+              )}
+            </div>
+          )}
           {account.self_certification_date && (
             <InfoRow
               icon={Calendar}
