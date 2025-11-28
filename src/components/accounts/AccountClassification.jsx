@@ -1094,7 +1094,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                         {step.step_title || key}
                       </span>
                       <Badge variant="outline" className="capitalize text-xs">
-                        {step.options?.find(o => o.value === value)?.label || value}
+                        {step.options?.find(o => o.value === value)?.label || (typeof value === 'object' ? JSON.stringify(value) : String(value || ''))}
                       </Badge>
                     </div>
                   );
