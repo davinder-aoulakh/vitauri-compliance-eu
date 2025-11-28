@@ -1260,7 +1260,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       </div>
 
       <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
           </DialogHeader>
