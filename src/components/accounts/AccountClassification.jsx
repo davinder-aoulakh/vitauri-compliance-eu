@@ -35,7 +35,34 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [dateValue, setDateValue] = useState("");
 
-  // Early return if no account provided
+  // Fetch published account classification workflows
+  const { data: workflows = [], isLoading } = useQuery({
+    queryKey: ['account-workflows'],
+    queryFn: () => base44.entities.Workflow.filter({ 
+      workflow_type: 'account_reportability',
+      status: 'published'
+    }),
+    enabled: !!account
+  });
+
+  // Fetch CRS countries for condition evaluation
+  const { data: crsCountries = [] } = useQuery({
+    queryKey: ['crs-countries-for-evaluation'],
+    queryFn: async () => {
+      const countries = await base44.entities.CrsCountryInfo.filter({ is_crs_country: true });
+      return countries.map(c => c.country_code?.toUpperCase());
+    },
+    staleTime: Infinity,
+    enabled: !!account
+  });
+
+  useEffect(() => {
+    if (account) {
+      loadUser();
+    }
+  }, [account]);
+
+  // Early return if no account provided - MUST be after all hooks
   if (!account) {
     return (
       <div className="p-12 text-center">
@@ -48,29 +75,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       </div>
     );
   }
-
-  // Fetch published account classification workflows
-  const { data: workflows = [], isLoading } = useQuery({
-    queryKey: ['account-workflows'],
-    queryFn: () => base44.entities.Workflow.filter({ 
-      workflow_type: 'account_reportability',
-      status: 'published'
-    })
-  });
-
-  // Fetch CRS countries for condition evaluation
-  const { data: crsCountries = [] } = useQuery({
-    queryKey: ['crs-countries-for-evaluation'],
-    queryFn: async () => {
-      const countries = await base44.entities.CrsCountryInfo.filter({ is_crs_country: true });
-      return countries.map(c => c.country_code?.toUpperCase());
-    },
-    staleTime: Infinity
-  });
-
-  useEffect(() => {
-    loadUser();
-  }, []);
 
   // Evaluate if a workflow's trigger conditions match the account data
   const evaluateTriggerConditions = (triggerConfig, accountData) => {
