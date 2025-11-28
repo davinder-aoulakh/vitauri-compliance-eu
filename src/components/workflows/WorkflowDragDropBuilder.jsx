@@ -116,7 +116,13 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   const handleAddOutcomeRule = () => {
     setOutcomeRules(prev => [
       ...prev,
-      { condition: "", result_classification: "", result_description: "" }
+      { 
+        condition: "", 
+        result_classification: "", 
+        result_description: "",
+        account_context_items: [],
+        status_color: "green"
+      }
     ]);
   };
 
@@ -250,13 +256,30 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                       </div>
                       <div className="space-y-2">
                         <div>
-                          <Label className="text-xs font-medium">Result Classification</Label>
+                          <Label className="text-xs font-medium">Result Classification (Status Badge)</Label>
                           <Input
                             value={rule.result_classification || ""}
                             onChange={(e) => handleOutcomeRuleChange(index, 'result_classification', e.target.value)}
                             placeholder="e.g., Reportable, Non-Reportable"
                             className="h-8 text-xs mt-1"
                           />
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium">Status Color</Label>
+                          <Select
+                            value={rule.status_color || "green"}
+                            onValueChange={(value) => handleOutcomeRuleChange(index, 'status_color', value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="green">Green (Reportable)</SelectItem>
+                              <SelectItem value="amber">Amber (Pending/Review)</SelectItem>
+                              <SelectItem value="red">Red (Non-Reportable/Excluded)</SelectItem>
+                              <SelectItem value="blue">Blue (Info)</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label className="text-xs font-medium">Condition</Label>
@@ -269,11 +292,22 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                           <p className="text-xs text-slate-500 mt-0.5">Use step IDs and answer values</p>
                         </div>
                         <div>
-                          <Label className="text-xs font-medium">Description (shown in blue/green box)</Label>
+                          <Label className="text-xs font-medium">Account Context Items (shown in blue box)</Label>
+                          <Textarea
+                            value={(rule.account_context_items || []).join("\n")}
+                            onChange={(e) => handleOutcomeRuleChange(index, 'account_context_items', e.target.value.split("\n").filter(item => item.trim()))}
+                            placeholder="Account Type: New Account (Jan 1, 2018 or later)&#10;Account Holder Status: Deceased"
+                            rows={3}
+                            className="text-xs mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-0.5">One item per line</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium">Reason Description (shown in result box)</Label>
                           <Textarea
                             value={rule.result_description || ""}
                             onChange={(e) => handleOutcomeRuleChange(index, 'result_description', e.target.value)}
-                            placeholder="The account holder is tax resident in a CRS reporting jurisdiction..."
+                            placeholder="The account holder is tax resident in a CRS reporting jurisdiction and must be reported..."
                             rows={3}
                             className="text-xs mt-1"
                           />
