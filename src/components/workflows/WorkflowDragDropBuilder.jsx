@@ -1386,76 +1386,143 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
           <p className="text-xs text-slate-500 italic">No actions configured for this step</p>
         ) : (
           <div className="space-y-3">
-            {editedStep.post_completion_actions.map((action, index) => (
-              <div key={index} className="p-3 border rounded-lg bg-amber-50 border-amber-200 space-y-2">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="bg-amber-100 text-amber-800">
-                    Action {index + 1}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAction(index)}
-                    className="h-6 w-6 text-red-600"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Target Entity</Label>
-                    <Select
-                      value={action.target_entity_type}
-                      onValueChange={(value) => handleActionChange(index, "target_entity_type", value)}
+            {editedStep.post_completion_actions.map((action, index) => {
+              const fieldsSchema = getFieldsForEntity(action.target_entity_type);
+              const fieldOptions = Object.entries(fieldsSchema).map(([key, val]) => ({
+                value: key,
+                label: val.label
+              }));
+              const suggestedValues = action.value_source === "static_value" 
+                ? getSuggestedValuesForField(action.target_entity_type, action.field_to_update)
+                : null;
+
+              return (
+                <div key={index} className="p-3 border rounded-lg bg-amber-50 border-amber-200 space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                      Action {index + 1}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveAction(index)}
+                      className="h-6 w-6 text-red-600"
                     >
-                      <SelectTrigger className="h-8 text-xs mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Entity">Entity</SelectItem>
-                        <SelectItem value="Account">Account</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </div>
-                  <div>
-                    <Label className="text-xs">Field to Update</Label>
-                    <Input
-                      value={action.field_to_update}
-                      onChange={(e) => handleActionChange(index, "field_to_update", e.target.value)}
-                      placeholder="e.g., fi_type, rfi_status"
-                      className="h-8 text-xs mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Value Source</Label>
-                    <Select
-                      value={action.value_source}
-                      onValueChange={(value) => handleActionChange(index, "value_source", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="from_step_answer">From Step Answer</SelectItem>
-                        <SelectItem value="static_value">Static Value</SelectItem>
-                        <SelectItem value="from_workflow_outcome">From Workflow Outcome</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">
-                      {action.value_source === "from_step_answer" ? "Step ID" : "Value"}
-                    </Label>
-                    <Input
-                      value={action.value}
-                      onChange={(e) => handleActionChange(index, "value", e.target.value)}
-                      placeholder={action.value_source === "from_step_answer" ? "step_id" : "value"}
-                      className="h-8 text-xs mt-1"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Target Entity</Label>
+                      <Select
+                        value={action.target_entity_type}
+                        onValueChange={(value) => {
+                          handleActionChange(index, "target_entity_type", value);
+                          // Reset field and value when target entity changes
+                          handleActionChange(index, "field_to_update", "");
+                          handleActionChange(index, "value", "");
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Entity">Entity</SelectItem>
+                          <SelectItem value="Account">Account</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Field to Update</Label>
+                      <Select
+                        value={action.field_to_update}
+                        onValueChange={(value) => {
+                          handleActionChange(index, "field_to_update", value);
+                          // Reset value when field changes
+                          handleActionChange(index, "value", "");
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectValue placeholder="Select field..." />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {fieldOptions.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Value Source</Label>
+                      <Select
+                        value={action.value_source}
+                        onValueChange={(value) => {
+                          handleActionChange(index, "value_source", value);
+                          // Reset value when source changes
+                          handleActionChange(index, "value", "");
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="from_step_answer">From Step Answer</SelectItem>
+                          <SelectItem value="static_value">Static Value</SelectItem>
+                          <SelectItem value="from_workflow_outcome">From Workflow Outcome</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">
+                        {action.value_source === "from_step_answer" ? "Step ID" : "Value"}
+                      </Label>
+                      {action.value_source === "from_step_answer" ? (
+                        <Select
+                          value={action.value}
+                          onValueChange={(value) => handleActionChange(index, "value", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue placeholder="Select step..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allSteps.map(s => (
+                              <SelectItem key={s.step_id} value={s.step_id}>
+                                {s.step_title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : suggestedValues ? (
+                        <Select
+                          value={action.value}
+                          onValueChange={(value) => handleActionChange(index, "value", value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue placeholder="Select value..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {suggestedValues.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={action.value}
+                          onChange={(e) => handleActionChange(index, "value", e.target.value)}
+                          placeholder="Enter value..."
+                          className="h-8 text-xs mt-1"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
