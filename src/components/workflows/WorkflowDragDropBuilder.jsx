@@ -1452,11 +1452,9 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                     <div>
                       <Label className="text-xs">Value Source</Label>
                       <Select
-                        value={action.value_source}
+                        value={action.value_source || "from_step_answer"}
                         onValueChange={(value) => {
-                          handleActionChange(index, "value_source", value);
-                          // Reset value when source changes
-                          handleActionChange(index, "value", "");
+                          handleActionChange(index, "value_source", value, { value: "" });
                         }}
                       >
                         <SelectTrigger className="h-8 text-xs mt-1">
