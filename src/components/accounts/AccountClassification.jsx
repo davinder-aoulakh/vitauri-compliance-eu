@@ -323,22 +323,36 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Determine next step
     let nextNodeId = null;
 
-    // Check conditional logic first
-    if (currentNode.conditional_logic) {
+    // First check if there's a selected option with next_step (for yes_no, single_choice, multiple_choice)
+    if (selectedValue && currentNode.options && currentNode.options.length > 0) {
+      const selectedOption = currentNode.options.find(opt => 
+        opt.value === selectedValue || opt.label === selectedValue
+      );
+      if (selectedOption?.next_step) {
+        nextNodeId = selectedOption.next_step;
+      }
+    }
+    
+    // If no next step from options, check default_next_step (for input types)
+    if (!nextNodeId && currentNode.default_next_step) {
+      nextNodeId = currentNode.default_next_step;
+    }
+
+    // Check conditional logic if still no next step determined
+    if (!nextNodeId && currentNode.conditional_logic?.conditions?.length > 0) {
       const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
       nextNodeId = conditionMet 
         ? currentNode.conditional_logic.next_step 
         : currentNode.conditional_logic.else_step;
-    } 
-    // Check if there's a selected option with next_step
-    else if (selectedValue && currentNode.options) {
-      const selectedOption = currentNode.options.find(opt => 
-        opt.value === selectedValue || opt.label === selectedValue
-      );
-      nextNodeId = selectedOption?.next_step;
     }
 
-    // If this is an action node or no next step, show summary
+    // Validate that the next step actually exists in the workflow
+    if (nextNodeId && !stepMap[nextNodeId]) {
+      console.warn(`Next step "${nextNodeId}" not found in workflow, showing summary`);
+      nextNodeId = null;
+    }
+
+    // If this is an action node or no valid next step, show summary
     if (!nextNodeId || isActionNode(currentNode)) {
       setCompletedPath([...newHistory, currentNodeId]);
       setShowSummary(true);
