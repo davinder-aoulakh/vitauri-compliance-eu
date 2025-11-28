@@ -444,9 +444,9 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
       const updated = [];
       const failed = [];
 
-      // Create a map of existing accounts by account_number for quick lookup
+      // Create a map of existing accounts by entity_id + account_number for quick lookup
       const existingAccountsMap = new Map(
-        existingAccounts.map(acc => [acc.account_number, acc])
+        existingAccounts.map(acc => [`${acc.entity_id}|${acc.account_number}`, acc])
       );
 
       for (let i = 0; i < rows.length; i++) {
