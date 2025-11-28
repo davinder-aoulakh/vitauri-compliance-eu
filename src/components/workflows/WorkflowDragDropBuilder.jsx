@@ -213,6 +213,78 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
               </div>
             </CardContent>
           </Card>
+          
+          {/* Outcome Rules Card */}
+          <Card className="border-0 shadow-lg mt-6">
+            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-transparent">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Diamond className="w-4 h-4 text-emerald-600" />
+                Outcome Rules
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <p className="text-xs text-slate-600 mb-3">
+                Define the final classification results and descriptions that appear when the workflow ends.
+              </p>
+              <Button onClick={handleAddOutcomeRule} variant="outline" size="sm" className="w-full mb-4">
+                <Plus className="w-3 h-3 mr-2" /> Add Outcome Rule
+              </Button>
+              {outcomeRules.length === 0 ? (
+                <p className="text-xs text-slate-500 italic text-center py-2">No outcome rules defined yet</p>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {outcomeRules.map((rule, index) => (
+                    <div key={index} className="p-3 border rounded-lg bg-emerald-50 border-emerald-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline" className="bg-emerald-100 text-emerald-800">
+                          Rule {index + 1}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveOutcomeRule(index)}
+                          className="h-6 w-6 text-red-600"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <Label className="text-xs font-medium">Result Classification</Label>
+                          <Input
+                            value={rule.result_classification || ""}
+                            onChange={(e) => handleOutcomeRuleChange(index, 'result_classification', e.target.value)}
+                            placeholder="e.g., Reportable, Non-Reportable"
+                            className="h-8 text-xs mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium">Condition</Label>
+                          <Input
+                            value={rule.condition || ""}
+                            onChange={(e) => handleOutcomeRuleChange(index, 'condition', e.target.value)}
+                            placeholder="e.g., step_1 = 'YES'"
+                            className="h-8 text-xs mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-0.5">Use step IDs and answer values</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium">Description (shown in blue/green box)</Label>
+                          <Textarea
+                            value={rule.result_description || ""}
+                            onChange={(e) => handleOutcomeRuleChange(index, 'result_description', e.target.value)}
+                            placeholder="The account holder is tax resident in a CRS reporting jurisdiction..."
+                            rows={3}
+                            className="text-xs mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Canvas */}
