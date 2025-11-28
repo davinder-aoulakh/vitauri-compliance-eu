@@ -31,6 +31,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [multiFieldValues, setMultiFieldValues] = useState({});
   const [multiFieldErrors, setMultiFieldErrors] = useState({});
 
+  // Early return if no account provided
+  if (!account) {
+    return (
+      <div className="p-12 text-center">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-900">
+            No account data provided. Please select an account to classify.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   // Fetch published account classification workflows
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ['account-workflows'],
