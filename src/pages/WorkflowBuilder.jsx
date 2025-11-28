@@ -132,9 +132,19 @@ export default function WorkflowBuilder() {
     setShowForm(true);
   };
 
-  const handleVisualEdit = (workflow) => { // New handler
-    setSelectedWorkflow(workflow);
-    setShowDragDropBuilder(true);
+  const handleVisualEdit = async (workflow) => { // New handler - refetch to get latest data
+    try {
+      // Refetch the workflow to ensure we have the latest data including outcome_rules
+      const freshWorkflows = await base44.entities.Workflow.filter({ id: workflow.id });
+      const freshWorkflow = freshWorkflows[0] || workflow;
+      console.log("Fresh workflow data for visual editor:", freshWorkflow);
+      setSelectedWorkflow(freshWorkflow);
+      setShowDragDropBuilder(true);
+    } catch (error) {
+      console.error("Error fetching workflow:", error);
+      setSelectedWorkflow(workflow);
+      setShowDragDropBuilder(true);
+    }
   };
 
   const handleViewFlow = (workflow) => {
