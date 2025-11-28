@@ -541,7 +541,11 @@ export default function WorkflowBuilder() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleCreateNewVersion(workflow)}>
                                     <GitCompare className="w-4 h-4 mr-2" />
-                                    New Version {/* Renamed */}
+                                    New Version
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDuplicateWorkflow(workflow)}>
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Duplicate Workflow
                                   </DropdownMenuItem>
                                   {workflow.status === "draft" && (
                                     <DropdownMenuItem onClick={() => handlePublish(workflow)}>
