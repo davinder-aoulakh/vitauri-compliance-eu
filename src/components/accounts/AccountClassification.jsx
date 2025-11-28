@@ -24,7 +24,7 @@ import CountrySelect from "../shared/CountrySelect";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [answers, setAnswers] = useState(account?.classification_answers || {});
+  const [answers, setAnswers] = useState({});  // Always start fresh - don't load previous answers
   const [selectedValue, setSelectedValue] = useState("");
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
