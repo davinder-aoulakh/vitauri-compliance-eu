@@ -46,6 +46,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   const [workflowType, setWorkflowType] = useState(workflow?.workflow_type || "custom");
   const [outcomeRules, setOutcomeRules] = useState(() => {
     // Initialize from workflow prop, ensuring all fields have defaults
+    console.log("Initializing outcomeRules from workflow:", workflow?.outcome_rules);
     const rules = workflow?.outcome_rules || [];
     return rules.map(rule => ({
       condition: rule.condition || "",
@@ -55,6 +56,12 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
       status_color: rule.status_color || "green"
     }));
   });
+  
+  // Debug: Log outcome rules on mount
+  React.useEffect(() => {
+    console.log("WorkflowDragDropBuilder mounted with workflow:", workflow);
+    console.log("Current outcomeRules state:", outcomeRules);
+  }, []);
 
   const nodeTypes = [
     { 
