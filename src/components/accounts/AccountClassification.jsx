@@ -880,7 +880,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 const answer = answers[stepId];
                 if (!step || !answer) return null;
 
-                const answerLabel = step.options?.find(o => o.value === answer)?.label || answer;
+                const answerLabel = step.options?.find(o => o.value === answer)?.label || (typeof answer === 'object' ? JSON.stringify(answer) : String(answer || ''));
 
                 return (
                   <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
