@@ -247,7 +247,7 @@ export default function BeneficiaryManager({ account, tenant }) {
 
       {/* Add/Edit Beneficiary Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               {editingBeneficiary ? "Edit Beneficiary" : "Add Beneficiary"}
