@@ -923,6 +923,16 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
             </div>
           )}
+
+          {/* Beneficiaries Section - Only for Deceased Account Holders */}
+          {formData.account_holder_type === "individual" && !formData.account_holder_is_alive && account?.id && (
+            <div className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50/30 mt-6">
+              <BeneficiaryManager 
+                account={account} 
+                tenant={tenant}
+              />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="tax" className="space-y-4 mt-4">
