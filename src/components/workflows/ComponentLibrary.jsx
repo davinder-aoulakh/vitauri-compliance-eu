@@ -446,74 +446,387 @@ export default function ComponentLibrary({ onSelectComponent }) {
 
       {/* Component Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Component: {selectedComponent?.component_name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+              {selectedComponent?.component_name}
+            </DialogTitle>
           </DialogHeader>
           {selectedComponent && (
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-slate-700">Description</Label>
-                <p className="text-sm text-slate-900 mt-1">{selectedComponent.description}</p>
-              </div>
+            <Tabs defaultValue="overview" className="mt-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="steps">
+                  <Package className="w-4 h-4 mr-2" />
+                  Steps ({selectedComponent.steps?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="usage">
+                  <Code className="w-4 h-4 mr-2" />
+                  Usage Examples
+                </TabsTrigger>
+              </TabsList>
 
-              <div>
-                <Label className="text-sm font-medium text-slate-700">Category</Label>
-                <Badge className={`${getCategoryBadge(selectedComponent.category)} mt-1`}>
-                  {selectedComponent.category?.replace(/_/g, " ")}
-                </Badge>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-slate-700">Steps ({selectedComponent.steps?.length || 0})</Label>
-                <div className="mt-2 space-y-2">
-                  {selectedComponent.steps?.map((step, idx) => (
-                    <div key={idx} className="p-3 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-xs">{idx + 1}</Badge>
-                        <span className="font-medium text-sm text-slate-900">{step.step_title}</span>
+              <TabsContent value="overview" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Description</Label>
+                    <p className="text-sm text-slate-900 mt-1 bg-slate-50 p-3 rounded-lg">
+                      {selectedComponent.description || "No description provided."}
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Category</Label>
+                      <div className="mt-1">
+                        <Badge className={getCategoryBadge(selectedComponent.category)}>
+                          {categories.find(c => c.value === selectedComponent.category)?.icon} {selectedComponent.category?.replace(/_/g, " ")}
+                        </Badge>
                       </div>
-                      {step.question_text && (
-                        <p className="text-xs text-slate-600 ml-8">{step.question_text}</p>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {selectedComponent.parameters && Object.keys(selectedComponent.parameters).length > 0 && (
-                <div>
-                  <Label className="text-sm font-medium text-slate-700">Configurable Parameters</Label>
-                  <div className="mt-2 space-y-1">
-                    {Object.entries(selectedComponent.parameters).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded">
-                        <span className="text-slate-600">{key}:</span>
-                        <span className="text-slate-900 font-mono text-xs">{JSON.stringify(value)}</span>
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Type</Label>
+                      <div className="mt-1">
+                        <Badge variant="outline">
+                          {selectedComponent.component_type?.replace(/_/g, " ")}
+                        </Badge>
                       </div>
-                    ))}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Usage</Label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm">Used {selectedComponent.usage_count || 0} times</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowDetails(false)}>
-                  Close
-                </Button>
-                <Button
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  onClick={() => {
-                    handleUseComponent(selectedComponent);
-                    setShowDetails(false);
-                  }}
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Use This Component
-                </Button>
-              </div>
-            </div>
+                {selectedComponent.tags && selectedComponent.tags.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Tags</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {selectedComponent.tags.map((tag, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          <Tag className="w-3 h-3 mr-1" />
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedComponent.parameters && Object.keys(selectedComponent.parameters).length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Configurable Parameters</Label>
+                    <div className="mt-2 space-y-1">
+                      {Object.entries(selectedComponent.parameters).map(([key, value]) => (
+                        <div key={key} className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded">
+                          <span className="text-slate-600 font-medium">{key}:</span>
+                          <code className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded text-xs">{JSON.stringify(value)}</code>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="steps" className="mt-4">
+                <div className="space-y-3">
+                  {selectedComponent.steps?.length > 0 ? (
+                    selectedComponent.steps.map((step, idx) => (
+                      <div key={idx} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 mb-1">{step.step_title}</h4>
+                            {step.question_text && (
+                              <p className="text-sm text-slate-600 mb-2">{step.question_text}</p>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {step.question_type?.replace(/_/g, " ")}
+                              </Badge>
+                              {step.options?.length > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  {step.options.length} options
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      <Package className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                      <p>No steps defined in this component</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="usage" className="mt-4">
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-blue-900 mb-1">How to Use</h4>
+                        <p className="text-sm text-blue-800">
+                          Click "Use This Component" to add all steps from this component to your workflow. 
+                          You can then customize the steps as needed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Example Workflow Integration</Label>
+                    <div className="mt-2 bg-slate-900 text-slate-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{`// Add ${selectedComponent.component_name} steps to your workflow
+const workflowSteps = [
+  ...existingSteps,
+  ...${JSON.stringify(selectedComponent.component_name).replace(/"/g, "'")}.steps.map(step => ({
+    ...step,
+    step_id: \`\${step.step_id}_\${Date.now()}\`
+  }))
+];`}</pre>
+                    </div>
+                  </div>
+
+                  {selectedComponent.parameters && Object.keys(selectedComponent.parameters).length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Customization Options</Label>
+                      <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                        {Object.keys(selectedComponent.parameters).map(param => (
+                          <li key={param} className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            Adjust <code className="bg-slate-100 px-1.5 py-0.5 rounded">{param}</code> to fit your needs
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
+
+          <div className="flex justify-between gap-2 pt-4 border-t mt-4">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setEditingComponent(selectedComponent);
+                  setShowDetails(false);
+                  setShowCreateForm(true);
+                }}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="text-red-600 hover:text-red-700"
+                onClick={() => {
+                  if (confirm("Delete this component?")) {
+                    deleteMutation.mutate(selectedComponent.id);
+                    setShowDetails(false);
+                  }
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowDetails(false)}>
+                Close
+              </Button>
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={() => {
+                  handleUseComponent(selectedComponent);
+                  setShowDetails(false);
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Use This Component
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* Create/Edit Component Dialog */}
+      <Dialog open={showCreateForm} onOpenChange={(open) => {
+        setShowCreateForm(open);
+        if (!open) setEditingComponent(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingComponent ? "Edit Component" : "Create New Component"}
+            </DialogTitle>
+          </DialogHeader>
+          <ComponentForm
+            component={editingComponent}
+            categories={categories.filter(c => c.value !== "all")}
+            onSubmit={(data) => {
+              if (editingComponent) {
+                updateMutation.mutate({ id: editingComponent.id, data });
+              } else {
+                createMutation.mutate(data);
+              }
+            }}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setEditingComponent(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Component Form for Create/Edit
+function ComponentForm({ component, categories, onSubmit, onCancel }) {
+  const [formData, setFormData] = useState({
+    component_name: component?.component_name || "",
+    component_type: component?.component_type || "question_module",
+    description: component?.description || "",
+    category: component?.category || "general",
+    tags: component?.tags || [],
+    is_public: component?.is_public ?? true,
+    steps: component?.steps || [],
+    parameters: component?.parameters || {}
+  });
+  const [tagInput, setTagInput] = useState("");
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
+      setFormData({ ...formData, tags: [...formData.tags, tagInput.trim()] });
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setFormData({ ...formData, tags: formData.tags.filter(t => t !== tagToRemove) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-sm font-medium">Component Name *</Label>
+        <Input
+          value={formData.component_name}
+          onChange={(e) => setFormData({ ...formData, component_name: e.target.value })}
+          placeholder="e.g., Tax Residency Collector"
+          className="mt-1"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-sm font-medium">Type *</Label>
+          <Select
+            value={formData.component_type}
+            onValueChange={(value) => setFormData({ ...formData, component_type: value })}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="question_module">Question Module</SelectItem>
+              <SelectItem value="decision_logic">Decision Logic</SelectItem>
+              <SelectItem value="data_collection">Data Collection</SelectItem>
+              <SelectItem value="validation_rule">Validation Rule</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-sm font-medium">Category *</Label>
+          <Select
+            value={formData.category}
+            onValueChange={(value) => setFormData({ ...formData, category: value })}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.icon} {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-sm font-medium">Description</Label>
+        <Textarea
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Describe what this component does and when to use it..."
+          rows={3}
+          className="mt-1"
+        />
+      </div>
+
+      <div>
+        <Label className="text-sm font-medium">Tags</Label>
+        <div className="flex gap-2 mt-1">
+          <Input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            placeholder="Add a tag..."
+            onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+          />
+          <Button type="button" onClick={handleAddTag} variant="outline">
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        {formData.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {formData.tags.map((tag, idx) => (
+              <Badge key={idx} variant="secondary" className="gap-1">
+                {tag}
+                <button onClick={() => handleRemoveTag(tag)}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4 border-t">
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          onClick={() => onSubmit(formData)}
+          disabled={!formData.component_name}
+        >
+          {component ? "Update Component" : "Create Component"}
+        </Button>
+      </div>
     </div>
   );
 }
