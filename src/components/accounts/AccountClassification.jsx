@@ -45,6 +45,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     postal_code: "",
     country: ""
   });
+  const [beneficiariesAdded, setBeneficiariesAdded] = useState(false);
 
   // Fetch the latest account data to ensure we have up-to-date documents
   const { data: freshAccountData } = useQuery({
