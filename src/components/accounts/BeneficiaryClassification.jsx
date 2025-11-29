@@ -178,7 +178,8 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
     c.country_name?.toLowerCase() === beneficiaryCountry?.toLowerCase()
   );
 
-  const progress = Math.round((history.length / (BENEFICIARY_WORKFLOW_STEPS.length - 2)) * 100);
+  const totalSteps = workflowSteps.filter(s => s.question_type !== "result").length;
+  const progress = Math.round((history.length / Math.max(totalSteps - 1, 1)) * 100);
 
   // Get action label for result
   const getActionLabel = (action) => {
