@@ -680,8 +680,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
           </div>
 
-          {/* Deceased Account Holder Information */}
-          {formData.account_holder_type === "individual" && (
+          {/* Deceased Account Holder Information - Only show when account holder is deceased */}
+          {formData.account_holder_type === "individual" && !formData.account_holder_is_alive && (
             <div className="p-4 border-2 border-slate-200 rounded-lg bg-slate-50/30">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Deceased Account Holder Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
