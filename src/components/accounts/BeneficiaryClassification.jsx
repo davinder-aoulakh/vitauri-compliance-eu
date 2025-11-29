@@ -196,6 +196,16 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
 
   const progress = Math.round((history.length / (BENEFICIARY_WORKFLOW_STEPS.length - 2)) * 100);
 
+  // Get action label for result
+  const getActionLabel = (action) => {
+    const actionLabels = {
+      manual_report_total: "Manual CRS Reporting - Total Payments per FI",
+      report_per_beneficiary: "CRS Reporting per Individual Beneficiary",
+      fi_reports: "FI Handles Own Reporting"
+    };
+    return actionLabels[action] || action;
+  };
+
   // Result Screen
   if (isResultStep) {
     const isReportable = currentStep.result_status === "reportable";
