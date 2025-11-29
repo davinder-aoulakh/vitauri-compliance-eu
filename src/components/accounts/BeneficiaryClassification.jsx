@@ -262,6 +262,14 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
                   {isReportable ? 'Reportable' : 'Non-Reportable'}
                 </Badge>
               </div>
+              {currentStep.result_action && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">Action:</span>
+                  <Badge variant="outline" className="text-sm bg-blue-50 text-blue-800 border-blue-200">
+                    {getActionLabel(currentStep.result_action)}
+                  </Badge>
+                </div>
+              )}
               <div>
                 <span className="text-sm font-medium text-slate-700">Reason:</span>
                 <p className="text-sm text-slate-900 mt-1">
