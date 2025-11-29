@@ -180,6 +180,7 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
       classification_answers: answers,
       reportability_status: currentStep.result_status,
       reportability_reason: currentStep.result_description,
+      result_action: currentStep.result_action || null,
       classification_date: new Date().toISOString(),
       classified_by: user?.email || "unknown"
     };
