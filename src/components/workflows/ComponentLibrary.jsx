@@ -173,17 +173,123 @@ export default function ComponentLibrary({ onSelectComponent }) {
       {/* Search & Filter */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-wrap gap-4">
+            {/* Search Input */}
+            <div className="flex-1 min-w-[250px] relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
               <Input
-                placeholder="Search components..."
+                placeholder="Search by name, description, or tags..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
+
+            {/* Type Filter */}
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-[160px]">
+                <Filter className="w-4 h-4 mr-2 text-slate-400" />
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {componentTypes.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Tag Filter */}
+            <Select value={selectedTag} onValueChange={setSelectedTag}>
+              <SelectTrigger className="w-[160px]">
+                <Tag className="w-4 h-4 mr-2 text-slate-400" />
+                <SelectValue placeholder="Filter by tag" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>All Tags</SelectItem>
+                {allTags.map(tag => (
+                  <SelectItem key={tag} value={tag}>
+                    {tag}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Sort Options */}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="usage">Usage Count</SelectItem>
+                <SelectItem value="steps">Step Count</SelectItem>
+                <SelectItem value="date">Date Created</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              title={sortOrder === "asc" ? "Ascending" : "Descending"}
+            >
+              {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+            </Button>
           </div>
+
+          {/* Active Filters Display */}
+          {(selectedCategory !== "all" || selectedType !== "all" || selectedTag || searchTerm) && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+              <span className="text-xs text-slate-500">Active filters:</span>
+              {searchTerm && (
+                <Badge variant="secondary" className="gap-1">
+                  Search: "{searchTerm}"
+                  <button onClick={() => setSearchTerm("")}><X className="w-3 h-3" /></button>
+                </Badge>
+              )}
+              {selectedCategory !== "all" && (
+                <Badge variant="secondary" className="gap-1">
+                  {categories.find(c => c.value === selectedCategory)?.label}
+                  <button onClick={() => setSelectedCategory("all")}><X className="w-3 h-3" /></button>
+                </Badge>
+              )}
+              {selectedType !== "all" && (
+                <Badge variant="secondary" className="gap-1">
+                  {componentTypes.find(t => t.value === selectedType)?.label}
+                  <button onClick={() => setSelectedType("all")}><X className="w-3 h-3" /></button>
+                </Badge>
+              )}
+              {selectedTag && (
+                <Badge variant="secondary" className="gap-1">
+                  Tag: {selectedTag}
+                  <button onClick={() => setSelectedTag("")}><X className="w-3 h-3" /></button>
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedCategory("all");
+                  setSelectedType("all");
+                  setSelectedTag("");
+                }}
+                className="text-xs"
+              >
+                Clear all
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
