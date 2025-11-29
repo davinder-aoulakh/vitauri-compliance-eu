@@ -106,7 +106,7 @@ export default function WorkflowVisualizer({ workflow }) {
     const firstStep = workflow.steps[0];
     const queue = [{ step: firstStep, level: 0, parentX: 0 }];
     
-    // Calculate levels for all nodes
+    // Calculate levels for all nodes using BFS
     while (queue.length > 0) {
       const { step, level, parentX } = queue.shift();
       
@@ -131,6 +131,23 @@ export default function WorkflowVisualizer({ workflow }) {
         }
       });
     }
+    
+    // IMPORTANT: Add any unpositioned steps (orphaned or missed by BFS)
+    // This ensures ALL workflow steps are visible in the diagram
+    workflow.steps.forEach(step => {
+      if (!positioned.has(step.step_id)) {
+        // Find the maximum level and add orphaned nodes below
+        const maxLevel = Math.max(...Object.keys(levels).map(k => parseInt(k)), 0);
+        const orphanLevel = maxLevel + 1;
+        
+        if (!levels[orphanLevel]) {
+          levels[orphanLevel] = [];
+        }
+        
+        levels[orphanLevel].push({ step, parentX: 0 });
+        positioned.add(step.step_id);
+      }
+    });
     
     // Position nodes by level
     Object.keys(levels).forEach(level => {
