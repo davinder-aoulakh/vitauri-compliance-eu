@@ -133,6 +133,7 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
 
   const currentStep = stepMap[currentStepId];
   const isResultStep = currentStep?.question_type === "result";
+  const isInfoStep = currentStep?.question_type === "info";
 
   const handleNext = () => {
     // For info steps, no selection needed
