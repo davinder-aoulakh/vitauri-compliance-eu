@@ -296,9 +296,12 @@ export default function ComponentLibrary({ onSelectComponent }) {
       <div className="grid grid-cols-12 gap-6">
         {/* Category Sidebar */}
         <div className="col-span-3">
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm sticky top-4">
             <CardHeader className="border-b">
-              <CardTitle className="text-sm">Categories</CardTitle>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Categories
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-2">
               <div className="space-y-1">
@@ -306,14 +309,20 @@ export default function ComponentLibrary({ onSelectComponent }) {
                   <button
                     key={category.value}
                     onClick={() => setSelectedCategory(category.value)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
                       selectedCategory === category.value
-                        ? "bg-indigo-50 text-indigo-700 font-medium"
+                        ? "bg-indigo-100 text-indigo-700 font-medium shadow-sm"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
                   >
-                    <span>{category.label}</span>
-                    <Badge variant="outline" className="text-xs">
+                    <span className="flex items-center gap-2">
+                      <span>{category.icon}</span>
+                      <span>{category.label}</span>
+                    </span>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${selectedCategory === category.value ? 'bg-indigo-200 border-indigo-300' : ''}`}
+                    >
                       {category.count}
                     </Badge>
                   </button>
@@ -321,6 +330,36 @@ export default function ComponentLibrary({ onSelectComponent }) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Popular Tags */}
+          {allTags.length > 0 && (
+            <Card className="border-0 shadow-sm mt-4">
+              <CardHeader className="border-b py-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Tag className="w-4 h-4" />
+                  Popular Tags
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.slice(0, 10).map(tag => (
+                    <Badge
+                      key={tag}
+                      variant={selectedTag === tag ? "default" : "outline"}
+                      className={`cursor-pointer text-xs ${
+                        selectedTag === tag 
+                          ? "bg-indigo-600" 
+                          : "hover:bg-slate-100"
+                      }`}
+                      onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Components Grid */}
