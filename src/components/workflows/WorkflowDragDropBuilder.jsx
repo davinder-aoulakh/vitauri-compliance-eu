@@ -894,9 +894,10 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <SelectItem value="file_upload">File Upload</SelectItem>
             <SelectItem value="multi_field_input">Multi-Field Input</SelectItem>
             <SelectItem value="address_input">Address Input</SelectItem>
-            </SelectContent>
-            </Select>
-            </div>
+            <SelectItem value="beneficiary_input">Beneficiary Input</SelectItem>
+              </SelectContent>
+              </Select>
+              </div>
 
       {/* Address Input Configuration */}
       {editedStep.question_type === "address_input" && (
