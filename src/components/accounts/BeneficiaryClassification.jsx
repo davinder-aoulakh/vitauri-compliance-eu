@@ -426,6 +426,15 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
                   ))}
                 </RadioGroup>
               )}
+
+              {currentStep.question_type === "info" && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <AlertDescription className="text-sm text-amber-900">
+                    <strong>Action Required:</strong> {currentStep.question_text}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
         </CardContent>
