@@ -453,6 +453,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
         ...addressValues,
         _address_config: currentNode.address_config || { target_field: "current_address", track_changes: true }
       };
+    } else if (currentNode.question_type === "beneficiary_input") {
+      if (!beneficiariesAdded) {
+        alert("Please add at least one beneficiary");
+        return;
+      }
+      newAnswers[currentNodeId] = selectedValue;
     }
 
     setAnswers(newAnswers);
