@@ -621,40 +621,29 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
                   Pre-existing Account (opened before Jan 1, 2018)
                 </Label>
-                {account?.created_date ? (
-                  <Alert className="mt-2 bg-slate-50 border-slate-200">
-                    <Info className="w-4 h-4 text-slate-600" />
-                    <AlertDescription className="text-xs text-slate-700">
-                      Auto-determined based on account creation date: {new Date(account.created_date).toLocaleDateString()}
-                      <br />
-                      <strong>Status:</strong> {formData.is_pre_existing ? "Pre-existing (before 2018)" : "New Account (2018 or later)"}
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="mt-2">
-                    <RadioGroup
-                      value={formData.is_pre_existing ? "yes" : "no"}
-                      onValueChange={(value) => handleChange("is_pre_existing", value === "yes")}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yes" id="pre_existing_yes" />
-                        <Label htmlFor="pre_existing_yes" className="font-normal cursor-pointer">
-                          Yes (opened before Jan 1, 2018)
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="no" id="pre_existing_no" />
-                        <Label htmlFor="pre_existing_no" className="font-normal cursor-pointer">
-                          No (opened Jan 1, 2018 or later)
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Pre-existing accounts may have different due diligence requirements under CRS
-                    </p>
-                  </div>
-                )}
+                <div className="mt-2">
+                  <RadioGroup
+                    value={formData.is_pre_existing ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("is_pre_existing", value === "yes")}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="pre_existing_yes" />
+                      <Label htmlFor="pre_existing_yes" className="font-normal cursor-pointer">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="pre_existing_no" />
+                      <Label htmlFor="pre_existing_no" className="font-normal cursor-pointer">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Pre-existing accounts may have different due diligence requirements under CRS
+                  </p>
+                </div>
               </div>
 
               {/* Account Holder Status - Only for Individual Accounts */}
