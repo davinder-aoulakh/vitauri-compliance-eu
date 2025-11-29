@@ -1441,7 +1441,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
             !isActionNode(currentNode) && 
             !selectedValue && 
             !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0) &&
-            !(currentNode.question_type === "address_input" && addressValues.country)
+            !(currentNode.question_type === "address_input" && addressValues.country) &&
+            !(currentNode.question_type === "beneficiary_input" && beneficiariesAdded)
           }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
