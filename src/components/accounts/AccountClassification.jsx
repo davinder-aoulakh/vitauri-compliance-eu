@@ -21,6 +21,7 @@ import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CountrySelect from "../shared/CountrySelect";
+import BeneficiaryInputRenderer from "./BeneficiaryInputRenderer";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
