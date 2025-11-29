@@ -272,7 +272,7 @@ export default function BeneficiaryManager({ account, tenant }) {
 
       {/* Classification Dialog */}
       <Dialog open={showClassification} onOpenChange={setShowClassification}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               Classify Beneficiary: {selectedBeneficiary?.full_name}
