@@ -448,11 +448,11 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
         </Button>
         <Button 
           onClick={handleNext}
-          disabled={!selectedValue}
+          disabled={!selectedValue && !isInfoStep}
           size="lg"
           className="bg-purple-600 hover:bg-purple-700 text-white px-8"
         >
-          Next
+          {isInfoStep ? "Continue" : "Next"}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
