@@ -162,9 +162,14 @@ export default function ComponentLibrary({ onSelectComponent }) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold text-slate-900">Component Library</h3>
-          <p className="text-sm text-slate-600">Reusable workflow modules for faster building</p>
+          <p className="text-sm text-slate-600">
+            {filteredComponents.length} reusable workflow modules for faster building
+          </p>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+        <Button 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          onClick={() => setShowCreateForm(true)}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Create Component
         </Button>
