@@ -135,15 +135,22 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
   const isResultStep = currentStep?.question_type === "result";
 
   const handleNext = () => {
-    if (!selectedValue && !isResultStep) return;
+    // For info steps, no selection needed
+    const isInfoStep = currentStep?.question_type === "info";
+    if (!selectedValue && !isResultStep && !isInfoStep) return;
 
-    const newAnswers = { ...answers, [currentStepId]: selectedValue };
+    const newAnswers = { ...answers, [currentStepId]: selectedValue || "ACKNOWLEDGED" };
     setAnswers(newAnswers);
     setHistory([...history, currentStepId]);
 
     // Find next step
-    const selectedOption = currentStep.options?.find(opt => opt.value === selectedValue);
-    const nextStepId = selectedOption?.next_step;
+    let nextStepId;
+    if (isInfoStep) {
+      nextStepId = currentStep.next_step;
+    } else {
+      const selectedOption = currentStep.options?.find(opt => opt.value === selectedValue);
+      nextStepId = selectedOption?.next_step;
+    }
 
     if (nextStepId && stepMap[nextStepId]) {
       setCurrentStepId(nextStepId);
