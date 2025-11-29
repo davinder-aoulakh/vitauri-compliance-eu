@@ -5,6 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   Plus,
@@ -13,9 +21,17 @@ import {
   Edit,
   CheckCircle2,
   Package,
-  Tag
+  Tag,
+  X,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Code,
+  BookOpen,
+  Sparkles
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ComponentLibrary({ onSelectComponent }) {
   const [searchTerm, setSearchTerm] = useState("");
