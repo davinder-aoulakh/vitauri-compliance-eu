@@ -36,8 +36,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function ComponentLibrary({ onSelectComponent }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedType, setSelectedType] = useState("all");
+  const [selectedTag, setSelectedTag] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [showDetails, setShowDetails] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingComponent, setEditingComponent] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -46,22 +52,86 @@ export default function ComponentLibrary({ onSelectComponent }) {
     queryFn: () => base44.entities.WorkflowComponent.list()
   });
 
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.WorkflowComponent.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['workflow-components']);
+      setShowCreateForm(false);
+      setEditingComponent(null);
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.WorkflowComponent.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['workflow-components']);
+      setShowCreateForm(false);
+      setEditingComponent(null);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.WorkflowComponent.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['workflow-components']);
+    }
+  });
+
   const categories = [
-    { value: "all", label: "All Components", count: components.length },
-    { value: "financial_institution_check", label: "FI Checks", count: components.filter(c => c.category === "financial_institution_check").length },
-    { value: "tax_residency_collection", label: "Tax Residency", count: components.filter(c => c.category === "tax_residency_collection").length },
-    { value: "indicia_search", label: "Indicia Search", count: components.filter(c => c.category === "indicia_search").length },
-    { value: "self_certification", label: "Self Certification", count: components.filter(c => c.category === "self_certification").length },
-    { value: "controlling_persons", label: "Controlling Persons", count: components.filter(c => c.category === "controlling_persons").length },
-    { value: "general", label: "General", count: components.filter(c => c.category === "general").length }
+    { value: "all", label: "All Components", count: components.length, icon: "📦" },
+    { value: "financial_institution_check", label: "FI Checks", count: components.filter(c => c.category === "financial_institution_check").length, icon: "🏦" },
+    { value: "tax_residency_collection", label: "Tax Residency", count: components.filter(c => c.category === "tax_residency_collection").length, icon: "🌍" },
+    { value: "indicia_search", label: "Indicia Search", count: components.filter(c => c.category === "indicia_search").length, icon: "🔍" },
+    { value: "self_certification", label: "Self Certification", count: components.filter(c => c.category === "self_certification").length, icon: "📝" },
+    { value: "controlling_persons", label: "Controlling Persons", count: components.filter(c => c.category === "controlling_persons").length, icon: "👥" },
+    { value: "entity_classification", label: "Entity Classification", count: components.filter(c => c.category === "entity_classification").length, icon: "🏢" },
+    { value: "account_review", label: "Account Review", count: components.filter(c => c.category === "account_review").length, icon: "💳" },
+    { value: "general", label: "General", count: components.filter(c => c.category === "general").length, icon: "⚙️" }
   ];
 
-  const filteredComponents = components.filter(component => {
-    const matchesSearch = component.component_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         component.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || component.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const componentTypes = [
+    { value: "all", label: "All Types" },
+    { value: "question_module", label: "Question Module" },
+    { value: "decision_logic", label: "Decision Logic" },
+    { value: "data_collection", label: "Data Collection" },
+    { value: "validation_rule", label: "Validation Rule" },
+    { value: "custom", label: "Custom" }
+  ];
+
+  // Get all unique tags from components
+  const allTags = [...new Set(components.flatMap(c => c.tags || []))].sort();
+
+  const filteredComponents = components
+    .filter(component => {
+      const matchesSearch = 
+        component.component_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        component.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        component.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesCategory = selectedCategory === "all" || component.category === selectedCategory;
+      const matchesType = selectedType === "all" || component.component_type === selectedType;
+      const matchesTag = !selectedTag || component.tags?.includes(selectedTag);
+      return matchesSearch && matchesCategory && matchesType && matchesTag;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "name":
+          comparison = (a.component_name || "").localeCompare(b.component_name || "");
+          break;
+        case "usage":
+          comparison = (b.usage_count || 0) - (a.usage_count || 0);
+          break;
+        case "steps":
+          comparison = (b.steps?.length || 0) - (a.steps?.length || 0);
+          break;
+        case "date":
+          comparison = new Date(b.created_date || 0) - new Date(a.created_date || 0);
+          break;
+        default:
+          comparison = 0;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
 
   const handleViewDetails = (component) => {
     setSelectedComponent(component);
