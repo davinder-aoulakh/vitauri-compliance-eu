@@ -381,7 +381,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const isActionNode = (step) => {
     if (!step) return false;
     
-    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input"];
+    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input", "beneficiary_input"];
     if (inputTypes.includes(step.question_type)) {
       if (step.default_next_step) return false;
       if (step.question_type === "text_input") return true;
