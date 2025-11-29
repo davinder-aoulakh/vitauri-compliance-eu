@@ -1031,6 +1031,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
+    if (currentNode.question_type === "beneficiary_input") {
+      return (
+        <BeneficiaryInputRenderer
+          account={latestAccountData || account}
+          tenant={null}
+          onBeneficiariesAdded={(savedBeneficiaries) => {
+            setBeneficiariesAdded(true);
+            setSelectedValue({ beneficiaries_count: savedBeneficiaries.length, beneficiaries: savedBeneficiaries });
+          }}
+        />
+      );
+    }
+
     return null;
     };
 
