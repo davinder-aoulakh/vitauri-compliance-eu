@@ -18,85 +18,83 @@ import {
   AlertCircle
 } from "lucide-react";
 
-// Beneficiary classification workflow steps
+// Beneficiary classification workflow steps based on flowchart
 const BENEFICIARY_WORKFLOW_STEPS = [
   {
-    step_id: "step_residence",
-    step_title: "Tax Residence Check",
-    question_text: "Is the beneficiary a tax resident in a CRS participating jurisdiction?",
+    step_id: "step_fi_crs_country",
+    step_title: "Financial Institution CRS Country Check",
+    question_text: "Is the beneficiary's bank account with the Financial Institution in a CRS reporting country?",
     question_type: "yes_no",
-    help_text: "Check if the beneficiary's country of residence participates in CRS reporting.",
+    help_text: "Check if the Financial Institution where the beneficiary holds the account is located in a CRS participating jurisdiction.",
     options: [
-      { value: "YES", label: "Yes - Tax resident in CRS jurisdiction", next_step: "step_tin" },
-      { value: "NO", label: "No - Not a CRS jurisdiction resident", next_step: "step_non_reportable" }
+      { value: "YES", label: "Yes - FI is in a CRS reporting country", next_step: "step_beneficiary_tax_residence" },
+      { value: "NO", label: "No - FI is not in a CRS reporting country", next_step: "step_collect_total_payments" }
     ]
   },
   {
-    step_id: "step_tin",
-    step_title: "Tax Identification Number",
-    question_text: "Has the beneficiary provided a valid Tax Identification Number (TIN)?",
+    step_id: "step_beneficiary_tax_residence",
+    step_title: "Beneficiary Tax Residence Check",
+    question_text: "Is the tax residence of the beneficiary in a CRS reporting country?",
     question_type: "yes_no",
-    help_text: "A TIN is required for CRS reporting purposes.",
+    help_text: "Check if the beneficiary's country of tax residence participates in CRS reporting.",
     options: [
-      { value: "YES", label: "Yes - TIN provided", next_step: "step_address_verification" },
-      { value: "NO", label: "No - TIN not available", next_step: "step_tin_reason" }
+      { value: "YES", label: "Yes - Tax resident in CRS country", next_step: "step_fi_same_as_residence" },
+      { value: "NO", label: "No - Not a CRS country resident", next_step: "step_collect_total_payments" }
     ]
   },
   {
-    step_id: "step_tin_reason",
-    step_title: "TIN Unavailable Reason",
-    question_text: "Why is the TIN not available?",
-    question_type: "single_choice",
-    help_text: "Select the reason for TIN unavailability.",
-    options: [
-      { value: "NOT_ISSUED", label: "Country does not issue TINs", next_step: "step_address_verification" },
-      { value: "NOT_REQUIRED", label: "TIN not required by law", next_step: "step_address_verification" },
-      { value: "PENDING", label: "TIN application pending", next_step: "step_address_verification" },
-      { value: "REFUSED", label: "Beneficiary refused to provide", next_step: "step_reportable_no_tin" }
-    ]
-  },
-  {
-    step_id: "step_address_verification",
-    step_title: "Address Verification",
-    question_text: "Is the beneficiary's address in a CRS participating jurisdiction?",
+    step_id: "step_fi_same_as_residence",
+    step_title: "FI Country Same as Residence",
+    question_text: "Is the beneficiary's bank account with the Financial Institution in the same CRS reporting country as that of the beneficiary's residence?",
     question_type: "yes_no",
-    help_text: "Verify that the address country matches the tax residence declaration.",
+    help_text: "Check if the FI country matches the beneficiary's tax residence country.",
     options: [
-      { value: "YES", label: "Yes - Address confirms CRS jurisdiction", next_step: "step_reportable" },
-      { value: "NO", label: "No - Address indicates different jurisdiction", next_step: "step_indicia_review" }
+      { value: "YES", label: "Yes - Same country", next_step: "step_reportable_per_beneficiary" },
+      { value: "NO", label: "No - Different countries", next_step: "step_fi_is_rfi" }
     ]
   },
   {
-    step_id: "step_indicia_review",
-    step_title: "Indicia Review",
-    question_text: "Are there any other foreign indicia that indicate reportability?",
+    step_id: "step_fi_is_rfi",
+    step_title: "FI is a Reporting Financial Institution",
+    question_text: "Is the beneficiary's Financial Institution (FI) itself an RFI that should perform its own reporting?",
     question_type: "yes_no",
-    help_text: "Check for standing instructions, power of attorney, or other indicia.",
+    help_text: "Check if the beneficiary's FI is a Reporting Financial Institution with its own CRS reporting obligations.",
     options: [
-      { value: "YES", label: "Yes - Other indicia present", next_step: "step_reportable" },
-      { value: "NO", label: "No - No other indicia", next_step: "step_non_reportable" }
+      { value: "YES", label: "Yes - FI is an RFI and will report", next_step: "step_non_reportable_fi_reports" },
+      { value: "NO", label: "No - FI is not an RFI", next_step: "step_reportable_per_beneficiary" }
     ]
   },
   {
-    step_id: "step_reportable",
-    step_title: "Reportable",
+    step_id: "step_collect_total_payments",
+    step_title: "Collect Total Payments Information",
+    question_type: "info",
+    question_text: "Collect total value (sum) of payments to beneficiaries per FI, then collect other CRS reporting info.",
+    help_text: "This triggers manual CRS reporting on total value (sum) of payments to beneficiaries per FI.",
+    next_step: "step_manual_report_total"
+  },
+  {
+    step_id: "step_manual_report_total",
+    step_title: "Manual CRS Reporting - Total Payments",
     question_type: "result",
     result_status: "reportable",
-    result_description: "This beneficiary is reportable under CRS. The beneficiary is a tax resident in a CRS participating jurisdiction and must be included in CRS reporting."
+    result_description: "Start Manual CRS reporting on total value (sum) of payments to beneficiaries per FI. The account needs to be reported with aggregated payment information.",
+    result_action: "manual_report_total"
   },
   {
-    step_id: "step_reportable_no_tin",
-    step_title: "Reportable (No TIN)",
+    step_id: "step_reportable_per_beneficiary",
+    step_title: "Reportable Per Beneficiary",
     question_type: "result",
     result_status: "reportable",
-    result_description: "This beneficiary is reportable under CRS. Although TIN was not provided, the beneficiary must still be reported with appropriate TIN unavailability code."
+    result_description: "Collect CRS reporting info on payments to each single beneficiary. Start Manual CRS reporting on payments to each single beneficiary.",
+    result_action: "report_per_beneficiary"
   },
   {
-    step_id: "step_non_reportable",
-    step_title: "Non-Reportable",
+    step_id: "step_non_reportable_fi_reports",
+    step_title: "Non-Reportable - FI Reports",
     question_type: "result",
     result_status: "non_reportable",
-    result_description: "This beneficiary is not reportable under CRS. The beneficiary is not a tax resident in any CRS participating jurisdiction."
+    result_description: "Record Account in Dashboard as: Non-Reportable Account. Reason: Death of Account Holder - Beneficiary's Financial Institution (FI) is itself an RFI and should perform its own reporting.",
+    result_action: "fi_reports"
   }
 ];
 
