@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 import {
   CheckCircle2,
   ArrowRight,
@@ -18,88 +19,8 @@ import {
   AlertCircle
 } from "lucide-react";
 
-// Beneficiary classification workflow steps based on flowchart
-const BENEFICIARY_WORKFLOW_STEPS = [
-  {
-    step_id: "step_fi_crs_country",
-    step_title: "Financial Institution CRS Country Check",
-    question_text: "Is the beneficiary's bank account with the Financial Institution in a CRS reporting country?",
-    question_type: "yes_no",
-    help_text: "Check if the Financial Institution where the beneficiary holds the account is located in a CRS participating jurisdiction.",
-    options: [
-      { value: "YES", label: "Yes - FI is in a CRS reporting country", next_step: "step_beneficiary_tax_residence" },
-      { value: "NO", label: "No - FI is not in a CRS reporting country", next_step: "step_collect_total_payments" }
-    ]
-  },
-  {
-    step_id: "step_beneficiary_tax_residence",
-    step_title: "Beneficiary Tax Residence Check",
-    question_text: "Is the tax residence of the beneficiary in a CRS reporting country?",
-    question_type: "yes_no",
-    help_text: "Check if the beneficiary's country of tax residence participates in CRS reporting.",
-    options: [
-      { value: "YES", label: "Yes - Tax resident in CRS country", next_step: "step_fi_same_as_residence" },
-      { value: "NO", label: "No - Not a CRS country resident", next_step: "step_collect_total_payments" }
-    ]
-  },
-  {
-    step_id: "step_fi_same_as_residence",
-    step_title: "FI Country Same as Residence",
-    question_text: "Is the beneficiary's bank account with the Financial Institution in the same CRS reporting country as that of the beneficiary's residence?",
-    question_type: "yes_no",
-    help_text: "Check if the FI country matches the beneficiary's tax residence country.",
-    options: [
-      { value: "YES", label: "Yes - Same country", next_step: "step_reportable_per_beneficiary" },
-      { value: "NO", label: "No - Different countries", next_step: "step_fi_is_rfi" }
-    ]
-  },
-  {
-    step_id: "step_fi_is_rfi",
-    step_title: "FI is a Reporting Financial Institution",
-    question_text: "Is the beneficiary's Financial Institution (FI) itself an RFI that should perform its own reporting?",
-    question_type: "yes_no",
-    help_text: "Check if the beneficiary's FI is a Reporting Financial Institution with its own CRS reporting obligations.",
-    options: [
-      { value: "YES", label: "Yes - FI is an RFI and will report", next_step: "step_non_reportable_fi_reports" },
-      { value: "NO", label: "No - FI is not an RFI", next_step: "step_reportable_per_beneficiary" }
-    ]
-  },
-  {
-    step_id: "step_collect_total_payments",
-    step_title: "Collect Total Payments Information",
-    question_type: "info",
-    question_text: "Collect total value (sum) of payments to beneficiaries per FI, then collect other CRS reporting info.",
-    help_text: "This triggers manual CRS reporting on total value (sum) of payments to beneficiaries per FI.",
-    next_step: "step_manual_report_total"
-  },
-  {
-    step_id: "step_manual_report_total",
-    step_title: "Manual CRS Reporting - Total Payments",
-    question_type: "result",
-    result_status: "reportable",
-    result_description: "Start Manual CRS reporting on total value (sum) of payments to beneficiaries per FI. The account needs to be reported with aggregated payment information.",
-    result_action: "manual_report_total"
-  },
-  {
-    step_id: "step_reportable_per_beneficiary",
-    step_title: "Reportable Per Beneficiary",
-    question_type: "result",
-    result_status: "reportable",
-    result_description: "Collect CRS reporting info on payments to each single beneficiary. Start Manual CRS reporting on payments to each single beneficiary.",
-    result_action: "report_per_beneficiary"
-  },
-  {
-    step_id: "step_non_reportable_fi_reports",
-    step_title: "Non-Reportable - FI Reports",
-    question_type: "result",
-    result_status: "non_reportable",
-    result_description: "Record Account in Dashboard as: Non-Reportable Account. Reason: Death of Account Holder - Beneficiary's Financial Institution (FI) is itself an RFI and should perform its own reporting.",
-    result_action: "fi_reports"
-  }
-];
-
 export default function BeneficiaryClassification({ beneficiary, account, onComplete, onCancel }) {
-  const [currentStepId, setCurrentStepId] = useState(BENEFICIARY_WORKFLOW_STEPS[0].step_id);
+  const [currentStepId, setCurrentStepId] = useState(null);
   const [answers, setAnswers] = useState({});
   const [selectedValue, setSelectedValue] = useState("");
   const [history, setHistory] = useState([]);
@@ -119,6 +40,27 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
     }
   };
 
+  // Fetch the beneficiary classification workflow from the database
+  const { data: workflows = [], isLoading: loadingWorkflows } = useQuery({
+    queryKey: ['beneficiary-classification-workflow'],
+    queryFn: () => base44.entities.Workflow.filter({ 
+      workflow_type: "beneficiary_classification",
+      status: "published"
+    }),
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Get the active workflow
+  const workflow = workflows[0];
+  const workflowSteps = workflow?.steps || [];
+
+  // Initialize first step when workflow loads
+  React.useEffect(() => {
+    if (workflowSteps.length > 0 && !currentStepId) {
+      setCurrentStepId(workflowSteps[0].step_id);
+    }
+  }, [workflowSteps, currentStepId]);
+
   // Fetch CRS countries for display
   const { data: crsCountries = [] } = useQuery({
     queryKey: ['crs-countries'],
@@ -126,14 +68,56 @@ export default function BeneficiaryClassification({ beneficiary, account, onComp
     staleTime: Infinity
   });
 
+  // Build step map
   const stepMap = {};
-  BENEFICIARY_WORKFLOW_STEPS.forEach(step => {
+  workflowSteps.forEach(step => {
     stepMap[step.step_id] = step;
   });
 
   const currentStep = stepMap[currentStepId];
   const isResultStep = currentStep?.question_type === "result";
   const isInfoStep = currentStep?.question_type === "info";
+
+  // Loading state
+  if (loadingWorkflows) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600 mb-4" />
+        <p className="text-slate-600">Loading classification workflow...</p>
+      </div>
+    );
+  }
+
+  // No workflow found
+  if (!workflow) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+          No Classification Workflow Found
+        </h3>
+        <p className="text-slate-600 mb-4">
+          A "Beneficiary Classification" workflow needs to be created and published in the Workflow Builder.
+        </p>
+        <Button variant="outline" onClick={onCancel}>
+          Close
+        </Button>
+      </div>
+    );
+  }
+
+  // No current step (shouldn't happen)
+  if (!currentStep) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+        <p className="text-slate-600">Error loading workflow step.</p>
+        <Button variant="outline" onClick={onCancel} className="mt-4">
+          Close
+        </Button>
+      </div>
+    );
+  }
 
   const handleNext = () => {
     // For info steps, no selection needed
