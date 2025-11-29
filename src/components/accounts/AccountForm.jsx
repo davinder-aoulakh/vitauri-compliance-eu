@@ -21,7 +21,7 @@ import CountrySelect from "../shared/CountrySelect";
 import CurrencySelect from "../shared/CurrencySelect";
 import BeneficiaryManager from "./BeneficiaryManager";
 
-export default function AccountForm({ account, entities, onSubmit, onCancel, tenant }) {
+export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [formData, setFormData] = useState(account || {
     entity_id: "",
     account_number: "",
