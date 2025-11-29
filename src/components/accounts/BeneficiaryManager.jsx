@@ -212,7 +212,11 @@ export default function BeneficiaryManager({ account, tenant }) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleClassify(beneficiary)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleClassify(beneficiary);
+                      }}
                       className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                     >
                       <PlayCircle className="w-4 h-4 mr-1" />
