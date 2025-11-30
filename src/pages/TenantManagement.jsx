@@ -248,6 +248,11 @@ export default function TenantManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <span className="text-xs font-mono text-indigo-200 bg-white/5 px-2 py-1 rounded select-all">
+                            {tenant.id}
+                          </span>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-indigo-300" />
                             <span className="text-white">{tenant.jurisdiction}</span>
