@@ -281,6 +281,13 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
                   <SelectItem value="Open Sans">Open Sans</SelectItem>
                   <SelectItem value="Poppins">Poppins</SelectItem>
                   <SelectItem value="Montserrat">Montserrat</SelectItem>
+                  <SelectItem value="Arial">Arial</SelectItem>
+                  <SelectItem value="Helvetica">Helvetica</SelectItem>
+                  <SelectItem value="Georgia">Georgia</SelectItem>
+                  <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                  <SelectItem value="Verdana">Verdana</SelectItem>
+                  <SelectItem value="Lato">Lato</SelectItem>
+                  <SelectItem value="Source Sans Pro">Source Sans Pro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
