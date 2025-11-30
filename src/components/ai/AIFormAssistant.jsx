@@ -251,11 +251,19 @@ Be specific and actionable.`;
               <div className="flex items-center justify-between">
                 <div className="text-xs text-slate-500">
                   {suggestion.current_value && (
-                    <span>Current: <span className="text-slate-700">{suggestion.current_value}</span></span>
+                    <span>Current: <span className="text-slate-700">
+                      {typeof suggestion.current_value === 'object' 
+                        ? JSON.stringify(suggestion.current_value) 
+                        : suggestion.current_value}
+                    </span></span>
                   )}
                   {suggestion.current_value && suggestion.suggested_value && " → "}
                   {suggestion.suggested_value && (
-                    <span className="text-purple-700 font-medium">{suggestion.suggested_value}</span>
+                    <span className="text-purple-700 font-medium">
+                      {typeof suggestion.suggested_value === 'object' 
+                        ? JSON.stringify(suggestion.suggested_value) 
+                        : suggestion.suggested_value}
+                    </span>
                   )}
                 </div>
                 
