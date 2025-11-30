@@ -52,7 +52,7 @@ import AccountDetails from "../components/accounts/AccountDetails";
 import AccountClassification from "../components/accounts/AccountClassification";
 import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory";
 import ControllingPersonsList from "../components/accounts/ControllingPersonsList";
-import BulkImport from "../components/accounts/BulkImport";
+import AIBulkImport from "../components/import/AIBulkImport";
 import ComplianceFlags from "../components/accounts/ComplianceFlags";
 import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluator";
 
