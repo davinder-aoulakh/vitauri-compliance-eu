@@ -95,6 +95,49 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     { key: "view_audit_logs", label: "View Audit Logs", description: "Access compliance audit trail" }
   ];
 
+  if (success) {
+    return (
+      <div className="space-y-6">
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>Invitation Created!</strong>
+            <p className="mt-1">Share the platform link with {formData.full_name} ({formData.email}) so they can sign up.</p>
+          </AlertDescription>
+        </Alert>
+
+        <div className="p-4 bg-slate-50 rounded-lg border">
+          <Label className="text-sm font-medium text-slate-700">Invite Details</Label>
+          <div className="mt-2 space-y-2 text-sm">
+            <p><strong>Name:</strong> {formData.full_name}</p>
+            <p><strong>Email:</strong> {formData.email}</p>
+            <p><strong>Role:</strong> {formData.user_role === "tenant_admin" ? "Administrator" : "User"}</p>
+            {formData.job_title && <p><strong>Job Title:</strong> {formData.job_title}</p>}
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-sm font-medium text-slate-700">Platform Link</Label>
+          <div className="mt-1.5 flex gap-2">
+            <Input value={inviteLink} readOnly className="bg-slate-50" />
+            <Button type="button" variant="outline" onClick={copyToClipboard}>
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Share this link with the user. After they sign up, you can assign them to your tenant from the User Management page.
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={onComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            Done
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
