@@ -364,12 +364,14 @@ export default function Layout({ children }) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link to={createPageUrl("Setup")}>
-                    <Wrench className="w-4 h-4 mr-2" />
-                    Switch Role (Testing)
-                  </Link>
-                </DropdownMenuItem>
+                {isSuperAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to={createPageUrl("Setup")}>
+                      <Wrench className="w-4 h-4 mr-2" />
+                      Switch Role (Testing)
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem>
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
