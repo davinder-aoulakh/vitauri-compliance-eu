@@ -372,9 +372,9 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
               )}
             </CardContent>
           </Card>
-            </div>
-          </div>
-        </TabsContent>
+        </div>
+      </div>
+    </TabsContent>
 
         <TabsContent value="outcomes">
           <OutcomeRulesConfig
