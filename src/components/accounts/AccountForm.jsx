@@ -280,6 +280,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* AI Form Assistant */}
+      <AIFormAssistant
+        formData={formData}
+        formType="account"
+        tenant={tenant}
+        onSuggestionApply={handleAISuggestionApply}
+      />
+
       {/* Change Detection Alert */}
       {detectedChanges.length > 0 && (
         <Alert className="bg-amber-50 border-amber-200">
