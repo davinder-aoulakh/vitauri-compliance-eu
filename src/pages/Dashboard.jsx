@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -279,6 +278,13 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-slate-700">Home Jurisdiction</span>
                   <Badge variant="outline">{tenant?.jurisdiction || "N/A"}</Badge>
+                </div>
+              </div>
+              
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">Tenant ID</div>
+                <div className="text-xs font-mono text-slate-700 break-all select-all">
+                  {user?.tenant_id || "Not assigned"}
                 </div>
               </div>
               
