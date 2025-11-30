@@ -16,7 +16,7 @@ import {
   Eye,
   History,
   Users,
-  Upload,
+  Sparkles,
   Flag,
   FileCheck
 } from "lucide-react";
