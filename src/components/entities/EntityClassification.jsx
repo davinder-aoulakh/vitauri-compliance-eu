@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, Map } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import WorkflowFlowChart from "../workflows/WorkflowFlowChart";
+import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
@@ -647,38 +648,40 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">Entity Classification</h2>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            {workflow.workflow_name} v{workflow.version}
-          </Badge>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFlowChart(!showFlowChart)}
-            className="gap-2"
-          >
-            <Map className="w-4 h-4" />
-            {showFlowChart ? 'Hide' : 'Show'} Flowchart
-          </Button>
-          <div className="text-right">
-            <p className="text-sm font-medium text-slate-700">
-              Step {currentStepIndex + 1}
-            </p>
-            <p className="text-xs text-slate-500">{progress}% Complete</p>
-          </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-700">
+            Step {currentStepIndex + 1}
+          </p>
+          <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
 
-      {/* Flowchart Visualization */}
-      {showFlowChart && (
-        <WorkflowFlowChart
-          workflow={workflow}
-          currentStepId={currentNodeId}
-          completedSteps={history}
-          answers={answers}
-        />
-      )}
+      <Dialog open={showFlowChart} onOpenChange={setShowFlowChart}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <WorkflowVisualizer workflow={workflow} />
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            {workflow.workflow_name} v{workflow.version}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFlowChart(true)}
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+          >
+            <GitBranch className="w-4 h-4 mr-1" />
+            Show Flowchart
+          </Button>
+        </div>
+      </div>
 
       {/* Enhanced Progress Bar */}
       <div className="space-y-2">
