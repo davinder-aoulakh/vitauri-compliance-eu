@@ -26,6 +26,7 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
 
   // Available fields for Account and Entity with type information
   const accountFields = [
+    // Basic Account Info
     { value: 'account_holder_is_alive', label: 'Account Holder Is Alive', type: 'boolean', options: ['true', 'false'] },
     { value: 'account_holder_type', label: 'Account Holder Type', type: 'enum', options: ['individual', 'entity'] },
     { value: 'account_type', label: 'Account Type', type: 'enum', options: ['depository', 'custodial', 'equity_debt_interest', 'cash_value_insurance', 'annuity'] },
@@ -38,7 +39,11 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     { value: 'self_certification_obtained', label: 'Self Certification Obtained', type: 'boolean', options: ['true', 'false'] },
     { value: 'country_of_residence', label: 'Country of Residence', type: 'string' },
     { value: 'account_holder_address.country', label: 'Account Holder Address Country', type: 'string' },
-    { value: 'status', label: 'Status', type: 'enum', options: ['active', 'closed', 'dormant'] }
+    { value: 'status', label: 'Status', type: 'enum', options: ['active', 'closed', 'dormant'] },
+    // Entity Account Holder Information
+    { value: 'entity_managed_by_fiduciary_trust', label: 'Entity Professionally Managed by Fiduciary Trust?', type: 'boolean', options: ['true', 'false'] },
+    { value: 'entity_managed_by_asset_manager', label: 'Entity Professionally Managed by Asset Manager?', type: 'boolean', options: ['true', 'false'] },
+    { value: 'gross_income_from_financial_assets', label: 'Gross Income >50% from (Re)-Investing/Trading in Financial Assets?', type: 'boolean', options: ['true', 'false'] }
   ];
 
   const entityFields = [
