@@ -33,8 +33,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import InviteUserForm from "../components/users/InviteUserForm";
-import EditUserForm from "../components/users/EditUserForm";
+import InviteUserForm from "../components/users/InviteUserForm.jsx";
+import EditUserForm from "../components/users/EditUserForm.jsx";
 
 export default function UserManagement() {
   const [user, setUser] = useState(null);
