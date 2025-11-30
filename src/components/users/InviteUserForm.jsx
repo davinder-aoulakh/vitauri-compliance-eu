@@ -68,18 +68,20 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     setError("");
 
     try {
-      // Use the platform's built-in invite user functionality
-      // This sends an email invitation with a magic link
-      await base44.auth.inviteUser({
+      // Use backend function with service role to invite user
+      const response = await base44.functions.invoke('inviteUser', {
         email: formData.email,
         full_name: formData.full_name,
-        // Pass additional data to be set on the user after they accept
         user_role: formData.user_role,
         tenant_id: tenant?.id,
         job_title: formData.job_title,
         department: formData.department,
         permissions: formData.permissions
       });
+      
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
       
       setSuccess(true);
     } catch (err) {
