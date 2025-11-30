@@ -3,6 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -10,133 +12,120 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { XCircle, Send, CheckCircle2, AlertCircle } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Send, X, AlertCircle, Loader2 } from "lucide-react";
 
 export default function InviteUserForm({ tenant, onComplete, onCancel }) {
   const [formData, setFormData] = useState({
     email: "",
     full_name: "",
-    user_role: "tenant_user",
     job_title: "",
     department: "",
+    user_role: "tenant_user",
     permissions: {
-      can_manage_entities: false,
-      can_manage_accounts: true,
-      can_classify_accounts: true,
-      can_generate_reports: false,
-      can_manage_users: false,
-      can_configure_branding: false,
-      can_view_audit_logs: false
+      manage_entities: false,
+      manage_accounts: false,
+      classify_accounts: true,
+      generate_reports: false,
+      manage_users: false,
+      configure_branding: false,
+      view_audit_logs: false
     }
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [inviting, setInviting] = useState(false);
-  const [message, setMessage] = useState(null);
-
-  const handleRoleChange = (role) => {
-    const permissions = role === "tenant_admin" ? {
-      can_manage_entities: true,
-      can_manage_accounts: true,
-      can_classify_accounts: true,
-      can_generate_reports: true,
-      can_manage_users: true,
-      can_configure_branding: true,
-      can_view_audit_logs: true
-    } : {
-      can_manage_entities: false,
-      can_manage_accounts: true,
-      can_classify_accounts: true,
-      can_generate_reports: false,
-      can_manage_users: false,
-      can_configure_branding: false,
-      can_view_audit_logs: false
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      user_role: role,
-      permissions
-    }));
-  };
-
-  const handlePermissionChange = (permission, value) => {
+  const handlePermissionChange = (key, value) => {
     setFormData(prev => ({
       ...prev,
       permissions: {
         ...prev.permissions,
-        [permission]: value
+        [key]: value
+      }
+    }));
+  };
+
+  const handleRoleChange = (role) => {
+    const isAdmin = role === "tenant_admin";
+    setFormData(prev => ({
+      ...prev,
+      user_role: role,
+      permissions: {
+        manage_entities: isAdmin,
+        manage_accounts: isAdmin,
+        classify_accounts: true,
+        generate_reports: isAdmin,
+        manage_users: isAdmin,
+        configure_branding: isAdmin,
+        view_audit_logs: isAdmin
       }
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setInviting(true);
-    setMessage(null);
+    setLoading(true);
+    setError("");
 
     try {
-      await base44.entities.User.create({
-        email: formData.email,
-        full_name: formData.full_name,
-        user_role: formData.user_role,
-        tenant_id: tenant.id,
-        job_title: formData.job_title,
-        department: formData.department,
-        permissions: formData.permissions,
-        invitation_sent_date: new Date().toISOString()
+      // Send invitation email
+      await base44.integrations.Core.SendEmail({
+        to: formData.email,
+        subject: `You've been invited to join ${tenant?.name || "CRS Platform"}`,
+        body: `
+          <h2>Welcome to ${tenant?.name || "CRS Platform"}!</h2>
+          <p>Hello ${formData.full_name},</p>
+          <p>You have been invited to join ${tenant?.name || "CRS Platform"} as a ${formData.user_role === "tenant_admin" ? "Tenant Administrator" : "Team Member"}.</p>
+          <p><strong>Your Role:</strong> ${formData.job_title || formData.user_role}</p>
+          <p>Please click the link below to set up your account and get started:</p>
+          <p><a href="${window.location.origin}">Access the Platform</a></p>
+          <p>If you have any questions, please contact your organization's administrator.</p>
+          <br/>
+          <p>Best regards,<br/>The ${tenant?.name || "CRS Platform"} Team</p>
+        `
       });
 
-      setMessage({ 
-        type: "success", 
-        text: `Successfully invited ${formData.email}! They will receive an email to set up their account.` 
-      });
-
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-
-    } catch (error) {
-      console.error("Error inviting user:", error);
-      setMessage({ 
-        type: "error", 
-        text: `Failed to invite user: ${error.message}` 
-      });
+      onComplete();
+    } catch (err) {
+      console.error("Failed to invite user:", err);
+      setError(err.message || "Failed to send invitation. Please try again.");
     } finally {
-      setInviting(false);
+      setLoading(false);
     }
   };
 
+  const permissionsList = [
+    { key: "manage_entities", label: "Manage Entities", description: "Create, edit, and classify legal entities" },
+    { key: "manage_accounts", label: "Manage Accounts", description: "Create and edit account records" },
+    { key: "classify_accounts", label: "Classify Accounts", description: "Determine account reportability status" },
+    { key: "generate_reports", label: "Generate Reports", description: "Create and submit CRS XML reports" },
+    { key: "manage_users", label: "Manage Users", description: "Invite and manage team members" },
+    { key: "configure_branding", label: "Configure Branding", description: "Customize organization appearance" },
+    { key: "view_audit_logs", label: "View Audit Logs", description: "Access compliance audit trail" }
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {message && (
-        <Alert className={message.type === "success" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
-          {message.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 text-green-600" />
-          ) : (
-            <AlertCircle className="w-4 h-4 text-red-600" />
-          )}
-          <AlertDescription className={message.type === "success" ? "text-green-800" : "text-red-800"}>
-            {message.text}
-          </AlertDescription>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <Label htmlFor="email">Email Address *</Label>
           <Input
             id="email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-            placeholder="colleague@example.com"
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="user@company.com"
             required
             className="mt-1.5"
           />
           <p className="text-xs text-slate-500 mt-1">
-            User will receive an invitation email to join {tenant.name}
+            User will receive an invitation email to join {tenant?.name || "the organization"}
           </p>
         </div>
 
@@ -145,7 +134,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
           <Input
             id="full_name"
             value={formData.full_name}
-            onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
             placeholder="John Doe"
             required
             className="mt-1.5"
@@ -158,18 +147,17 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
             <Input
               id="job_title"
               value={formData.job_title}
-              onChange={(e) => setFormData(prev => ({ ...prev, job_title: e.target.value }))}
-              placeholder="e.g., Compliance Officer"
+              onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+              placeholder="Compliance Officer"
               className="mt-1.5"
             />
           </div>
-
           <div>
             <Label htmlFor="department">Department</Label>
             <Input
               id="department"
               value={formData.department}
-              onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               placeholder="e.g., Compliance"
               className="mt-1.5"
             />
@@ -187,13 +175,13 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="tenant_admin">
-                <div className="flex flex-col items-start">
+                <div className="flex flex-col">
                   <span className="font-medium">Administrator</span>
-                  <span className="text-xs text-slate-500">Full access to all features</span>
+                  <span className="text-xs text-slate-500">Full access to manage organization</span>
                 </div>
               </SelectItem>
               <SelectItem value="tenant_user">
-                <div className="flex flex-col items-start">
+                <div className="flex flex-col">
                   <span className="font-medium">User</span>
                   <span className="text-xs text-slate-500">Limited access, can classify accounts</span>
                 </div>
@@ -201,107 +189,45 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
 
-        <div className="border-t pt-4">
-          <Label className="text-base mb-3 block">Permissions</Label>
-          <div className="space-y-3 bg-slate-50 rounded-lg p-4">
-            <PermissionSwitch
-              label="Manage Entities"
-              description="Create, edit, and classify legal entities"
-              checked={formData.permissions.can_manage_entities}
-              onCheckedChange={(checked) => handlePermissionChange("can_manage_entities", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-            <PermissionSwitch
-              label="Manage Accounts"
-              description="Create and edit account records"
-              checked={formData.permissions.can_manage_accounts}
-              onCheckedChange={(checked) => handlePermissionChange("can_manage_accounts", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-            <PermissionSwitch
-              label="Classify Accounts"
-              description="Determine account reportability status"
-              checked={formData.permissions.can_classify_accounts}
-              onCheckedChange={(checked) => handlePermissionChange("can_classify_accounts", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-            <PermissionSwitch
-              label="Generate Reports"
-              description="Create and submit CRS XML reports"
-              checked={formData.permissions.can_generate_reports}
-              onCheckedChange={(checked) => handlePermissionChange("can_generate_reports", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-            <PermissionSwitch
-              label="Manage Users"
-              description="Invite and manage team members"
-              checked={formData.permissions.can_manage_users}
-              onCheckedChange={(checked) => handlePermissionChange("can_manage_users", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-            <PermissionSwitch
-              label="Configure Branding"
-              description="Customize organization appearance"
-              checked={formData.permissions.can_configure_branding}
-              onCheckedChange={(checked) => handlePermissionChange("can_configure_branding", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-            <PermissionSwitch
-              label="View Audit Logs"
-              description="Access compliance audit trail"
-              checked={formData.permissions.can_view_audit_logs}
-              onCheckedChange={(checked) => handlePermissionChange("can_view_audit_logs", checked)}
-              disabled={formData.user_role === "tenant_admin"}
-            />
-          </div>
-          {formData.user_role === "tenant_admin" && (
-            <p className="text-xs text-blue-600 mt-2">
-              ℹ️ Administrators automatically have all permissions enabled
-            </p>
-          )}
+      {/* Permissions */}
+      <div className="border-t pt-4">
+        <Label className="text-base font-semibold">Permissions</Label>
+        <div className="mt-3 space-y-3">
+          {permissionsList.map((perm) => (
+            <div key={perm.key} className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-slate-900">{perm.label}</p>
+                <p className="text-xs text-slate-500">{perm.description}</p>
+              </div>
+              <Switch
+                checked={formData.permissions[perm.key]}
+                onCheckedChange={(checked) => handlePermissionChange(perm.key, checked)}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={inviting}>
-          <XCircle className="w-4 h-4 mr-2" />
+        <Button type="button" variant="outline" onClick={onCancel}>
+          <X className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          disabled={inviting}
+        <Button
+          type="submit"
+          disabled={loading || !formData.email || !formData.full_name}
           className="bg-indigo-600 hover:bg-indigo-700 text-white"
         >
-          {inviting ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Sending Invitation...
-            </>
+          {loading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
-            <>
-              <Send className="w-4 h-4 mr-2" />
-              Send Invitation
-            </>
+            <Send className="w-4 h-4 mr-2" />
           )}
+          Send Invitation
         </Button>
       </div>
     </form>
-  );
-}
-
-function PermissionSwitch({ label, description, checked, onCheckedChange, disabled }) {
-  return (
-    <div className="flex items-center justify-between py-2">
-      <div className="flex-1 pr-4">
-        <p className="font-medium text-sm text-slate-900">{label}</p>
-        <p className="text-xs text-slate-500">{description}</p>
-      </div>
-      <Switch 
-        checked={checked} 
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-      />
-    </div>
   );
 }
