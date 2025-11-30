@@ -783,6 +783,15 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         </CardContent>
       </Card>
 
+      {/* AI Workflow Helper */}
+      <AIWorkflowHelper
+        currentStep={currentNode}
+        workflow={workflow}
+        answers={answers}
+        entityData={entity}
+        onSuggestedAnswer={(value) => setSelectedValue(value)}
+      />
+
       {/* Previous Answers Compact View */}
       {Object.keys(answers).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
