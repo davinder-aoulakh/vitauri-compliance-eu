@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send, X, AlertCircle, Loader2 } from "lucide-react";
+import { Send, X, AlertCircle, Loader2, CheckCircle2, Copy } from "lucide-react";
 
 export default function InviteUserForm({ tenant, onComplete, onCancel }) {
   const [formData, setFormData] = useState({
@@ -33,6 +33,8 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
 
   const handlePermissionChange = (key, value) => {
     setFormData(prev => ({
