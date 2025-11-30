@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send, X, AlertCircle, Loader2, CheckCircle2, Copy } from "lucide-react";
+import { Send, X, AlertCircle, Loader2, CheckCircle2, Mail } from "lucide-react";
 
 export default function InviteUserForm({ tenant, onComplete, onCancel }) {
   const [formData, setFormData] = useState({
@@ -34,7 +34,6 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [inviteLink, setInviteLink] = useState("");
 
   const handlePermissionChange = (key, value) => {
     setFormData(prev => ({
@@ -69,35 +68,25 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     setError("");
 
     try {
-      // Generate invite link - user will need to be added manually or sign up
-      const link = `${window.location.origin}`;
-      setInviteLink(link);
+      // Use the platform's built-in invite user functionality
+      // This sends an email invitation with a magic link
+      await base44.auth.inviteUser({
+        email: formData.email,
+        full_name: formData.full_name,
+        // Pass additional data to be set on the user after they accept
+        user_role: formData.user_role,
+        tenant_id: tenant?.id,
+        job_title: formData.job_title,
+        department: formData.department,
+        permissions: formData.permissions
+      });
+      
       setSuccess(true);
     } catch (err) {
-      console.error("Failed to create invitation:", err);
-      setError(err.message || "Failed to create invitation. Please try again.");
+      console.error("Failed to invite user:", err);
+      setError(err.message || "Failed to send invitation. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      // Fallback for older browsers
-      const textArea = document.createElement("textarea");
-      textArea.value = inviteLink;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -117,8 +106,11 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
-            <strong>Invitation Created!</strong>
-            <p className="mt-1">Share the platform link with {formData.full_name} ({formData.email}) so they can sign up.</p>
+            <strong>Invitation Sent!</strong>
+            <p className="mt-1">
+              An email invitation has been sent to <strong>{formData.email}</strong>. 
+              They will receive a link to join {tenant?.name || "your organization"}.
+            </p>
           </AlertDescription>
         </Alert>
 
@@ -132,18 +124,18 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
           </div>
         </div>
 
-        <div>
-          <Label className="text-sm font-medium text-slate-700">Platform Link</Label>
-          <div className="mt-1.5 flex gap-2">
-            <Input value={inviteLink} readOnly className="bg-slate-50" />
-            <Button type="button" variant="outline" onClick={copyToClipboard} className="min-w-[80px]">
-              {copied ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
+        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-start gap-3">
+            <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">What happens next?</p>
+              <ul className="text-sm text-blue-800 mt-1 space-y-1">
+                <li>• The user will receive an email with a secure invitation link</li>
+                <li>• They click the link to set up their account</li>
+                <li>• Once they join, they'll appear in your team list</li>
+              </ul>
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Share this link with the user. After they sign up, you can assign them to your tenant from the User Management page.
-          </p>
         </div>
 
         <div className="flex justify-end pt-4 border-t">
@@ -177,7 +169,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
             className="mt-1.5"
           />
           <p className="text-xs text-slate-500 mt-1">
-            User will receive an invitation email to join {tenant?.name || "the organization"}
+            An invitation email will be sent to this address
           </p>
         </div>
 
