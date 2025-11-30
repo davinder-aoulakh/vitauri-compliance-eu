@@ -20,6 +20,8 @@ import DocumentsManager from "./DocumentsManager";
 import CountrySelect from "../shared/CountrySelect";
 import CurrencySelect from "../shared/CurrencySelect";
 import BeneficiaryManager from "./BeneficiaryManager";
+import SmartDocumentParser from "../ai/SmartDocumentParser";
+import AIFormAssistant from "../ai/AIFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [formData, setFormData] = useState(account || {
