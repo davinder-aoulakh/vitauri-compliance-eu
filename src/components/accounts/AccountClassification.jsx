@@ -22,6 +22,7 @@ import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryInputRenderer from "@/components/accounts/BeneficiaryInputRenderer";
+import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
