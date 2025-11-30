@@ -14,7 +14,7 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
-import _ from "lodash";
+
 
 export default function AIFormAssistant({ 
   formData, 
