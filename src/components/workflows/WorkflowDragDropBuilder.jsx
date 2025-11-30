@@ -27,11 +27,14 @@ import {
   Link as LinkIcon,
   ChevronRight,
   HelpCircle,
-  Zap
+  Zap,
+  Target
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MultiFieldEditor from "./MultiFieldEditor";
+import OutcomeRulesConfig from "./OutcomeRulesConfig";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step initialized from saved data
