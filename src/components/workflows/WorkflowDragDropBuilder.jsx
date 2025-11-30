@@ -383,7 +383,28 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
               )}
             </CardContent>
           </Card>
-        </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="outcomes">
+          <OutcomeRulesConfig
+            outcomeRules={outcomeRules}
+            steps={steps}
+            onChange={setOutcomeRules}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Save/Cancel Buttons - Always visible */}
+      <div className="flex justify-end gap-3 pt-4 border-t">
+        <Button onClick={onCancel} variant="outline">
+          Cancel
+        </Button>
+        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Save className="w-4 h-4 mr-2" />
+          Save Workflow
+        </Button>
       </div>
 
       {/* Step Editor Dialog */}
