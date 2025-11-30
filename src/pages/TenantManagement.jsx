@@ -213,6 +213,7 @@ export default function TenantManagement() {
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
                       <TableHead className="text-indigo-200">Tenant</TableHead>
+                      <TableHead className="text-indigo-200">Tenant ID</TableHead>
                       <TableHead className="text-indigo-200">Jurisdiction</TableHead>
                       <TableHead className="text-indigo-200">Contact</TableHead>
                       <TableHead className="text-indigo-200">Status</TableHead>
