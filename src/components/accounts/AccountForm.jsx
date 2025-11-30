@@ -978,6 +978,36 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4 mt-4">
+          {/* Smart Document Parser */}
+          {showSmartUpload ? (
+            <div className="space-y-4">
+              <SmartDocumentParser
+                onDataExtracted={handleSmartDocumentData}
+                documentType="self_certification"
+                title="AI-Powered Document Upload"
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSmartUpload(false)}
+                className="w-full"
+              >
+                Cancel Smart Upload
+              </Button>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSmartUpload(true)}
+                className="w-full bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border-purple-200"
+              >
+                <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
+                Smart Upload: Auto-extract data from document
+              </Button>
+            </div>
+          )}
+
           <DocumentsManager
             documents={formData.documents || []}
             onDocumentsChange={handleDocumentsChange}
