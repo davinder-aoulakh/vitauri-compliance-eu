@@ -52,6 +52,7 @@ import EntityForm from "../components/entities/EntityForm";
 import EntityClassification from "../components/entities/EntityClassification";
 import ClassificationHistory from "../components/entities/ClassificationHistory";
 import EntityDetails from "../components/entities/EntityDetails";
+import AIBulkImport from "../components/import/AIBulkImport";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
