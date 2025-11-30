@@ -69,30 +69,20 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     setError("");
 
     try {
-      // Send invitation email
-      await base44.integrations.Core.SendEmail({
-        to: formData.email,
-        subject: `You've been invited to join ${tenant?.name || "CRS Platform"}`,
-        body: `
-          <h2>Welcome to ${tenant?.name || "CRS Platform"}!</h2>
-          <p>Hello ${formData.full_name},</p>
-          <p>You have been invited to join ${tenant?.name || "CRS Platform"} as a ${formData.user_role === "tenant_admin" ? "Tenant Administrator" : "Team Member"}.</p>
-          <p><strong>Your Role:</strong> ${formData.job_title || formData.user_role}</p>
-          <p>Please click the link below to set up your account and get started:</p>
-          <p><a href="${window.location.origin}">Access the Platform</a></p>
-          <p>If you have any questions, please contact your organization's administrator.</p>
-          <br/>
-          <p>Best regards,<br/>The ${tenant?.name || "CRS Platform"} Team</p>
-        `
-      });
-
-      onComplete();
+      // Generate invite link - user will need to be added manually or sign up
+      const link = `${window.location.origin}`;
+      setInviteLink(link);
+      setSuccess(true);
     } catch (err) {
-      console.error("Failed to invite user:", err);
-      setError(err.message || "Failed to send invitation. Please try again.");
+      console.error("Failed to create invitation:", err);
+      setError(err.message || "Failed to create invitation. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(inviteLink);
   };
 
   const permissionsList = [
