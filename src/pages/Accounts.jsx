@@ -280,8 +280,8 @@ export default function AccountsPage() {
               variant="outline"
               className="gap-2"
             >
-              <Upload className="w-4 h-4" />
-              Bulk Import
+              <Sparkles className="w-4 h-4" />
+              AI Import
             </Button>
             <Button 
               onClick={() => {
