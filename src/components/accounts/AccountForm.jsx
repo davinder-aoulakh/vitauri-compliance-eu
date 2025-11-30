@@ -226,6 +226,40 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Handle AI suggestion application
+  const handleAISuggestionApply = (field, value) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: { ...prev[parent], [child]: value }
+      }));
+    } else {
+      handleChange(field, value);
+    }
+  };
+
+  // Handle smart document data extraction
+  const handleSmartDocumentData = ({ data, fileUrl, fileName }) => {
+    const updates = {};
+    
+    if (data.full_name) updates.account_holder_name = data.full_name;
+    if (data.date_of_birth) updates.date_of_birth = data.date_of_birth;
+    if (data.place_of_birth) updates.place_of_birth = data.place_of_birth;
+    if (data.current_address) {
+      updates.current_address = {
+        ...formData.current_address,
+        ...data.current_address
+      };
+    }
+    if (data.tax_residencies && data.tax_residencies.length > 0) {
+      updates.tax_residencies = data.tax_residencies;
+    }
+    
+    setFormData(prev => ({ ...prev, ...updates }));
+    setShowSmartUpload(false);
+  };
+
   const handleAddressChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
