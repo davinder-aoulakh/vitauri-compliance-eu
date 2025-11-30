@@ -1400,6 +1400,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </CardContent>
       </Card>
 
+      {/* AI Workflow Helper */}
+      <AIWorkflowHelper
+        currentStep={currentNode}
+        workflow={workflow}
+        answers={answers}
+        accountData={latestAccountData || account}
+        onSuggestedAnswer={(value) => setSelectedValue(value)}
+      />
+
       {Object.keys(answers).filter(k => !k.startsWith('_')).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
