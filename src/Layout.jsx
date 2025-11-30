@@ -137,6 +137,12 @@ export default function Layout({ children }) {
       roles: ["tenant_admin", "tenant_user"]
     },
     {
+      title: "AI Assistant",
+      url: createPageUrl("ComplianceAssistant"),
+      icon: Shield,
+      roles: ["tenant_admin", "tenant_user"]
+    },
+    {
       title: "Activity Log",
       url: createPageUrl("Activity"),
       icon: Eye,
