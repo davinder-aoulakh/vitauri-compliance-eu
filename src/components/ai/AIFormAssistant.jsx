@@ -26,75 +26,66 @@ export default function AIFormAssistant({
   const [validationIssues, setValidationIssues] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
-  const [lastAnalyzedData, setLastAnalyzedData] = useState(null);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
-  // Debounced analysis function
-  const analyzeData = useCallback(
-    _.debounce(async (data) => {
-      if (!data || Object.keys(data).filter(k => data[k]).length < 3) return;
-      
-      // Don't re-analyze if data hasn't changed meaningfully
-      const dataHash = JSON.stringify(data);
-      if (dataHash === lastAnalyzedData) return;
-      
-      setLoading(true);
-      try {
-        const prompt = formType === "account" 
-          ? buildAccountAnalysisPrompt(data, tenant)
-          : buildEntityAnalysisPrompt(data, tenant);
+  const analyzeData = async () => {
+    if (!formData || Object.keys(formData).filter(k => formData[k]).length < 2) {
+      return;
+    }
+    
+    setLoading(true);
+    setIsExpanded(true);
+    try {
+      const prompt = formType === "account" 
+        ? buildAccountAnalysisPrompt(formData, tenant)
+        : buildEntityAnalysisPrompt(formData, tenant);
 
-        const result = await base44.integrations.Core.InvokeLLM({
-          prompt,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              suggestions: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    field: { type: "string" },
-                    current_value: { type: "string" },
-                    suggested_value: { type: "string" },
-                    reason: { type: "string" },
-                    priority: { type: "string", enum: ["high", "medium", "low"] }
-                  }
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            suggestions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  field: { type: "string" },
+                  current_value: { type: "string" },
+                  suggested_value: { type: "string" },
+                  reason: { type: "string" },
+                  priority: { type: "string", enum: ["high", "medium", "low"] }
                 }
-              },
-              validation_issues: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    field: { type: "string" },
-                    issue: { type: "string" },
-                    severity: { type: "string", enum: ["error", "warning", "info"] }
-                  }
-                }
-              },
-              compliance_notes: {
-                type: "array",
-                items: { type: "string" }
               }
+            },
+            validation_issues: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  field: { type: "string" },
+                  issue: { type: "string" },
+                  severity: { type: "string", enum: ["error", "warning", "info"] }
+                }
+              }
+            },
+            compliance_notes: {
+              type: "array",
+              items: { type: "string" }
             }
           }
-        });
+        }
+      });
 
-        setSuggestions(result.suggestions || []);
-        setValidationIssues(result.validation_issues || []);
-        setLastAnalyzedData(dataHash);
-      } catch (error) {
-        console.error("Error analyzing form data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }, 2000),
-    [formType, tenant, lastAnalyzedData]
-  );
-
-  useEffect(() => {
-    analyzeData(formData);
-  }, [formData, analyzeData]);
+      setSuggestions(result.suggestions || []);
+      setValidationIssues(result.validation_issues || []);
+      setHasAnalyzed(true);
+    } catch (error) {
+      console.error("Error analyzing form data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const buildAccountAnalysisPrompt = (data, tenant) => {
     return `You are a CRS (Common Reporting Standard) compliance expert. Analyze this account data for a financial institution in ${tenant?.jurisdiction || "an unknown jurisdiction"}.
