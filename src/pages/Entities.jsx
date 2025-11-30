@@ -238,17 +238,27 @@ export default function EntitiesPage() {
               Manage and classify your legal entities for CRS reporting
             </p>
           </div>
-          <Button 
-            onClick={() => {
-              setSelectedEntity(null);
-              setShowForm(true);
-            }}
-            className="gap-2 text-white shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Entity
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowBulkImport(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI Import
+            </Button>
+            <Button 
+              onClick={() => {
+                setSelectedEntity(null);
+                setShowForm(true);
+              }}
+              className="gap-2 text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+            >
+              <Plus className="w-4 h-4" />
+              Add Entity
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
