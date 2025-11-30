@@ -336,12 +336,7 @@ Be specific and actionable.`;
             </div>
           ))}
 
-          {loading && suggestions.length === 0 && validationIssues.length === 0 && (
-            <div className="text-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-600 mx-auto mb-2" />
-              <p className="text-sm text-slate-600">Analyzing your data...</p>
-            </div>
-          )}
+
         </CardContent>
       )}
     </Card>
