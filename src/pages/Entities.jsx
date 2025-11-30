@@ -17,7 +17,9 @@ import {
   Eye,
   History,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
