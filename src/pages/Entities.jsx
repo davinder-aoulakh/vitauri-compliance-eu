@@ -515,6 +515,25 @@ export default function EntitiesPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>AI-Powered Entity Import</DialogTitle>
+          </DialogHeader>
+          <AIBulkImport 
+            tenant={tenant}
+            entities={entities}
+            importType="Entity"
+            onComplete={() => {
+              setShowBulkImport(false);
+              queryClient.invalidateQueries(['entities']);
+            }}
+            onCancel={() => setShowBulkImport(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
