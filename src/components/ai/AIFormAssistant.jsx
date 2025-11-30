@@ -159,8 +159,57 @@ Be specific and actionable.`;
     }
   };
 
-  if (!suggestions.length && !validationIssues.length && !loading) {
-    return null;
+  // Show button if not analyzed yet, show results if analyzed
+  if (!hasAnalyzed && !loading) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={analyzeData}
+        className="w-full bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border-purple-200"
+      >
+        <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
+        Get AI Help with Form
+      </Button>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Card className="border-2 border-purple-100 bg-gradient-to-br from-purple-50/50 to-indigo-50/50">
+        <CardContent className="py-6">
+          <div className="text-center">
+            <Loader2 className="w-6 h-6 animate-spin text-purple-600 mx-auto mb-2" />
+            <p className="text-sm text-slate-600">Analyzing your data...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!suggestions.length && !validationIssues.length) {
+    return (
+      <Card className="border-2 border-green-100 bg-gradient-to-br from-green-50/50 to-emerald-50/50">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <span className="text-sm text-green-800 font-medium">No issues found - form looks good!</span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={analyzeData}
+              className="text-green-700 hover:text-green-800 hover:bg-green-100"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              Re-analyze
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -172,18 +221,32 @@ Be specific and actionable.`;
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
           <span className="font-semibold text-slate-900">AI Form Assistant</span>
-          {loading && <Loader2 className="w-4 h-4 animate-spin text-purple-600" />}
-          {!loading && (suggestions.length > 0 || validationIssues.length > 0) && (
+          {(suggestions.length > 0 || validationIssues.length > 0) && (
             <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200">
               {suggestions.length + validationIssues.length} items
             </Badge>
           )}
         </div>
-        {isExpanded ? (
-          <ChevronUp className="w-5 h-5 text-slate-400" />
-        ) : (
-          <ChevronDown className="w-5 h-5 text-slate-400" />
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              analyzeData();
+            }}
+            className="text-purple-700 hover:text-purple-800 hover:bg-purple-100"
+          >
+            <Sparkles className="w-4 h-4 mr-1" />
+            Re-analyze
+          </Button>
+          {isExpanded ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
       </div>
 
       {isExpanded && (
