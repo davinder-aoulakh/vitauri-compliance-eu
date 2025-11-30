@@ -259,18 +259,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
             <div className="col-span-9">
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Workflow Steps ({steps.length})</CardTitle>
-                <div className="flex gap-2">
-                  <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Workflow
-                  </Button>
-                  <Button onClick={onCancel} variant="outline">
-                    Cancel
-                  </Button>
-                </div>
-              </div>
+              <CardTitle className="text-lg">Workflow Steps ({steps.length})</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               {steps.length === 0 ? (
