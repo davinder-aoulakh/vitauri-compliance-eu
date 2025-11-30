@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import WorkflowFlowChart from "../workflows/WorkflowFlowChart";
+import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
