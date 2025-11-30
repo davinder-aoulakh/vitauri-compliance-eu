@@ -28,83 +28,30 @@ export default function Setup() {
     }
   };
 
-  const makeSuperAdmin = async () => {
+  const switchRole = async (role, tenantId, jobTitle, permissions) => {
     setUpdating(true);
     setMessage(null);
     
     try {
-      await base44.auth.updateMe({
-        user_role: "super_admin",
-        tenant_id: null,
-        permissions: {
-          can_manage_entities: true,
-          can_manage_accounts: true,
-          can_classify_accounts: true,
-          can_generate_reports: true,
-          can_manage_users: true,
-          can_configure_branding: true,
-          can_view_audit_logs: true
-        }
+      const response = await base44.functions.invoke('switchRole', {
+        role,
+        tenant_id: tenantId,
+        job_title: jobTitle,
+        permissions
       });
       
-      setMessage({ 
-        type: "success", 
-        text: "Successfully upgraded to Super Admin! Reloading page..." 
-      });
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      
-    } catch (error) {
-      console.error("Error updating user:", error);
-      setMessage({ 
-        type: "error", 
-        text: "Failed to update role. You may need to do this manually in the database." 
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const makeACMETenantAdmin = async () => {
-    setUpdating(true);
-    setMessage(null);
-    
-    try {
-      // Get ACME tenant
-      const tenants = await base44.entities.Tenant.list();
-      const acmeTenant = tenants.find(t => t.short_name === "ACME Financial");
-      
-      if (!acmeTenant) {
-        setMessage({ type: "error", text: "ACME tenant not found" });
-        setUpdating(false);
-        return;
+      if (response.data?.error) {
+        throw new Error(response.data.error);
       }
       
-      await base44.auth.updateMe({
-        user_role: "tenant_admin",
-        tenant_id: acmeTenant.id,
-        job_title: "Compliance Director",
-        permissions: {
-          can_manage_entities: true,
-          can_manage_accounts: true,
-          can_classify_accounts: true,
-          can_generate_reports: true,
-          can_manage_users: true,
-          can_configure_branding: true,
-          can_view_audit_logs: true
-        }
-      });
-      
       setMessage({ 
         type: "success", 
-        text: "Successfully set as ACME Tenant Admin! Reloading page..." 
+        text: `Successfully switched to ${role.replace("_", " ")}! Reloading page...` 
       });
       
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 1500);
       
     } catch (error) {
       console.error("Error updating user:", error);
@@ -112,7 +59,50 @@ export default function Setup() {
         type: "error", 
         text: "Failed to update role: " + error.message 
       });
-    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const makeSuperAdmin = () => {
+    switchRole("super_admin", null, null, {
+      manage_entities: true,
+      manage_accounts: true,
+      classify_accounts: true,
+      generate_reports: true,
+      manage_users: true,
+      configure_branding: true,
+      view_audit_logs: true
+    });
+  };
+
+  const makeACMETenantAdmin = async () => {
+    setUpdating(true);
+    setMessage(null);
+    
+    try {
+      const tenants = await base44.entities.Tenant.list();
+      const acmeTenant = tenants.find(t => 
+        t.short_name === "ACME Financial" || 
+        t.name?.includes("ACME")
+      );
+      
+      if (!acmeTenant) {
+        setMessage({ type: "error", text: "ACME tenant not found. Please create it first." });
+        setUpdating(false);
+        return;
+      }
+      
+      await switchRole("tenant_admin", acmeTenant.id, "Compliance Director", {
+        manage_entities: true,
+        manage_accounts: true,
+        classify_accounts: true,
+        generate_reports: true,
+        manage_users: true,
+        configure_branding: true,
+        view_audit_logs: true
+      });
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed: " + error.message });
       setUpdating(false);
     }
   };
@@ -123,45 +113,28 @@ export default function Setup() {
     
     try {
       const tenants = await base44.entities.Tenant.list();
-      const acmeTenant = tenants.find(t => t.short_name === "ACME Financial");
+      const acmeTenant = tenants.find(t => 
+        t.short_name === "ACME Financial" || 
+        t.name?.includes("ACME")
+      );
       
       if (!acmeTenant) {
-        setMessage({ type: "error", text: "ACME tenant not found" });
+        setMessage({ type: "error", text: "ACME tenant not found. Please create it first." });
         setUpdating(false);
         return;
       }
       
-      await base44.auth.updateMe({
-        user_role: "tenant_user",
-        tenant_id: acmeTenant.id,
-        job_title: "Compliance Officer",
-        permissions: {
-          can_manage_entities: false,
-          can_manage_accounts: true,
-          can_classify_accounts: true,
-          can_generate_reports: false,
-          can_manage_users: false,
-          can_configure_branding: false,
-          can_view_audit_logs: false
-        }
+      await switchRole("tenant_user", acmeTenant.id, "Compliance Officer", {
+        manage_entities: false,
+        manage_accounts: true,
+        classify_accounts: true,
+        generate_reports: false,
+        manage_users: false,
+        configure_branding: false,
+        view_audit_logs: false
       });
-      
-      setMessage({ 
-        type: "success", 
-        text: "Successfully set as ACME Tenant User! Reloading page..." 
-      });
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      
     } catch (error) {
-      console.error("Error updating user:", error);
-      setMessage({ 
-        type: "error", 
-        text: "Failed to update role: " + error.message 
-      });
-    } finally {
+      setMessage({ type: "error", text: "Failed: " + error.message });
       setUpdating(false);
     }
   };
