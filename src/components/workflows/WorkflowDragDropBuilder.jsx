@@ -206,143 +206,57 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         </CardContent>
       </Card>
 
-      {/* Builder Interface */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Node Palette */}
-        <div className="col-span-3">
-          <Card className="border-0 shadow-lg sticky top-6">
-            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
-              <CardTitle className="text-sm">Node Palette</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-2">
-                {nodeTypes.map((nodeType) => (
-                  <button
-                    key={nodeType.id}
-                    onClick={() => handleAddStep(nodeType)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 ${nodeType.color} hover:shadow-md transition-all`}
-                  >
-                    <nodeType.icon className="w-5 h-5" />
-                    <span className="font-medium text-sm">{nodeType.label}</span>
-                    <Plus className="w-4 h-4 ml-auto" />
-                  </button>
-                ))}
-              </div>
-              <div className="mt-6 pt-6 border-t">
-                <p className="text-xs text-slate-600 mb-2">Quick Actions</p>
-                <div className="space-y-2">
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <Copy className="w-3 h-3 mr-2" />
-                    Import Component
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Outcome Rules Card */}
-          <Card className="border-0 shadow-lg mt-6">
-            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-transparent">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Diamond className="w-4 h-4 text-emerald-600" />
-                Outcome Rules
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <p className="text-xs text-slate-600 mb-3">
-                Define the final classification results and descriptions that appear when the workflow ends.
-              </p>
-              <Button onClick={handleAddOutcomeRule} variant="outline" size="sm" className="w-full mb-4">
-                <Plus className="w-3 h-3 mr-2" /> Add Outcome Rule
-              </Button>
-              {outcomeRules.length === 0 ? (
-                <p className="text-xs text-slate-500 italic text-center py-2">No outcome rules defined yet</p>
-              ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {outcomeRules.map((rule, index) => (
-                    <div key={index} className="p-3 border rounded-lg bg-emerald-50 border-emerald-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge variant="outline" className="bg-emerald-100 text-emerald-800">
-                          Rule {index + 1}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveOutcomeRule(index)}
-                          className="h-6 w-6 text-red-600"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <Label className="text-xs font-medium">Result Classification (Status Badge)</Label>
-                          <Input
-                            value={rule.result_classification || ""}
-                            onChange={(e) => handleOutcomeRuleChange(index, 'result_classification', e.target.value)}
-                            placeholder="e.g., Reportable, Non-Reportable"
-                            className="h-8 text-xs mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs font-medium">Status Color</Label>
-                          <Select
-                            value={rule.status_color || "green"}
-                            onValueChange={(value) => handleOutcomeRuleChange(index, 'status_color', value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="green">Green (Reportable)</SelectItem>
-                              <SelectItem value="amber">Amber (Pending/Review)</SelectItem>
-                              <SelectItem value="red">Red (Non-Reportable/Excluded)</SelectItem>
-                              <SelectItem value="blue">Blue (Info)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs font-medium">Condition</Label>
-                          <Input
-                            value={rule.condition || ""}
-                            onChange={(e) => handleOutcomeRuleChange(index, 'condition', e.target.value)}
-                            placeholder="e.g., step_1 = 'YES'"
-                            className="h-8 text-xs mt-1"
-                          />
-                          <p className="text-xs text-slate-500 mt-0.5">Use step IDs and answer values</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs font-medium">Account Context Items (shown in blue box)</Label>
-                          <Textarea
-                            value={(rule.account_context_items || []).join("\n")}
-                            onChange={(e) => handleOutcomeRuleChange(index, 'account_context_items', e.target.value.split("\n").filter(item => item.trim()))}
-                            placeholder="Account Type: New Account (Jan 1, 2018 or later)&#10;Account Holder Status: Deceased"
-                            rows={3}
-                            className="text-xs mt-1"
-                          />
-                          <p className="text-xs text-slate-500 mt-0.5">One item per line</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs font-medium">Reason Description (shown in result box)</Label>
-                          <Textarea
-                            value={rule.result_description || ""}
-                            onChange={(e) => handleOutcomeRuleChange(index, 'result_description', e.target.value)}
-                            placeholder="The account holder is tax resident in a CRS reporting jurisdiction and must be reported..."
-                            rows={3}
-                            className="text-xs mt-1"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Tabs for Steps and Outcome Rules */}
+      <Tabs defaultValue="steps" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="steps" className="flex items-center gap-2">
+            <Circle className="w-4 h-4" />
+            Workflow Steps ({steps.length})
+          </TabsTrigger>
+          <TabsTrigger value="outcomes" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Outcome Rules ({outcomeRules.length})
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Canvas */}
-        <div className="col-span-9">
+        <TabsContent value="steps">
+          {/* Builder Interface */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Node Palette */}
+            <div className="col-span-3">
+              <Card className="border-0 shadow-lg sticky top-6">
+                <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+                  <CardTitle className="text-sm">Node Palette</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    {nodeTypes.map((nodeType) => (
+                      <button
+                        key={nodeType.id}
+                        onClick={() => handleAddStep(nodeType)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 ${nodeType.color} hover:shadow-md transition-all`}
+                      >
+                        <nodeType.icon className="w-5 h-5" />
+                        <span className="font-medium text-sm">{nodeType.label}</span>
+                        <Plus className="w-4 h-4 ml-auto" />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-6 border-t">
+                    <p className="text-xs text-slate-600 mb-2">Quick Actions</p>
+                    <div className="space-y-2">
+                      <Button variant="outline" size="sm" className="w-full justify-start">
+                        <Copy className="w-3 h-3 mr-2" />
+                        Import Component
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Canvas */}
+            <div className="col-span-9">
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
               <div className="flex items-center justify-between">
