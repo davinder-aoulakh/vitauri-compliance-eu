@@ -136,8 +136,9 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
           <Label className="text-sm font-medium text-slate-700">Platform Link</Label>
           <div className="mt-1.5 flex gap-2">
             <Input value={inviteLink} readOnly className="bg-slate-50" />
-            <Button type="button" variant="outline" onClick={copyToClipboard}>
-              <Copy className="w-4 h-4" />
+            <Button type="button" variant="outline" onClick={copyToClipboard} className="min-w-[80px]">
+              {copied ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? "Copied" : "Copy"}
             </Button>
           </div>
           <p className="text-xs text-slate-500 mt-1">
