@@ -14,13 +14,16 @@ import {
   Clock,
   ArrowRight,
   Globe,
-  Wrench
+  Wrench,
+  LayoutDashboard,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import WidgetPreview from "@/components/dashboard/WidgetPreview";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -68,6 +71,19 @@ export default function Dashboard() {
       : [],
     enabled: !!user?.tenant_id
   });
+
+  // Fetch custom dashboard configuration
+  const { data: dashboardConfigs = [] } = useQuery({
+    queryKey: ['dashboard-config', user?.tenant_id],
+    queryFn: () => base44.entities.DashboardConfiguration.filter({ 
+      tenant_id: user.tenant_id,
+      is_published: true,
+      is_default: true
+    }),
+    enabled: !!user?.tenant_id
+  });
+
+  const customDashboard = dashboardConfigs[0];
 
   const rfiEntities = entities.filter(e => e.rfi_status === "reporting_fi");
   const reportableAccounts = accounts.filter(a => a.reportability_status === "reportable");
@@ -144,6 +160,59 @@ export default function Dashboard() {
     );
   }
 
+  // If custom dashboard is published, render it
+  if (customDashboard && customDashboard.layout?.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
+        <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+                Welcome back, {user?.full_name?.split(' ')[0] || "User"}
+              </h1>
+              <p className="text-slate-600">
+                {customDashboard.description || `Here's your CRS compliance overview for ${tenant?.name || "your organization"}`}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              {(user?.user_role === 'tenant_admin' || user?.user_role === 'super_admin') && (
+                <Link to={createPageUrl("DashboardBuilder")}>
+                  <Button variant="outline" className="gap-2">
+                    <Settings className="w-4 h-4" />
+                    Customize
+                  </Button>
+                </Link>
+              )}
+              <Link to={createPageUrl("Reports")}>
+                <Button 
+                  className="gap-2 text-white shadow-lg hover:shadow-xl transition-all"
+                  style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+                >
+                  <FileCheck className="w-4 h-4" />
+                  Generate Report
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Custom Dashboard Widgets */}
+          <div className="grid grid-cols-12 gap-4">
+            {customDashboard.layout.map((widget) => (
+              <div
+                key={widget.widget_id}
+                style={{ gridColumn: `span ${widget.position?.w || 6}` }}
+              >
+                <WidgetPreview widget={widget} tenantId={user.tenant_id} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default dashboard
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
@@ -158,6 +227,14 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex gap-3">
+            {(user?.user_role === 'tenant_admin' || user?.user_role === 'super_admin') && (
+              <Link to={createPageUrl("DashboardBuilder")}>
+                <Button variant="outline" className="gap-2">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Customize Dashboard
+                </Button>
+              </Link>
+            )}
             <Link to={createPageUrl("Entities")}>
               <Button variant="outline" className="gap-2">
                 <Building2 className="w-4 h-4" />

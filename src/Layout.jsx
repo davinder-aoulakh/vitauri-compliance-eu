@@ -27,7 +27,8 @@ import {
   Menu,
   Wrench,
   Database,
-  Eye
+  Eye,
+  Palette
 } from "lucide-react";
 import {
   Sidebar,
@@ -201,6 +202,12 @@ export default function Layout({ children }) {
   ];
 
   const adminNav = [
+    {
+      title: "Dashboard Builder",
+      url: createPageUrl("DashboardBuilder"),
+      icon: LayoutDashboard,
+      roles: ["tenant_admin"]
+    },
     {
       title: "User Management",
       url: createPageUrl("UserManagement"),
