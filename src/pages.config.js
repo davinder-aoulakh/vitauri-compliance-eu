@@ -12,6 +12,7 @@ import ReferencedDataManagement from './pages/ReferencedDataManagement';
 import Settings from './pages/Settings';
 import Activity from './pages/Activity';
 import ComplianceAssistant from './pages/ComplianceAssistant';
+import DashboardBuilder from './pages/DashboardBuilder';
 import __Layout from './Layout.jsx';
 
 
@@ -30,6 +31,7 @@ export const PAGES = {
     "Settings": Settings,
     "Activity": Activity,
     "ComplianceAssistant": ComplianceAssistant,
+    "DashboardBuilder": DashboardBuilder,
 }
 
 export const pagesConfig = {
