@@ -26,10 +26,12 @@ import {
   Bell,
   LayoutDashboard,
   Shield,
-  LogOut
+  LogOut,
+  Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import ThemeSelector from "@/components/theme/ThemeSelector";
+import EmailNotificationConfig from "@/components/settings/EmailNotificationConfig";
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
@@ -56,6 +58,7 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("en");
   const [dateFormat, setDateFormat] = useState("MM/DD/YYYY");
   const [timezone, setTimezone] = useState("UTC");
+  const [emailEventConfig, setEmailEventConfig] = useState({});
 
   useEffect(() => {
     loadSettings();
@@ -89,6 +92,7 @@ export default function SettingsPage() {
       setLanguage(general.language || "en");
       setDateFormat(general.dateFormat || "MM/DD/YYYY");
       setTimezone(general.timezone || "UTC");
+      setEmailEventConfig(general.emailEventConfig || {});
       
       // Apply settings to document
       applyAccessibilitySettings(prefs);
@@ -210,7 +214,8 @@ export default function SettingsPage() {
         defaultLandingPage,
         language,
         dateFormat,
-        timezone
+        timezone,
+        emailEventConfig
       };
       
       await base44.auth.updateMe({
@@ -588,6 +593,28 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Email Notification Events - Only show when email notifications are enabled */}
+          {emailNotifications && (
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-transparent">
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-indigo-600" />
+                  Email Event Configuration
+                </CardTitle>
+                <p className="text-sm text-slate-600 mt-1">
+                  Configure which events trigger email notifications and customize delivery options
+                </p>
+              </CardHeader>
+              <CardContent className="p-6">
+                <EmailNotificationConfig
+                  config={emailEventConfig}
+                  onChange={setEmailEventConfig}
+                  userRole={user?.user_role}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Landing Page & Preferences */}
           <Card className="border-0 shadow-lg">
