@@ -29,7 +29,8 @@ import {
   Wrench,
   Database,
   Eye,
-  Palette
+  Palette,
+  Globe
 } from "lucide-react";
 import {
   Sidebar,
@@ -252,6 +253,12 @@ export default function Layout({ children }) {
       title: "Referenced Data",
       url: createPageUrl("ReferencedDataManagement"),
       icon: Database,
+      roles: ["super_admin"]
+    },
+    {
+      title: "Jurisdiction CRS Config",
+      url: createPageUrl("JurisdictionSettings"),
+      icon: Globe,
       roles: ["super_admin"]
     }
   ];

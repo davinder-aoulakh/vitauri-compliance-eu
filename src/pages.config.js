@@ -13,6 +13,7 @@ import Settings from './pages/Settings';
 import Activity from './pages/Activity';
 import ComplianceAssistant from './pages/ComplianceAssistant';
 import DashboardBuilder from './pages/DashboardBuilder';
+import JurisdictionSettings from './pages/JurisdictionSettings';
 import __Layout from './Layout.jsx';
 
 
@@ -32,6 +33,7 @@ export const PAGES = {
     "Activity": Activity,
     "ComplianceAssistant": ComplianceAssistant,
     "DashboardBuilder": DashboardBuilder,
+    "JurisdictionSettings": JurisdictionSettings,
 }
 
 export const pagesConfig = {
