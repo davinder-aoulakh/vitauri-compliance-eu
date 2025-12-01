@@ -91,9 +91,9 @@ export default function ActivityPage() {
     // User filter
     const matchesUser = userFilter === "all" || log.actor_email === userFilter;
 
-    // Date filter
+    // Date filter (preset)
     let matchesDate = true;
-    if (dateFilter !== "all" && log.timestamp) {
+    if (dateFilter !== "all" && dateFilter !== "custom" && log.timestamp) {
       const logDate = moment(log.timestamp);
       const now = moment();
       
@@ -102,17 +102,47 @@ export default function ActivityPage() {
           matchesDate = logDate.isSame(now, 'day');
           break;
         case "week":
-          matchesDate = logDate.isAfter(now.subtract(7, 'days'));
+          matchesDate = logDate.isAfter(moment().subtract(7, 'days'));
           break;
         case "month":
-          matchesDate = logDate.isAfter(now.subtract(30, 'days'));
+          matchesDate = logDate.isAfter(moment().subtract(30, 'days'));
           break;
         default:
           matchesDate = true;
       }
     }
 
-    return matchesSearch && matchesActionType && matchesUser && matchesDate;
+    // Custom date range filter
+    if (dateFilter === "custom" && log.timestamp) {
+      const logDate = moment(log.timestamp);
+      if (startDate) {
+        matchesDate = matchesDate && logDate.isSameOrAfter(moment(startDate), 'day');
+      }
+      if (endDate) {
+        matchesDate = matchesDate && logDate.isSameOrBefore(moment(endDate), 'day');
+      }
+    }
+
+    // Action category filter (create/update/delete)
+    let matchesCategory = true;
+    if (actionCategory !== "all") {
+      const actionLower = log.action_type?.toLowerCase() || "";
+      switch (actionCategory) {
+        case "create":
+          matchesCategory = actionLower.includes("created") || actionLower.includes("invited");
+          break;
+        case "update":
+          matchesCategory = actionLower.includes("updated") || actionLower.includes("classified") || actionLower.includes("changed");
+          break;
+        case "delete":
+          matchesCategory = actionLower.includes("deleted");
+          break;
+        default:
+          matchesCategory = true;
+      }
+    }
+
+    return matchesSearch && matchesActionType && matchesUser && matchesDate && matchesCategory;
   });
 
   const getActionIcon = (actionType) => {
