@@ -265,6 +265,24 @@ export default function Layout({ children }) {
 
   return (
     <SidebarProvider>
+      {/* Inactivity Warning Dialog */}
+      <AlertDialog open={showInactivityWarning} onOpenChange={setShowInactivityWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Session Timeout Warning</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be logged out due to inactivity in {secondsRemaining} seconds.
+              Click "Stay Logged In" to continue your session.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleStayActive}>
+              Stay Logged In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Skip to main content link for keyboard navigation */}
       <a href="#main-content" className="skip-to-main">
         Skip to main content
