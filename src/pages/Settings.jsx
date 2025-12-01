@@ -544,27 +544,23 @@ export default function SettingsPage() {
                     }`}
                   >
                     <div className="space-y-3">
-                      <div className="w-full h-20 rounded-lg overflow-hidden flex">
-                        {/* Light half */}
-                        <div className="w-1/2 bg-white border-r border-slate-200">
-                          <div className="h-4 bg-slate-100 border-b border-slate-200"></div>
-                          <div className="p-1.5 space-y-1">
-                            <div className="h-2 bg-slate-200 rounded w-3/4"></div>
-                            <div className="h-2 bg-slate-100 rounded w-1/2"></div>
-                          </div>
+                      <div className="w-full h-20 rounded-lg overflow-hidden relative bg-gradient-to-r from-amber-100 via-sky-200 to-indigo-900">
+                        {/* Sun */}
+                        <div className="absolute left-3 top-3 w-5 h-5 bg-amber-400 rounded-full shadow-lg shadow-amber-300"></div>
+                        {/* Moon */}
+                        <div className="absolute right-3 top-3 w-4 h-4 bg-slate-200 rounded-full shadow-lg">
+                          <div className="absolute -right-1 top-0 w-3 h-3 bg-indigo-900 rounded-full"></div>
                         </div>
-                        {/* Dark half */}
-                        <div className="w-1/2 bg-slate-900">
-                          <div className="h-4 bg-slate-800 border-b border-slate-700"></div>
-                          <div className="p-1.5 space-y-1">
-                            <div className="h-2 bg-slate-700 rounded w-3/4"></div>
-                            <div className="h-2 bg-slate-800 rounded w-1/2"></div>
-                          </div>
-                        </div>
+                        {/* Stars */}
+                        <div className="absolute right-6 top-6 w-1 h-1 bg-white rounded-full"></div>
+                        <div className="absolute right-10 top-4 w-0.5 h-0.5 bg-white rounded-full"></div>
+                        <div className="absolute right-8 top-8 w-0.5 h-0.5 bg-white rounded-full"></div>
+                        {/* Horizon line */}
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-r from-green-200 to-slate-700"></div>
                       </div>
                       <div className="text-center">
                         <p className="font-medium text-slate-900">System</p>
-                        <p className="text-xs text-slate-500">Match device</p>
+                        <p className="text-xs text-slate-500">Auto day/night</p>
                       </div>
                     </div>
                     {theme === "auto" && (
