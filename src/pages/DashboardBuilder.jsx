@@ -43,7 +43,9 @@ import {
   Wallet,
   ArrowLeft,
   Copy,
-  Check
+  Check,
+  Globe,
+  Building2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -62,6 +64,8 @@ const WIDGET_TYPES = [
   { type: "reportability_breakdown", label: "Reportability", icon: FileText, description: "Account reportability breakdown" },
   { type: "pending_tasks", label: "Pending Tasks", icon: List, description: "Items requiring attention" },
   { type: "quick_actions", label: "Quick Actions", icon: Zap, description: "Shortcut buttons" },
+  { type: "jurisdiction_overview", label: "Jurisdiction Overview", icon: Globe, description: "Jurisdiction, entities and deadlines" },
+  { type: "entity_classification", label: "Entity Classification", icon: Building2, description: "Entity classification status breakdown" },
 ];
 
 export default function DashboardBuilder() {

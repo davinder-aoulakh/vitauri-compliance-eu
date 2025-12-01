@@ -61,7 +61,61 @@ export default function WidgetConfigDialog({ open, onOpenChange, widget, onSave 
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Sub-description (Optional)</Label>
+              <Input
+                value={editedWidget.config?.subDescription || ''}
+                onChange={(e) => updateConfig('subDescription', e.target.value)}
+                placeholder="e.g., 3 Reporting FIs"
+              />
+            </div>
+            <div>
+              <Label>Trend Label (Optional)</Label>
+              <Input
+                value={editedWidget.config?.trendLabel || ''}
+                onChange={(e) => updateConfig('trendLabel', e.target.value)}
+                placeholder="e.g., +2 this month"
+              />
+            </div>
           </div>
+        );
+
+      case 'pending_tasks':
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Task Type</Label>
+              <Select
+                value={editedWidget.config?.taskType || 'all'}
+                onValueChange={(value) => updateConfig('taskType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Pending Tasks</SelectItem>
+                  <SelectItem value="accounts_pending_classification">Accounts Pending Classification</SelectItem>
+                  <SelectItem value="crs_report_due">CRS Report Due</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editedWidget.config?.taskType === 'crs_report_due' && (
+              <div>
+                <Label>Report Year</Label>
+                <Input
+                  type="number"
+                  value={editedWidget.config?.reportYear || new Date().getFullYear()}
+                  onChange={(e) => updateConfig('reportYear', parseInt(e.target.value))}
+                />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'jurisdiction_overview':
+      case 'entity_classification':
+        return (
+          <p className="text-sm text-slate-500">This widget automatically displays data from your tenant configuration.</p>
         );
 
       case 'chart_pie':

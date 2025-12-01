@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   TrendingDown,
@@ -13,8 +14,12 @@ import {
   Clock,
   AlertTriangle,
   Zap,
-  Activity
+  Activity,
+  ArrowRight,
+  Calendar
 } from "lucide-react";
+import JurisdictionOverviewWidget from "./JurisdictionOverviewWidget";
+import EntityClassificationWidget from "./EntityClassificationWidget";
 import {
   BarChart,
   Bar,
@@ -72,59 +77,76 @@ export default function WidgetPreview({ widget, tenantId }) {
   if (widget.widget_type === 'stats_card') {
     const metric = config.metric || 'total_accounts';
     let value = 0;
-    let trend = null;
+    let trend = config.trend || null;
+    let trendLabel = config.trendLabel || null;
+    let subDescription = config.subDescription || null;
     let icon = <Wallet className="w-6 h-6" />;
+    let iconBgColor = 'bg-indigo-100';
+
+    const reportingFIs = entities.filter(e => e.rfi_status === 'reporting_fi').length;
+    const pendingReviewCount = accounts.filter(a => a.reportability_status === 'pending_review').length;
 
     switch (metric) {
       case 'total_accounts':
         value = accounts.length;
         icon = <Wallet className="w-6 h-6 text-indigo-600" />;
+        iconBgColor = 'bg-indigo-100';
         break;
       case 'total_entities':
         value = entities.length;
-        icon = <Building2 className="w-6 h-6 text-purple-600" />;
+        icon = <Building2 className="w-6 h-6 text-blue-600" />;
+        iconBgColor = 'bg-blue-100';
+        if (!subDescription) subDescription = `${reportingFIs} Reporting FIs`;
         break;
       case 'reportable_accounts':
         value = accounts.filter(a => a.reportability_status === 'reportable').length;
-        icon = <FileText className="w-6 h-6 text-amber-600" />;
+        icon = <FileText className="w-6 h-6 text-purple-600" />;
+        iconBgColor = 'bg-purple-100';
+        if (!subDescription) subDescription = `${accounts.length} total accounts`;
+        if (pendingReviewCount > 0 && !trendLabel) {
+          trendLabel = `${pendingReviewCount} pending review`;
+        }
         break;
       case 'pending_review':
-        value = accounts.filter(a => a.reportability_status === 'pending_review').length;
+        value = pendingReviewCount;
         icon = <Clock className="w-6 h-6 text-blue-600" />;
+        iconBgColor = 'bg-blue-100';
         break;
       case 'classified_entities':
         value = entities.filter(e => e.rfi_status !== 'pending_classification').length;
         icon = <CheckCircle className="w-6 h-6 text-green-600" />;
+        iconBgColor = 'bg-green-100';
         break;
       case 'total_crs_reports':
         value = reports.length;
-        icon = <FileText className="w-6 h-6 text-purple-600" />;
+        icon = <FileText className="w-6 h-6 text-emerald-600" />;
+        iconBgColor = 'bg-emerald-100';
+        if (!subDescription) subDescription = `Year ${new Date().getFullYear()}`;
         break;
     }
 
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">{widget.title}</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-              {trend && (
-                <div className="flex items-center gap-1 mt-2 text-sm">
-                  {trend > 0 ? (
-                    <TrendingUp className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-red-600" />
-                  )}
-                  <span className={trend > 0 ? "text-green-600" : "text-red-600"}>
-                    {Math.abs(trend)}%
-                  </span>
-                </div>
-              )}
+      <Card className="h-full">
+        <CardContent className="p-5">
+          {trendLabel && (
+            <div className="flex justify-end mb-2">
+              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                {trendLabel}
+              </Badge>
             </div>
-            <div className="p-3 rounded-xl bg-slate-100">
+          )}
+          <div className="flex items-start justify-between">
+            <div className={`p-3 rounded-xl ${iconBgColor}`}>
               {icon}
             </div>
+          </div>
+          <div className="mt-4">
+            <p className="text-sm text-slate-600">{widget.title}</p>
+            <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
+            {subDescription && (
+              <p className="text-sm text-slate-500 mt-1">{subDescription}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -462,7 +484,59 @@ export default function WidgetPreview({ widget, tenantId }) {
   if (widget.widget_type === 'pending_tasks') {
     const pendingAccounts = accounts.filter(a => a.reportability_status === 'pending_review');
     const pendingEntities = entities.filter(e => e.rfi_status === 'pending_classification');
+    const taskType = config.taskType;
 
+    // If specific task type is configured, show only that
+    if (taskType === 'accounts_pending_classification') {
+      return (
+        <Card className="h-full">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Accounts Pending Classification</p>
+                  <p className="text-sm text-slate-600">{pendingAccounts.length} accounts need reportability review</p>
+                </div>
+              </div>
+              <Link to={createPageUrl("Accounts")} className="flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-indigo-600">
+                Review Now
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (taskType === 'crs_report_due') {
+      const reportYear = config.reportYear || new Date().getFullYear();
+      return (
+        <Card className="h-full">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">{reportYear} CRS Report Due</p>
+                  <p className="text-sm text-slate-600">Annual reporting deadline approaching</p>
+                </div>
+              </div>
+              <Link to={createPageUrl("Reports")} className="flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-indigo-600">
+                Start Report
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Default: show all pending tasks
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -495,6 +569,28 @@ export default function WidgetPreview({ widget, tenantId }) {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Jurisdiction Overview Widget
+  if (widget.widget_type === 'jurisdiction_overview') {
+    return (
+      <Card className="h-full">
+        <CardContent className="p-6">
+          <JurisdictionOverviewWidget tenantId={tenantId} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Entity Classification Status Widget
+  if (widget.widget_type === 'entity_classification') {
+    return (
+      <Card className="h-full">
+        <CardContent className="p-6">
+          <EntityClassificationWidget tenantId={tenantId} />
         </CardContent>
       </Card>
     );
