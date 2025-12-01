@@ -142,12 +142,19 @@ export default function XMLGenerator({ report, onSuccess }) {
     }
   };
 
-  const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons }) => {
+  const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig }) => {
+    const jConfig = jurisdictionConfig || JURISDICTION_CONFIGS["DEFAULT"];
     const timestamp = new Date().toISOString();
-    const messageRefId = `${entity.tax_id || 'NOTAX'}.${report.reporting_year}.${Date.now()}`;
+    const messageRefId = generateDocRefId(jConfig.docRefIdFormat, {
+      tin: entity?.tax_id,
+      giin: entity?.giin,
+      year: report.reporting_year,
+      type: 'MSG',
+      sequence: '001'
+    });
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v2" xmlns:stf="urn:oecd:ties:crsstf:v5" version="2.0">
+<crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v2" xmlns:stf="urn:oecd:ties:crsstf:v5" version="${jConfig.schemaVersion}">
   <crs:MessageSpec>
     <crs:SendingCompanyIN>${entity.tax_id || 'UNKNOWN'}</crs:SendingCompanyIN>
     <crs:TransmittingCountry>${report.reporting_jurisdiction}</crs:TransmittingCountry>
