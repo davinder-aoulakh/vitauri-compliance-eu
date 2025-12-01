@@ -822,6 +822,8 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <SelectItem value="multi_field_input">Multi-Field Input</SelectItem>
             <SelectItem value="address_input">Address Input</SelectItem>
             <SelectItem value="beneficiary_input">Beneficiary Input</SelectItem>
+            <SelectItem value="info">Info (Display Only)</SelectItem>
+            <SelectItem value="result">Result (End Step)</SelectItem>
               </SelectContent>
               </Select>
               </div>
