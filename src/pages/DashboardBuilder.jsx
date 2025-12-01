@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { auditLog } from "@/components/utils/auditLogger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,33 +106,39 @@ export default function DashboardBuilder() {
       tenant_id: user.tenant_id,
       layout: []
     }),
-    onSuccess: (newDashboard) => {
+    onSuccess: async (newDashboard) => {
       queryClient.invalidateQueries(['dashboard-configurations']);
       setShowCreateDialog(false);
       setSelectedDashboard(newDashboard);
       setNewDashboard({ dashboard_name: "", description: "" });
+      await auditLog.dashboardCreated(newDashboard.id, newDashboard);
       toast.success("Dashboard created");
     }
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.DashboardConfiguration.update(id, data),
-    onSuccess: () => {
+    mutationFn: ({ id, data, before }) => base44.entities.DashboardConfiguration.update(id, data).then(() => ({ id, data, before })),
+    onSuccess: async ({ id, data, before }) => {
       queryClient.invalidateQueries(['dashboard-configurations']);
+      await auditLog.dashboardUpdated(id, before, data);
       toast.success("Dashboard saved");
     }
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.DashboardConfiguration.delete(id),
-    onSuccess: () => {
+    mutationFn: async (dashboard) => {
+      await base44.entities.DashboardConfiguration.delete(dashboard.id);
+      return dashboard;
+    },
+    onSuccess: async (dashboard) => {
       queryClient.invalidateQueries(['dashboard-configurations']);
+      await auditLog.dashboardDeleted(dashboard.id, dashboard);
       setSelectedDashboard(null);
       toast.success("Dashboard deleted");
     }
   });
 
-  const handleAddWidget = (widgetType) => {
+  const handleAddWidget = async (widgetType) => {
     const widgetDef = WIDGET_TYPES.find(w => w.type === widgetType);
     const newWidget = {
       widget_id: `widget_${Date.now()}`,
@@ -145,23 +152,35 @@ export default function DashboardBuilder() {
     setSelectedDashboard({ ...selectedDashboard, layout: updatedLayout });
     setShowWidgetPicker(false);
     
+    await auditLog.widgetAdded(selectedDashboard.id, selectedDashboard.dashboard_name, newWidget);
+    
     // Open config dialog for the new widget
     setEditingWidget(newWidget);
     setShowWidgetConfig(true);
   };
 
-  const handleUpdateWidget = (updatedWidget) => {
+  const handleUpdateWidget = async (updatedWidget) => {
+    const oldWidget = selectedDashboard.layout.find(w => w.widget_id === updatedWidget.widget_id);
     const updatedLayout = selectedDashboard.layout.map(w =>
       w.widget_id === updatedWidget.widget_id ? updatedWidget : w
     );
     setSelectedDashboard({ ...selectedDashboard, layout: updatedLayout });
     setShowWidgetConfig(false);
     setEditingWidget(null);
+    
+    if (oldWidget) {
+      await auditLog.widgetUpdated(selectedDashboard.id, selectedDashboard.dashboard_name, oldWidget, updatedWidget);
+    }
   };
 
-  const handleRemoveWidget = (widgetId) => {
+  const handleRemoveWidget = async (widgetId) => {
+    const removedWidget = selectedDashboard.layout.find(w => w.widget_id === widgetId);
     const updatedLayout = selectedDashboard.layout.filter(w => w.widget_id !== widgetId);
     setSelectedDashboard({ ...selectedDashboard, layout: updatedLayout });
+    
+    if (removedWidget) {
+      await auditLog.widgetRemoved(selectedDashboard.id, selectedDashboard.dashboard_name, removedWidget);
+    }
   };
 
   const handleMoveWidget = (widgetId, direction) => {
@@ -179,6 +198,7 @@ export default function DashboardBuilder() {
   };
 
   const handleSaveDashboard = () => {
+    const beforeData = dashboards.find(d => d.id === selectedDashboard.id);
     updateMutation.mutate({
       id: selectedDashboard.id,
       data: {
@@ -186,7 +206,8 @@ export default function DashboardBuilder() {
         description: selectedDashboard.description,
         layout: selectedDashboard.layout,
         theme: selectedDashboard.theme
-      }
+      },
+      before: beforeData
     });
   };
 
@@ -199,15 +220,19 @@ export default function DashboardBuilder() {
       }
     }
 
-    updateMutation.mutate({
-      id: selectedDashboard.id,
-      data: {
-        is_published: true,
-        is_default: true,
-        published_date: new Date().toISOString(),
-        published_by: user.email
-      }
-    });
+    const beforeData = dashboards.find(d => d.id === selectedDashboard.id);
+    const publishData = {
+      is_published: true,
+      is_default: true,
+      published_date: new Date().toISOString(),
+      published_by: user.email
+    };
+
+    await base44.entities.DashboardConfiguration.update(selectedDashboard.id, publishData);
+    queryClient.invalidateQueries(['dashboard-configurations']);
+    
+    await auditLog.dashboardPublished(selectedDashboard.id, { ...selectedDashboard, ...publishData });
+    toast.success("Dashboard published");
   };
 
   const handleDuplicateDashboard = () => {
@@ -371,7 +396,7 @@ export default function DashboardBuilder() {
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicate
               </Button>
-              <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(selectedDashboard.id)}>
+              <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(selectedDashboard)}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete
               </Button>
