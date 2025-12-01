@@ -177,7 +177,7 @@ export default function XMLGenerator({ report, onSuccess }) {
 
     // Add account reports
     accounts.forEach((account, index) => {
-      const accDocRefId = generateDocRefId(config.docRefIdFormat, {
+      const accDocRefId = generateDocRefId(jConfig.docRefIdFormat, {
         tin: entity?.tax_id,
         giin: entity?.giin,
         year: report.reporting_year,
