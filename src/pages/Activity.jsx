@@ -464,10 +464,10 @@ export default function ActivityPage() {
                           {getActionIcon(log.action_type)}
                           <div>
                             <p className="font-medium text-sm">
-                              {moment(log.timestamp).format('MMM D, YYYY')}
+                              {moment(log.timestamp || log.created_date).format('MMM D, YYYY')}
                             </p>
                             <p className="text-xs text-slate-500">
-                              {moment(log.timestamp).format('HH:mm:ss')}
+                              {moment(log.timestamp || log.created_date).format('HH:mm:ss')}
                             </p>
                           </div>
                         </div>
@@ -478,19 +478,34 @@ export default function ActivityPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium text-sm">{log.actor_email}</p>
+                          <p className="text-xs text-slate-500 capitalize">
+                            {log.actor_role?.replace(/_/g, ' ')}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {log.actor_role?.replace(/_/g, ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
                         {log.target_entity_type && (
-                          <Badge variant="outline">
-                            {log.target_entity_type}
-                          </Badge>
+                          <div>
+                            <Badge variant="outline">
+                              {log.target_entity_type}
+                            </Badge>
+                            {log.target_entity_id && (
+                              <p className="text-xs text-slate-400 mt-1 font-mono truncate max-w-[100px]" title={log.target_entity_id}>
+                                {log.target_entity_id.slice(-8)}
+                              </p>
+                            )}
+                          </div>
                         )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div>
+                          <p className="text-sm text-slate-700">
+                            {moment(log.created_date).format('MMM D, YYYY')}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {moment(log.created_date).format('HH:mm:ss')}
+                          </p>
+                        </div>
                       </TableCell>
                       <TableCell className="max-w-xs">
                         {log.changes && (
