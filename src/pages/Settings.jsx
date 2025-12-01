@@ -29,6 +29,7 @@ import {
   LogOut
 } from "lucide-react";
 import { toast } from "sonner";
+import ThemeSelector from "@/components/theme/ThemeSelector";
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
@@ -442,142 +443,30 @@ export default function SettingsPage() {
             <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-transparent">
               <CardTitle className="flex items-center gap-2">
                 <Palette className="w-5 h-5 text-purple-600" />
-                Appearance Preferences
+                Theme Selection
               </CardTitle>
               <p className="text-sm text-slate-600 mt-1">
-                Customize the visual appearance of the application
+                Choose from 10 professionally designed themes or create your own
               </p>
             </CardHeader>
+            <CardContent className="p-6">
+              <ThemeSelector />
+            </CardContent>
+          </Card>
+
+          {/* Layout Density */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-transparent">
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="w-5 h-5 text-indigo-600" />
+                Layout Preferences
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-6 space-y-6">
-              {/* Theme Selection */}
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <Label className="text-base font-semibold flex items-center gap-2">
-                    <Palette className="w-4 h-4" />
-                    Theme
-                  </Label>
-                  <p className="text-sm text-slate-600">
-                    Choose your preferred color scheme
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Light Theme */}
-                  <button
-                    onClick={() => setTheme("light")}
-                    className={`relative p-4 rounded-xl border-2 transition-all hover:shadow-md ${
-                      theme === "light" 
-                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200" 
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="space-y-3">
-                      <div className="w-full h-20 rounded-lg bg-white border border-slate-200 overflow-hidden">
-                        <div className="h-4 bg-slate-100 border-b border-slate-200 flex items-center px-2 gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
-                          <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                        </div>
-                        <div className="p-2 flex gap-2">
-                          <div className="w-8 h-12 bg-slate-100 rounded"></div>
-                          <div className="flex-1 space-y-1">
-                            <div className="h-2 bg-slate-200 rounded w-3/4"></div>
-                            <div className="h-2 bg-slate-100 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-slate-900">Light</p>
-                        <p className="text-xs text-slate-500">Clean & bright</p>
-                      </div>
-                    </div>
-                    {theme === "light" && (
-                      <div className="absolute top-2 right-2">
-                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Dark Theme */}
-                  <button
-                    onClick={() => setTheme("dark")}
-                    className={`relative p-4 rounded-xl border-2 transition-all hover:shadow-md ${
-                      theme === "dark" 
-                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200" 
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="space-y-3">
-                      <div className="w-full h-20 rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-                        <div className="h-4 bg-slate-800 border-b border-slate-700 flex items-center px-2 gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
-                          <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                        </div>
-                        <div className="p-2 flex gap-2">
-                          <div className="w-8 h-12 bg-slate-800 rounded"></div>
-                          <div className="flex-1 space-y-1">
-                            <div className="h-2 bg-slate-700 rounded w-3/4"></div>
-                            <div className="h-2 bg-slate-800 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-slate-900">Dark</p>
-                        <p className="text-xs text-slate-500">Easy on the eyes</p>
-                      </div>
-                    </div>
-                    {theme === "dark" && (
-                      <div className="absolute top-2 right-2">
-                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Auto Theme */}
-                  <button
-                    onClick={() => setTheme("auto")}
-                    className={`relative p-4 rounded-xl border-2 transition-all hover:shadow-md ${
-                      theme === "auto" 
-                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200" 
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="space-y-3">
-                      <div className="w-full h-20 rounded-lg overflow-hidden relative bg-gradient-to-r from-amber-100 via-sky-200 to-indigo-900">
-                        {/* Sun */}
-                        <div className="absolute left-3 top-3 w-5 h-5 bg-amber-400 rounded-full shadow-lg shadow-amber-300"></div>
-                        {/* Moon */}
-                        <div className="absolute right-3 top-3 w-4 h-4 bg-slate-200 rounded-full shadow-lg">
-                          <div className="absolute -right-1 top-0 w-3 h-3 bg-indigo-900 rounded-full"></div>
-                        </div>
-                        {/* Stars */}
-                        <div className="absolute right-6 top-6 w-1 h-1 bg-white rounded-full"></div>
-                        <div className="absolute right-10 top-4 w-0.5 h-0.5 bg-white rounded-full"></div>
-                        <div className="absolute right-8 top-8 w-0.5 h-0.5 bg-white rounded-full"></div>
-                        {/* Horizon line */}
-                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-r from-green-200 to-slate-700"></div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-slate-900">System</p>
-                        <p className="text-xs text-slate-500">Auto day/night</p>
-                      </div>
-                    </div>
-                    {theme === "auto" && (
-                      <div className="absolute top-2 right-2">
-                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
-                      </div>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Layout Density */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="layoutDensity" className="text-base font-semibold flex items-center gap-2">
-                      <Monitor className="w-4 h-4" />
+                    <Label htmlFor="layoutDensity" className="text-base font-semibold">
                       Layout Density
                     </Label>
                     <p className="text-sm text-slate-600">
@@ -600,72 +489,6 @@ export default function SettingsPage() {
                 </Select>
               </div>
 
-              {/* Accent Color */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="accentColor" className="text-base font-semibold">
-                      Accent Color
-                    </Label>
-                    <p className="text-sm text-slate-600">
-                      Customize the primary accent color for buttons and highlights
-                    </p>
-                  </div>
-                  <div 
-                    className="w-10 h-10 rounded-lg border-2 border-slate-300 shadow-sm"
-                    style={{ backgroundColor: accentColor }}
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <input
-                    type="color"
-                    id="accentColor"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="h-10 w-20 rounded border border-slate-300 cursor-pointer"
-                  />
-                  <Input
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    placeholder="#4f46e5"
-                    className="flex-1"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {["#4f46e5", "#7c3aed", "#2563eb", "#0891b2", "#059669", "#dc2626", "#ea580c"].map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setAccentColor(color)}
-                      className="w-8 h-8 rounded-lg border-2 hover:scale-110 transition-transform"
-                      style={{ 
-                        backgroundColor: color,
-                        borderColor: accentColor === color ? "#1e293b" : "transparent"
-                      }}
-                      aria-label={`Select ${color} as accent color`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
-                <p className="text-sm font-semibold text-slate-700">Preview:</p>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    style={{ 
-                      backgroundColor: accentColor,
-                      borderColor: accentColor 
-                    }}
-                  >
-                    Primary Button
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    Secondary Button
-                  </Button>
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button
@@ -681,7 +504,7 @@ export default function SettingsPage() {
                   ) : (
                     <>
                       <Save className="w-4 h-4 mr-2" />
-                      Save Appearance
+                      Save Layout Preferences
                     </>
                   )}
                 </Button>
