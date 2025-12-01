@@ -125,11 +125,30 @@ export default function AccountsPage() {
       setShowForm(false);
       setSelectedAccount(null);
       
+      // Create audit log entry
+      try {
+        await base44.entities.AuditLog.create({
+          tenant_id: user.tenant_id,
+          action_type: "account_created",
+          actor_email: user.email,
+          actor_role: user.user_role,
+          target_entity_type: "Account",
+          target_entity_id: newAccount.id,
+          changes: {
+            account_number: newAccount.account_number,
+            account_holder_name: newAccount.account_holder_name,
+            account_type: newAccount.account_type
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Error creating audit log:", error);
+      }
+      
       // Check for workflow triggers
       const suggestedWorkflows = await suggestWorkflows(newAccount, 'account_created');
       if (suggestedWorkflows.length > 0) {
         console.log(`${suggestedWorkflows.length} workflow(s) triggered for new account:`, suggestedWorkflows);
-        // Could show a toast notification here
       }
     }
   });
