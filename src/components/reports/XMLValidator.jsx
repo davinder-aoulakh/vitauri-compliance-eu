@@ -1,0 +1,709 @@
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  FileCheck,
+  Loader2,
+  ChevronDown,
+  ChevronRight
+} from "lucide-react";
+import { JURISDICTION_CONFIGS, validateTIN } from "./JurisdictionConfig";
+
+// Validation rule categories
+const VALIDATION_CATEGORIES = {
+  STRUCTURE: "XML Structure",
+  SCHEMA: "Schema Compliance",
+  DATA: "Data Validation",
+  JURISDICTION: "Jurisdiction Rules",
+  BUSINESS: "Business Rules"
+};
+
+export default function XMLValidator({ 
+  xmlContent, 
+  report, 
+  accounts, 
+  controllingPersons,
+  entity,
+  onValidationComplete 
+}) {
+  const [validating, setValidating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState(null);
+  const [expandedCategories, setExpandedCategories] = useState([]);
+
+  const runValidation = async () => {
+    setValidating(true);
+    setProgress(0);
+    
+    const validationResults = {
+      is_valid: true,
+      errors: [],
+      warnings: [],
+      info: [],
+      categories: {},
+      validated_date: new Date().toISOString(),
+      total_checks: 0,
+      passed_checks: 0
+    };
+
+    try {
+      // Step 1: XML Structure Validation (20%)
+      setProgress(10);
+      await validateXMLStructure(xmlContent, validationResults);
+      setProgress(20);
+
+      // Step 2: Schema Element Validation (40%)
+      await validateSchemaElements(xmlContent, validationResults);
+      setProgress(40);
+
+      // Step 3: Data Validation (60%)
+      await validateAccountData(accounts, controllingPersons, report, validationResults);
+      setProgress(60);
+
+      // Step 4: Jurisdiction-Specific Rules (80%)
+      await validateJurisdictionRules(report, entity, accounts, validationResults);
+      setProgress(80);
+
+      // Step 5: Business Rules (100%)
+      await validateBusinessRules(report, accounts, controllingPersons, validationResults);
+      setProgress(100);
+
+      // Calculate final validity
+      validationResults.is_valid = validationResults.errors.length === 0;
+      validationResults.passed_checks = validationResults.total_checks - validationResults.errors.length;
+
+      setResults(validationResults);
+      onValidationComplete?.(validationResults);
+
+    } catch (error) {
+      validationResults.errors.push({
+        category: VALIDATION_CATEGORIES.STRUCTURE,
+        code: "VAL001",
+        message: `Validation error: ${error.message}`,
+        severity: "error"
+      });
+      setResults(validationResults);
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const validateXMLStructure = async (xml, results) => {
+    results.categories[VALIDATION_CATEGORIES.STRUCTURE] = { passed: 0, failed: 0, warnings: 0 };
+    const cat = results.categories[VALIDATION_CATEGORIES.STRUCTURE];
+
+    // Check if XML is valid
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
+    const parseErrors = xmlDoc.getElementsByTagName("parsererror");
+    
+    results.total_checks++;
+    if (parseErrors.length > 0) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.STRUCTURE,
+        code: "XML001",
+        message: "Invalid XML structure - parsing error detected",
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check for required root element
+    results.total_checks++;
+    const root = xmlDoc.getElementsByTagName("crs:CRS_OECD")[0];
+    if (!root) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.STRUCTURE,
+        code: "XML002",
+        message: "Missing required root element: crs:CRS_OECD",
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check for MessageSpec
+    results.total_checks++;
+    const messageSpec = xmlDoc.getElementsByTagName("crs:MessageSpec")[0];
+    if (!messageSpec) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.STRUCTURE,
+        code: "XML003",
+        message: "Missing required element: MessageSpec",
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check for CrsBody
+    results.total_checks++;
+    const crsBody = xmlDoc.getElementsByTagName("crs:CrsBody")[0];
+    if (!crsBody) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.STRUCTURE,
+        code: "XML004",
+        message: "Missing required element: CrsBody",
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+  };
+
+  const validateSchemaElements = async (xml, results) => {
+    results.categories[VALIDATION_CATEGORIES.SCHEMA] = { passed: 0, failed: 0, warnings: 0 };
+    const cat = results.categories[VALIDATION_CATEGORIES.SCHEMA];
+    
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
+
+    // Check MessageSpec required elements
+    const requiredMessageElements = [
+      "crs:SendingCompanyIN",
+      "crs:TransmittingCountry",
+      "crs:ReceivingCountry",
+      "crs:MessageType",
+      "crs:MessageRefId",
+      "crs:ReportingPeriod",
+      "crs:Timestamp"
+    ];
+
+    requiredMessageElements.forEach(elem => {
+      results.total_checks++;
+      const element = xmlDoc.getElementsByTagName(elem)[0];
+      if (!element || !element.textContent?.trim()) {
+        results.errors.push({
+          category: VALIDATION_CATEGORIES.SCHEMA,
+          code: `SCH${requiredMessageElements.indexOf(elem) + 1}`,
+          message: `Missing or empty required element: ${elem.replace('crs:', '')}`,
+          severity: "error"
+        });
+        cat.failed++;
+      } else {
+        cat.passed++;
+      }
+    });
+
+    // Check ReportingFI
+    results.total_checks++;
+    const reportingFI = xmlDoc.getElementsByTagName("crs:ReportingFI")[0];
+    if (!reportingFI) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.SCHEMA,
+        code: "SCH010",
+        message: "Missing required element: ReportingFI",
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+
+      // Check ReportingFI sub-elements
+      const fiRequiredElements = ["crs:ResCountryCode", "crs:Name"];
+      fiRequiredElements.forEach(elem => {
+        results.total_checks++;
+        const element = reportingFI.getElementsByTagName(elem)[0];
+        if (!element || !element.textContent?.trim()) {
+          results.errors.push({
+            category: VALIDATION_CATEGORIES.SCHEMA,
+            code: `SCH${fiRequiredElements.indexOf(elem) + 11}`,
+            message: `Missing ReportingFI element: ${elem.replace('crs:', '')}`,
+            severity: "error"
+          });
+          cat.failed++;
+        } else {
+          cat.passed++;
+        }
+      });
+    }
+
+    // Check AccountReport elements
+    const accountReports = xmlDoc.getElementsByTagName("crs:AccountReport");
+    results.total_checks++;
+    if (accountReports.length === 0) {
+      results.warnings.push({
+        category: VALIDATION_CATEGORIES.SCHEMA,
+        code: "SCH020",
+        message: "No AccountReport elements found - consider NIL report if no accounts",
+        severity: "warning"
+      });
+      cat.warnings++;
+    } else {
+      cat.passed++;
+
+      // Validate each AccountReport
+      Array.from(accountReports).forEach((accReport, idx) => {
+        // DocSpec validation
+        results.total_checks++;
+        const docSpec = accReport.getElementsByTagName("crs:DocSpec")[0];
+        if (!docSpec) {
+          results.errors.push({
+            category: VALIDATION_CATEGORIES.SCHEMA,
+            code: `SCH${21 + idx}`,
+            message: `AccountReport #${idx + 1}: Missing DocSpec element`,
+            severity: "error"
+          });
+          cat.failed++;
+        } else {
+          cat.passed++;
+        }
+
+        // AccountNumber validation
+        results.total_checks++;
+        const accNum = accReport.getElementsByTagName("crs:AccountNumber")[0];
+        if (!accNum || !accNum.textContent?.trim()) {
+          results.errors.push({
+            category: VALIDATION_CATEGORIES.SCHEMA,
+            code: `SCH${30 + idx}`,
+            message: `AccountReport #${idx + 1}: Missing AccountNumber`,
+            severity: "error"
+          });
+          cat.failed++;
+        } else {
+          cat.passed++;
+        }
+
+        // AccountHolder validation
+        results.total_checks++;
+        const accHolder = accReport.getElementsByTagName("crs:AccountHolder")[0];
+        if (!accHolder) {
+          results.errors.push({
+            category: VALIDATION_CATEGORIES.SCHEMA,
+            code: `SCH${40 + idx}`,
+            message: `AccountReport #${idx + 1}: Missing AccountHolder`,
+            severity: "error"
+          });
+          cat.failed++;
+        } else {
+          cat.passed++;
+        }
+      });
+    }
+  };
+
+  const validateAccountData = async (accounts, controllingPersons, report, results) => {
+    results.categories[VALIDATION_CATEGORIES.DATA] = { passed: 0, failed: 0, warnings: 0 };
+    const cat = results.categories[VALIDATION_CATEGORIES.DATA];
+    const jurisdiction = report.reporting_jurisdiction;
+
+    accounts.forEach((account, idx) => {
+      // Validate account holder name
+      results.total_checks++;
+      if (!account.account_holder_name?.trim()) {
+        results.errors.push({
+          category: VALIDATION_CATEGORIES.DATA,
+          code: `DAT${idx}01`,
+          message: `Account ${account.account_number}: Missing account holder name`,
+          severity: "error",
+          accountId: account.id
+        });
+        cat.failed++;
+      } else {
+        cat.passed++;
+      }
+
+      // Validate tax residencies
+      results.total_checks++;
+      if (!account.tax_residencies || account.tax_residencies.length === 0) {
+        results.errors.push({
+          category: VALIDATION_CATEGORIES.DATA,
+          code: `DAT${idx}02`,
+          message: `Account ${account.account_number}: No tax residencies defined`,
+          severity: "error",
+          accountId: account.id
+        });
+        cat.failed++;
+      } else {
+        cat.passed++;
+
+        // Validate each TIN
+        account.tax_residencies.forEach((res, resIdx) => {
+          results.total_checks++;
+          if (!res.tin && !res.tin_unavailable_reason) {
+            results.warnings.push({
+              category: VALIDATION_CATEGORIES.DATA,
+              code: `DAT${idx}${resIdx}3`,
+              message: `Account ${account.account_number}: Missing TIN for ${res.country}`,
+              severity: "warning",
+              accountId: account.id
+            });
+            cat.warnings++;
+          } else if (res.tin) {
+            // Validate TIN format if available
+            const tinValidation = validateTIN(res.tin, res.country);
+            if (!tinValidation.valid) {
+              results.warnings.push({
+                category: VALIDATION_CATEGORIES.DATA,
+                code: `DAT${idx}${resIdx}4`,
+                message: `Account ${account.account_number}: ${tinValidation.message} for ${res.country}`,
+                severity: "warning",
+                accountId: account.id
+              });
+              cat.warnings++;
+            } else {
+              cat.passed++;
+            }
+          } else {
+            cat.passed++;
+          }
+        });
+      }
+
+      // Validate address
+      results.total_checks++;
+      if (!account.account_holder_address?.country) {
+        results.warnings.push({
+          category: VALIDATION_CATEGORIES.DATA,
+          code: `DAT${idx}05`,
+          message: `Account ${account.account_number}: Missing address country`,
+          severity: "warning",
+          accountId: account.id
+        });
+        cat.warnings++;
+      } else {
+        cat.passed++;
+      }
+
+      // Validate balance for individuals
+      results.total_checks++;
+      if (account.account_holder_type === 'individual' && !account.date_of_birth) {
+        results.warnings.push({
+          category: VALIDATION_CATEGORIES.DATA,
+          code: `DAT${idx}06`,
+          message: `Account ${account.account_number}: Missing date of birth for individual`,
+          severity: "warning",
+          accountId: account.id
+        });
+        cat.warnings++;
+      } else {
+        cat.passed++;
+      }
+    });
+
+    // Validate controlling persons
+    controllingPersons.forEach((cp, idx) => {
+      results.total_checks++;
+      if (!cp.tax_residencies || cp.tax_residencies.length === 0) {
+        results.warnings.push({
+          category: VALIDATION_CATEGORIES.DATA,
+          code: `DCP${idx}01`,
+          message: `Controlling Person ${cp.full_name}: No tax residencies defined`,
+          severity: "warning"
+        });
+        cat.warnings++;
+      } else {
+        cat.passed++;
+      }
+
+      results.total_checks++;
+      if (!cp.date_of_birth) {
+        results.warnings.push({
+          category: VALIDATION_CATEGORIES.DATA,
+          code: `DCP${idx}02`,
+          message: `Controlling Person ${cp.full_name}: Missing date of birth`,
+          severity: "warning"
+        });
+        cat.warnings++;
+      } else {
+        cat.passed++;
+      }
+    });
+  };
+
+  const validateJurisdictionRules = async (report, entity, accounts, results) => {
+    results.categories[VALIDATION_CATEGORIES.JURISDICTION] = { passed: 0, failed: 0, warnings: 0 };
+    const cat = results.categories[VALIDATION_CATEGORIES.JURISDICTION];
+    const jurisdiction = report.reporting_jurisdiction;
+    const config = JURISDICTION_CONFIGS[jurisdiction] || JURISDICTION_CONFIGS["DEFAULT"];
+
+    // Check GIIN requirement
+    results.total_checks++;
+    if (config.requiresGIIN && !entity?.giin) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.JURISDICTION,
+        code: "JUR001",
+        message: `${config.name} requires GIIN for reporting FI`,
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check TIN requirement for entity
+    results.total_checks++;
+    if (!entity?.tax_id) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.JURISDICTION,
+        code: "JUR002",
+        message: "Reporting FI Tax ID (TIN) is required",
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check encryption requirement
+    results.total_checks++;
+    if (config.requiresEncryption) {
+      results.info.push({
+        category: VALIDATION_CATEGORIES.JURISDICTION,
+        code: "JUR003",
+        message: `${config.name} requires XML encryption before submission`,
+        severity: "info"
+      });
+    }
+    cat.passed++;
+
+    // Add jurisdiction-specific rule reminders
+    config.specificRules?.forEach((rule, idx) => {
+      results.info.push({
+        category: VALIDATION_CATEGORIES.JURISDICTION,
+        code: `JUR${100 + idx}`,
+        message: rule,
+        severity: "info"
+      });
+    });
+  };
+
+  const validateBusinessRules = async (report, accounts, controllingPersons, results) => {
+    results.categories[VALIDATION_CATEGORIES.BUSINESS] = { passed: 0, failed: 0, warnings: 0 };
+    const cat = results.categories[VALIDATION_CATEGORIES.BUSINESS];
+
+    // Check for duplicate accounts
+    results.total_checks++;
+    const accountNumbers = accounts.map(a => a.account_number);
+    const duplicates = accountNumbers.filter((num, idx) => accountNumbers.indexOf(num) !== idx);
+    if (duplicates.length > 0) {
+      results.errors.push({
+        category: VALIDATION_CATEGORIES.BUSINESS,
+        code: "BUS001",
+        message: `Duplicate account numbers found: ${[...new Set(duplicates)].join(', ')}`,
+        severity: "error"
+      });
+      cat.failed++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check reporting year consistency
+    results.total_checks++;
+    const reportYear = report.reporting_year;
+    const inconsistentYears = accounts.filter(a => 
+      a.reporting_year && a.reporting_year !== reportYear.toString()
+    );
+    if (inconsistentYears.length > 0) {
+      results.warnings.push({
+        category: VALIDATION_CATEGORIES.BUSINESS,
+        code: "BUS002",
+        message: `${inconsistentYears.length} accounts have different reporting year than report (${reportYear})`,
+        severity: "warning"
+      });
+      cat.warnings++;
+    } else {
+      cat.passed++;
+    }
+
+    // Check for closed accounts without closure info
+    results.total_checks++;
+    const closedWithoutDate = accounts.filter(a => 
+      a.account_closed_during_period && a.status === 'closed'
+    );
+    if (closedWithoutDate.length > 0) {
+      results.info.push({
+        category: VALIDATION_CATEGORIES.BUSINESS,
+        code: "BUS003",
+        message: `${closedWithoutDate.length} closed accounts will be reported with closure flag`,
+        severity: "info"
+      });
+    }
+    cat.passed++;
+
+    // Check controlling persons for passive NFE accounts
+    results.total_checks++;
+    const passiveNFEAccounts = accounts.filter(a => a.entity_classification === 'passive_nfe');
+    const passiveWithoutCP = passiveNFEAccounts.filter(a => 
+      !controllingPersons.some(cp => cp.account_id === a.id)
+    );
+    if (passiveWithoutCP.length > 0) {
+      results.warnings.push({
+        category: VALIDATION_CATEGORIES.BUSINESS,
+        code: "BUS004",
+        message: `${passiveWithoutCP.length} passive NFE accounts have no controlling persons`,
+        severity: "warning"
+      });
+      cat.warnings++;
+    } else {
+      cat.passed++;
+    }
+  };
+
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const getSeverityIcon = (severity) => {
+    switch (severity) {
+      case 'error': return <XCircle className="w-4 h-4 text-red-600" />;
+      case 'warning': return <AlertTriangle className="w-4 h-4 text-amber-600" />;
+      case 'info': return <CheckCircle2 className="w-4 h-4 text-blue-600" />;
+      default: return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">XML Validation</h3>
+          <p className="text-sm text-slate-600">Comprehensive schema and data validation</p>
+        </div>
+        <Button 
+          onClick={runValidation}
+          disabled={validating || !xmlContent}
+          className="bg-indigo-600 hover:bg-indigo-700"
+        >
+          {validating ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Validating...
+            </>
+          ) : (
+            <>
+              <FileCheck className="w-4 h-4 mr-2" />
+              Run Validation
+            </>
+          )}
+        </Button>
+      </div>
+
+      {validating && (
+        <div className="space-y-2">
+          <Progress value={progress} className="h-2" />
+          <p className="text-sm text-slate-600 text-center">
+            {progress < 20 ? "Checking XML structure..." :
+             progress < 40 ? "Validating schema elements..." :
+             progress < 60 ? "Validating account data..." :
+             progress < 80 ? "Checking jurisdiction rules..." :
+             "Applying business rules..."}
+          </p>
+        </div>
+      )}
+
+      {results && (
+        <Card className={`border-2 ${
+          results.is_valid ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'
+        }`}>
+          <CardHeader className={`border-b ${results.is_valid ? 'border-green-200' : 'border-red-200'}`}>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {results.is_valid ? (
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-600" />
+                )}
+                <span className={results.is_valid ? "text-green-900" : "text-red-900"}>
+                  {results.is_valid ? "Validation Passed" : "Validation Failed"}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  {results.passed_checks} passed
+                </Badge>
+                <Badge variant="outline" className="bg-red-100 text-red-800">
+                  {results.errors.length} errors
+                </Badge>
+                <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                  {results.warnings.length} warnings
+                </Badge>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3">
+            {/* Category breakdown */}
+            {Object.entries(results.categories).map(([category, stats]) => (
+              <div key={category} className="border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {expandedCategories.includes(category) 
+                      ? <ChevronDown className="w-4 h-4" />
+                      : <ChevronRight className="w-4 h-4" />
+                    }
+                    <span className="font-medium">{category}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {stats.passed > 0 && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+                        {stats.passed} ✓
+                      </Badge>
+                    )}
+                    {stats.failed > 0 && (
+                      <Badge variant="outline" className="bg-red-50 text-red-700 text-xs">
+                        {stats.failed} ✗
+                      </Badge>
+                    )}
+                    {stats.warnings > 0 && (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">
+                        {stats.warnings} ⚠
+                      </Badge>
+                    )}
+                  </div>
+                </button>
+                
+                {expandedCategories.includes(category) && (
+                  <div className="p-3 space-y-2 border-t">
+                    {[...results.errors, ...results.warnings, ...results.info]
+                      .filter(item => item.category === category)
+                      .map((item, idx) => (
+                        <div 
+                          key={idx}
+                          className={`flex items-start gap-2 p-2 rounded text-sm ${
+                            item.severity === 'error' ? 'bg-red-50' :
+                            item.severity === 'warning' ? 'bg-amber-50' :
+                            'bg-blue-50'
+                          }`}
+                        >
+                          {getSeverityIcon(item.severity)}
+                          <div>
+                            <span className="font-mono text-xs text-slate-500 mr-2">[{item.code}]</span>
+                            <span>{item.message}</span>
+                          </div>
+                        </div>
+                      ))
+                    }
+                    {[...results.errors, ...results.warnings, ...results.info]
+                      .filter(item => item.category === category).length === 0 && (
+                      <p className="text-sm text-green-700 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        All checks passed for this category
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
