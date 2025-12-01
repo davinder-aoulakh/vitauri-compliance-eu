@@ -644,6 +644,55 @@ export default function AccountClassification({ account, onComplete, onCancel })
       self_certification_obtained: finalNode?.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
 
+    // Execute post-completion actions from all completed steps
+    const allCompletedSteps = [...completedPath];
+    for (const stepId of allCompletedSteps) {
+      const step = stepMap[stepId];
+      if (step?.post_completion_actions?.length > 0) {
+        for (const action of step.post_completion_actions) {
+          if (action.target_entity_type === "Account") {
+            let newValue = action.value;
+            
+            // Determine the value based on source
+            if (action.value_source === "from_step_answer") {
+              newValue = cleanedAnswers[action.value] || action.value;
+            } else if (action.value_source === "from_workflow_outcome") {
+              if (action.value === "reportability_status") {
+                newValue = reportabilityStatus;
+              }
+            }
+            // static_value uses action.value directly
+            
+            // Apply the update to classificationData
+            if (action.field_to_update && newValue) {
+              classificationData[action.field_to_update] = newValue;
+            }
+          }
+        }
+      }
+    }
+    
+    // Also check the final node for post-completion actions
+    if (finalNode?.post_completion_actions?.length > 0) {
+      for (const action of finalNode.post_completion_actions) {
+        if (action.target_entity_type === "Account") {
+          let newValue = action.value;
+          
+          if (action.value_source === "from_step_answer") {
+            newValue = cleanedAnswers[action.value] || action.value;
+          } else if (action.value_source === "from_workflow_outcome") {
+            if (action.value === "reportability_status") {
+              newValue = reportabilityStatus;
+            }
+          }
+          
+          if (action.field_to_update && newValue) {
+            classificationData[action.field_to_update] = newValue;
+          }
+        }
+      }
+    }
+
     // Append new document to the documents array instead of overwriting
     // Use the latest account data to ensure we have up-to-date documents
     if (fileUploadAnswer) {

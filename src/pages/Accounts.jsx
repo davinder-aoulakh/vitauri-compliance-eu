@@ -532,8 +532,14 @@ export default function AccountsPage() {
                                     </div>
                                     <p className="text-xs text-slate-500 capitalize">
                                       {account.account_holder_type?.replace("_", " ")}
+                                      {account.entity_classification === "active_nfe" && (
+                                        <span className="ml-2 text-purple-600 font-medium">(Active NFE)</span>
+                                      )}
                                       {isPassiveNFE && (
-                                        <span className="ml-2 text-purple-600 font-medium">(Passive NFE)</span>
+                                        <span className="ml-2 text-orange-600 font-medium">(Passive NFE)</span>
+                                      )}
+                                      {account.entity_classification === "financial_institution" && (
+                                        <span className="ml-2 text-blue-600 font-medium">(Financial Institution)</span>
                                       )}
                                     </p>
                                   </div>
