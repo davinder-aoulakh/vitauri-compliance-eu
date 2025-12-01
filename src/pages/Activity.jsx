@@ -441,11 +441,11 @@ export default function ActivityPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Event Time</TableHead>
                   <TableHead>Action</TableHead>
                   <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
                   <TableHead>Entity Type</TableHead>
+                  <TableHead>Record Created</TableHead>
                   <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
