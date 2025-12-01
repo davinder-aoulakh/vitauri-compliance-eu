@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { REFRESH_INTERVAL_OPTIONS, DEFAULT_REFRESH_INTERVALS } from "./useWidgetRefresh";
 
 export default function WidgetConfigDialog({ open, onOpenChange, widget, onSave }) {
   const [editedWidget, setEditedWidget] = useState(widget);
@@ -550,6 +551,49 @@ export default function WidgetConfigDialog({ open, onOpenChange, widget, onSave 
               {renderConfigOptions()}
             </div>
           </div>
+
+          {/* Auto-Refresh Settings - Available for most widget types */}
+          {editedWidget.widget_type !== 'quick_actions' && (
+            <div className="border-t pt-4 space-y-4">
+              <Label className="text-base font-semibold">Real-Time Updates</Label>
+              
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium">Auto-Refresh</p>
+                  <p className="text-xs text-slate-500">Automatically update widget data</p>
+                </div>
+                <Switch
+                  checked={editedWidget.config?.autoRefresh !== false}
+                  onCheckedChange={(checked) => updateConfig('autoRefresh', checked)}
+                />
+              </div>
+
+              {editedWidget.config?.autoRefresh !== false && (
+                <div>
+                  <Label>Refresh Interval</Label>
+                  <Select
+                    value={String(editedWidget.config?.refreshInterval || DEFAULT_REFRESH_INTERVALS[editedWidget.widget_type] || 30000)}
+                    onValueChange={(value) => updateConfig('refreshInterval', parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REFRESH_INTERVAL_OPTIONS.filter(opt => opt.value > 0).map(opt => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                          {opt.value === DEFAULT_REFRESH_INTERVALS[editedWidget.widget_type] && ' (default)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    More frequent updates use more resources
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

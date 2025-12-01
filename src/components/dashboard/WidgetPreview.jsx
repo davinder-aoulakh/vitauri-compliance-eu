@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,10 +18,12 @@ import {
   Activity,
   ArrowRight,
   Calendar,
-  FileWarning
+  FileWarning,
+  RefreshCw
 } from "lucide-react";
 import JurisdictionOverviewWidget from "./JurisdictionOverviewWidget";
 import EntityClassificationWidget from "./EntityClassificationWidget";
+import { useWidgetRefresh, getWidgetQueryKeys, DEFAULT_REFRESH_INTERVALS } from "./useWidgetRefresh";
 import {
   BarChart,
   Bar,
@@ -89,6 +91,8 @@ export default function WidgetPreview({ widget, tenantId }) {
     const reportingFIs = entities.filter(e => e.rfi_status === 'reporting_fi').length;
     const pendingReviewCount = accounts.filter(a => a.reportability_status === 'pending_review').length;
 
+    // Show refresh indicator in stats card
+
     switch (metric) {
       case 'total_accounts':
         value = accounts.length;
@@ -148,23 +152,22 @@ export default function WidgetPreview({ widget, tenantId }) {
     return (
       <Card className="h-full">
         <CardContent className="p-5">
-          {(showTrend && trendValue) && (
-            <div className="flex justify-end mb-2">
+          <div className="flex justify-between items-start mb-2">
+            <RefreshIndicator showButton={true} />
+            {(showTrend && trendValue) && (
               <Badge variant="outline" className={`text-xs ${getTrendColor()}`}>
                 {getTrendIcon()}
                 <span className="ml-1">{trendValue}</span>
                 {trendLabel && <span className="ml-1">{trendLabel}</span>}
               </Badge>
-            </div>
-          )}
-          {!showTrend && trendLabel && (
-            <div className="flex justify-end mb-2">
+            )}
+            {!showTrend && trendLabel && (
               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
                 <TrendingUp className="w-3 h-3 mr-1" />
                 {trendLabel}
               </Badge>
-            </div>
-          )}
+            )}
+          </div>
           <div className="flex items-start justify-between">
             <div className={`p-3 rounded-xl ${iconBgColor}`}>
               {icon}
@@ -345,7 +348,10 @@ export default function WidgetPreview({ widget, tenantId }) {
     return (
       <Card>
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{widget.title}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">{widget.title}</CardTitle>
+            <RefreshIndicator showButton={true} />
+          </div>
           <Link to={createPageUrl("Entities")} className="text-xs text-indigo-600 hover:underline">
             View All
           </Link>
@@ -404,7 +410,10 @@ export default function WidgetPreview({ widget, tenantId }) {
     return (
       <Card>
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{widget.title}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">{widget.title}</CardTitle>
+            <RefreshIndicator showButton={true} />
+          </div>
           <Link to={createPageUrl("Accounts")} className="text-xs text-indigo-600 hover:underline">
             View All
           </Link>
@@ -701,8 +710,9 @@ export default function WidgetPreview({ widget, tenantId }) {
     // Default: show all pending tasks
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">{widget.title}</CardTitle>
+          <RefreshIndicator showButton={true} />
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
