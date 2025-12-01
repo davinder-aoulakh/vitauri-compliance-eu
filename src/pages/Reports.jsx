@@ -13,7 +13,9 @@ import {
   Trash2,
   FileCode,
   Send,
-  Edit
+  Edit,
+  Brain,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -37,6 +39,8 @@ import ReportWizard from "../components/reports/ReportWizard";
 import XMLGenerator from "../components/reports/XMLGenerator";
 import ReportDetails from "../components/reports/ReportDetails";
 import SubmissionTracker from "../components/reports/SubmissionTracker";
+import AIDataValidator from "../components/ai/AIDataValidator";
+import AIJurisdictionAdvisor from "../components/ai/AIJurisdictionAdvisor";
 
 export default function ReportsPage() {
   const [user, setUser] = useState(null);
@@ -46,6 +50,8 @@ export default function ReportsPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [showXMLGenerator, setShowXMLGenerator] = useState(false);
   const [showSubmissionTracker, setShowSubmissionTracker] = useState(false);
+  const [showAIValidator, setShowAIValidator] = useState(false);
+  const [showJurisdictionAdvisor, setShowJurisdictionAdvisor] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -164,14 +170,32 @@ export default function ReportsPage() {
               Generate and manage CRS XML reports for tax authority submission
             </p>
           </div>
-          <Button 
-            onClick={() => setShowWizard(true)}
-            className="gap-2 text-white shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-          >
-            <Plus className="w-4 h-4" />
-            Create New Report
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowJurisdictionAdvisor(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Globe className="w-4 h-4" />
+              CRS Advisor
+            </Button>
+            <Button 
+              onClick={() => setShowAIValidator(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Brain className="w-4 h-4" />
+              AI Validator
+            </Button>
+            <Button 
+              onClick={() => setShowWizard(true)}
+              className="gap-2 text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+            >
+              <Plus className="w-4 h-4" />
+              Create New Report
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -429,6 +453,28 @@ export default function ReportsPage() {
               queryClient.invalidateQueries(['crs-reports']);
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAIValidator} onOpenChange={setShowAIValidator}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI Data Validation</DialogTitle>
+          </DialogHeader>
+          <AIDataValidator
+            accounts={[]}
+            entities={entities}
+            onIssueSelect={() => {}}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showJurisdictionAdvisor} onOpenChange={setShowJurisdictionAdvisor}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>CRS Jurisdiction Advisor</DialogTitle>
+          </DialogHeader>
+          <AIJurisdictionAdvisor initialJurisdiction={tenant?.jurisdiction} />
         </DialogContent>
       </Dialog>
     </div>
