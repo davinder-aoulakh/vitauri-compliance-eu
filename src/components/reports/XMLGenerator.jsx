@@ -22,6 +22,7 @@ import { JURISDICTION_CONFIGS, generateFileName, generateDocRefId } from "./Juri
 import XMLValidator from "./XMLValidator";
 import ReportPreviewExport from "./ReportPreviewExport";
 import NILReportGenerator from "./NILReportGenerator";
+import TestModeGenerator from "./TestModeGenerator";
 
 export default function XMLGenerator({ report, onSuccess }) {
   const [generating, setGenerating] = useState(false);
@@ -356,7 +357,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       </Alert>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="generate" className="flex items-center gap-2">
             <FileCode className="w-4 h-4" />
             Generate
@@ -372,6 +373,10 @@ export default function XMLGenerator({ report, onSuccess }) {
           <TabsTrigger value="nil" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             NIL Report
+          </TabsTrigger>
+          <TabsTrigger value="test" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Test Mode
           </TabsTrigger>
         </TabsList>
 
@@ -478,6 +483,14 @@ export default function XMLGenerator({ report, onSuccess }) {
             entity={entity}
             tenant={tenant}
             onSuccess={onSuccess}
+          />
+        </TabsContent>
+
+        <TabsContent value="test" className="mt-6">
+          <TestModeGenerator
+            entity={entity}
+            tenant={tenant}
+            jurisdiction={report?.reporting_jurisdiction}
           />
         </TabsContent>
       </Tabs>
