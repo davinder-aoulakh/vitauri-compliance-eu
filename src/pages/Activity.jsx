@@ -38,8 +38,15 @@ import {
   CheckCircle,
   Send,
   Calendar,
-  Download
+  Download,
+  LayoutDashboard,
+  Grid3X3,
+  Upload,
+  Shield,
+  UserMinus,
+  Archive
 } from "lucide-react";
+import { auditLog } from "@/components/utils/auditLogger";
 import moment from "moment";
 
 export default function ActivityPage() {
@@ -163,8 +170,20 @@ export default function ActivityPage() {
       report_submitted: <Send className="w-4 h-4" />,
       user_invited: <UserPlus className="w-4 h-4" />,
       user_role_changed: <User className="w-4 h-4" />,
+      user_removed: <UserMinus className="w-4 h-4" />,
       workflow_published: <GitBranch className="w-4 h-4" />,
-      settings_changed: <Settings className="w-4 h-4" />
+      workflow_archived: <Archive className="w-4 h-4" />,
+      settings_changed: <Settings className="w-4 h-4" />,
+      dashboard_created: <LayoutDashboard className="w-4 h-4" />,
+      dashboard_updated: <Edit className="w-4 h-4" />,
+      dashboard_deleted: <Trash2 className="w-4 h-4" />,
+      dashboard_published: <CheckCircle className="w-4 h-4" />,
+      widget_added: <Grid3X3 className="w-4 h-4" />,
+      widget_updated: <Edit className="w-4 h-4" />,
+      widget_removed: <Trash2 className="w-4 h-4" />,
+      data_exported: <Download className="w-4 h-4" />,
+      data_imported: <Upload className="w-4 h-4" />,
+      permission_changed: <Shield className="w-4 h-4" />
     };
     return iconMap[actionType] || <ActivityIcon className="w-4 h-4" />;
   };
@@ -183,8 +202,20 @@ export default function ActivityPage() {
       report_submitted: "bg-teal-100 text-teal-800",
       user_invited: "bg-green-100 text-green-800",
       user_role_changed: "bg-amber-100 text-amber-800",
+      user_removed: "bg-red-100 text-red-800",
       workflow_published: "bg-purple-100 text-purple-800",
-      settings_changed: "bg-slate-100 text-slate-800"
+      workflow_archived: "bg-slate-100 text-slate-800",
+      settings_changed: "bg-slate-100 text-slate-800",
+      dashboard_created: "bg-emerald-100 text-emerald-800",
+      dashboard_updated: "bg-cyan-100 text-cyan-800",
+      dashboard_deleted: "bg-red-100 text-red-800",
+      dashboard_published: "bg-green-100 text-green-800",
+      widget_added: "bg-sky-100 text-sky-800",
+      widget_updated: "bg-blue-100 text-blue-800",
+      widget_removed: "bg-orange-100 text-orange-800",
+      data_exported: "bg-violet-100 text-violet-800",
+      data_imported: "bg-fuchsia-100 text-fuchsia-800",
+      permission_changed: "bg-rose-100 text-rose-800"
     };
 
     const formattedAction = actionType?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -270,18 +301,19 @@ export default function ActivityPage() {
     return entries.map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ');
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
     const csvContent = [
-      ['Timestamp', 'Action', 'User', 'Role', 'Entity Type', 'Entity ID'],
+      ['Timestamp', 'Action', 'User', 'Role', 'Entity Type', 'Entity Name', 'Entity ID'],
       ...filteredLogs.map(log => [
         moment(log.timestamp).format('YYYY-MM-DD HH:mm:ss'),
         log.action_type,
         log.actor_email,
         log.actor_role,
         log.target_entity_type || '',
+        log.target_entity_name || '',
         log.target_entity_id || ''
       ])
-    ].map(row => row.join(',')).join('\n');
+    ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -289,6 +321,15 @@ export default function ActivityPage() {
     a.href = url;
     a.download = `activity-log-${moment().format('YYYY-MM-DD')}.csv`;
     a.click();
+    
+    // Log the export action
+    await auditLog.dataExported('AuditLog', { 
+      records_count: filteredLogs.length,
+      filters_applied: { actionTypeFilter, dateFilter, userFilter, actionCategory },
+      export_format: 'CSV'
+    });
+    
+    toast.success(`Exported ${filteredLogs.length} activity records`);
   };
 
   if (isLoading) {
@@ -411,7 +452,21 @@ export default function ActivityPage() {
                   <SelectItem value="account_classified">Account Classified</SelectItem>
                   <SelectItem value="report_generated">Report Generated</SelectItem>
                   <SelectItem value="report_submitted">Report Submitted</SelectItem>
+                  <SelectItem value="user_invited">User Invited</SelectItem>
+                  <SelectItem value="user_role_changed">User Role Changed</SelectItem>
+                  <SelectItem value="user_removed">User Removed</SelectItem>
+                  <SelectItem value="permission_changed">Permission Changed</SelectItem>
                   <SelectItem value="workflow_published">Workflow Published</SelectItem>
+                  <SelectItem value="workflow_archived">Workflow Archived</SelectItem>
+                  <SelectItem value="dashboard_created">Dashboard Created</SelectItem>
+                  <SelectItem value="dashboard_updated">Dashboard Updated</SelectItem>
+                  <SelectItem value="dashboard_deleted">Dashboard Deleted</SelectItem>
+                  <SelectItem value="dashboard_published">Dashboard Published</SelectItem>
+                  <SelectItem value="widget_added">Widget Added</SelectItem>
+                  <SelectItem value="widget_updated">Widget Updated</SelectItem>
+                  <SelectItem value="widget_removed">Widget Removed</SelectItem>
+                  <SelectItem value="data_exported">Data Exported</SelectItem>
+                  <SelectItem value="data_imported">Data Imported</SelectItem>
                   <SelectItem value="settings_changed">Settings Changed</SelectItem>
                 </SelectContent>
               </Select>
@@ -567,7 +622,12 @@ export default function ActivityPage() {
                             <Badge variant="outline">
                               {log.target_entity_type}
                             </Badge>
-                            {log.target_entity_id && (
+                            {log.target_entity_name && (
+                              <p className="text-xs text-slate-700 mt-1 truncate max-w-[150px]" title={log.target_entity_name}>
+                                {log.target_entity_name}
+                              </p>
+                            )}
+                            {!log.target_entity_name && log.target_entity_id && (
                               <p className="text-xs text-slate-400 mt-1 font-mono truncate max-w-[100px]" title={log.target_entity_id}>
                                 {log.target_entity_id.slice(-8)}
                               </p>
