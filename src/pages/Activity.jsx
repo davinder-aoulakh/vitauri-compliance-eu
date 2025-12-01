@@ -65,13 +65,17 @@ export default function ActivityPage() {
     }
   };
 
-  const { data: auditLogs = [], isLoading, refetch } = useQuery({
+  const { data: auditLogs = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: async () => {
       const logs = await base44.entities.AuditLog.list('-timestamp', 500);
       return logs;
     }
   });
+
+  const handleRefresh = () => {
+    refetch();
+  };
 
   // Get unique users for filter
   const uniqueUsers = [...new Set(auditLogs.map(log => log.actor_email))].filter(Boolean);
