@@ -196,6 +196,80 @@ export default function ActivityPage() {
     );
   };
 
+  // Format changes for readable display
+  const renderChanges = (changes) => {
+    if (!changes) return null;
+
+    // Handle field change format: { field, previous_value, new_value }
+    if (changes.field) {
+      return (
+        <div className="space-y-1">
+          <div className="font-medium text-slate-700">
+            {changes.field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+          </div>
+          {changes.previous_value !== undefined && (
+            <div className="flex items-start gap-2">
+              <span className="text-red-600 font-medium text-xs">Before:</span>
+              <span className="text-slate-600 text-xs">
+                {typeof changes.previous_value === 'object' 
+                  ? formatObjectValue(changes.previous_value) 
+                  : String(changes.previous_value || '(empty)')}
+              </span>
+            </div>
+          )}
+          {changes.new_value !== undefined && (
+            <div className="flex items-start gap-2">
+              <span className="text-green-600 font-medium text-xs">After:</span>
+              <span className="text-slate-600 text-xs">
+                {typeof changes.new_value === 'object' 
+                  ? formatObjectValue(changes.new_value) 
+                  : String(changes.new_value || '(empty)')}
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Handle generic object changes
+    return Object.entries(changes).map(([key, value]) => (
+      <div key={key} className="border-b border-slate-200 pb-2 last:border-0 last:pb-0">
+        <div className="font-medium text-slate-700 text-xs mb-1">
+          {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+        </div>
+        <div className="text-slate-600 text-xs">
+          {typeof value === 'object' && value !== null
+            ? formatObjectValue(value)
+            : String(value ?? '(empty)')}
+        </div>
+      </div>
+    ));
+  };
+
+  const formatObjectValue = (obj) => {
+    if (!obj || typeof obj !== 'object') return String(obj ?? '(empty)');
+    
+    // Handle address objects
+    if (obj.street || obj.city || obj.country) {
+      const parts = [obj.street, obj.city, obj.state, obj.postal_code, obj.country].filter(Boolean);
+      return parts.join(', ') || '(empty)';
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return '(empty)';
+      return obj.map((item, idx) => (
+        <div key={idx} className="ml-2">• {typeof item === 'object' ? formatObjectValue(item) : String(item)}</div>
+      ));
+    }
+
+    // Generic object - show key-value pairs
+    const entries = Object.entries(obj).filter(([_, v]) => v !== null && v !== undefined && v !== '');
+    if (entries.length === 0) return '(empty)';
+    
+    return entries.map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ');
+  };
+
   const exportToCSV = () => {
     const csvContent = [
       ['Timestamp', 'Action', 'User', 'Role', 'Entity Type', 'Entity ID'],
