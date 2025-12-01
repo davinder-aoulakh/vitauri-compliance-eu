@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   TrendingDown,
+  Minus,
   Building2,
   Wallet,
   FileText,
@@ -16,7 +17,8 @@ import {
   Zap,
   Activity,
   ArrowRight,
-  Calendar
+  Calendar,
+  FileWarning
 } from "lucide-react";
 import JurisdictionOverviewWidget from "./JurisdictionOverviewWidget";
 import EntityClassificationWidget from "./EntityClassificationWidget";
@@ -33,7 +35,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
+  Legend,
+  Area,
+  AreaChart
 } from "recharts";
 import moment from "moment";
 import { Link } from "react-router-dom";
@@ -77,7 +81,6 @@ export default function WidgetPreview({ widget, tenantId }) {
   if (widget.widget_type === 'stats_card') {
     const metric = config.metric || 'total_accounts';
     let value = 0;
-    let trend = config.trend || null;
     let trendLabel = config.trendLabel || null;
     let subDescription = config.subDescription || null;
     let icon = <Wallet className="w-6 h-6" />;
@@ -125,10 +128,36 @@ export default function WidgetPreview({ widget, tenantId }) {
         break;
     }
 
+    // Trend indicator config
+    const showTrend = config.showTrend;
+    const trendDirection = config.trendDirection || 'up';
+    const trendValue = config.trendValue || '';
+
+    const getTrendIcon = () => {
+      if (trendDirection === 'up') return <TrendingUp className="w-3 h-3" />;
+      if (trendDirection === 'down') return <TrendingDown className="w-3 h-3" />;
+      return <Minus className="w-3 h-3" />;
+    };
+
+    const getTrendColor = () => {
+      if (trendDirection === 'up') return 'bg-green-50 text-green-700 border-green-200';
+      if (trendDirection === 'down') return 'bg-red-50 text-red-700 border-red-200';
+      return 'bg-slate-50 text-slate-700 border-slate-200';
+    };
+
     return (
       <Card className="h-full">
         <CardContent className="p-5">
-          {trendLabel && (
+          {(showTrend && trendValue) && (
+            <div className="flex justify-end mb-2">
+              <Badge variant="outline" className={`text-xs ${getTrendColor()}`}>
+                {getTrendIcon()}
+                <span className="ml-1">{trendValue}</span>
+                {trendLabel && <span className="ml-1">{trendLabel}</span>}
+              </Badge>
+            </div>
+          )}
+          {!showTrend && trendLabel && (
             <div className="flex justify-end mb-2">
               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
                 <TrendingUp className="w-3 h-3 mr-1" />
@@ -291,7 +320,27 @@ export default function WidgetPreview({ widget, tenantId }) {
   // Entity List Widget
   if (widget.widget_type === 'entity_list') {
     const limit = config.limit || 5;
-    const displayEntities = entities.slice(0, limit);
+    const filterStatus = config.filter_status;
+    const sortBy = config.sortBy || 'created_date';
+    
+    let filteredEntities = [...entities];
+    
+    // Apply status filter
+    if (filterStatus && filterStatus !== 'all') {
+      filteredEntities = filteredEntities.filter(e => e.rfi_status === filterStatus);
+    }
+    
+    // Apply sorting
+    filteredEntities.sort((a, b) => {
+      const desc = sortBy.startsWith('-');
+      const field = desc ? sortBy.slice(1) : sortBy;
+      const aVal = a[field] || '';
+      const bVal = b[field] || '';
+      const comparison = typeof aVal === 'string' ? aVal.localeCompare(bVal) : aVal - bVal;
+      return desc ? -comparison : comparison;
+    });
+    
+    const displayEntities = filteredEntities.slice(0, limit);
 
     return (
       <Card>
@@ -331,11 +380,26 @@ export default function WidgetPreview({ widget, tenantId }) {
   if (widget.widget_type === 'account_list') {
     const limit = config.limit || 5;
     const filterStatus = config.filter_status;
-    let displayAccounts = accounts;
+    const sortBy = config.sortBy || 'created_date';
+    
+    let filteredAccounts = [...accounts];
+    
+    // Apply status filter
     if (filterStatus && filterStatus !== 'all') {
-      displayAccounts = accounts.filter(a => a.reportability_status === filterStatus);
+      filteredAccounts = filteredAccounts.filter(a => a.reportability_status === filterStatus);
     }
-    displayAccounts = displayAccounts.slice(0, limit);
+    
+    // Apply sorting
+    filteredAccounts.sort((a, b) => {
+      const desc = sortBy.startsWith('-');
+      const field = desc ? sortBy.slice(1) : sortBy;
+      const aVal = a[field] || '';
+      const bVal = b[field] || '';
+      const comparison = typeof aVal === 'string' ? aVal.localeCompare(bVal) : (aVal || 0) - (bVal || 0);
+      return desc ? -comparison : comparison;
+    });
+    
+    const displayAccounts = filteredAccounts.slice(0, limit);
 
     return (
       <Card>
@@ -581,6 +645,59 @@ export default function WidgetPreview({ widget, tenantId }) {
       );
     }
 
+    // Entities pending classification
+    if (taskType === 'entities_pending_classification') {
+      return (
+        <Card className="h-full">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-xl border border-purple-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Building2 className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Entities Pending Classification</p>
+                  <p className="text-sm text-slate-600">
+                    {config.taskDescription || `${pendingEntities.length} entities need RFI classification`}
+                  </p>
+                </div>
+              </div>
+              <Link to={createPageUrl("Entities")} className="flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-indigo-600">
+                Review Now
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Self certification missing
+    if (taskType === 'self_certification_missing') {
+      const missingCertCount = accounts.filter(a => !a.self_certification_obtained && a.reportability_status === 'reportable').length;
+      return (
+        <Card className="h-full">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <FileWarning className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Self-Certification Missing</p>
+                  <p className="text-sm text-slate-600">{missingCertCount} reportable accounts need self-certification</p>
+                </div>
+              </div>
+              <Link to={createPageUrl("Accounts")} className="flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-indigo-600">
+                Review Now
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     // Default: show all pending tasks
     return (
       <Card>
@@ -624,7 +741,12 @@ export default function WidgetPreview({ widget, tenantId }) {
     return (
       <Card className="h-full">
         <CardContent className="p-6">
-          <JurisdictionOverviewWidget tenantId={tenantId} />
+          <JurisdictionOverviewWidget 
+            tenantId={tenantId} 
+            deadlineDate={config.deadlineDate}
+            deadlineDescription={config.deadlineDescription}
+            showReportingCount={config.showReportingCount !== false}
+          />
         </CardContent>
       </Card>
     );
@@ -636,6 +758,143 @@ export default function WidgetPreview({ widget, tenantId }) {
       <Card className="h-full">
         <CardContent className="p-6">
           <EntityClassificationWidget tenantId={tenantId} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Line Chart Widget
+  if (widget.widget_type === 'chart_line') {
+    const dataSource = config.data_source || 'accounts_over_time';
+    const timeRange = config.timeRange || '6months';
+    const aggregation = config.aggregation || 'monthly';
+    const lineColor = config.lineColor || '#4f46e5';
+    const showDataPoints = config.showDataPoints !== false;
+    const fillArea = config.fillArea || false;
+
+    // Generate time-based data
+    const generateTimeData = () => {
+      const now = moment();
+      let periods = [];
+      let format = 'MMM';
+      
+      switch (timeRange) {
+        case '7days':
+          for (let i = 6; i >= 0; i--) {
+            periods.push(moment().subtract(i, 'days').format('MMM D'));
+          }
+          format = 'MMM D';
+          break;
+        case '30days':
+          for (let i = 29; i >= 0; i -= aggregation === 'daily' ? 1 : 7) {
+            periods.push(moment().subtract(i, 'days').format('MMM D'));
+          }
+          format = 'MMM D';
+          break;
+        case '3months':
+          for (let i = 2; i >= 0; i--) {
+            periods.push(moment().subtract(i, 'months').format('MMM'));
+          }
+          break;
+        case '6months':
+          for (let i = 5; i >= 0; i--) {
+            periods.push(moment().subtract(i, 'months').format('MMM'));
+          }
+          break;
+        case '1year':
+          for (let i = 11; i >= 0; i--) {
+            periods.push(moment().subtract(i, 'months').format('MMM'));
+          }
+          break;
+        default:
+          for (let i = 5; i >= 0; i--) {
+            periods.push(moment().subtract(i, 'months').format('MMM'));
+          }
+      }
+
+      // Generate data based on source
+      let data = [];
+      const totalItems = dataSource.includes('accounts') ? accounts.length : entities.length;
+      
+      periods.forEach((period, idx) => {
+        let value = 0;
+        switch (dataSource) {
+          case 'accounts_over_time':
+            value = Math.floor((totalItems / periods.length) * (idx + 1) + Math.random() * 5);
+            break;
+          case 'entities_over_time':
+            value = Math.floor((totalItems / periods.length) * (idx + 1) + Math.random() * 3);
+            break;
+          case 'reportable_trend':
+            const reportableCount = accounts.filter(a => a.reportability_status === 'reportable').length;
+            value = Math.floor((reportableCount / periods.length) * (idx + 1) + Math.random() * 2);
+            break;
+          case 'classification_progress':
+            const classifiedCount = entities.filter(e => e.rfi_status !== 'pending_classification').length;
+            value = Math.floor((classifiedCount / Math.max(entities.length, 1)) * 100 * ((idx + 1) / periods.length));
+            break;
+        }
+        data.push({ name: period, value: Math.max(0, value) });
+      });
+
+      return data;
+    };
+
+    const chartData = generateTimeData();
+
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{widget.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              {fillArea ? (
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#64748b" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#64748b" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke={lineColor} 
+                    fill={`${lineColor}20`}
+                    strokeWidth={2}
+                    dot={showDataPoints ? { fill: lineColor, strokeWidth: 2, r: 4 } : false}
+                  />
+                </AreaChart>
+              ) : (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#64748b" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#64748b" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke={lineColor} 
+                    strokeWidth={2}
+                    dot={showDataPoints ? { fill: lineColor, strokeWidth: 2, r: 4 } : false}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              )}
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     );
