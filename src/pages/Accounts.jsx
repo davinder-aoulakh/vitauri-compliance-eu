@@ -189,9 +189,32 @@ export default function AccountsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Account.delete(id),
-    onSuccess: () => {
+    mutationFn: async (id) => {
+      const accountToDelete = accounts.find(a => a.id === id);
+      await base44.entities.Account.delete(id);
+      return accountToDelete;
+    },
+    onSuccess: async (deletedAccount) => {
       queryClient.invalidateQueries(['accounts']);
+      
+      // Create audit log entry
+      try {
+        await base44.entities.AuditLog.create({
+          tenant_id: user.tenant_id,
+          action_type: "account_deleted",
+          actor_email: user.email,
+          actor_role: user.user_role,
+          target_entity_type: "Account",
+          target_entity_id: deletedAccount?.id,
+          changes: {
+            account_number: deletedAccount?.account_number,
+            account_holder_name: deletedAccount?.account_holder_name
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Error creating audit log:", error);
+      }
     }
   });
 
