@@ -58,6 +58,46 @@ export default function Layout({ children }) {
   const [user, setUser] = useState(null);
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(120);
+
+  // Handle inactivity warning
+  const handleInactivityWarning = useCallback((warningTime) => {
+    setShowInactivityWarning(true);
+    setSecondsRemaining(Math.floor(warningTime / 1000));
+  }, []);
+
+  // Inactivity logout hook - 30 minutes timeout, 2 minute warning
+  const { resetTimer } = useInactivityLogout({
+    timeout: 30 * 60 * 1000, // 30 minutes
+    warningTime: 2 * 60 * 1000, // 2 minutes warning
+    onWarning: handleInactivityWarning,
+    enabled: !!user
+  });
+
+  // Countdown timer for warning dialog
+  useEffect(() => {
+    if (!showInactivityWarning) return;
+
+    const interval = setInterval(() => {
+      setSecondsRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showInactivityWarning]);
+
+  // Handle staying active
+  const handleStayActive = () => {
+    setShowInactivityWarning(false);
+    setSecondsRemaining(120);
+    resetTimer();
+  };
 
   useEffect(() => {
     loadUserData();
