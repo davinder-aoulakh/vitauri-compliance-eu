@@ -161,11 +161,29 @@ export default function AccountsPage() {
       setShowClassification(false);
       setSelectedAccount(null);
       
+      // Create audit log entry
+      try {
+        await base44.entities.AuditLog.create({
+          tenant_id: user.tenant_id,
+          action_type: "account_updated",
+          actor_email: user.email,
+          actor_role: user.user_role,
+          target_entity_type: "Account",
+          target_entity_id: updatedAccount.id,
+          changes: {
+            account_number: updatedAccount.account_number,
+            account_holder_name: updatedAccount.account_holder_name
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Error creating audit log:", error);
+      }
+      
       // Check for workflow triggers
       const suggestedWorkflows = await suggestWorkflows(updatedAccount, 'account_updated');
       if (suggestedWorkflows.length > 0) {
         console.log(`${suggestedWorkflows.length} workflow(s) triggered for updated account:`, suggestedWorkflows);
-        // Could show a toast notification here
       }
     }
   });
