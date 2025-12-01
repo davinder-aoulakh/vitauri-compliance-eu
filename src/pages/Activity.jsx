@@ -48,6 +48,9 @@ export default function ActivityPage() {
   const [actionTypeFilter, setActionTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [userFilter, setUserFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [actionCategory, setActionCategory] = useState("all"); // "all", "create", "update", "delete"
 
   useEffect(() => {
     loadUser();
