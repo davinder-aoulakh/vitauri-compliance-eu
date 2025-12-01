@@ -227,14 +227,15 @@ export function ThemeProvider({ children }) {
   // Apply theme
   useEffect(() => {
     const root = document.documentElement;
-    const body = document.body;
     
     let activeTheme = theme;
     if (theme === "system") {
       activeTheme = systemPreference;
     }
     
-    let colors = THEMES[activeTheme]?.colors;
+    // Get colors - fall back to light theme if theme doesn't exist or has no colors
+    let colors = THEMES[activeTheme]?.colors || THEMES.light.colors;
+    
     if (theme === "custom") {
       colors = {
         ...THEMES.light.colors,
