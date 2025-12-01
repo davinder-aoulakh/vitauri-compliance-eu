@@ -48,36 +48,90 @@ import { createPageUrl } from "@/utils";
 const COLORS = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function WidgetPreview({ widget, tenantId }) {
+  const config = widget.config || {};
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Determine refresh interval - use config value or default for widget type
+  const refreshInterval = config.refreshInterval !== undefined 
+    ? config.refreshInterval 
+    : DEFAULT_REFRESH_INTERVALS[widget.widget_type] || 30000;
+
+  const autoRefreshEnabled = config.autoRefresh !== false && refreshInterval > 0;
+
+  // Get query keys for this widget type
+  const queryKeys = getWidgetQueryKeys(widget.widget_type, tenantId);
+
+  // Set up auto-refresh
+  const { refreshData } = useWidgetRefresh({
+    widgetId: widget.widget_id,
+    tenantId,
+    refreshInterval: autoRefreshEnabled ? refreshInterval : 0,
+    enabled: autoRefreshEnabled,
+    queryKeys
+  });
+
+  // Handle manual refresh
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    refreshData();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
   // Fetch data based on widget type
-  const { data: accounts = [] } = useQuery({
+  const { data: accounts = [], isFetching: accountsFetching } = useQuery({
     queryKey: ['widget-accounts', tenantId],
     queryFn: () => base44.entities.Account.filter({ tenant_id: tenantId }),
-    enabled: !!tenantId && ['stats_card', 'account_list', 'reportability_breakdown', 'chart_pie', 'chart_bar'].includes(widget.widget_type),
-    staleTime: 30000
+    enabled: !!tenantId && ['stats_card', 'account_list', 'reportability_breakdown', 'chart_pie', 'chart_bar', 'pending_tasks', 'chart_line'].includes(widget.widget_type),
+    staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
 
-  const { data: entities = [] } = useQuery({
+  const { data: entities = [], isFetching: entitiesFetching } = useQuery({
     queryKey: ['widget-entities', tenantId],
     queryFn: () => base44.entities.Entity.filter({ tenant_id: tenantId }),
-    enabled: !!tenantId && ['stats_card', 'entity_list', 'compliance_summary'].includes(widget.widget_type),
-    staleTime: 30000
+    enabled: !!tenantId && ['stats_card', 'entity_list', 'compliance_summary', 'pending_tasks', 'chart_line'].includes(widget.widget_type),
+    staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
 
-  const { data: auditLogs = [] } = useQuery({
+  const { data: auditLogs = [], isFetching: logsFetching } = useQuery({
     queryKey: ['widget-audit-logs', tenantId],
     queryFn: () => base44.entities.AuditLog.filter({ tenant_id: tenantId }, '-timestamp', 10),
     enabled: !!tenantId && widget.widget_type === 'recent_activity',
-    staleTime: 30000
+    staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
 
-  const { data: reports = [] } = useQuery({
+  const { data: reports = [], isFetching: reportsFetching } = useQuery({
     queryKey: ['widget-reports', tenantId],
     queryFn: () => base44.entities.CRSReport.filter({ tenant_id: tenantId }),
     enabled: !!tenantId && (widget.widget_type === 'stats_card' && widget.config?.metric === 'total_crs_reports'),
-    staleTime: 30000
+    staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
 
-  const config = widget.config || {};
+  const isAnyFetching = accountsFetching || entitiesFetching || logsFetching || reportsFetching || isRefreshing;
+
+  // Refresh indicator component
+  const RefreshIndicator = ({ showButton = false }) => {
+    if (!autoRefreshEnabled && !showButton) return null;
+    
+    return (
+      <div className="flex items-center gap-1">
+        {isAnyFetching && (
+          <RefreshCw className="w-3 h-3 text-indigo-500 animate-spin" />
+        )}
+        {showButton && !isAnyFetching && (
+          <button 
+            onClick={handleManualRefresh}
+            className="p-1 hover:bg-slate-100 rounded transition-colors"
+            title="Refresh data"
+          >
+            <RefreshCw className="w-3 h-3 text-slate-400 hover:text-slate-600" />
+          </button>
+        )}
+        {autoRefreshEnabled && !isAnyFetching && !showButton && (
+          <span className="w-1.5 h-1.5 bg-green-400 rounded-full" title={`Auto-refresh every ${refreshInterval / 1000}s`} />
+        )}
+      </div>
+    );
+  };
 
   // Stats Card Widget
   if (widget.widget_type === 'stats_card') {
@@ -212,8 +266,9 @@ export default function WidgetPreview({ widget, tenantId }) {
 
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">{widget.title}</CardTitle>
+          <RefreshIndicator showButton={true} />
         </CardHeader>
         <CardContent>
           <div className="h-64">
@@ -258,8 +313,9 @@ export default function WidgetPreview({ widget, tenantId }) {
 
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">{widget.title}</CardTitle>
+          <RefreshIndicator showButton={true} />
         </CardHeader>
         <CardContent>
           <div className="h-64">
@@ -292,8 +348,9 @@ export default function WidgetPreview({ widget, tenantId }) {
 
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">{widget.title}</CardTitle>
+          <RefreshIndicator showButton={true} />
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -784,22 +841,18 @@ export default function WidgetPreview({ widget, tenantId }) {
 
     // Generate time-based data
     const generateTimeData = () => {
-      const now = moment();
       let periods = [];
-      let format = 'MMM';
       
       switch (timeRange) {
         case '7days':
           for (let i = 6; i >= 0; i--) {
             periods.push(moment().subtract(i, 'days').format('MMM D'));
           }
-          format = 'MMM D';
           break;
         case '30days':
           for (let i = 29; i >= 0; i -= aggregation === 'daily' ? 1 : 7) {
             periods.push(moment().subtract(i, 'days').format('MMM D'));
           }
-          format = 'MMM D';
           break;
         case '3months':
           for (let i = 2; i >= 0; i--) {
@@ -854,8 +907,9 @@ export default function WidgetPreview({ widget, tenantId }) {
 
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">{widget.title}</CardTitle>
+          <RefreshIndicator showButton={true} />
         </CardHeader>
         <CardContent>
           <div className="h-64">
