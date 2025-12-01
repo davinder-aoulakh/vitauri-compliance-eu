@@ -8,7 +8,12 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Globe, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 
-export default function JurisdictionOverviewWidget({ tenantId }) {
+export default function JurisdictionOverviewWidget({ 
+  tenantId,
+  deadlineDate,
+  deadlineDescription,
+  showReportingCount = true
+}) {
   const { data: tenant, isLoading: isLoadingTenant } = useQuery({
     queryKey: ['tenant-data', tenantId],
     queryFn: async () => {
@@ -31,12 +36,14 @@ export default function JurisdictionOverviewWidget({ tenantId }) {
   const reportingEntitiesCount = entities.filter(e => e.rfi_status === 'reporting_fi').length;
   const totalEntities = entities.length;
 
-  const nextDeadlineDate = new Date('2026-05-31');
+  // Use configured deadline or default
+  const nextDeadlineDate = deadlineDate ? new Date(deadlineDate) : new Date('2026-05-31');
   const formattedDeadline = nextDeadlineDate.toLocaleDateString('en-US', { 
     month: 'long', 
     day: 'numeric', 
     year: 'numeric' 
   });
+  const deadlineLabel = deadlineDescription || 'CRS Annual Report';
 
   if (isLoadingTenant || isLoadingEntities) {
     return (
@@ -67,16 +74,18 @@ export default function JurisdictionOverviewWidget({ tenantId }) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-slate-600">Reporting Entities</span>
-          <span className="text-xl font-bold text-indigo-600">{reportingEntitiesCount}</span>
+      {showReportingCount && (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-slate-600">Reporting Entities</span>
+            <span className="text-xl font-bold text-indigo-600">{reportingEntitiesCount}</span>
+          </div>
+          <Progress 
+            value={totalEntities > 0 ? (reportingEntitiesCount / totalEntities) * 100 : 0} 
+            className="h-2 bg-slate-200" 
+          />
         </div>
-        <Progress 
-          value={totalEntities > 0 ? (reportingEntitiesCount / totalEntities) * 100 : 0} 
-          className="h-2 bg-slate-200" 
-        />
-      </div>
+      )}
 
       <div className="space-y-1">
         <div className="flex justify-between items-center">
@@ -86,7 +95,7 @@ export default function JurisdictionOverviewWidget({ tenantId }) {
             <span className="text-sm">{formattedDeadline}</span>
           </div>
         </div>
-        <p className="text-xs text-slate-500">CRS Annual Report</p>
+        <p className="text-xs text-slate-500">{deadlineLabel}</p>
       </div>
 
       <Link to={createPageUrl("Entities")}>
