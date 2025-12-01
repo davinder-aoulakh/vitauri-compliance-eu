@@ -180,12 +180,23 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     // Determine next step
     let nextNodeId = null;
 
-    // Check conditional logic first
-    if (currentNode.conditional_logic) {
-      const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
-      nextNodeId = conditionMet 
-        ? currentNode.conditional_logic.next_step 
-        : currentNode.conditional_logic.else_step;
+    // Check conditional logic first - but only if trigger condition matches (or no trigger defined)
+    if (currentNode.conditional_logic?.conditions?.length > 0) {
+      const logic = currentNode.conditional_logic;
+      
+      // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
+      let shouldEvaluateAdvancedLogic = true;
+      if (logic.trigger_field && logic.trigger_value) {
+        // Trigger is defined - only evaluate if the current answer matches the trigger
+        const currentAnswer = newAnswers[currentNodeId];
+        shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
+      }
+      
+      if (shouldEvaluateAdvancedLogic) {
+        const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+        nextNodeId = conditionMet ? logic.next_step : logic.else_step;
+      }
+      // If trigger doesn't match, fall through to check option's next_step
     } 
     // Check if there's a selected option with next_step
     else if (selectedValue && currentNode.options) {
