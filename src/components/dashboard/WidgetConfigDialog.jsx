@@ -57,6 +57,7 @@ export default function WidgetConfigDialog({ open, onOpenChange, widget, onSave 
                   <SelectItem value="reportable_accounts">Reportable Accounts</SelectItem>
                   <SelectItem value="pending_review">Pending Review</SelectItem>
                   <SelectItem value="classified_entities">Classified Entities</SelectItem>
+                  <SelectItem value="total_crs_reports">Total CRS Reports</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -59,6 +59,13 @@ export default function WidgetPreview({ widget, tenantId }) {
     staleTime: 30000
   });
 
+  const { data: reports = [] } = useQuery({
+    queryKey: ['widget-reports', tenantId],
+    queryFn: () => base44.entities.CRSReport.filter({ tenant_id: tenantId }),
+    enabled: !!tenantId && (widget.widget_type === 'stats_card' && widget.config?.metric === 'total_crs_reports'),
+    staleTime: 30000
+  });
+
   const config = widget.config || {};
 
   // Stats Card Widget
@@ -88,6 +95,10 @@ export default function WidgetPreview({ widget, tenantId }) {
       case 'classified_entities':
         value = entities.filter(e => e.rfi_status !== 'pending_classification').length;
         icon = <CheckCircle className="w-6 h-6 text-green-600" />;
+        break;
+      case 'total_crs_reports':
+        value = reports.length;
+        icon = <FileText className="w-6 h-6 text-purple-600" />;
         break;
     }
 
