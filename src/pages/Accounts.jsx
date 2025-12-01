@@ -18,7 +18,9 @@ import {
   Users,
   Sparkles,
   Flag,
-  FileCheck
+  FileCheck,
+  Brain,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +57,8 @@ import ControllingPersonsList from "../components/accounts/ControllingPersonsLis
 import AIBulkImport from "../components/import/AIBulkImport";
 import ComplianceFlags from "../components/accounts/ComplianceFlags";
 import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluator";
+import AIDataValidator from "../components/ai/AIDataValidator";
+import AIJurisdictionAdvisor from "../components/ai/AIJurisdictionAdvisor";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -67,6 +71,8 @@ export default function AccountsPage() {
   const [showControllingPersons, setShowControllingPersons] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showComplianceFlags, setShowComplianceFlags] = useState(false);
+  const [showAIValidator, setShowAIValidator] = useState(false);
+  const [showJurisdictionAdvisor, setShowJurisdictionAdvisor] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [entityFilter, setEntityFilter] = useState("all");
@@ -358,19 +364,27 @@ export default function AccountsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
             <TabsTrigger value="accounts">
               <Wallet className="w-4 h-4 mr-2" />
               Accounts
             </TabsTrigger>
             <TabsTrigger value="compliance" className="relative">
               <Flag className="w-4 h-4 mr-2" />
-              Compliance Flags
+              Compliance
               {complianceIssuesCount > 0 && (
                 <Badge className="ml-2 bg-amber-500 text-white border-0 px-2 py-0 text-xs">
                   {complianceIssuesCount}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="ai-validator">
+              <Brain className="w-4 h-4 mr-2" />
+              AI Validator
+            </TabsTrigger>
+            <TabsTrigger value="jurisdiction">
+              <Globe className="w-4 h-4 mr-2" />
+              CRS Advisor
             </TabsTrigger>
           </TabsList>
 
@@ -691,6 +705,23 @@ export default function AccountsPage() {
               tenantId={user?.tenant_id}
               onSelectAccount={handleComplianceFlagSelect}
             />
+          </TabsContent>
+
+          <TabsContent value="ai-validator">
+            <AIDataValidator
+              accounts={accounts}
+              entities={entities}
+              onIssueSelect={(issue) => {
+                if (issue.affected_record_type === 'account') {
+                  const account = accounts.find(a => a.id === issue.affected_record_id);
+                  if (account) handleEdit(account);
+                }
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="jurisdiction">
+            <AIJurisdictionAdvisor initialJurisdiction={tenant?.jurisdiction} />
           </TabsContent>
         </Tabs>
       </div>
