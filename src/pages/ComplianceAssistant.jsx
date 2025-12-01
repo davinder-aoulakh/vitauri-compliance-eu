@@ -16,13 +16,11 @@ import {
   Trash2,
   Sparkles,
   HelpCircle,
-  Globe,
   Brain,
   FileCheck,
   Wand2
 } from "lucide-react";
 import ChatMessageBubble from "../components/chat/ChatMessageBubble";
-import AIJurisdictionAdvisor from "../components/ai/AIJurisdictionAdvisor";
 import AIDataValidator from "../components/ai/AIDataValidator";
 import AIClassificationAssistant from "../components/ai/AIClassificationAssistant";
 
@@ -34,7 +32,9 @@ const SUGGESTED_QUESTIONS = [
   "When is an account considered non-reportable?",
   "What are the different types of Financial Institutions?",
   "Explain the CRS self-certification requirements",
-  "What triggers a workflow to run automatically?"
+  "What are the CRS reporting deadlines for Switzerland?",
+  "What TIN format is required for UK reporting?",
+  "What are common compliance pitfalls for Luxembourg?"
 ];
 
 export default function ComplianceAssistant() {
@@ -231,18 +231,7 @@ export default function ComplianceAssistant() {
                 <p className="text-xs text-slate-500">General Q&A</p>
               </div>
             </button>
-            <button
-              onClick={() => setActiveTab("jurisdiction")}
-              className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
-                activeTab === "jurisdiction" ? "bg-emerald-50 border border-emerald-200" : "hover:bg-slate-50"
-              }`}
-            >
-              <Globe className={`w-5 h-5 ${activeTab === "jurisdiction" ? "text-emerald-600" : "text-slate-400"}`} />
-              <div>
-                <p className={`text-sm font-medium ${activeTab === "jurisdiction" ? "text-emerald-700" : "text-slate-700"}`}>CRS Advisor</p>
-                <p className="text-xs text-slate-500">Jurisdiction rules</p>
-              </div>
-            </button>
+
             <button
               onClick={() => setActiveTab("validator")}
               className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
@@ -326,25 +315,21 @@ export default function ComplianceAssistant() {
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
               activeTab === "chat" ? "bg-gradient-to-br from-indigo-500 to-purple-600" :
-              activeTab === "jurisdiction" ? "bg-gradient-to-br from-emerald-500 to-teal-600" :
               activeTab === "validator" ? "bg-gradient-to-br from-blue-500 to-cyan-600" :
               "bg-gradient-to-br from-purple-500 to-pink-600"
             }`}>
               {activeTab === "chat" && <Bot className="w-5 h-5 text-white" />}
-              {activeTab === "jurisdiction" && <Globe className="w-5 h-5 text-white" />}
               {activeTab === "validator" && <Brain className="w-5 h-5 text-white" />}
               {activeTab === "classifier" && <Wand2 className="w-5 h-5 text-white" />}
             </div>
             <div>
               <h1 className="font-semibold text-slate-900">
                 {activeTab === "chat" && "CRS Compliance Assistant"}
-                {activeTab === "jurisdiction" && "CRS Jurisdiction Advisor"}
                 {activeTab === "validator" && "AI Data Validator"}
                 {activeTab === "classifier" && "AI Classification Assistant"}
               </h1>
               <p className="text-xs text-slate-500">
-                {activeTab === "chat" && "Ask me about workflows, reportability rules, and entity classifications"}
-                {activeTab === "jurisdiction" && "Get jurisdiction-specific CRS guidance and compliance rules"}
+                {activeTab === "chat" && "Ask about workflows, reportability, classifications & jurisdiction rules"}
                 {activeTab === "validator" && "Analyze your data for anomalies and compliance issues"}
                 {activeTab === "classifier" && "Get AI-powered classification suggestions for entities and accounts"}
               </p>
@@ -451,14 +436,6 @@ export default function ComplianceAssistant() {
               </div>
             </div>
           </>
-        )}
-
-        {activeTab === "jurisdiction" && (
-          <ScrollArea className="flex-1 p-6">
-            <div className="max-w-4xl mx-auto">
-              <AIJurisdictionAdvisor initialJurisdiction={tenant?.jurisdiction} />
-            </div>
-          </ScrollArea>
         )}
 
         {activeTab === "validator" && (
