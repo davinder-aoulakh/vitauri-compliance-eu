@@ -639,12 +639,15 @@ export default function SettingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Español</SelectItem>
-                    <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="de">Deutsch</SelectItem>
-                    <SelectItem value="zh">中文</SelectItem>
+                    <SelectItem value="es" disabled>Español (Coming Soon)</SelectItem>
+                    <SelectItem value="fr" disabled>Français (Coming Soon)</SelectItem>
+                    <SelectItem value="de" disabled>Deutsch (Coming Soon)</SelectItem>
+                    <SelectItem value="zh" disabled>中文 (Coming Soon)</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-slate-500">
+                  Additional languages will be available in a future update
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
