@@ -385,6 +385,49 @@ export default function ActivityPage() {
               </Select>
             </div>
           </div>
+
+          {/* Custom Date Range */}
+          {dateFilter === "custom" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Clear Filters */}
+          {(searchTerm || actionTypeFilter !== "all" || dateFilter !== "all" || userFilter !== "all" || actionCategory !== "all") && (
+            <div className="mt-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setActionTypeFilter("all");
+                  setDateFilter("all");
+                  setUserFilter("all");
+                  setActionCategory("all");
+                  setStartDate("");
+                  setEndDate("");
+                }}
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
