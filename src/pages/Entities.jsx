@@ -19,7 +19,8 @@ import {
   FileText,
   AlertCircle,
   Sparkles,
-  Upload
+  Upload,
+  Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ import EntityClassification from "../components/entities/EntityClassification";
 import ClassificationHistory from "../components/entities/ClassificationHistory";
 import EntityDetails from "../components/entities/EntityDetails";
 import AIBulkImport from "../components/import/AIBulkImport";
+import AIClassificationAssistant from "../components/ai/AIClassificationAssistant";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
@@ -63,6 +65,7 @@ export default function EntitiesPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showAIClassifier, setShowAIClassifier] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -428,6 +431,13 @@ export default function EntitiesPage() {
                                 <Eye className="w-4 h-4 mr-2" />
                                 Re-classify Entity
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedEntity(entity);
+                                setShowAIClassifier(true);
+                              }}>
+                                <Brain className="w-4 h-4 mr-2" />
+                                AI Classification Help
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(entity)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Details
@@ -531,6 +541,30 @@ export default function EntitiesPage() {
               queryClient.invalidateQueries(['entities']);
             }}
             onCancel={() => setShowBulkImport(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Classification Assistant Dialog */}
+      <Dialog open={showAIClassifier} onOpenChange={setShowAIClassifier}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>AI Classification Assistant: {selectedEntity?.entity_name}</DialogTitle>
+          </DialogHeader>
+          <AIClassificationAssistant
+            record={selectedEntity}
+            recordType="entity"
+            existingClassification={selectedEntity?.rfi_status}
+            onApplySuggestion={(suggestion) => {
+              updateMutation.mutate({ 
+                id: selectedEntity.id, 
+                data: {
+                  ...suggestion,
+                  classification_completed_date: new Date().toISOString().split('T')[0]
+                }
+              });
+              setShowAIClassifier(false);
+            }}
           />
         </DialogContent>
       </Dialog>
