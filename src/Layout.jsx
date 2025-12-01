@@ -489,6 +489,6 @@ export default function Layout({ children }) {
         </main>
       </div>
     </SidebarProvider>
-    </ThemeProvider>
+  </ThemeProvider>
   );
 }
