@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload, GitBranch } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload, GitBranch, Brain, Sparkles } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryInputRenderer from "@/components/accounts/BeneficiaryInputRenderer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
+import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -37,6 +38,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [multiFieldValues, setMultiFieldValues] = useState({});
   const [multiFieldErrors, setMultiFieldErrors] = useState({});
   const [showFlowchart, setShowFlowchart] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [dateValue, setDateValue] = useState("");
   const [latestAccountData, setLatestAccountData] = useState(null);
   const [addressValues, setAddressValues] = useState({
@@ -1332,7 +1334,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
               className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
             >
               <GitBranch className="w-4 h-4 mr-1" />
-              Show Flowchart
+              Flowchart
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAIAssistant(true)}
+              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              AI Assist
             </Button>
           </div>
         </div>
@@ -1345,11 +1356,31 @@ export default function AccountClassification({ account, onComplete, onCancel })
       </div>
 
       <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
-                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
           </DialogHeader>
           <WorkflowVisualizer workflow={workflow} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAIAssistant} onOpenChange={setShowAIAssistant}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>AI Classification Assistant</DialogTitle>
+          </DialogHeader>
+          <AIClassificationAssistant
+            record={latestAccountData || account}
+            recordType="account"
+            existingClassification={account?.reportability_status}
+            onApplySuggestion={(suggestion) => {
+              setShowAIAssistant(false);
+              onComplete({
+                ...suggestion,
+                classification_answers: answers
+              });
+            }}
+          />
         </DialogContent>
       </Dialog>
 
