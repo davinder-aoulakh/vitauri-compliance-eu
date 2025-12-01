@@ -495,13 +495,27 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     // Check conditional logic if no selection count branching matched
+    // IMPORTANT: Only evaluate if trigger condition is met (or no trigger is defined)
     if (!nextNodeId && currentNode.conditional_logic?.conditions?.length > 0) {
-      const conditionMet = evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
-      if (conditionMet) {
-        nextNodeId = currentNode.conditional_logic.next_step;
-      } else {
-        nextNodeId = currentNode.conditional_logic.else_step;
+      const logic = currentNode.conditional_logic;
+      
+      // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
+      let shouldEvaluateAdvancedLogic = true;
+      if (logic.trigger_field && logic.trigger_value) {
+        // Trigger is defined - only evaluate if the current answer matches the trigger
+        const currentAnswer = newAnswers[currentNodeId];
+        shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
       }
+      
+      if (shouldEvaluateAdvancedLogic) {
+        const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+        if (conditionMet) {
+          nextNodeId = logic.next_step;
+        } else {
+          nextNodeId = logic.else_step;
+        }
+      }
+      // If trigger doesn't match, fall through to check option's next_step
     }
 
     // If no next step from conditional logic, check selected option
