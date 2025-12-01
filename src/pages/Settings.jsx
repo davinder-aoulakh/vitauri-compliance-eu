@@ -450,31 +450,130 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               {/* Theme Selection */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="theme" className="text-base font-semibold flex items-center gap-2">
-                      <Palette className="w-4 h-4" />
-                      Theme
-                    </Label>
-                    <p className="text-sm text-slate-600">
-                      Choose between light and dark mode
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="capitalize">
-                    {theme}
-                  </Badge>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold flex items-center gap-2">
+                    <Palette className="w-4 h-4" />
+                    Theme
+                  </Label>
+                  <p className="text-sm text-slate-600">
+                    Choose your preferred color scheme
+                  </p>
                 </div>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger id="theme" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light Mode</SelectItem>
-                    <SelectItem value="dark">Dark Mode</SelectItem>
-                    <SelectItem value="auto">Auto (System Preference)</SelectItem>
-                  </SelectContent>
-                </Select>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Light Theme */}
+                  <button
+                    onClick={() => setTheme("light")}
+                    className={`relative p-4 rounded-xl border-2 transition-all hover:shadow-md ${
+                      theme === "light" 
+                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200" 
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="w-full h-20 rounded-lg bg-white border border-slate-200 overflow-hidden">
+                        <div className="h-4 bg-slate-100 border-b border-slate-200 flex items-center px-2 gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                        </div>
+                        <div className="p-2 flex gap-2">
+                          <div className="w-8 h-12 bg-slate-100 rounded"></div>
+                          <div className="flex-1 space-y-1">
+                            <div className="h-2 bg-slate-200 rounded w-3/4"></div>
+                            <div className="h-2 bg-slate-100 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-medium text-slate-900">Light</p>
+                        <p className="text-xs text-slate-500">Clean & bright</p>
+                      </div>
+                    </div>
+                    {theme === "light" && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Dark Theme */}
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className={`relative p-4 rounded-xl border-2 transition-all hover:shadow-md ${
+                      theme === "dark" 
+                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200" 
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="w-full h-20 rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
+                        <div className="h-4 bg-slate-800 border-b border-slate-700 flex items-center px-2 gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                        </div>
+                        <div className="p-2 flex gap-2">
+                          <div className="w-8 h-12 bg-slate-800 rounded"></div>
+                          <div className="flex-1 space-y-1">
+                            <div className="h-2 bg-slate-700 rounded w-3/4"></div>
+                            <div className="h-2 bg-slate-800 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-medium text-slate-900">Dark</p>
+                        <p className="text-xs text-slate-500">Easy on the eyes</p>
+                      </div>
+                    </div>
+                    {theme === "dark" && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Auto Theme */}
+                  <button
+                    onClick={() => setTheme("auto")}
+                    className={`relative p-4 rounded-xl border-2 transition-all hover:shadow-md ${
+                      theme === "auto" 
+                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200" 
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="w-full h-20 rounded-lg overflow-hidden flex">
+                        {/* Light half */}
+                        <div className="w-1/2 bg-white border-r border-slate-200">
+                          <div className="h-4 bg-slate-100 border-b border-slate-200"></div>
+                          <div className="p-1.5 space-y-1">
+                            <div className="h-2 bg-slate-200 rounded w-3/4"></div>
+                            <div className="h-2 bg-slate-100 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                        {/* Dark half */}
+                        <div className="w-1/2 bg-slate-900">
+                          <div className="h-4 bg-slate-800 border-b border-slate-700"></div>
+                          <div className="p-1.5 space-y-1">
+                            <div className="h-2 bg-slate-700 rounded w-3/4"></div>
+                            <div className="h-2 bg-slate-800 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-medium text-slate-900">System</p>
+                        <p className="text-xs text-slate-500">Match device</p>
+                      </div>
+                    </div>
+                    {theme === "auto" && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                      </div>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Layout Density */}
