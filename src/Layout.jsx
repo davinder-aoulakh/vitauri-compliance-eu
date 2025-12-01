@@ -272,6 +272,7 @@ export default function Layout({ children }) {
   }
 
   return (
+    <ThemeProvider>
     <SidebarProvider>
       {/* Inactivity Warning Dialog */}
       <AlertDialog open={showInactivityWarning} onOpenChange={setShowInactivityWarning}>
