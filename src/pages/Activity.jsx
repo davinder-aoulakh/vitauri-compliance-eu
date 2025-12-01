@@ -511,15 +511,15 @@ export default function ActivityPage() {
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-xs">
+                      <TableCell className="max-w-sm">
                         {log.changes && (
                           <details className="cursor-pointer">
                             <summary className="text-sm text-indigo-600 hover:text-indigo-800">
                               View Changes
                             </summary>
-                            <pre className="text-xs bg-slate-50 p-2 rounded mt-2 overflow-auto max-h-32">
-                              {JSON.stringify(log.changes, null, 2)}
-                            </pre>
+                            <div className="mt-2 bg-slate-50 p-3 rounded border text-sm space-y-2 max-h-48 overflow-auto">
+                              {renderChanges(log.changes)}
+                            </div>
                           </details>
                         )}
                       </TableCell>
