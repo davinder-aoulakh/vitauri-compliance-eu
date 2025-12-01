@@ -112,6 +112,44 @@ export default function WidgetConfigDialog({ open, onOpenChange, widget, onSave 
           </div>
         );
 
+      case 'compliance_summary':
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Metric Type</Label>
+              <Select
+                value={editedWidget.config?.metricType || 'entity_classification'}
+                onValueChange={(value) => updateConfig('metricType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="entity_classification">Entity Classification</SelectItem>
+                  <SelectItem value="account_review">Account Review</SelectItem>
+                  <SelectItem value="overall">Overall Compliance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Display Style</Label>
+              <Select
+                value={editedWidget.config?.displayStyle || 'auto'}
+                onValueChange={(value) => updateConfig('displayStyle', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (based on width)</SelectItem>
+                  <SelectItem value="compact">Compact (percentage only)</SelectItem>
+                  <SelectItem value="detailed">Detailed (with breakdown)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
       case 'jurisdiction_overview':
       case 'entity_classification':
         return (

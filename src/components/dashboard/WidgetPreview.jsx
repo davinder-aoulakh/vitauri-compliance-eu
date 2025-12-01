@@ -378,6 +378,51 @@ export default function WidgetPreview({ widget, tenantId }) {
     const totalAccounts = accounts.length;
     const classifiedAccounts = accounts.filter(a => a.reportability_status !== 'pending_review').length;
 
+    // Calculate percentage based on config or default to entity classification
+    const metricType = config.metricType || 'entity_classification';
+    let percentage = 0;
+    let label = 'Entity classification';
+
+    if (metricType === 'entity_classification') {
+      percentage = totalEntities > 0 ? Math.round((classifiedEntities / totalEntities) * 100) : 0;
+      label = 'Entity classification';
+    } else if (metricType === 'account_review') {
+      percentage = totalAccounts > 0 ? Math.round((classifiedAccounts / totalAccounts) * 100) : 0;
+      label = 'Account review';
+    } else if (metricType === 'overall') {
+      const totalItems = totalEntities + totalAccounts;
+      const completedItems = classifiedEntities + classifiedAccounts;
+      percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      label = 'Overall compliance';
+    }
+
+    // Compact card style (like stats cards)
+    if (config.displayStyle === 'compact' || widget.position?.w <= 3) {
+      return (
+        <Card className="h-full">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="p-3 rounded-xl bg-green-100">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-sm text-slate-600">{widget.title}</p>
+              <p className="text-3xl font-bold text-slate-900 mt-1">{percentage}%</p>
+              <p className="text-sm text-slate-500 mt-1">{label}</p>
+            </div>
+            <div className="mt-3 w-full bg-slate-200 rounded-full h-2">
+              <div
+                className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Full card style with detailed breakdown
     return (
       <Card>
         <CardHeader className="pb-2">
