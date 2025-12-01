@@ -62,16 +62,18 @@ export default function ThemeSelector() {
 
   const getThemePreviewStyle = (themeKey) => {
     const themeData = THEMES[themeKey];
+    if (!themeData) return {};
+    
     let colors = themeData.colors;
     
     if (themeKey === "system") {
-      colors = THEMES[systemPreference].colors;
+      colors = THEMES[systemPreference]?.colors || THEMES.light.colors;
     } else if (themeKey === "custom") {
       colors = {
-        background: customColors.background,
-        foreground: customColors.foreground,
-        primary: customColors.primary,
-        accent: customColors.accent
+        background: customColors?.background || "#ffffff",
+        foreground: customColors?.foreground || "#0f172a",
+        primary: customColors?.primary || "#4f46e5",
+        accent: customColors?.accent || "#f1f5f9"
       };
     }
 
