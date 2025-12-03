@@ -172,17 +172,25 @@ const evaluateComputedCondition = (entityData, compCondition) => {
     const result = new Function(`return ${computedValue}`)();
     
     // Compare result with condition value
+    // Ensure value is parsed as number for comparison
+    const compareValue = parseFloat(compCondition.value);
+    
     switch (compCondition.operator) {
       case 'greater_than':
-        return result > compCondition.value;
+      case '>':
+        return result > compareValue;
       case 'less_than':
-        return result < compCondition.value;
+      case '<':
+        return result < compareValue;
       case 'greater_than_or_equal':
-        return result >= compCondition.value;
+      case '>=':
+        return result >= compareValue;
       case 'less_than_or_equal':
-        return result <= compCondition.value;
+      case '<=':
+        return result <= compareValue;
       case 'equals':
-        return result === compCondition.value;
+      case '=':
+        return result === compareValue;
       default:
         return false;
     }
