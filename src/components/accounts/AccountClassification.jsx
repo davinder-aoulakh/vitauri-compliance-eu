@@ -110,7 +110,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // Evaluate if a workflow's trigger conditions match the account data
   const evaluateTriggerConditions = (triggerConfig, accountData) => {
     if (!triggerConfig?.enabled) return false;
-    if (!triggerConfig.conditions || triggerConfig.conditions.length === 0) return true;
+    
+    const conditions = triggerConfig.conditions || [];
+    const computedConditions = triggerConfig.computed_conditions || [];
+    
+    // If no conditions at all, return true (enabled but no filters)
+    if (conditions.length === 0 && computedConditions.length === 0) return true;
 
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
@@ -130,8 +135,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     let result = true;
 
-    for (let idx = 0; idx < triggerConfig.conditions.length; idx++) {
-      const condition = triggerConfig.conditions[idx];
+    // Evaluate regular conditions
+    for (let idx = 0; idx < conditions.length; idx++) {
+      const condition = conditions[idx];
       const fieldValue = getFieldValue(condition.field);
       const comparisonValue = condition.value;
       let conditionMet = false;
@@ -144,15 +150,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
           break;
         case "greater_than":
+        case ">":
           conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
           break;
         case "less_than":
+        case "<":
           conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
           break;
         case "greater_than_or_equal":
+        case ">=":
           conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
           break;
         case "less_than_or_equal":
+        case "<=":
           conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
           break;
         case "contains":
@@ -173,11 +183,74 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (idx === 0) {
         result = conditionMet;
       } else {
-        const logicOp = triggerConfig.conditions[idx - 1]?.logic_operator || "AND";
+        const logicOp = conditions[idx - 1]?.logic_operator || "AND";
         if (logicOp === "AND") {
           result = result && conditionMet;
         } else if (logicOp === "OR") {
           result = result || conditionMet;
+        }
+      }
+    }
+
+    // Evaluate computed conditions (e.g., year_end_cash_value + gross_payments > 1000000)
+    for (let idx = 0; idx < computedConditions.length; idx++) {
+      const compCondition = computedConditions[idx];
+      let compResult = false;
+      
+      try {
+        const expression = compCondition.expression;
+        
+        // Replace field names with their numeric values
+        const fieldRegex = /\b([a-z_]+[a-z0-9_]*)\b/gi;
+        let computedExpression = expression.replace(fieldRegex, (match) => {
+          // Skip operators and keywords
+          if (['AND', 'OR', 'true', 'false', 'null'].includes(match)) return match;
+          const value = getFieldValue(match);
+          return isNaN(parseFloat(value)) ? 0 : parseFloat(value);
+        });
+        
+        // Safely evaluate the arithmetic expression
+        const computedValue = new Function(`return ${computedExpression}`)();
+        const compareValue = parseFloat(compCondition.value);
+        
+        switch (compCondition.operator) {
+          case "greater_than":
+          case ">":
+            compResult = computedValue > compareValue;
+            break;
+          case "less_than":
+          case "<":
+            compResult = computedValue < compareValue;
+            break;
+          case "greater_than_or_equal":
+          case ">=":
+            compResult = computedValue >= compareValue;
+            break;
+          case "less_than_or_equal":
+          case "<=":
+            compResult = computedValue <= compareValue;
+            break;
+          case "equals":
+          case "=":
+            compResult = computedValue === compareValue;
+            break;
+          default:
+            compResult = false;
+        }
+      } catch (error) {
+        console.error("Error evaluating computed condition:", error);
+        compResult = false;
+      }
+
+      // Combine with previous result
+      if (conditions.length === 0 && idx === 0) {
+        result = compResult;
+      } else {
+        const logicOp = compCondition.logic_operator || "AND";
+        if (logicOp === "OR") {
+          result = result || compResult;
+        } else {
+          result = result && compResult;
         }
       }
     }
