@@ -403,31 +403,31 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {
-      let fieldValue = getFieldValue(condition.field);
+      let fieldValue = getFieldValue(condition.field, linkedEntity);
       let comparisonValue = condition.value;
       if (condition.value_type === 'field_reference') {
-        comparisonValue = getFieldValue(condition.value);
+        comparisonValue = getFieldValue(condition.value, linkedEntity);
       }
 
       let conditionMet = false;
 
       switch (condition.operator) {
         case "=":
-          conditionMet = String(fieldValue).toLowerCase() === String(comparisonValue).toLowerCase();
+          conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
           break;
         case "!=":
-          conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
+          conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
           break;
         case "in":
           const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-          conditionMet = inValues.includes(String(fieldValue).toLowerCase());
+          conditionMet = inValues.includes(String(fieldValue || '').toLowerCase());
           break;
         case "not_in":
           const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-          conditionMet = !notInValues.includes(String(fieldValue).toLowerCase());
+          conditionMet = !notInValues.includes(String(fieldValue || '').toLowerCase());
           break;
         case "contains":
-          conditionMet = String(fieldValue).toLowerCase().includes(String(comparisonValue).toLowerCase());
+          conditionMet = String(fieldValue || '').toLowerCase().includes(String(comparisonValue || '').toLowerCase());
           break;
         case ">":
           conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
@@ -443,12 +443,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
           break;
         case "is_crs":
           // Check if country is a CRS participating country - now supports both name and code
-          const countryLookup = crsCountryMap[String(fieldValue).toLowerCase()];
+          const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
           conditionMet = countryLookup?.isCrs === true;
           break;
         case "is_not_crs":
           // Check if country is NOT a CRS participating country
-          const countryLookupNot = crsCountryMap[String(fieldValue).toLowerCase()];
+          const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
           conditionMet = countryLookupNot?.isCrs === false;
           break;
         default:
@@ -458,9 +458,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (idx === 0) {
         result = conditionMet;
       } else {
-        if (condition.logic_operator === "AND") {
+        // Use the previous condition's logic_operator to combine
+        const prevLogicOp = logic.conditions[idx - 1]?.logic_operator || "AND";
+        if (prevLogicOp === "AND") {
           result = result && conditionMet;
-        } else if (condition.logic_operator === "OR") {
+        } else if (prevLogicOp === "OR") {
           result = result || conditionMet;
         }
       }
