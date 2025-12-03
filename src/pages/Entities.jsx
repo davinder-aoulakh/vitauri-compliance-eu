@@ -236,7 +236,7 @@ export default function EntitiesPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Legal Entities</h1>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">RFI Entities</h1>
             <p className="text-slate-600">
               Manage and classify your legal entities for CRS reporting
             </p>

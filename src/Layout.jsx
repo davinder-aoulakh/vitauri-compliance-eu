@@ -172,11 +172,11 @@ export default function Layout({ children }) {
       roles: ["tenant_admin", "tenant_user"]
     },
     {
-      title: "Entities",
+      title: "RFI Entities",
       url: createPageUrl("Entities"),
       icon: Building2,
       roles: ["tenant_admin", "tenant_user"]
-    },
+      },
     {
       title: "Accounts",
       url: createPageUrl("Accounts"),
