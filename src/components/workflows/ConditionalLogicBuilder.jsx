@@ -149,7 +149,7 @@ export default function ConditionalLogicBuilder({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="=">Equals (=)</SelectItem>
-                          <SelectItem value="!=">Not Equals (!=)</SelectItem>
+                          <SelectItem value="!=">Not Equals (≠)</SelectItem>
                           <SelectItem value=">">Greater Than (&gt;)</SelectItem>
                           <SelectItem value="<">Less Than (&lt;)</SelectItem>
                           <SelectItem value=">=">Greater or Equal (&gt;=)</SelectItem>
@@ -157,20 +157,72 @@ export default function ConditionalLogicBuilder({
                           <SelectItem value="contains">Contains</SelectItem>
                           <SelectItem value="in">In (comma-separated)</SelectItem>
                           <SelectItem value="not_in">Not In (comma-separated)</SelectItem>
+                          <SelectItem value="is_crs">Is CRS Country 🌍</SelectItem>
+                          <SelectItem value="is_not_crs">Is Not CRS Country</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    {/* Value */}
+                    {/* Value Type */}
                     <div>
-                      <Label className="text-xs">Value</Label>
+                      <Label className="text-xs">Value Type</Label>
+                      <div className="flex items-center gap-3 mt-2">
+                        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`value_type_${index}`}
+                            checked={condition.value_type !== "field_reference"}
+                            onChange={() => handleUpdateCondition(index, "value_type", "static")}
+                            className="w-3 h-3"
+                          />
+                          Static
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`value_type_${index}`}
+                            checked={condition.value_type === "field_reference"}
+                            onChange={() => handleUpdateCondition(index, "value_type", "field_reference")}
+                            className="w-3 h-3"
+                          />
+                          Field
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Value */}
+                  <div>
+                    <Label className="text-xs">Value</Label>
+                    {condition.value_type === "field_reference" ? (
+                      <Select
+                        value={condition.value}
+                        onValueChange={(value) => handleUpdateCondition(index, "value", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectValue placeholder="Select field to compare..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSteps.map((step) => (
+                            <SelectItem key={step.step_id} value={step.step_id}>
+                              {step.step_title || step.step_id}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="current_address.country">Current Address Country</SelectItem>
+                          <SelectItem value="account_holder_address.country">Account Holder Address Country</SelectItem>
+                          <SelectItem value="country_of_residence">Country of Residence</SelectItem>
+                          <SelectItem value="place_of_birth">Place of Birth</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
                       <Input
                         value={condition.value}
                         onChange={(e) => handleUpdateCondition(index, "value", e.target.value)}
-                        placeholder="value or values"
+                        placeholder={condition.operator === "is_crs" || condition.operator === "is_not_crs" ? "N/A (CRS lookup)" : "value or values"}
+                        disabled={condition.operator === "is_crs" || condition.operator === "is_not_crs"}
                         className="h-8 text-xs mt-1"
                       />
-                    </div>
+                    )}
                   </div>
 
                   {/* Logic Operator (AND/OR) - only show if not last condition */}
