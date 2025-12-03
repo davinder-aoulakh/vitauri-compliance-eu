@@ -1641,13 +1641,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   }
                   
                   return (
-                    <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-600 text-xs">
+                    <div key={key} className="flex items-start justify-between gap-4 text-sm py-2 border-b border-slate-200 last:border-0">
+                      <span className="text-slate-600 text-xs flex-shrink-0 max-w-[40%]">
                         {step.step_title || key}
                       </span>
-                      <Badge variant="outline" className="capitalize text-xs max-w-xs truncate">
+                      <span className="text-xs text-right text-slate-800 break-words">
                         {displayValue}
-                      </Badge>
+                      </span>
                     </div>
                   );
                 })}
