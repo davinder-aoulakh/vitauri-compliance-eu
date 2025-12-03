@@ -167,28 +167,22 @@ export default function ConditionalLogicBuilder({
                     {/* Value Type */}
                     <div>
                       <Label className="text-xs">Value Type</Label>
-                      <div className="flex items-center gap-3 mt-2">
-                        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`value_type_${index}`}
-                            checked={condition.value_type !== "field_reference"}
-                            onChange={() => handleUpdateCondition(index, "value_type", "static")}
-                            className="w-3 h-3"
-                          />
-                          Static
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`value_type_${index}`}
-                            checked={condition.value_type === "field_reference"}
-                            onChange={() => handleUpdateCondition(index, "value_type", "field_reference")}
-                            className="w-3 h-3"
-                          />
-                          Field
-                        </label>
-                      </div>
+                      <Select
+                        value={condition.value_type || "static"}
+                        onValueChange={(value) => {
+                          handleUpdateCondition(index, "value_type", value);
+                          // Clear value when switching types
+                          handleUpdateCondition(index, "value", "");
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="static">Static</SelectItem>
+                          <SelectItem value="field_reference">Field</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
