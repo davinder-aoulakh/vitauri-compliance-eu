@@ -212,6 +212,7 @@ export default function ConditionalLogicBuilder({
                           <SelectItem value="account_holder_address.country">Account Holder Address Country</SelectItem>
                           <SelectItem value="country_of_residence">Country of Residence</SelectItem>
                           <SelectItem value="place_of_birth">Place of Birth</SelectItem>
+                          <SelectItem value="country_of_incorporation">Country of Incorporation (Entity)</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
