@@ -108,6 +108,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
     staleTime: Infinity,
     enabled: !!account
   });
+  
+  // Fetch the linked entity for field reference comparisons
+  const { data: linkedEntity } = useQuery({
+    queryKey: ['linked-entity', account?.entity_id],
+    queryFn: async () => {
+      if (!account?.entity_id) return null;
+      const entities = await base44.entities.Entity.filter({ id: account.entity_id });
+      return entities[0] || null;
+    },
+    enabled: !!account?.entity_id,
+    staleTime: 60000
+  });
 
   // Evaluate if a workflow's trigger conditions match the account data
   const evaluateTriggerConditions = (triggerConfig, accountData) => {
