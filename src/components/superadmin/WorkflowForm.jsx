@@ -305,6 +305,11 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
                         <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                         <SelectItem value="text_input">Text Input</SelectItem>
                         <SelectItem value="date_input">Date Input</SelectItem>
+                        <SelectItem value="file_upload">File Upload</SelectItem>
+                        <SelectItem value="address_input">Address Input</SelectItem>
+                        <SelectItem value="beneficiary_input">Beneficiary Input</SelectItem>
+                        <SelectItem value="controlling_person_input">Controlling Person Input</SelectItem>
+                        <SelectItem value="result">Result (End Step)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
