@@ -22,6 +22,7 @@ import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryInputRenderer from "@/components/accounts/BeneficiaryInputRenderer";
+import ControllingPersonInputRenderer from "@/components/accounts/ControllingPersonInputRenderer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 
@@ -49,6 +50,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     country: ""
   });
   const [beneficiariesAdded, setBeneficiariesAdded] = useState(false);
+  const [controllingPersonsAdded, setControllingPersonsAdded] = useState(false);
 
   // Fetch the latest account data to ensure we have up-to-date documents
   const { data: freshAccountData } = useQuery({
@@ -532,6 +534,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
     } else if (currentNode.question_type === "beneficiary_input") {
       if (!beneficiariesAdded) {
         alert("Please add at least one beneficiary");
+        return;
+      }
+      newAnswers[currentNodeId] = selectedValue;
+    } else if (currentNode.question_type === "controlling_person_input") {
+      if (!controllingPersonsAdded) {
+        alert("Please add at least one controlling person");
         return;
       }
       newAnswers[currentNodeId] = selectedValue;
@@ -1189,6 +1197,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
 
+    if (currentNode.question_type === "controlling_person_input") {
+      return (
+        <ControllingPersonInputRenderer
+          account={latestAccountData || account}
+          onControllingPersonsAdded={(savedPersons) => {
+            setControllingPersonsAdded(true);
+            setSelectedValue({ controlling_persons_count: savedPersons.length, controlling_persons: savedPersons });
+          }}
+        />
+      );
+    }
+
     return null;
     };
 
@@ -1625,8 +1645,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
             !selectedValue && 
             !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0) &&
             !(currentNode.question_type === "address_input" && addressValues.country) &&
-            !(currentNode.question_type === "beneficiary_input" && beneficiariesAdded)
-          }
+            !(currentNode.question_type === "beneficiary_input" && beneficiariesAdded) &&
+            !(currentNode.question_type === "controlling_person_input" && controllingPersonsAdded)
+            }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >

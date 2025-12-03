@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -25,7 +24,7 @@ import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTr
 import ControllingPersonForm from "./ControllingPersonForm";
 import { format } from "date-fns";
 
-export default function ControllingPersonsList({ account }) {
+export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const queryClient = useQueryClient();
@@ -82,6 +81,13 @@ export default function ControllingPersonsList({ account }) {
   const reportablePersons = controllingPersons.filter(p => p.is_reportable);
   const nonReportablePersons = controllingPersons.filter(p => !p.is_reportable);
   const hasReportableControllingPersons = reportablePersons.length > 0;
+
+  // Notify parent component about the count of controlling persons
+  useEffect(() => {
+    if (onUpdateCount) {
+      onUpdateCount(controllingPersons.length);
+    }
+  }, [controllingPersons, onUpdateCount]);
 
   // Auto-trigger for Passive NFE
   useEffect(() => {
