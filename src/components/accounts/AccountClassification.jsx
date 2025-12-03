@@ -1600,16 +1600,53 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 {Object.entries(answers).filter(([key]) => !key.startsWith('_')).map(([key, value]) => {
                   const step = stepMap[key];
                   if (!step) return null;
+                  
+                  // Format display value based on type
+                  let displayValue = '';
+                  if (typeof value === 'object' && value !== null) {
+                    if (value.file_name) {
+                      // File upload
+                      displayValue = value.file_name;
+                    } else if (value._address_config) {
+                      // Address input - format nicely
+                      const { _address_config, ...addr } = value;
+                      const parts = [addr.street, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean);
+                      displayValue = parts.join(', ') || 'Address entered';
+                    } else if (value.beneficiaries_count) {
+                      // Beneficiary input
+                      displayValue = `${value.beneficiaries_count} beneficiary(ies) added`;
+                    } else if (value.controlling_persons_count) {
+                      // Controlling person input
+                      displayValue = `${value.controlling_persons_count} controlling person(s) added`;
+                    } else {
+                      // Multi-field or other object - show field values
+                      const fieldValues = Object.entries(value)
+                        .filter(([k]) => !k.startsWith('_'))
+                        .map(([k, v]) => v)
+                        .filter(Boolean);
+                      displayValue = fieldValues.join(', ') || 'Data entered';
+                    }
+                  } else {
+                    // Check if it's a comma-separated multiple choice
+                    if (typeof value === 'string' && value.includes(',') && step.question_type === 'multiple_choice') {
+                      const selectedValues = value.split(',').filter(Boolean);
+                      const labels = selectedValues.map(v => 
+                        step.options?.find(o => o.value === v)?.label || v
+                      );
+                      displayValue = labels.join(', ');
+                    } else {
+                      // Single value - try to find label from options
+                      displayValue = step.options?.find(o => o.value === value)?.label || String(value || '');
+                    }
+                  }
+                  
                   return (
                     <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
                       <span className="text-slate-600 text-xs">
                         {step.step_title || key}
                       </span>
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {step.options?.find(o => o.value === value)?.label || 
-                          (typeof value === 'object' && value !== null 
-                            ? (value.file_name || JSON.stringify(value)) 
-                            : String(value || ''))}
+                      <Badge variant="outline" className="capitalize text-xs max-w-xs truncate">
+                        {displayValue}
                       </Badge>
                     </div>
                   );
