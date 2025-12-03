@@ -1587,15 +1587,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </CardContent>
       </Card>
 
-      {/* AI Workflow Helper */}
-      <AIWorkflowHelper
-        currentStep={currentNode}
-        workflow={workflow}
-        answers={answers}
-        accountData={latestAccountData || account}
-        onSuggestedAnswer={(value) => setSelectedValue(value)}
-      />
-
+      {/* View Previous Answers - Always show if there are answered questions */}
       {Object.keys(answers).filter(k => !k.startsWith('_')).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
@@ -1627,6 +1619,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
           </CardContent>
         </Card>
       )}
+
+      {/* AI Workflow Helper */}
+      <AIWorkflowHelper
+        currentStep={currentNode}
+        workflow={workflow}
+        answers={answers}
+        accountData={latestAccountData || account}
+        onSuggestedAnswer={(value) => setSelectedValue(value)}
+      />
 
       <div className="flex justify-between gap-3 pt-4 border-t">
         <Button 
