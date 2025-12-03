@@ -577,7 +577,7 @@ export default function AccountsPage() {
                           <TableHead>Type</TableHead>
                           <TableHead>Balance</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Entity</TableHead>
+                          <TableHead>RFI Entity</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
