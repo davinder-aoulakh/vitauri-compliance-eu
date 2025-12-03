@@ -170,17 +170,22 @@ export default function ConditionalLogicBuilder({
                       <Select
                         value={condition.value_type || "static"}
                         onValueChange={(value) => {
-                          handleUpdateCondition(index, "value_type", value);
-                          // Clear value when switching types
-                          handleUpdateCondition(index, "value", "");
+                          // Update the condition with new value_type - single update to preserve value_type
+                          const newConditions = [...(conditionalLogic?.conditions || [])];
+                          newConditions[index] = { 
+                            ...newConditions[index], 
+                            value_type: value,
+                            value: "" // Clear value when switching types
+                          };
+                          onChange({ ...conditionalLogic, conditions: newConditions });
                         }}
                       >
                         <SelectTrigger className="h-8 text-xs mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="static">Static</SelectItem>
-                          <SelectItem value="field_reference">Field</SelectItem>
+                          <SelectItem value="static">Static Value</SelectItem>
+                          <SelectItem value="field_reference">Field Reference</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
