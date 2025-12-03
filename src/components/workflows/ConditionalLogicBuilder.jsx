@@ -28,6 +28,7 @@ export default function ConditionalLogicBuilder({
           field: "",
           operator: "=",
           value: "",
+          value_type: "static",
           logic_operator: "AND"
         }
       ]
