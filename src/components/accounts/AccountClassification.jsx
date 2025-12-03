@@ -343,7 +343,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    const getFieldValue = (fieldPath) => {
+    const getFieldValue = (fieldPath, entityData = null) => {
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
         const stepAnswer = currentAnswers[parts[0]];
@@ -352,6 +352,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
         if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
           return account?.[parts[0]]?.[parts[1]];
+        }
+        // Check entity data for fields like entity.country_of_incorporation
+        if (entityData && parts[0] === 'entity') {
+          return entityData[parts[1]];
         }
         return null;
       }
@@ -374,6 +378,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       if (account?.[fieldPath] !== undefined) {
         return account[fieldPath];
+      }
+      
+      // Check entity data for direct field access (e.g., country_of_incorporation)
+      if (entityData?.[fieldPath] !== undefined) {
+        return entityData[fieldPath];
       }
 
       return null;
