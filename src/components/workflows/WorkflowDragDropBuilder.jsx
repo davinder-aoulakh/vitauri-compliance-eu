@@ -414,7 +414,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
           </DialogHeader>
           {selectedStep && (
             <StepEditor
-              key={`step-editor-${selectedStep.step_id}-${Date.now()}`}
+              key={`step-editor-${selectedStep.step_id}`}
               step={steps.find(s => s.step_id === selectedStep.step_id) || selectedStep}
               allSteps={steps}
               onUpdate={handleUpdateStep}
