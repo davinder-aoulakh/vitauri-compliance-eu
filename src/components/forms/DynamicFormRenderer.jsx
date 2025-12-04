@@ -205,7 +205,8 @@ export default function DynamicFormRenderer({
   };
 
   const handleChange = (fieldName, value) => {
-    setFormData(prev => ({ ...prev, [fieldName]: value }));
+    // Support nested field names like "address.street"
+    setFormData(prev => setNestedValue(prev, fieldName, value));
     // Clear validation error for this field
     if (validationErrors[fieldName]) {
       setValidationErrors(prev => {
