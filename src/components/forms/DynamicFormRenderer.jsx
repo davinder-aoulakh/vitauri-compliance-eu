@@ -287,7 +287,8 @@ export default function DynamicFormRenderer({
     const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
     if (!isVisible) return null;
 
-    const value = formData[field.field_name] || "";
+    // Support nested field names like "address.street"
+    const value = getNestedValue(formData, field.field_name) || "";
     const options = field.field_type === "select" ? getOptionsForField(field) : [];
     const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
     const fieldErrors = validationErrors[field.field_name];
