@@ -225,7 +225,11 @@ export default function BeneficiaryManager({ account, tenant }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleEdit(beneficiary)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleEdit(beneficiary);
+                      }}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
