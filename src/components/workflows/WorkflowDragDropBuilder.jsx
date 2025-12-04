@@ -1297,24 +1297,33 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
 
                           <div>
                             <Label className="text-xs">Value Type</Label>
-                            <RadioGroup
-                              value={condition.value_type || 'static'}
-                              onValueChange={(value) => handleConditionChange(index, "value_type", value)}
-                              className="flex gap-2 mt-1"
+                            <Select
+                              value={condition.value_type || "static"}
+                              onValueChange={(value) => {
+                                // When switching value type, clear the value and update type in one operation
+                                const newConditions = [...editedStep.conditional_logic.conditions];
+                                newConditions[index] = { 
+                                  ...newConditions[index], 
+                                  value_type: value,
+                                  value: "" // Clear value when switching types
+                                };
+                                setEditedStep({
+                                  ...editedStep,
+                                  conditional_logic: {
+                                    ...editedStep.conditional_logic,
+                                    conditions: newConditions
+                                  }
+                                });
+                              }}
                             >
-                              <div className="flex items-center space-x-1">
-                                <RadioGroupItem value="static" id={`static-${index}`} className="h-3 w-3" />
-                                <Label htmlFor={`static-${index}`} className="text-xs font-normal cursor-pointer">
-                                  Static
-                                </Label>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <RadioGroupItem value="field_reference" id={`field-${index}`} className="h-3 w-3" />
-                                <Label htmlFor={`field-${index}`} className="text-xs font-normal cursor-pointer">
-                                  Field
-                                </Label>
-                              </div>
-                            </RadioGroup>
+                              <SelectTrigger className="h-8 text-xs mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="static">Static Value</SelectItem>
+                                <SelectItem value="field_reference">Field Reference</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
 
