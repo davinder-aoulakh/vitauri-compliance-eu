@@ -314,6 +314,40 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
                     </Select>
                   </div>
 
+                  {/* Next Step for input-type questions */}
+                  {(step.question_type === "text_input" || 
+                    step.question_type === "number_input" || 
+                    step.question_type === "date_input" || 
+                    step.question_type === "file_upload" ||
+                    step.question_type === "address_input" ||
+                    step.question_type === "beneficiary_input" ||
+                    step.question_type === "controlling_person_input") && (
+                    <div className="p-3 border rounded-lg bg-slate-50">
+                      <Label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                        <GitBranch className="w-4 h-4 text-slate-500" />
+                        Next Step (after this input is completed):
+                      </Label>
+                      <Select
+                        value={step.default_next_step || ""}
+                        onValueChange={(value) => updateStep(stepIndex, "default_next_step", value)}
+                      >
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Select next step..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={null}>None (End Workflow)</SelectItem>
+                          {formData.steps
+                            .filter((s, i) => i !== stepIndex)
+                            .map(s => (
+                              <SelectItem key={s.step_id} value={s.step_id}>
+                                {s.step_title || `Step ${formData.steps.indexOf(s) + 1}`}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   {(step.question_type === "yes_no" || step.question_type === "single_choice" || step.question_type === "multiple_choice") && (
                     <div>
                       <div className="flex items-center justify-between mb-3">

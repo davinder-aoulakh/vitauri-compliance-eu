@@ -1041,7 +1041,9 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
         editedStep.question_type === "date_input" || 
         editedStep.question_type === "file_upload" ||
         editedStep.question_type === "multi_field_input" ||
-        editedStep.question_type === "address_input") && (
+        editedStep.question_type === "address_input" ||
+        editedStep.question_type === "beneficiary_input" ||
+        editedStep.question_type === "controlling_person_input") && (
         <div className="p-4 border rounded-lg bg-slate-50">
           <div className="flex items-center gap-2">
             <LinkIcon className="w-4 h-4 text-slate-400" />
