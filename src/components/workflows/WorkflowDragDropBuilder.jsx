@@ -516,10 +516,19 @@ const getSuggestedValuesForField = (entityType, fieldName) => {
 
 // Step Editor Component
 function StepEditor({ step, allSteps, onUpdate, onClose }) {
+  // Ensure all conditions have value_type defaulted
+  const normalizedConditionalLogic = step.conditional_logic ? {
+    ...step.conditional_logic,
+    conditions: (step.conditional_logic.conditions || []).map(c => ({
+      ...c,
+      value_type: c.value_type || "static"
+    }))
+  } : { conditions: [], next_step: "", else_step: "" };
+
   const [editedStep, setEditedStep] = useState({ 
     ...step,
     default_next_step: step.default_next_step || "",
-    conditional_logic: step.conditional_logic || { conditions: [], next_step: "", else_step: "" }
+    conditional_logic: normalizedConditionalLogic
   });
   const [showAdvancedLogic, setShowAdvancedLogic] = useState(
     step.conditional_logic?.conditions?.length > 0
