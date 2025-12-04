@@ -16,6 +16,54 @@ import {
 import { format } from "date-fns";
 
 export default function EntityDetails({ entity }) {
+  // Fetch country info for name lookup
+  const { data: countryMap = {} } = useQuery({
+    queryKey: ['country-name-map'],
+    queryFn: async () => {
+      const countries = await base44.entities.CrsCountryInfo.list();
+      const map = {};
+      countries.forEach(c => {
+        if (c.country_code) {
+          map[c.country_code.toLowerCase()] = c.country_name;
+        }
+        if (c.country_name) {
+          map[c.country_name.toLowerCase()] = c.country_name;
+        }
+      });
+      return map;
+    },
+    staleTime: Infinity
+  });
+
+  // Fetch referenced data for entity type labels
+  const { data: entityTypeOptions = [] } = useQuery({
+    queryKey: ['entity-type-options'],
+    queryFn: async () => {
+      const data = await base44.entities.ReferencedData.filter({
+        entity_name: 'Entity',
+        field_name: 'entity_type',
+        is_published: true
+      });
+      return data;
+    },
+    staleTime: Infinity
+  });
+
+  // Helper to get country name from code
+  const getCountryName = (codeOrName) => {
+    if (!codeOrName) return null;
+    return countryMap[codeOrName.toLowerCase()] || codeOrName;
+  };
+
+  // Helper to get entity type label from value
+  const getEntityTypeLabel = (typeValue) => {
+    if (!typeValue) return null;
+    const option = entityTypeOptions.find(opt => opt.value === typeValue);
+    if (option) return option.label;
+    // Fallback: capitalize and replace underscores
+    return typeValue.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   if (!entity) return null;
 
   const getStatusBadge = (status) => {
