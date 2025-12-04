@@ -236,7 +236,11 @@ export default function BeneficiaryManager({ account, tenant }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDelete(beneficiary.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(beneficiary.id);
+                      }}
                       className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
