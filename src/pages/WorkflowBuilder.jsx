@@ -342,6 +342,7 @@ export default function WorkflowBuilder() {
     const config = {
       entity_rfi_classification: { label: "Entity RFI", color: "bg-blue-100 text-blue-800" },
       account_reportability: { label: "Account Reportability", color: "bg-purple-100 text-purple-800" },
+      beneficiary_classification: { label: "Beneficiary", color: "bg-pink-100 text-pink-800" },
       custom: { label: "Custom", color: "bg-slate-100 text-slate-800" }
     };
     const { label, color } = config[type] || config.custom;
