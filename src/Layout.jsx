@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import AIHelpAssistant from "@/components/help/AIHelpAssistant";
 
 export default function Layout({ children }) {
   const location = useLocation();
