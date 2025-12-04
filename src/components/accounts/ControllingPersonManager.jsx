@@ -214,16 +214,26 @@ export default function ControllingPersonManager({ account, tenant }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
+                      type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleEdit(person)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleEdit(person);
+                      }}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button
+                      type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDelete(person.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(person.id);
+                      }}
                       className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
