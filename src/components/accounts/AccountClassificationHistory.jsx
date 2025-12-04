@@ -215,13 +215,15 @@ export default function AccountClassificationHistory({ history, account }) {
                 </div>
 
                 {/* Workflow Answers (Collapsible) - User Friendly */}
-                {record.workflow_answers && Object.keys(record.workflow_answers).length > 0 && (
+                {record.workflow_answers && Object.keys(record.workflow_answers).filter(k => !k.startsWith('_')).length > 0 && (
                   <details className="mt-3 pt-3 border-t border-slate-200">
                     <summary className="text-xs font-medium text-slate-600 cursor-pointer hover:text-slate-900">
-                      View Workflow Answers ({Object.keys(record.workflow_answers).length})
+                      View Workflow Answers ({Object.keys(record.workflow_answers).filter(k => !k.startsWith('_')).length})
                     </summary>
                     <div className="mt-3 space-y-3">
-                      {Object.entries(record.workflow_answers).map(([stepId, answerValue]) => {
+                      {Object.entries(record.workflow_answers)
+                        .filter(([stepId]) => !stepId.startsWith('_'))
+                        .map(([stepId, answerValue]) => {
                         const { question, answer } = getReadableAnswer(stepId, answerValue);
                         return (
                           <div key={stepId} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
