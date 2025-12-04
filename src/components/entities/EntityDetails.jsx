@@ -147,12 +147,12 @@ export default function EntityDetails({ entity }) {
           <div className="space-y-0">
             <InfoRow 
               label="Entity Type" 
-              value={<span className="capitalize">{entity.entity_type?.replace(/_/g, " ")}</span>}
+              value={<span className="capitalize">{getEntityTypeLabel(entity.entity_type)}</span>}
               icon={Building2}
             />
             <InfoRow 
               label="Country of Incorporation" 
-              value={entity.country_of_incorporation}
+              value={getCountryName(entity.country_of_incorporation)}
               icon={Globe}
             />
             <InfoRow 
