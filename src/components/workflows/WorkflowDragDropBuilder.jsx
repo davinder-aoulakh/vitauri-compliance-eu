@@ -761,7 +761,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
 
   const handleConditionChange = (index, field, value) => {
     const newConditions = [...editedStep.conditional_logic.conditions];
-    newConditions[index] = { ...newConditions[index], [field]: value };
+    // Ensure value_type is always preserved - default to "static" if not set
+    const currentCondition = newConditions[index];
+    newConditions[index] = { 
+      ...currentCondition, 
+      value_type: currentCondition.value_type || "static", // Preserve value_type
+      [field]: value 
+    };
     
     // Reset operator if field changes and it's a CRS-specific operator
     if (field === 'field') {
