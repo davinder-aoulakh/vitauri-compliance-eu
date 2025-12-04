@@ -169,11 +169,26 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   };
 
   const handleSave = () => {
+    // Ensure all steps have properly formatted conditional_logic with value_type preserved
+    const processedSteps = steps.map(step => ({
+      ...step,
+      conditional_logic: step.conditional_logic ? {
+        ...step.conditional_logic,
+        conditions: (step.conditional_logic.conditions || []).map(c => ({
+          field: c.field || "",
+          operator: c.operator || "=",
+          value: c.value || "",
+          value_type: c.value_type || "static", // Ensure value_type is always saved
+          logic_operator: c.logic_operator || "AND"
+        }))
+      } : { conditions: [], next_step: "", else_step: "" }
+    }));
+
     const workflowData = {
       ...workflow,
       workflow_name: workflowName,
       workflow_type: workflowType,
-      steps: steps,
+      steps: processedSteps,
       outcome_rules: outcomeRules,
       last_modified_by: "current_user"
     };
