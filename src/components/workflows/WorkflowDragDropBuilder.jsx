@@ -170,19 +170,33 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
 
   const handleSave = () => {
     // Ensure all steps have properly formatted conditional_logic with value_type preserved
-    const processedSteps = steps.map(step => ({
-      ...step,
-      conditional_logic: step.conditional_logic ? {
-        ...step.conditional_logic,
+    const processedSteps = steps.map(step => {
+      const processedConditionalLogic = step.conditional_logic ? {
+        trigger_field: step.conditional_logic.trigger_field || null,
+        trigger_value: step.conditional_logic.trigger_value || null,
         conditions: (step.conditional_logic.conditions || []).map(c => ({
           field: c.field || "",
           operator: c.operator || "=",
           value: c.value || "",
-          value_type: c.value_type || "static", // Ensure value_type is always saved
+          value_type: c.value_type || "static", // Ensure value_type is ALWAYS saved
           logic_operator: c.logic_operator || "AND"
-        }))
-      } : { conditions: [], next_step: "", else_step: "" }
-    }));
+        })),
+        next_step: step.conditional_logic.next_step || "",
+        else_step: step.conditional_logic.else_step || "",
+        use_selection_count: step.conditional_logic.use_selection_count || false,
+        selection_count_operator: step.conditional_logic.selection_count_operator || null,
+        selection_count_value: step.conditional_logic.selection_count_value || null,
+        selection_count_next_step: step.conditional_logic.selection_count_next_step || null,
+        selection_count_else_step: step.conditional_logic.selection_count_else_step || null
+      } : { conditions: [], next_step: "", else_step: "" };
+      
+      console.log("Saving step conditional_logic:", step.step_id, JSON.stringify(processedConditionalLogic.conditions));
+      
+      return {
+        ...step,
+        conditional_logic: processedConditionalLogic
+      };
+    });
 
     const workflowData = {
       ...workflow,
@@ -192,6 +206,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
       outcome_rules: outcomeRules,
       last_modified_by: "current_user"
     };
+    console.log("Saving workflow data:", JSON.stringify(workflowData.steps?.map(s => ({ id: s.step_id, conditions: s.conditional_logic?.conditions })), null, 2));
     onSave(workflowData);
   };
 
