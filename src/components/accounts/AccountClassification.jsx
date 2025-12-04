@@ -409,6 +409,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
         comparisonValue = getFieldValue(condition.value, linkedEntity);
       }
 
+      // Debug logging for condition evaluation
+      console.log(`Evaluating condition ${idx + 1}:`, {
+        field: condition.field,
+        fieldValue,
+        operator: condition.operator,
+        value_type: condition.value_type,
+        comparisonValue,
+        linkedEntity: linkedEntity ? { country_of_incorporation: linkedEntity.country_of_incorporation } : null
+      });
+
       let conditionMet = false;
 
       switch (condition.operator) {
