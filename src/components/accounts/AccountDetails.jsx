@@ -1,7 +1,10 @@
 import React from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2,
   User,
@@ -15,7 +18,8 @@ import {
   Globe,
   Download,
   Eye,
-  FileCheck
+  FileCheck,
+  Users
 } from "lucide-react";
 
 const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
@@ -33,7 +37,24 @@ const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
 );
 
 export default function AccountDetails({ account, entity }) {
+  // Fetch beneficiaries for deceased individual accounts
+  const { data: beneficiaries = [] } = useQuery({
+    queryKey: ['beneficiaries', account?.id],
+    queryFn: () => base44.entities.Beneficiary.filter({ account_id: account?.id }),
+    enabled: !!account?.id && account?.account_holder_type === 'individual' && !account?.account_holder_is_alive
+  });
+
+  // Fetch controlling persons for entity accounts
+  const { data: controllingPersons = [] } = useQuery({
+    queryKey: ['controlling-persons', account?.id],
+    queryFn: () => base44.entities.ControllingPerson.filter({ account_id: account?.id }),
+    enabled: !!account?.id && account?.account_holder_type === 'entity'
+  });
+
   if (!account) return null;
+
+  const showBeneficiaries = account.account_holder_type === 'individual' && !account.account_holder_is_alive;
+  const showControllingPersons = account.account_holder_type === 'entity';
 
   const formatCurrency = (amount, currency = "USD") => {
     return new Intl.NumberFormat('en-US', {
@@ -426,6 +447,119 @@ export default function AccountDetails({ account, entity }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Beneficiaries Section - For deceased individual accounts */}
+      {showBeneficiaries && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-purple-50">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-600" />
+              Beneficiaries ({beneficiaries.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            {beneficiaries.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No beneficiaries added</p>
+            ) : (
+              <div className="space-y-3">
+                {beneficiaries.map((beneficiary) => (
+                  <div key={beneficiary.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                      <User className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-900">{beneficiary.full_name}</p>
+                      {beneficiary.date_of_birth && (
+                        <p className="text-xs text-slate-600">
+                          DOB: {new Date(beneficiary.date_of_birth).toLocaleDateString()}
+                        </p>
+                      )}
+                      {beneficiary.address?.country && (
+                        <div className="flex items-center gap-1 text-xs text-slate-600 mt-1">
+                          <MapPin className="w-3 h-3" />
+                          {[beneficiary.address.city, beneficiary.address.country].filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <Badge className={
+                          beneficiary.reportability_status === 'reportable' 
+                            ? "bg-green-100 text-green-800" 
+                            : beneficiary.reportability_status === 'non_reportable'
+                              ? "bg-slate-100 text-slate-800"
+                              : "bg-amber-100 text-amber-800"
+                        }>
+                          {beneficiary.reportability_status?.replace(/_/g, ' ') || 'Pending Review'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Controlling Persons Section - For entity accounts */}
+      {showControllingPersons && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-indigo-50">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              Controlling Persons ({controllingPersons.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            {controllingPersons.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No controlling persons added</p>
+            ) : (
+              <div className="space-y-3">
+                {controllingPersons.map((person) => (
+                  <div key={person.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                      <User className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-900">{person.full_name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {person.control_type && (
+                          <Badge variant="outline" className="capitalize text-xs">
+                            {person.control_type?.replace(/_/g, ' ')}
+                          </Badge>
+                        )}
+                        {person.ownership_percentage > 0 && (
+                          <span className="text-xs text-slate-600">{person.ownership_percentage}% ownership</span>
+                        )}
+                      </div>
+                      {person.address?.country && (
+                        <div className="flex items-center gap-1 text-xs text-slate-600 mt-1">
+                          <MapPin className="w-3 h-3" />
+                          {[person.address.city, person.address.country].filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                      {person.tax_residencies && person.tax_residencies.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {person.tax_residencies.map((res, idx) => (
+                            <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                              <Globe className="w-3 h-3 mr-1" />
+                              {res.country}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <Badge className={person.is_reportable ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"}>
+                          {person.is_reportable ? 'Reportable' : 'Non-Reportable'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metadata */}
       <Card className="border-0 shadow-lg">
