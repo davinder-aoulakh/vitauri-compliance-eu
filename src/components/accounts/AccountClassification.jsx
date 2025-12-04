@@ -611,7 +611,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     setAnswers(newAnswers);
-    const newHistory = [...history, currentNodeId];
+    // Only add to history if not already the last item (prevent duplicates)
+    const newHistory = history[history.length - 1] === currentNodeId 
+      ? history 
+      : [...history, currentNodeId];
     setHistory(newHistory);
 
     // Determine next step - CONDITIONAL LOGIC FIRST (highest priority)
