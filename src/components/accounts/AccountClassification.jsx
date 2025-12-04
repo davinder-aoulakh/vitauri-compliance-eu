@@ -1424,10 +1424,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 const answer = answers[stepId];
                 if (!step || !answer) return null;
 
-                const answerLabel = step.options?.find(o => o.value === answer)?.label || 
-                  (typeof answer === 'object' && answer !== null 
-                    ? (answer.file_name || JSON.stringify(answer)) 
-                    : String(answer || ''));
+                // Handle multiple choice (comma-separated values)
+                let answerLabel;
+                if (typeof answer === 'string' && answer.includes(',') && step.question_type === 'multiple_choice') {
+                  const selectedValues = answer.split(',').filter(Boolean);
+                  const labels = selectedValues.map(v => 
+                    step.options?.find(o => o.value === v)?.label || v
+                  );
+                  answerLabel = labels.join(', ');
+                } else {
+                  answerLabel = step.options?.find(o => o.value === answer)?.label || 
+                    (typeof answer === 'object' && answer !== null 
+                      ? (answer.file_name || JSON.stringify(answer)) 
+                      : String(answer || ''));
+                }
 
                 return (
                   <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
