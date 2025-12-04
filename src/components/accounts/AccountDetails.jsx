@@ -19,8 +19,10 @@ import {
   Download,
   Eye,
   FileCheck,
-  Users
+  Users,
+  History
 } from "lucide-react";
+import AccountAuditLog from "./AccountAuditLog";
 
 const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
   <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
@@ -55,6 +57,8 @@ export default function AccountDetails({ account, entity }) {
 
   const showBeneficiaries = account.account_holder_type === 'individual' && !account.account_holder_is_alive;
   const showControllingPersons = account.account_holder_type === 'entity';
+
+  const [showAuditLog, setShowAuditLog] = React.useState(false);
 
   const formatCurrency = (amount, currency = "USD") => {
     return new Intl.NumberFormat('en-US', {
@@ -104,8 +108,30 @@ export default function AccountDetails({ account, entity }) {
               </div>
             </div>
           </div>
+
+          {/* Account Actions */}
+          <div className="mt-4 pt-4 border-t border-indigo-100">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAuditLog(!showAuditLog)}
+              className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+            >
+              <History className="w-4 h-4 mr-2" />
+              {showAuditLog ? "Hide Audit Log" : "View Audit Log"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Audit Log Section */}
+      {showAuditLog && (
+        <Card className="border-2 border-indigo-100">
+          <CardContent className="p-6">
+            <AccountAuditLog account={account} />
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Account Information */}
