@@ -136,7 +136,25 @@ export default function WorkflowBuilder() {
     try {
       // Refetch the workflow to ensure we have the latest data including outcome_rules
       const freshWorkflows = await base44.entities.Workflow.filter({ id: workflow.id });
-      const freshWorkflow = freshWorkflows[0] || workflow;
+      let freshWorkflow = freshWorkflows[0] || workflow;
+      
+      // Normalize value_type in all conditional_logic conditions from the database
+      if (freshWorkflow.steps) {
+        freshWorkflow = {
+          ...freshWorkflow,
+          steps: freshWorkflow.steps.map(step => ({
+            ...step,
+            conditional_logic: step.conditional_logic ? {
+              ...step.conditional_logic,
+              conditions: (step.conditional_logic.conditions || []).map(c => ({
+                ...c,
+                value_type: c.value_type || "static" // Ensure value_type has a default
+              }))
+            } : { conditions: [], next_step: "", else_step: "" }
+          }))
+        };
+      }
+      
       console.log("Fresh workflow data for visual editor:", freshWorkflow);
       console.log("Fresh workflow steps conditions:", JSON.stringify(freshWorkflow.steps?.map(s => s.conditional_logic?.conditions), null, 2));
       setSelectedWorkflow(freshWorkflow);
