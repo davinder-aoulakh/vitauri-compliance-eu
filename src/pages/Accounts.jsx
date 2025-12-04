@@ -629,7 +629,7 @@ export default function AccountsPage() {
                               </TableCell>
                               <TableCell>
                                 <span className="font-semibold text-slate-900">
-                                  {formatCurrency(account.account_balance, account.currency)}
+                                  {formatCurrency(account.year_end_cash_value, account.year_end_cash_value_currency)}
                                 </span>
                               </TableCell>
                               <TableCell>
