@@ -421,12 +421,40 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       let conditionMet = false;
 
+      // Helper to normalize country values for comparison (handle code vs name mismatch)
+      const normalizeCountryForComparison = (val) => {
+        if (!val) return '';
+        const valLower = String(val).toLowerCase();
+        // Check if this is a country code or name and get the normalized code
+        const countryInfo = crsCountryMap[valLower];
+        if (countryInfo?.code) {
+          return countryInfo.code.toLowerCase();
+        }
+        return valLower;
+      };
+
+      // Check if either field is a country field for normalization
+      const isCountryComparison = (
+        condition.field?.toLowerCase().includes('country') ||
+        condition.value?.toLowerCase().includes('country')
+      );
+
       switch (condition.operator) {
         case "=":
-          conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
+          if (isCountryComparison) {
+            // Normalize both to country codes for comparison
+            conditionMet = normalizeCountryForComparison(fieldValue) === normalizeCountryForComparison(comparisonValue);
+          } else {
+            conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
+          }
           break;
         case "!=":
-          conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
+          if (isCountryComparison) {
+            // Normalize both to country codes for comparison
+            conditionMet = normalizeCountryForComparison(fieldValue) !== normalizeCountryForComparison(comparisonValue);
+          } else {
+            conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
+          }
           break;
         case "in":
           const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
