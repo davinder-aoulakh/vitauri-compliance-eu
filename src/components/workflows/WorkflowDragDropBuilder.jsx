@@ -37,10 +37,18 @@ import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
-  // Ensure all steps have default_next_step initialized from saved data
+  // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
   const initialSteps = (workflow?.steps || []).map(step => ({
     ...step,
-    default_next_step: step.default_next_step || ""
+    default_next_step: step.default_next_step || "",
+    // Normalize conditional_logic to ensure value_type is preserved
+    conditional_logic: step.conditional_logic ? {
+      ...step.conditional_logic,
+      conditions: (step.conditional_logic.conditions || []).map(c => ({
+        ...c,
+        value_type: c.value_type || "static"
+      }))
+    } : { conditions: [], next_step: "", else_step: "" }
   }));
   const [steps, setSteps] = useState(initialSteps);
   const [selectedStep, setSelectedStep] = useState(null);
