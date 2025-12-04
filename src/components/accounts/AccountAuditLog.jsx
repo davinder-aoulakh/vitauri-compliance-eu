@@ -32,6 +32,75 @@ const actionColors = {
   account_classified: "bg-purple-100 text-purple-800 border-purple-200"
 };
 
+// Field name mappings for user-friendly display
+const fieldNameLabels = {
+  account_number: "Account Number",
+  account_type: "Account Type",
+  account_holder_name: "Account Holder Name",
+  account_holder_type: "Account Holder Type",
+  date_of_birth: "Date of Birth",
+  place_of_birth: "Place of Birth",
+  country_of_residence: "Country of Residence",
+  current_address: "Current Address",
+  account_holder_address: "Account Holder Address",
+  tax_residencies: "Tax Residencies",
+  year_end_cash_value: "Year End Cash Value",
+  year_end_cash_value_currency: "Cash Value Currency",
+  gross_payments: "Gross Payments",
+  gross_payments_currency: "Payments Currency",
+  reporting_year: "Reporting Year",
+  reportability_status: "Reportability Status",
+  reportability_reason: "Reportability Reason",
+  self_certification_obtained: "Self-Certification Obtained",
+  self_certification_date: "Self-Certification Date",
+  entity_classification: "Entity Classification",
+  is_pre_existing: "Pre-existing Account",
+  account_holder_is_alive: "Account Holder Alive",
+  account_closed_during_period: "Closed During Period",
+  indicia_found: "Indicia Found",
+  classification_answers: "Classification Answers",
+  documents: "Documents",
+  status: "Account Status",
+  street: "Street",
+  city: "City",
+  state: "State/Province",
+  postal_code: "Postal Code",
+  country: "Country",
+  tin: "Tax ID Number (TIN)",
+  tin_unavailable_reason: "TIN Unavailable Reason"
+};
+
+const getFieldLabel = (fieldName) => {
+  return fieldNameLabels[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
+const formatValue = (value) => {
+  if (value === null || value === undefined || value === '') return 'Empty';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return 'None';
+    return value.map(item => {
+      if (typeof item === 'object') {
+        return Object.entries(item)
+          .filter(([k, v]) => v && !k.startsWith('_'))
+          .map(([k, v]) => `${getFieldLabel(k)}: ${formatValue(v)}`)
+          .join(', ');
+      }
+      return String(item);
+    }).join(' | ');
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value).filter(([k, v]) => v && !k.startsWith('_'));
+    if (entries.length === 0) return 'Empty';
+    return entries.map(([k, v]) => `${getFieldLabel(k)}: ${formatValue(v)}`).join(', ');
+  }
+  // Format dates
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return new Date(value).toLocaleDateString();
+  }
+  return String(value).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
 export default function AccountAuditLog({ account }) {
   const { data: auditLogs = [], isLoading } = useQuery({
     queryKey: ['audit-log', 'account', account?.id],
@@ -53,37 +122,36 @@ export default function AccountAuditLog({ account }) {
     // Handle single field change
     if (changes.field) {
       return (
-        <div className="mt-2 p-2 bg-slate-50 rounded text-xs">
-          <span className="font-medium text-slate-700">{changes.field}:</span>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-red-600 line-through">
-              {typeof changes.previous_value === 'object' 
-                ? JSON.stringify(changes.previous_value) 
-                : String(changes.previous_value || 'empty')}
-            </span>
-            <ArrowRight className="w-3 h-3 text-slate-400" />
-            <span className="text-green-600">
-              {typeof changes.new_value === 'object' 
-                ? JSON.stringify(changes.new_value) 
-                : String(changes.new_value || 'empty')}
-            </span>
+        <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm">
+          <span className="font-medium text-slate-700">{getFieldLabel(changes.field)}</span>
+          <div className="mt-2 space-y-1">
+            <div className="flex items-start gap-2">
+              <span className="text-xs text-slate-500 w-16 flex-shrink-0">Before:</span>
+              <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-xs">
+                {formatValue(changes.previous_value)}
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-xs text-slate-500 w-16 flex-shrink-0">After:</span>
+              <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">
+                {formatValue(changes.new_value)}
+              </span>
+            </div>
           </div>
         </div>
       );
     }
 
     // Handle multiple field changes
-    const changeEntries = Object.entries(changes);
+    const changeEntries = Object.entries(changes).filter(([k]) => !k.startsWith('_'));
     if (changeEntries.length === 0) return null;
 
     return (
-      <div className="mt-2 p-2 bg-slate-50 rounded text-xs space-y-2">
+      <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm space-y-2">
         {changeEntries.map(([field, value]) => (
-          <div key={field}>
-            <span className="font-medium text-slate-700">{field}:</span>
-            <span className="ml-2 text-slate-600">
-              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-            </span>
+          <div key={field} className="flex items-start gap-2">
+            <span className="font-medium text-slate-700 min-w-[120px]">{getFieldLabel(field)}:</span>
+            <span className="text-slate-600">{formatValue(value)}</span>
           </div>
         ))}
       </div>
