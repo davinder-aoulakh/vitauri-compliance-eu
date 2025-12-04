@@ -109,6 +109,14 @@ export default function BeneficiaryInputRenderer({
   };
 
   const handleSaveAll = async () => {
+    if (alreadySaved) {
+      // Already saved, just call the callback with existing data
+      if (onBeneficiariesAdded) {
+        onBeneficiariesAdded(existingBeneficiaries);
+      }
+      return;
+    }
+
     if (!validateBeneficiaries()) {
       return;
     }
@@ -117,6 +125,17 @@ export default function BeneficiaryInputRenderer({
       const savedBeneficiaries = [];
       
       for (const b of beneficiaries) {
+        // Check if a beneficiary with the same name already exists for this account
+        const existingMatch = existingBeneficiaries.find(
+          existing => existing.full_name?.toLowerCase().trim() === b.full_name?.toLowerCase().trim()
+        );
+        
+        if (existingMatch) {
+          // Skip creating duplicate, use existing one
+          savedBeneficiaries.push(existingMatch);
+          continue;
+        }
+
         const beneficiaryData = {
           tenant_id: tenant?.id || account?.tenant_id,
           account_id: account.id,
@@ -131,6 +150,7 @@ export default function BeneficiaryInputRenderer({
         savedBeneficiaries.push(created);
       }
 
+      setAlreadySaved(true);
       queryClient.invalidateQueries(['beneficiaries', account?.id]);
       
       if (onBeneficiariesAdded) {
