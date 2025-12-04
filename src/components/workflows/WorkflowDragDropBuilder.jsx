@@ -38,18 +38,30 @@ import OutcomeRulesConfig from "./OutcomeRulesConfig";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
-  const initialSteps = (workflow?.steps || []).map(step => ({
-    ...step,
-    default_next_step: step.default_next_step || "",
-    // Normalize conditional_logic to ensure value_type is preserved
-    conditional_logic: step.conditional_logic ? {
-      ...step.conditional_logic,
-      conditions: (step.conditional_logic.conditions || []).map(c => ({
+  const initialSteps = (workflow?.steps || []).map(step => {
+    const normalizedConditions = (step.conditional_logic?.conditions || []).map(c => {
+      // IMPORTANT: Preserve the exact value_type from saved data - only default if truly undefined
+      const valueType = c.value_type !== undefined ? c.value_type : "static";
+      console.log(`Init condition value_type for step ${step.step_id}:`, c.value_type, "->", valueType);
+      return {
         ...c,
-        value_type: c.value_type || "static"
-      }))
-    } : { conditions: [], next_step: "", else_step: "" }
-  }));
+        value_type: valueType
+      };
+    });
+    
+    return {
+      ...step,
+      default_next_step: step.default_next_step || "",
+      // Normalize conditional_logic to ensure value_type is preserved
+      conditional_logic: step.conditional_logic ? {
+        ...step.conditional_logic,
+        conditions: normalizedConditions
+      } : { conditions: [], next_step: "", else_step: "" }
+    };
+  });
+  
+  console.log("WorkflowDragDropBuilder initialSteps conditions:", JSON.stringify(initialSteps.map(s => ({ id: s.step_id, conditions: s.conditional_logic?.conditions?.map(c => ({ field: c.field, value_type: c.value_type })) })), null, 2));
+  
   const [steps, setSteps] = useState(initialSteps);
   const [selectedStep, setSelectedStep] = useState(null);
   const [showStepEditor, setShowStepEditor] = useState(false);
