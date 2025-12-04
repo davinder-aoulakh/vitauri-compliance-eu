@@ -718,7 +718,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const handleAddCondition = () => {
     const newConditions = [
       ...(editedStep.conditional_logic?.conditions || []),
-      { field: "", operator: "=", value: "", logic_operator: "AND" }
+      { field: "", operator: "=", value: "", value_type: "static", logic_operator: "AND" }
     ];
     setEditedStep({
       ...editedStep,
