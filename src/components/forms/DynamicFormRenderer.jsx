@@ -26,6 +26,36 @@ export default function DynamicFormRenderer({
   onCancel,
   additionalFields
 }) {
+  // Helper to get nested value from object (e.g., "address.street" -> formData.address.street)
+  const getNestedValue = (obj, path) => {
+    if (!path) return undefined;
+    if (!path.includes('.')) return obj?.[path];
+    const parts = path.split('.');
+    let value = obj;
+    for (const part of parts) {
+      value = value?.[part];
+      if (value === undefined) return undefined;
+    }
+    return value;
+  };
+
+  // Helper to set nested value in object
+  const setNestedValue = (obj, path, value) => {
+    if (!path.includes('.')) {
+      return { ...obj, [path]: value };
+    }
+    const parts = path.split('.');
+    const newObj = { ...obj };
+    let current = newObj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      current[part] = current[part] ? { ...current[part] } : {};
+      current = current[part];
+    }
+    current[parts[parts.length - 1]] = value;
+    return newObj;
+  };
+
   const [formData, setFormData] = useState(initialData || {});
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
