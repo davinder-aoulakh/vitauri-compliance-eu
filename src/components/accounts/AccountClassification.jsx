@@ -28,7 +28,7 @@ import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [answers, setAnswers] = useState(account?.classification_answers || {});  // Load previous answers for re-classification
+  const [answers, setAnswers] = useState({});  // Start fresh for each classification
   const [selectedValue, setSelectedValue] = useState("");
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
