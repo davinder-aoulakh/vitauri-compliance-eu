@@ -236,7 +236,7 @@ export default function EntityDetails({ entity }) {
                   <InfoRow label="Postal Code" value={entity.address.postal_code} />
                 )}
                 {entity.address.country && (
-                  <InfoRow label="Country" value={entity.address.country} />
+                  <InfoRow label="Country" value={getCountryName(entity.address.country)} />
                 )}
               </div>
             </div>
