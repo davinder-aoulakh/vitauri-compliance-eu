@@ -20,7 +20,7 @@ import DocumentsManager from "./DocumentsManager";
 import CountrySelect from "../shared/CountrySelect";
 import CurrencySelect from "../shared/CurrencySelect";
 import BeneficiaryManager from "./BeneficiaryManager";
-import ControllingPersonsList from "./ControllingPersonsList";
+import ControllingPersonManager from "./ControllingPersonManager";
 import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 
@@ -971,8 +971,11 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
           {/* Controlling Persons Section - Only for Entity Account Holders */}
           {formData.account_holder_type === "entity" && account?.id && (
-            <div className="mt-6">
-              <ControllingPersonsList account={account} />
+            <div className="p-4 border-2 border-indigo-200 rounded-lg bg-indigo-50/30 mt-6">
+              <ControllingPersonManager 
+                account={account} 
+                tenant={tenant}
+              />
             </div>
           )}
         </TabsContent>
