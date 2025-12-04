@@ -110,8 +110,10 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   };
 
   const handleUpdateStep = (updatedStep) => {
-    setSteps(steps.map(s => s.step_id === updatedStep.step_id ? updatedStep : s));
-    setSelectedStep(updatedStep);
+    const newSteps = steps.map(s => s.step_id === updatedStep.step_id ? updatedStep : s);
+    setSteps(newSteps);
+    // Update selectedStep with the new reference to ensure editor re-renders with fresh data
+    setSelectedStep(newSteps.find(s => s.step_id === updatedStep.step_id) || updatedStep);
   };
 
   const handleDeleteStep = (stepId) => {
