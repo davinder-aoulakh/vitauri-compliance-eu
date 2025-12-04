@@ -138,6 +138,7 @@ export default function WorkflowBuilder() {
       const freshWorkflows = await base44.entities.Workflow.filter({ id: workflow.id });
       const freshWorkflow = freshWorkflows[0] || workflow;
       console.log("Fresh workflow data for visual editor:", freshWorkflow);
+      console.log("Fresh workflow steps conditions:", JSON.stringify(freshWorkflow.steps?.map(s => s.conditional_logic?.conditions), null, 2));
       setSelectedWorkflow(freshWorkflow);
       setShowDragDropBuilder(true);
     } catch (error) {
