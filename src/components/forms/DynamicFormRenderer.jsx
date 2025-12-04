@@ -188,7 +188,7 @@ export default function DynamicFormRenderer({
     config.fields_config.forEach(field => {
       const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
       if (isVisible) {
-        const fieldErrors = validateField(field, formData[field.field_name]);
+        const fieldErrors = validateField(field, getNestedValue(formData, field.field_name));
         if (fieldErrors.length > 0) {
           errors[field.field_name] = fieldErrors;
         }
