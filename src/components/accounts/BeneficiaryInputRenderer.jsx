@@ -26,8 +26,16 @@ export default function BeneficiaryInputRenderer({
 }) {
   const [beneficiaries, setBeneficiaries] = useState([createEmptyBeneficiary()]);
   const [errors, setErrors] = useState({});
+  const [alreadySaved, setAlreadySaved] = useState(false);
 
   const queryClient = useQueryClient();
+
+  // Check for existing beneficiaries to avoid duplicates
+  const { data: existingBeneficiaries = [] } = useQuery({
+    queryKey: ['beneficiaries', account?.id],
+    queryFn: () => base44.entities.Beneficiary.filter({ account_id: account?.id }),
+    enabled: !!account?.id
+  });
 
   function createEmptyBeneficiary() {
     return {
