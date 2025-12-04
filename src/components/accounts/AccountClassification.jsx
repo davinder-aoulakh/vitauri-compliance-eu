@@ -465,11 +465,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = false;
       }
 
+      console.log(`Condition ${idx + 1} result:`, conditionMet);
+
       if (idx === 0) {
         result = conditionMet;
       } else {
         // Use the previous condition's logic_operator to combine
         const prevLogicOp = logic.conditions[idx - 1]?.logic_operator || "AND";
+        console.log(`Combining with previous result using ${prevLogicOp}: ${result} ${prevLogicOp} ${conditionMet}`);
         if (prevLogicOp === "AND") {
           result = result && conditionMet;
         } else if (prevLogicOp === "OR") {
@@ -478,6 +481,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     });
 
+    console.log(`Final conditional logic result:`, result);
     return result;
   };
 
