@@ -687,6 +687,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
       nextNodeId = null;
     }
 
+    // For controlling_person_input and beneficiary_input, check default_next_step if no nextNodeId yet
+    if (!nextNodeId && (currentNode.question_type === "controlling_person_input" || currentNode.question_type === "beneficiary_input")) {
+      if (currentNode.default_next_step && stepMap[currentNode.default_next_step]) {
+        nextNodeId = currentNode.default_next_step;
+      }
+    }
+
     if (!nextNodeId || isActionNode(currentNode)) {
       setCompletedPath([...newHistory, currentNodeId]);
       setShowSummary(true);
@@ -1432,11 +1439,28 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     step.options?.find(o => o.value === v)?.label || v
                   );
                   answerLabel = labels.join(', ');
+                } else if (typeof answer === 'object' && answer !== null) {
+                  // Handle special object types with user-friendly display
+                  if (answer.file_name) {
+                    answerLabel = answer.file_name;
+                  } else if (answer.controlling_persons_count !== undefined) {
+                    answerLabel = `${answer.controlling_persons_count} controlling person(s) added`;
+                  } else if (answer.beneficiaries_count !== undefined) {
+                    answerLabel = `${answer.beneficiaries_count} beneficiary(ies) added`;
+                  } else if (answer._address_config) {
+                    const { _address_config, ...addr } = answer;
+                    const parts = [addr.street, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean);
+                    answerLabel = parts.join(', ') || 'Address entered';
+                  } else {
+                    // Multi-field or other object - show field values
+                    const fieldValues = Object.entries(answer)
+                      .filter(([k]) => !k.startsWith('_'))
+                      .map(([k, v]) => v)
+                      .filter(Boolean);
+                    answerLabel = fieldValues.join(', ') || 'Data entered';
+                  }
                 } else {
-                  answerLabel = step.options?.find(o => o.value === answer)?.label || 
-                    (typeof answer === 'object' && answer !== null 
-                      ? (answer.file_name || JSON.stringify(answer)) 
-                      : String(answer || ''));
+                  answerLabel = step.options?.find(o => o.value === answer)?.label || String(answer || '');
                 }
 
                 return (
