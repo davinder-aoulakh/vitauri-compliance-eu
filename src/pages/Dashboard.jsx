@@ -291,22 +291,8 @@ export default function Dashboard() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Accounts Pending, CRS Report Due, Jurisdiction Overview - all stacked */}
+          {/* Left Column: CRS Report Due, Accounts Pending, Jurisdiction Overview - all stacked */}
           <div className="flex flex-col gap-4">
-            {pendingAccounts.length > 0 && (
-              <Card className="border-0 shadow-xl">
-                <CardContent className="p-0">
-                  <ActivityItem
-                    icon={AlertTriangle}
-                    iconColor="#f59e0b"
-                    title="Accounts Pending Classification"
-                    description={`${pendingAccounts.length} accounts need reportability review`}
-                    action="Review Now"
-                    link={createPageUrl("Accounts")}
-                  />
-                </CardContent>
-              </Card>
-            )}
             {currentYearReports.length === 0 && rfiEntities.length > 0 && (
               <Card className="border-0 shadow-xl">
                 <CardContent className="p-0">
@@ -317,6 +303,20 @@ export default function Dashboard() {
                     description="Annual reporting deadline approaching"
                     action="Start Report"
                     link={createPageUrl("Reports")}
+                  />
+                </CardContent>
+              </Card>
+            )}
+            {pendingAccounts.length > 0 && (
+              <Card className="border-0 shadow-xl">
+                <CardContent className="p-0">
+                  <ActivityItem
+                    icon={AlertTriangle}
+                    iconColor="#f59e0b"
+                    title="Accounts Pending Classification"
+                    description={`${pendingAccounts.length} accounts need reportability review`}
+                    action="Review Now"
+                    link={createPageUrl("Accounts")}
                   />
                 </CardContent>
               </Card>
