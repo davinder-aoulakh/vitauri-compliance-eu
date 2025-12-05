@@ -290,9 +290,89 @@ export default function Dashboard() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Activity */}
-          <Card className="lg:col-span-2 border-0 shadow-xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column: Accounts Pending, CRS Report Due, Jurisdiction Overview */}
+          <div className="space-y-6">
+            <Card className="border-0 shadow-xl">
+              <CardContent className="p-0">
+                {pendingAccounts.length > 0 && (
+                  <ActivityItem
+                    icon={AlertTriangle}
+                    iconColor="#f59e0b"
+                    title="Accounts Pending Classification"
+                    description={`${pendingAccounts.length} accounts need reportability review`}
+                    action="Review Now"
+                    link={createPageUrl("Accounts")}
+                  />
+                )}
+                {currentYearReports.length === 0 && rfiEntities.length > 0 && (
+                  <ActivityItem
+                    icon={Calendar}
+                    iconColor="#8b5cf6"
+                    title={`${currentYear} CRS Report Due`}
+                    description="Annual reporting deadline approaching"
+                    action="Start Report"
+                    link={createPageUrl("Reports")}
+                  />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Jurisdiction Overview Card */}
+            <Card className="border-0 shadow-xl">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="w-5 h-5" style={{ color: primaryColor }} />
+                  Jurisdiction Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700">Home Jurisdiction</span>
+                    <Badge variant="outline">{tenant?.jurisdiction || "N/A"}</Badge>
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="text-xs text-slate-500 mb-1">Tenant ID</div>
+                  <div className="text-xs font-mono text-slate-700 break-all select-all">
+                    {user?.tenant_id || "Not assigned"}
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700">Reporting Entities</span>
+                    <span className="text-2xl font-bold" style={{ color: primaryColor }}>
+                      {rfiEntities.length}
+                    </span>
+                  </div>
+                  <Progress value={(rfiEntities.length / (entities.length || 1)) * 100} className="h-2" />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700">Next Deadline</span>
+                    <span className="text-sm font-semibold text-slate-900">
+                      May 31, {currentYear + 1}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">CRS Annual Report</p>
+                </div>
+
+                <Link to={createPageUrl("Entities")} className="block">
+                  <Button variant="outline" className="w-full mt-4">
+                    View All Entities
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column: Recent Activity */}
+          <Card className="border-0 shadow-xl">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" style={{ color: primaryColor }} />
