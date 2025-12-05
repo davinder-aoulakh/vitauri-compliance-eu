@@ -291,11 +291,11 @@ export default function Dashboard() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Accounts Pending, CRS Report Due, Jurisdiction Overview */}
-          <div className="space-y-6">
-            <Card className="border-0 shadow-xl">
-              <CardContent className="p-0">
-                {pendingAccounts.length > 0 && (
+          {/* Left Column: Accounts Pending, CRS Report Due, Jurisdiction Overview - all stacked */}
+          <div className="flex flex-col gap-4">
+            {pendingAccounts.length > 0 && (
+              <Card className="border-0 shadow-xl">
+                <CardContent className="p-0">
                   <ActivityItem
                     icon={AlertTriangle}
                     iconColor="#f59e0b"
@@ -304,8 +304,12 @@ export default function Dashboard() {
                     action="Review Now"
                     link={createPageUrl("Accounts")}
                   />
-                )}
-                {currentYearReports.length === 0 && rfiEntities.length > 0 && (
+                </CardContent>
+              </Card>
+            )}
+            {currentYearReports.length === 0 && rfiEntities.length > 0 && (
+              <Card className="border-0 shadow-xl">
+                <CardContent className="p-0">
                   <ActivityItem
                     icon={Calendar}
                     iconColor="#8b5cf6"
@@ -314,9 +318,9 @@ export default function Dashboard() {
                     action="Start Report"
                     link={createPageUrl("Reports")}
                   />
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Jurisdiction Overview Card */}
             <Card className="border-0 shadow-xl">
@@ -372,7 +376,7 @@ export default function Dashboard() {
           </div>
 
           {/* Right Column: Recent Activity */}
-          <Card className="border-0 shadow-xl">
+          <Card className="border-0 shadow-xl h-fit">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" style={{ color: primaryColor }} />
