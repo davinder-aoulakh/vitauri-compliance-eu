@@ -141,9 +141,9 @@ export default function Layout({ children }) {
       // Check if user is authenticated first
       const isAuth = await base44.auth.isAuthenticated();
       if (!isAuth) {
-        // Redirect to Base44 platform login
+        // Redirect to Base44 platform login - keep loading state
         base44.auth.redirectToLogin(window.location.pathname);
-        return;
+        return; // Don't set loading to false, keep spinner while redirecting
       }
 
       const currentUser = await base44.auth.me();
@@ -154,12 +154,12 @@ export default function Layout({ children }) {
         const userTenant = tenantData.find(t => t.id === currentUser.tenant_id);
         setTenant(userTenant);
       }
+      
+      setLoading(false);
     } catch (error) {
       console.error("Error loading user data:", error);
-      // Redirect to Base44 login on any error
+      // Redirect to Base44 login on any error - keep loading state
       base44.auth.redirectToLogin(window.location.pathname);
-    } finally {
-      setLoading(false);
     }
   };
 
