@@ -29,7 +29,7 @@ import {
   GitBranch
 } from "lucide-react";
 import CountrySelect from "../shared/CountrySelect";
-import WorkflowTestRunner from "../workflows/WorkflowTestRunner";
+import WorkflowRunner from "../workflows/WorkflowRunner";
 
 export default function ControllingPersonManager({ account, tenant }) {
   const [showForm, setShowForm] = useState(false);

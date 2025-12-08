@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, GitBranch } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
-import WorkflowTestRunner from "../workflows/WorkflowTestRunner";
+import WorkflowRunner from "../workflows/WorkflowRunner";
 import { format } from "date-fns";
 
 export default function ControllingPersonsList({ account, onUpdateCount }) {
@@ -392,7 +392,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
             <DialogHeader>
               <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
             </DialogHeader>
-            <WorkflowTestRunner
+            <WorkflowRunner
               workflow={workflows[0]}
               initialData={{ controlling_person: classifyingPerson, account }}
               onComplete={handleClassificationComplete}
