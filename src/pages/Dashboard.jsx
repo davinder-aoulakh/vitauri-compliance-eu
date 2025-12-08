@@ -197,11 +197,14 @@ export default function Dashboard() {
           </div>
 
           {/* Custom Dashboard Widgets */}
-          <div className="grid grid-cols-12 gap-4">
+          <div className="grid grid-cols-12 gap-4" style={{ gridAutoRows: 'minmax(0, auto)' }}>
             {customDashboard.layout.map((widget) => (
               <div
                 key={widget.widget_id}
-                style={{ gridColumn: `span ${widget.position?.w || 6}` }}
+                style={{ 
+                  gridColumn: `span ${widget.position?.w || 6}`,
+                  gridRow: `${(widget.position?.y || 0) + 1} / span ${widget.position?.h || 1}`
+                }}
               >
                 <WidgetPreview widget={widget} tenantId={user.tenant_id} />
               </div>
