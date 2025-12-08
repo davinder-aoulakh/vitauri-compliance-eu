@@ -13,7 +13,8 @@ import {
   Trash2,
   FileCode,
   Send,
-  Edit
+  Edit,
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import XMLGenerator from "../components/reports/XMLGenerator";
 import ReportDetails from "../components/reports/ReportDetails";
 import SubmissionTracker from "../components/reports/SubmissionTracker";
 import ReportCorrectionWizard from "../components/reports/ReportCorrectionWizard";
+import ReportVersionHistory from "../components/reports/ReportVersionHistory";
 
 export default function ReportsPage() {
   const [user, setUser] = useState(null);
@@ -48,6 +50,7 @@ export default function ReportsPage() {
   const [showXMLGenerator, setShowXMLGenerator] = useState(false);
   const [showSubmissionTracker, setShowSubmissionTracker] = useState(false);
   const [showCorrectionWizard, setShowCorrectionWizard] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [correctionType, setCorrectionType] = useState("correction");
 
   const queryClient = useQueryClient();
@@ -125,6 +128,11 @@ export default function ReportsPage() {
     setSelectedReport(report);
     setCorrectionType("deletion");
     setShowCorrectionWizard(true);
+  };
+
+  const handleViewVersionHistory = (report) => {
+    setSelectedReport(report);
+    setShowVersionHistory(true);
   };
 
   const downloadXML = async (report) => {
@@ -476,6 +484,15 @@ export default function ReportsPage() {
             }}
             onCancel={() => setShowCorrectionWizard(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Report Version History</DialogTitle>
+          </DialogHeader>
+          <ReportVersionHistory report={selectedReport} />
         </DialogContent>
       </Dialog>
     </div>
