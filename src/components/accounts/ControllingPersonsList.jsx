@@ -20,13 +20,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, GitBranch } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import { format } from "date-fns";
 
 export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
+  const [showClassification, setShowClassification] = useState(false);
+  const [classifyingPerson, setClassifyingPerson] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: controllingPersons = [], isLoading } = useQuery({
@@ -35,6 +37,14 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
       ? base44.entities.ControllingPerson.filter({ account_id: account.id })
       : [],
     enabled: !!account?.id
+  });
+
+  const { data: workflows = [] } = useQuery({
+    queryKey: ['workflows'],
+    queryFn: () => base44.entities.Workflow.filter({ 
+      workflow_type: 'controlling_person_classification',
+      status: 'published'
+    })
   });
 
   const createMutation = useMutation({
@@ -75,6 +85,26 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     if (confirm("Are you sure you want to delete this controlling person?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleClassify = (person) => {
+    setClassifyingPerson(person);
+    setShowClassification(true);
+  };
+
+  const handleClassificationComplete = async (answers) => {
+    // Update controlling person based on classification results
+    const finalStep = answers[answers.length - 1];
+    const isReportable = finalStep?.result_status === 'reportable';
+    
+    await base44.entities.ControllingPerson.update(classifyingPerson.id, {
+      is_reportable: isReportable,
+      classification_answers: answers
+    });
+    
+    queryClient.invalidateQueries(['controlling-persons']);
+    setShowClassification(false);
+    setClassifyingPerson(null);
   };
 
   const isPassiveNFE = account?.entity_classification === "passive_nfe";
@@ -276,6 +306,12 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            {workflows.length > 0 && (
+                              <DropdownMenuItem onClick={() => handleClassify(person)}>
+                                <GitBranch className="w-4 h-4 mr-2" />
+                                Classify
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => handleEdit(person)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
@@ -347,6 +383,26 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Classification Workflow Dialog */}
+      {showClassification && workflows.length > 0 && classifyingPerson && (
+        <Dialog open={showClassification} onOpenChange={setShowClassification}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
+            </DialogHeader>
+            {React.createElement(
+              require('../workflows/WorkflowTestRunner').default,
+              {
+                workflow: workflows[0],
+                initialData: { controlling_person: classifyingPerson, account },
+                onComplete: handleClassificationComplete,
+                onCancel: () => setShowClassification(false)
+              }
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
