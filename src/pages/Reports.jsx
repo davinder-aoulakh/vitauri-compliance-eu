@@ -37,6 +37,7 @@ import ReportWizard from "../components/reports/ReportWizard";
 import XMLGenerator from "../components/reports/XMLGenerator";
 import ReportDetails from "../components/reports/ReportDetails";
 import SubmissionTracker from "../components/reports/SubmissionTracker";
+import ReportCorrectionWizard from "../components/reports/ReportCorrectionWizard";
 
 export default function ReportsPage() {
   const [user, setUser] = useState(null);
@@ -46,6 +47,8 @@ export default function ReportsPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [showXMLGenerator, setShowXMLGenerator] = useState(false);
   const [showSubmissionTracker, setShowSubmissionTracker] = useState(false);
+  const [showCorrectionWizard, setShowCorrectionWizard] = useState(false);
+  const [correctionType, setCorrectionType] = useState("correction");
 
   const queryClient = useQueryClient();
 
@@ -110,6 +113,18 @@ export default function ReportsPage() {
   const handleManageSubmission = (report) => {
     setSelectedReport(report);
     setShowSubmissionTracker(true);
+  };
+
+  const handleCreateCorrection = (report) => {
+    setSelectedReport(report);
+    setCorrectionType("correction");
+    setShowCorrectionWizard(true);
+  };
+
+  const handleCreateDeletion = (report) => {
+    setSelectedReport(report);
+    setCorrectionType("deletion");
+    setShowCorrectionWizard(true);
   };
 
   const downloadXML = async (report) => {
@@ -353,6 +368,19 @@ export default function ReportsPage() {
                                   <Send className="w-4 h-4 mr-2" />
                                   Manage Submission
                                 </DropdownMenuItem>
+
+                                {(report.status === 'submitted' || report.status === 'accepted') && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleCreateCorrection(report)}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Create Correction
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleCreateDeletion(report)}>
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Create Deletion
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 
                                 {report.status === 'draft' && (
                                   <DropdownMenuItem 
@@ -428,6 +456,25 @@ export default function ReportsPage() {
             onUpdate={() => {
               queryClient.invalidateQueries(['crs-reports']);
             }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCorrectionWizard} onOpenChange={setShowCorrectionWizard}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {correctionType === 'deletion' ? 'Create Deletion Report' : 'Create Correction Report'}
+            </DialogTitle>
+          </DialogHeader>
+          <ReportCorrectionWizard 
+            originalReport={selectedReport}
+            entity={entities.find(e => e.id === selectedReport?.entity_id)}
+            onComplete={() => {
+              setShowCorrectionWizard(false);
+              queryClient.invalidateQueries(['crs-reports']);
+            }}
+            onCancel={() => setShowCorrectionWizard(false)}
           />
         </DialogContent>
       </Dialog>

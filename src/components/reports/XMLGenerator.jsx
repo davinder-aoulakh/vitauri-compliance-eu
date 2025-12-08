@@ -18,7 +18,8 @@ import {
   Globe
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { JURISDICTION_CONFIGS, generateFileName, generateDocRefId } from "./JurisdictionConfig";
+import { JURISDICTION_CONFIGS, generateFileName } from "./JurisdictionConfig";
+import { generateMessageRefId, generateDocRefId, validateIdFormat } from "./idGenerator";
 import XMLValidator from "./XMLValidator";
 import ReportPreviewExport from "./ReportPreviewExport";
 import NILReportGenerator from "./NILReportGenerator";
@@ -146,23 +147,37 @@ export default function XMLGenerator({ report, onSuccess }) {
   const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig }) => {
     const jConfig = jurisdictionConfig || JURISDICTION_CONFIGS["DEFAULT"];
     const timestamp = new Date().toISOString();
-    const messageRefId = generateDocRefId(jConfig.docRefIdFormat, {
-      tin: entity?.tax_id,
-      giin: entity?.giin,
-      year: report.reporting_year,
-      type: 'MSG',
-      sequence: '001'
+    
+    // Generate standardized MessageRefId
+    const messageRefId = generateMessageRefId({
+      sendingCountry: report.reporting_jurisdiction,
+      fiscalYear: report.reporting_year,
+      destinationCountry: report.reporting_jurisdiction,
+      serialNumber: '001',
+      type: 'MSG'
     });
 
+    // Validate generated ID
+    const validation = validateIdFormat(messageRefId, 'MessageRefId');
+    if (!validation.isValid) {
+      console.warn('MessageRefId validation warnings:', validation.errors);
+    }
+
+    // Get schema version and namespace
+    const schemaVersion = report.schema_version || 'v2.0';
+    const versionNumber = schemaVersion.replace('v', '');
+    const messageTypeIndic = report.message_type_indic || 'CRS701';
+
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v2" xmlns:stf="urn:oecd:ties:crsstf:v5" version="${jConfig.schemaVersion}">
+<crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v${versionNumber}" xmlns:stf="urn:oecd:ties:crsstf:v5" version="${versionNumber}">
   <crs:MessageSpec>
-    <crs:SendingCompanyIN>${entity.tax_id || 'UNKNOWN'}</crs:SendingCompanyIN>
+    <crs:SendingCompanyIN>${entity.tax_id || entity.giin || 'UNKNOWN'}</crs:SendingCompanyIN>
     <crs:TransmittingCountry>${report.reporting_jurisdiction}</crs:TransmittingCountry>
     <crs:ReceivingCountry>${report.reporting_jurisdiction}</crs:ReceivingCountry>
     <crs:MessageType>CRS</crs:MessageType>
     <crs:MessageRefId>${messageRefId}</crs:MessageRefId>
-    <crs:MessageTypeIndic>CRS701</crs:MessageTypeIndic>
+    ${report.correction_message_ref_id ? `<crs:CorrMessageRefId>${report.correction_message_ref_id}</crs:CorrMessageRefId>` : ''}
+    <crs:MessageTypeIndic>${messageTypeIndic}</crs:MessageTypeIndic>
     <crs:ReportingPeriod>${report.reporting_year}-12-31</crs:ReportingPeriod>
     <crs:Timestamp>${timestamp}</crs:Timestamp>
   </crs:MessageSpec>
@@ -185,19 +200,29 @@ export default function XMLGenerator({ report, onSuccess }) {
 
     // Add account reports
     accounts.forEach((account, index) => {
-      const accDocRefId = generateDocRefId(jConfig.docRefIdFormat, {
-        tin: entity?.tax_id,
-        giin: entity?.giin,
-        year: report.reporting_year,
+      const accDocRefId = generateDocRefId({
+        sendingCountry: report.reporting_jurisdiction,
+        fiscalYear: report.reporting_year,
+        destinationCountry: report.reporting_jurisdiction,
+        serialNumber: String(index + 1),
         type: 'ACC',
-        sequence: String(index + 1).padStart(3, '0')
+        tin: entity?.tax_id
       });
+
+      // Determine DocTypeIndic based on message type
+      let docTypeIndic = 'OECD1'; // New data
+      if (report.message_type_indic === 'CRS702') {
+        docTypeIndic = 'OECD2'; // Correction
+      } else if (report.message_type_indic === 'CRS703') {
+        docTypeIndic = 'OECD3'; // Deletion
+      }
 
       xml += `
     <crs:AccountReport>
       <crs:DocSpec>
-        <crs:DocTypeIndic>OECD1</crs:DocTypeIndic>
+        <crs:DocTypeIndic>${docTypeIndic}</crs:DocTypeIndic>
         <crs:DocRefId>${accDocRefId}</crs:DocRefId>
+        ${report.correction_doc_ref_id ? `<crs:CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</crs:CorrDocRefId>` : ''}
       </crs:DocSpec>
       
       <crs:AccountNumber>${escapeXML(account.account_number)}</crs:AccountNumber>

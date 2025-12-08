@@ -57,8 +57,17 @@ export default function ReportDetails({ report, entity }) {
                   {report.report_type?.replace('_', ' ')}
                 </Badge>
                 <Badge variant="outline">
-                  Schema v{report.xml_schema_version}
+                  Schema {report.schema_version || report.xml_schema_version}
                 </Badge>
+                {report.message_type_indic && (
+                  <Badge variant="outline" className={
+                    report.message_type_indic === 'CRS702' ? 'bg-blue-50 text-blue-700' :
+                    report.message_type_indic === 'CRS703' ? 'bg-red-50 text-red-700' :
+                    'bg-slate-50 text-slate-700'
+                  }>
+                    {report.message_type_indic}
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
@@ -203,6 +212,32 @@ export default function ReportDetails({ report, entity }) {
         </Card>
       )}
 
+      {/* Correction/Deletion Information */}
+      {(report.correction_message_ref_id || report.message_type_indic === 'CRS702' || report.message_type_indic === 'CRS703') && (
+        <Card className="border-2 border-amber-100 bg-amber-50/30">
+          <CardHeader className="border-b border-amber-200">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              {report.message_type_indic === 'CRS703' ? 'Deletion Report' : 'Correction Report'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2">
+            {report.correction_message_ref_id && (
+              <div>
+                <p className="text-xs text-amber-700">Original Message Ref ID:</p>
+                <p className="text-sm font-mono text-amber-900">{report.correction_message_ref_id}</p>
+              </div>
+            )}
+            {report.notification_details?.correction_reason && (
+              <div>
+                <p className="text-xs text-amber-700">Reason:</p>
+                <p className="text-sm text-amber-900">{report.notification_details.correction_reason}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* XML File Information */}
       {report.xml_file_url && (
         <Card className="border-2 border-blue-100 bg-blue-50/30">
@@ -219,8 +254,13 @@ export default function ReportDetails({ report, entity }) {
                   CRS XML File Generated
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Schema Version: {report.xml_schema_version}
+                  Schema Version: {report.schema_version || report.xml_schema_version}
                 </p>
+                {report.giin && (
+                  <p className="text-xs text-blue-700 mt-1">
+                    GIIN: {report.giin}
+                  </p>
+                )}
               </div>
               <a
                 href={report.xml_file_url}
@@ -230,6 +270,50 @@ export default function ReportDetails({ report, entity }) {
               >
                 Download →
               </a>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tax Authority Notifications */}
+      {report.notification_details?.last_notification_date && (
+        <Card className={`border-2 ${
+          report.status === 'accepted' ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'
+        }`}>
+          <CardHeader className={`border-b ${
+            report.status === 'accepted' ? 'border-green-200' : 'border-red-200'
+          }`}>
+            <CardTitle className="text-base flex items-center gap-2">
+              {report.status === 'accepted' ? (
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              )}
+              Tax Authority Response
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2">
+            <div>
+              <p className="text-xs text-slate-700">Status:</p>
+              <p className="text-sm font-semibold">{report.notification_details.notification_status}</p>
+            </div>
+            {report.notification_details.error_code && (
+              <div>
+                <p className="text-xs text-red-700">Error Code:</p>
+                <p className="text-sm font-mono text-red-900">{report.notification_details.error_code}</p>
+              </div>
+            )}
+            {report.notification_details.error_description && (
+              <div>
+                <p className="text-xs text-red-700">Error Description:</p>
+                <p className="text-sm text-red-900">{report.notification_details.error_description}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-slate-700">Received:</p>
+              <p className="text-sm text-slate-900">
+                {new Date(report.notification_details.last_notification_date).toLocaleString()}
+              </p>
             </div>
           </CardContent>
         </Card>

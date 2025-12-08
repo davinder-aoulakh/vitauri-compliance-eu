@@ -23,6 +23,7 @@ import {
   Info,
   Loader2
 } from "lucide-react";
+import SchemaVersionSelector, { getRecommendedSchemaVersion } from "./SchemaVersionSelector";
 
 export default function ReportWizard({ tenant, onComplete, onCancel }) {
   const [step, setStep] = useState(1);
@@ -31,7 +32,9 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
     reporting_year: new Date().getFullYear() - 1,
     reporting_jurisdiction: tenant?.jurisdiction || "",
     report_type: "crs_xml",
-    xml_schema_version: "2.0"
+    schema_version: "v2.0",
+    message_type_indic: "CRS701",
+    giin: ""
   });
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
@@ -43,6 +46,16 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
       : [],
     enabled: !!tenant?.id
   });
+
+  const { data: jurisdictionConfigs = [] } = useQuery({
+    queryKey: ['jurisdiction-configs'],
+    queryFn: () => base44.entities.JurisdictionConfig.list(),
+    enabled: true
+  });
+
+  const currentJurisdictionConfig = jurisdictionConfigs.find(
+    jc => jc.jurisdiction_code === formData.reporting_jurisdiction
+  );
 
   const { data: accounts = [] } = useQuery({
     queryKey: ['reportable-accounts', formData.entity_id, formData.reporting_year],
@@ -156,7 +169,9 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
         reporting_year: formData.reporting_year.toString(),
         reporting_jurisdiction: formData.reporting_jurisdiction,
         report_type: formData.report_type,
-        xml_schema_version: formData.xml_schema_version,
+        schema_version: formData.schema_version,
+        message_type_indic: formData.message_type_indic,
+        giin: formData.giin || null,
         status: 'draft',
         summary_stats: {
           total_reportable_accounts: previewData.total_reportable_accounts,
@@ -263,21 +278,29 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="xml_schema_version">CRS XML Schema Version</Label>
-            <Select
-              value={formData.xml_schema_version}
-              onValueChange={(value) => setFormData({ ...formData, xml_schema_version: value })}
-            >
-              <SelectTrigger className="mt-1.5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1.0">v1.0 (Legacy)</SelectItem>
-                <SelectItem value="2.0">v2.0 (Current - OECD Standard)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <SchemaVersionSelector
+            value={formData.schema_version}
+            onChange={(value) => setFormData({ ...formData, schema_version: value })}
+            jurisdictionConfig={currentJurisdictionConfig}
+            reportingYear={formData.reporting_year}
+          />
+
+          {currentJurisdictionConfig?.requires_giin && (
+            <div>
+              <Label htmlFor="giin">GIIN (Global Intermediary Identification Number)</Label>
+              <Input
+                id="giin"
+                value={formData.giin}
+                onChange={(e) => setFormData({ ...formData, giin: e.target.value })}
+                placeholder="e.g., ABCDEF.12345.LE.123"
+                maxLength={19}
+                className="mt-1.5"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Required by this jurisdiction for FATCA/CRS reporting
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

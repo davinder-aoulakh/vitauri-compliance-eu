@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   XCircle,
   Info,
-  Save
+  Save,
+  Upload
 } from "lucide-react";
 
 export default function SubmissionTracker({ report, onUpdate }) {
@@ -31,6 +32,7 @@ export default function SubmissionTracker({ report, onUpdate }) {
     notes: ''
   });
   const [saving, setSaving] = useState(false);
+  const [autoSubmitting, setAutoSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +54,27 @@ export default function SubmissionTracker({ report, onUpdate }) {
       alert("Failed to update submission status: " + error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAutomatedSubmission = async () => {
+    setAutoSubmitting(true);
+    try {
+      const response = await base44.functions.invoke('submitToTaxAuthority', {
+        report_id: report.id
+      });
+
+      if (response.data.success) {
+        toast.success('Report submitted successfully!');
+        onUpdate();
+      } else {
+        alert('Submission failed: ' + response.data.error);
+      }
+    } catch (error) {
+      console.error('Auto-submission error:', error);
+      alert('Automated submission failed: ' + error.message);
+    } finally {
+      setAutoSubmitting(false);
     }
   };
 
@@ -172,6 +195,18 @@ export default function SubmissionTracker({ report, onUpdate }) {
       )}
 
       <div className="flex justify-end gap-3 pt-4 border-t">
+        {report?.status === 'validated' && report?.xml_file_url && (
+          <Button 
+            type="button"
+            onClick={handleAutomatedSubmission}
+            disabled={autoSubmitting}
+            variant="outline"
+            className="gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            {autoSubmitting ? "Submitting..." : "Auto-Submit to Authority"}
+          </Button>
+        )}
         <Button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
           <Save className="w-4 h-4 mr-2" />
           {saving ? "Saving..." : "Update Submission Status"}
