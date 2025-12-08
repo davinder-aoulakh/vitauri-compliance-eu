@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { AlertTriangle, FileEdit, Trash2, Info } from "lucide-react";
 import { generateCorrectionIds } from "./idGenerator";
 
