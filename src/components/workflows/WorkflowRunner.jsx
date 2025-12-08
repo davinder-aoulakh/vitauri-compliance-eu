@@ -21,6 +21,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
@@ -31,6 +32,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   const handleNext = () => {
     const answer = answers[currentStep.step_id];
+    
+    // Add current step to history
+    setHistory(prev => [...prev, currentStep.step_id]);
     
     // Check conditional logic
     if (currentStep.conditional_logic) {
@@ -74,6 +78,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const handleBack = () => {
+    if (history.length > 0) {
+      setHistory(prev => prev.slice(0, -1));
+    }
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
     }
@@ -316,7 +323,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return answer !== undefined && answer !== null && answer !== '';
   };
 
-  const currentStepIndex = history.length;
   const progress = Math.round(((currentStepIndex + 1) / workflow.steps.length) * 100);
 
   return (
@@ -358,10 +364,10 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         })}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-indigo-50 border-indigo-300">
           <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
-            <span className="text-white text-xs font-bold">{history.length + 1}</span>
+            <span className="text-white text-xs font-bold">{currentStepIndex + 1}</span>
           </div>
           <span className="text-xs font-medium whitespace-nowrap text-indigo-700">
-            {currentStep?.step_title?.substring(0, 15) || `Step ${history.length + 1}`}
+            {currentStep?.step_title?.substring(0, 15) || `Step ${currentStepIndex + 1}`}
             {currentStep?.step_title?.length > 15 && '...'}
           </span>
         </div>
@@ -406,23 +412,65 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </CardContent>
       </Card>
 
+      {/* Previous Answers Compact View */}
+      {Object.keys(answers).length > 0 && (
+        <Card className="bg-slate-50 border-slate-200">
+          <CardContent className="p-4">
+            <details className="cursor-pointer">
+              <summary className="text-sm font-semibold text-slate-700 flex items-center gap-2 hover:text-indigo-600 transition-colors">
+                <FileCheck className="w-4 h-4" />
+                View Previous Answers ({Object.keys(answers).length})
+              </summary>
+              <div className="mt-3 space-y-2 pl-6">
+                {Object.entries(answers).map(([key, value]) => {
+                  const step = workflow.steps.find(s => s.step_id === key);
+                  if (!step) return null;
+                  
+                  let displayValue = '';
+                  if (Array.isArray(value)) {
+                    displayValue = value.join(', ');
+                  } else if (typeof value === 'object' && value !== null) {
+                    displayValue = 'Data entered';
+                  } else {
+                    displayValue = step.options?.find(o => o.value === value)?.label || String(value || '');
+                  }
+                  
+                  return (
+                    <div key={key} className="flex items-start justify-between gap-4 text-sm py-2 border-b border-slate-200 last:border-0">
+                      <span className="text-slate-600 text-xs flex-shrink-0 max-w-[40%]">
+                        {step.step_title || key}
+                      </span>
+                      <span className="text-xs text-right text-slate-800 break-words">
+                        {displayValue}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Navigation */}
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-3 pt-4 border-t">
         <Button
           type="button"
           variant="outline"
-          onClick={currentStepIndex === 0 ? onCancel : handleBack}
+          onClick={history.length === 0 ? onCancel : handleBack}
           disabled={loading}
+          size="lg"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {currentStepIndex === 0 ? "Cancel" : "Back"}
+          {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
 
         <Button
           type="button"
           onClick={isLastStep || currentStep.question_type === 'result' ? handleComplete : handleNext}
           disabled={!canProceed() || loading}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          size="lg"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >
           {loading ? (
             <>
@@ -436,7 +484,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             </>
           ) : (
             <>
-              Next
+              Next Question
               <ArrowRight className="w-4 h-4 ml-2" />
             </>
           )}
