@@ -15,13 +15,18 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles } from "lucide-react";
+import WorkflowVisualizer from "./WorkflowVisualizer";
+import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const [showFlowchart, setShowFlowchart] = useState(false);
+  const [showAIHelper, setShowAIHelper] = useState(false);
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
@@ -327,6 +332,72 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   return (
     <div className="space-y-6">
+      {/* Header with Flowchart and AI buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">
+            {workflow.workflow_name}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              v{workflow.version}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFlowchart(true)}
+              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            >
+              <GitBranch className="w-4 h-4 mr-1" />
+              Flowchart
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAIHelper(true)}
+              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              AI Assist
+            </Button>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-700">
+            Step {currentStepIndex + 1}
+          </p>
+          <p className="text-xs text-slate-500">{progress}% Complete</p>
+        </div>
+      </div>
+
+      {/* Flowchart Dialog */}
+      <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <WorkflowVisualizer workflow={workflow} />
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Helper Dialog */}
+      <Dialog open={showAIHelper} onOpenChange={setShowAIHelper}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>AI Workflow Assistant</DialogTitle>
+          </DialogHeader>
+          <AIWorkflowHelper
+            currentStep={currentStep}
+            workflow={workflow}
+            answers={answers}
+            recordData={initialData}
+            onSuggestedAnswer={(value) => {
+              handleAnswer(currentStep.step_id, value);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Progress Bar */}
       <div className="space-y-2">
         <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
