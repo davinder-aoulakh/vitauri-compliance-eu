@@ -323,15 +323,12 @@ export default function ControllingPersonManager({ account, tenant }) {
             <DialogHeader>
               <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
             </DialogHeader>
-            {React.createElement(
-              require('../workflows/WorkflowTestRunner').default,
-              {
-                workflow: workflows[0],
-                initialData: { controlling_person: classifyingPerson, account },
-                onComplete: handleClassificationComplete,
-                onCancel: () => setShowClassification(false)
-              }
-            )}
+            <WorkflowTestRunner
+              workflow={workflows[0]}
+              initialData={{ controlling_person: classifyingPerson, account }}
+              onComplete={handleClassificationComplete}
+              onCancel={() => setShowClassification(false)}
+            />
           </DialogContent>
         </Dialog>
       )}
