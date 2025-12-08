@@ -40,6 +40,9 @@ import ReportDetails from "../components/reports/ReportDetails";
 import SubmissionTracker from "../components/reports/SubmissionTracker";
 import ReportCorrectionWizard from "../components/reports/ReportCorrectionWizard";
 import ReportVersionHistory from "../components/reports/ReportVersionHistory";
+import ReportExportDialog from "../components/reports/ReportExportDialog";
+import GuidedTour from "../components/tours/GuidedTour";
+import { getTourByPage } from "../components/tours/tourDefinitions";
 
 export default function ReportsPage() {
   const [user, setUser] = useState(null);
@@ -52,6 +55,10 @@ export default function ReportsPage() {
   const [showCorrectionWizard, setShowCorrectionWizard] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [correctionType, setCorrectionType] = useState("correction");
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  const tourConfig = getTourByPage("Reports");
 
   const queryClient = useQueryClient();
 
@@ -86,6 +93,22 @@ export default function ReportsPage() {
     queryKey: ['entities', user?.tenant_id],
     queryFn: () => user?.tenant_id 
       ? base44.entities.Entity.filter({ tenant_id: user.tenant_id })
+      : [],
+    enabled: !!user?.tenant_id
+  });
+
+  const { data: allAccounts = [] } = useQuery({
+    queryKey: ['all-accounts', user?.tenant_id],
+    queryFn: () => user?.tenant_id 
+      ? base44.entities.Account.filter({ tenant_id: user.tenant_id })
+      : [],
+    enabled: !!user?.tenant_id
+  });
+
+  const { data: allControllingPersons = [] } = useQuery({
+    queryKey: ['all-controlling-persons', user?.tenant_id],
+    queryFn: () => user?.tenant_id 
+      ? base44.entities.ControllingPerson.filter({ tenant_id: user.tenant_id })
       : [],
     enabled: !!user?.tenant_id
   });
@@ -133,6 +156,19 @@ export default function ReportsPage() {
   const handleViewVersionHistory = (report) => {
     setSelectedReport(report);
     setShowVersionHistory(true);
+  };
+
+  const handleExport = (report) => {
+    setSelectedReport(report);
+    setShowExportDialog(true);
+  };
+
+  const handleStartTour = () => {
+    // Reset tour completion for this page
+    const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
+    const filtered = completedTours.filter(t => t !== tourConfig.key);
+    localStorage.setItem("completedTours", JSON.stringify(filtered));
+    setShowTour(true);
   };
 
   const downloadXML = async (report) => {
@@ -187,14 +223,23 @@ export default function ReportsPage() {
               Generate and manage CRS XML reports for tax authority submission
             </p>
           </div>
-        <Button 
-          onClick={() => setShowWizard(true)}
-          className="gap-2 text-white shadow-lg"
-          style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-        >
-          <Plus className="w-4 h-4" />
-          Create New Report
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={handleStartTour}
+            className="gap-2"
+          >
+            Start Tour
+          </Button>
+          <Button 
+            onClick={() => setShowWizard(true)}
+            className="gap-2 text-white shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+          >
+            <Plus className="w-4 h-4" />
+            Create New Report
+          </Button>
+        </div>
       </div>
 
         {/* Stats */}
@@ -350,6 +395,10 @@ export default function ReportsPage() {
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport(report)}>
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Export Report
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleViewVersionHistory(report)}>
                                   <History className="w-4 h-4 mr-2" />
                                   Version History
@@ -499,6 +548,28 @@ export default function ReportsPage() {
           <ReportVersionHistory report={selectedReport} />
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
+
+      <ReportExportDialog
+        report={selectedReport}
+        accounts={allAccounts.filter(a => 
+          a.reportability_status === 'reportable' && 
+          a.entity_id === selectedReport?.entity_id
+        )}
+        controllingPersons={allControllingPersons.filter(cp =>
+          allAccounts.some(a => a.id === cp.account_id && a.entity_id === selectedReport?.entity_id)
+        )}
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+      />
+
+      {showTour && tourConfig && (
+        <GuidedTour
+          steps={tourConfig.steps}
+          tourKey={tourConfig.key}
+          onComplete={() => setShowTour(false)}
+          onSkip={() => setShowTour(false)}
+        />
+      )}
+      </div>
+      );
+      }

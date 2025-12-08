@@ -16,7 +16,8 @@ import {
   Globe,
   Wrench,
   LayoutDashboard,
-  Settings
+  Settings,
+  PlayCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,15 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import WidgetPreview from "@/components/dashboard/WidgetPreview";
+import GuidedTour from "@/components/tours/GuidedTour";
+import { getTourByPage } from "@/components/tours/tourDefinitions";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [tenant, setTenant] = useState(null);
+  const [showTour, setShowTour] = useState(false);
+
+  const tourConfig = getTourByPage("Dashboard");
 
   useEffect(() => {
     loadUserData();
@@ -96,6 +102,14 @@ export default function Dashboard() {
     : 0;
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
+
+  const handleStartTour = () => {
+    // Reset tour completion for this page
+    const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
+    const filtered = completedTours.filter(t => t !== tourConfig.key);
+    localStorage.setItem("completedTours", JSON.stringify(filtered));
+    setShowTour(true);
+  };
 
   // Show setup prompt if no tenant assigned
   if (!user?.tenant_id) {
@@ -176,6 +190,10 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex gap-3">
+              <Button variant="outline" onClick={handleStartTour} className="gap-2">
+                <PlayCircle className="w-4 h-4" />
+                Start Tour
+              </Button>
               {(user?.user_role === 'tenant_admin' || user?.user_role === 'super_admin') && (
                 <Link to={createPageUrl("DashboardBuilder")}>
                   <Button variant="outline" className="gap-2">
@@ -209,14 +227,23 @@ export default function Dashboard() {
                 <WidgetPreview widget={widget} tenantId={user.tenant_id} />
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+            </div>
 
-  // Default dashboard
-  return (
+            {showTour && tourConfig && (
+            <GuidedTour
+              steps={tourConfig.steps}
+              tourKey={tourConfig.key}
+              onComplete={() => setShowTour(false)}
+              onSkip={() => setShowTour(false)}
+            />
+            )}
+            </div>
+            </div>
+            );
+            }
+
+            // Default dashboard
+            return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
         {/* Header */}
@@ -230,6 +257,10 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex gap-3">
+            <Button variant="outline" onClick={handleStartTour} className="gap-2">
+              <PlayCircle className="w-4 h-4" />
+              Start Tour
+            </Button>
             {(user?.user_role === 'tenant_admin' || user?.user_role === 'super_admin') && (
               <Link to={createPageUrl("DashboardBuilder")}>
                 <Button variant="outline" className="gap-2">
@@ -417,11 +448,20 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-        )}
-      </div>
-    </div>
-  );
-}
+          )}
+          </div>
+
+          {showTour && tourConfig && (
+          <GuidedTour
+          steps={tourConfig.steps}
+          tourKey={tourConfig.key}
+          onComplete={() => setShowTour(false)}
+          onSkip={() => setShowTour(false)}
+          />
+          )}
+          </div>
+          );
+          }
 
 function MetricCard({ title, value, subtitle, icon: Icon, color, trend, showProgress, progress }) {
   return (
