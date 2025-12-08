@@ -148,6 +148,8 @@ export default function Layout({ children }) {
       }
     } catch (error) {
       console.error("Error loading user data:", error);
+      // Redirect to Base44 login if user is not authenticated
+      base44.auth.redirectToLogin(window.location.pathname);
     } finally {
       setLoading(false);
     }
