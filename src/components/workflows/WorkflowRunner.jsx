@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check } from "lucide-react";
 
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -140,63 +141,107 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
     switch (currentStep.question_type) {
       case 'yes_no':
+        const yesNoOptions = currentStep.options || [
+          { value: "YES", label: "Yes" },
+          { value: "NO", label: "No" }
+        ];
+        
         return (
-          <div className="flex gap-4">
-            {currentStep.options?.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                variant={answer === option.value ? "default" : "outline"}
-                onClick={() => handleAnswer(currentStep.step_id, option.value)}
-                className="flex-1"
-              >
-                {option.label}
-              </Button>
-            ))}
+          <div className="space-y-3">
+            <RadioGroup value={answer} onValueChange={(value) => handleAnswer(currentStep.step_id, value)}>
+              {yesNoOptions.map((option) => (
+                <div 
+                  key={option.value}
+                  className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
+                  onClick={() => handleAnswer(currentStep.step_id, option.value)}
+                >
+                  <RadioGroupItem value={option.value} id={option.value} />
+                  <Label 
+                    htmlFor={option.value}
+                    className="flex-1 cursor-pointer font-medium text-slate-900"
+                  >
+                    {option.label}
+                  </Label>
+                  {option.value === answer && (
+                    <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                  )}
+                </div>
+              ))}
+            </RadioGroup>
           </div>
         );
 
       case 'single_choice':
         return (
-          <Select
-            value={answer}
-            onValueChange={(value) => handleAnswer(currentStep.step_id, value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select an option..." />
-            </SelectTrigger>
-            <SelectContent>
-              {currentStep.options?.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-4">
+            <Select
+              value={answer}
+              onValueChange={(value) => handleAnswer(currentStep.step_id, value)}
+            >
+              <SelectTrigger className="w-full h-12">
+                <SelectValue placeholder="Select an option..." />
+              </SelectTrigger>
+              <SelectContent>
+                {currentStep.options?.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         );
 
       case 'multiple_choice':
+        const selectedOptions = answer ? (Array.isArray(answer) ? answer : answer.split(',').filter(Boolean)) : [];
+        
         return (
           <div className="space-y-3">
             {currentStep.options?.map((option) => {
-              const selectedValues = answer || [];
-              const isSelected = selectedValues.includes(option.value);
+              const isSelected = selectedOptions.includes(option.value);
               
               return (
-                <div key={option.value} className="flex items-center gap-2">
-                  <Checkbox
+                <div 
+                  key={option.value}
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-indigo-400 bg-indigo-50'
+                      : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  }`}
+                  onClick={() => {
+                    const newValues = isSelected
+                      ? selectedOptions.filter(v => v !== option.value)
+                      : [...selectedOptions, option.value];
+                    handleAnswer(currentStep.step_id, newValues);
+                  }}
+                >
+                  <Checkbox 
                     checked={isSelected}
                     onCheckedChange={(checked) => {
                       const newValues = checked
-                        ? [...selectedValues, option.value]
-                        : selectedValues.filter(v => v !== option.value);
+                        ? [...selectedOptions, option.value]
+                        : selectedOptions.filter(v => v !== option.value);
                       handleAnswer(currentStep.step_id, newValues);
                     }}
+                    id={`option-${option.value}`}
                   />
-                  <Label>{option.label}</Label>
+                  <Label 
+                    htmlFor={`option-${option.value}`}
+                    className="flex-1 cursor-pointer font-medium text-slate-900"
+                  >
+                    {option.label}
+                  </Label>
+                  {isSelected && (
+                    <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                  )}
                 </div>
               );
             })}
+            {selectedOptions.length > 0 && (
+              <p className="text-sm text-slate-600 mt-2">
+                {selectedOptions.length} option(s) selected
+              </p>
+            )}
           </div>
         );
 
@@ -271,49 +316,93 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return answer !== undefined && answer !== null && answer !== '';
   };
 
+  const currentStepIndex = history.length;
+  const progress = Math.round(((currentStepIndex + 1) / workflow.steps.length) * 100);
+
   return (
     <div className="space-y-6">
-      {/* Progress */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden">
+      {/* Progress Bar */}
+      <div className="space-y-2">
+        <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
           <div 
-            className="bg-indigo-600 h-full transition-all duration-300"
-            style={{ width: `${((currentStepIndex + 1) / workflow.steps.length) * 100}%` }}
+            className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
-        <span className="text-sm font-medium text-slate-600">
-          {currentStepIndex + 1} / {workflow.steps.length}
-        </span>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Started</span>
+          <span className="font-medium text-indigo-600">{Object.keys(answers).length} questions answered</span>
+          <span>Summary</span>
+        </div>
       </div>
 
-      {/* Current Step */}
-      <Card className="border-2 border-indigo-100">
-        <CardHeader>
-          <CardTitle>{currentStep.step_title}</CardTitle>
-          {currentStep.step_description && (
-            <CardDescription>{currentStep.step_description}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {currentStep.question_text && (
-            <div>
-              <Label className="text-base">{currentStep.question_text}</Label>
-              {currentStep.help_text && (
-                <p className="text-sm text-slate-500 mt-1">{currentStep.help_text}</p>
-              )}
+      {/* Step Breadcrumb */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {history.map((stepId, idx) => {
+          const step = workflow.steps.find(s => s.step_id === stepId);
+          
+          return (
+            <React.Fragment key={stepId}>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-green-50 border-green-200">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-green-600">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-xs font-medium whitespace-nowrap text-green-700">
+                  {step?.step_title?.substring(0, 15) || `Step ${idx + 1}`}
+                  {step?.step_title?.length > 15 && '...'}
+                </span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            </React.Fragment>
+          );
+        })}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-indigo-50 border-indigo-300">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
+            <span className="text-white text-xs font-bold">{history.length + 1}</span>
+          </div>
+          <span className="text-xs font-medium whitespace-nowrap text-indigo-700">
+            {currentStep?.step_title?.substring(0, 15) || `Step ${history.length + 1}`}
+            {currentStep?.step_title?.length > 15 && '...'}
+          </span>
+        </div>
+      </div>
+
+      {/* Question Card */}
+      <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30 shadow-lg">
+        <CardContent className="p-6">
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center flex-shrink-0 shadow-lg">
+                <span className="text-white font-bold text-lg">{currentStepIndex + 1}</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-slate-900 mb-3">
+                  {currentStep.step_title}
+                </h3>
+                {currentStep.question_text && (
+                  <p className="text-slate-700 mb-3 leading-relaxed">{currentStep.question_text}</p>
+                )}
+                {currentStep.help_text && (
+                  <Alert className="bg-blue-50 border-blue-200 mb-4">
+                    <Info className="w-4 h-4 text-blue-600" />
+                    <AlertDescription className="text-sm text-blue-900">
+                      {currentStep.help_text}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {currentStep.regulatory_reference && (
+                  <p className="text-xs text-slate-500 italic mb-3 flex items-center gap-2">
+                    <FileCheck className="w-3 h-3" />
+                    Reference: {currentStep.regulatory_reference}
+                  </p>
+                )}
+              </div>
             </div>
-          )}
 
-          {renderQuestionInput()}
-
-          {currentStep.regulatory_reference && (
-            <Alert className="bg-blue-50 border-blue-200">
-              <Info className="w-4 h-4 text-blue-600" />
-              <AlertDescription className="text-sm text-blue-900">
-                <strong>Reference:</strong> {currentStep.regulatory_reference}
-              </AlertDescription>
-            </Alert>
-          )}
+            <div className="pl-16">
+              {renderQuestionInput()}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
