@@ -350,6 +350,10 @@ export default function ReportsPage() {
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleViewVersionHistory(report)}>
+                                  <History className="w-4 h-4 mr-2" />
+                                  Version History
+                                </DropdownMenuItem>
                                 
                                 {report.status === 'draft' && (
                                   <DropdownMenuItem onClick={() => handleGenerateXML(report)}>
