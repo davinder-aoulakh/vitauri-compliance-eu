@@ -138,6 +138,14 @@ export default function Layout({ children }) {
 
   const loadUserData = async () => {
     try {
+      // Check if user is authenticated first
+      const isAuth = await base44.auth.isAuthenticated();
+      if (!isAuth) {
+        // Redirect to Base44 platform login
+        base44.auth.redirectToLogin(window.location.pathname);
+        return;
+      }
+
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       
@@ -148,7 +156,7 @@ export default function Layout({ children }) {
       }
     } catch (error) {
       console.error("Error loading user data:", error);
-      // Redirect to Base44 login if user is not authenticated
+      // Redirect to Base44 login on any error
       base44.auth.redirectToLogin(window.location.pathname);
     } finally {
       setLoading(false);
