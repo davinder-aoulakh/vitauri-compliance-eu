@@ -254,7 +254,7 @@ export default function Dashboard() {
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <MetricCard
             title="Total Entities"
             value={entities.length}
@@ -278,20 +278,11 @@ export default function Dashboard() {
             icon={FileCheck}
             color="#8b5cf6"
           />
-          <MetricCard
-            title="Compliance Status"
-            value={`${completionPercentage}%`}
-            subtitle="Entity classification"
-            icon={CheckCircle2}
-            color="#f59e0b"
-            showProgress
-            progress={completionPercentage}
-          />
         </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: CRS Report Due, Accounts Pending, Jurisdiction Overview - all stacked */}
+          {/* Left Column */}
           <div className="flex flex-col gap-4">
             {currentYearReports.length === 0 && rfiEntities.length > 0 && (
               <Card className="border-0 shadow-xl">
@@ -303,20 +294,6 @@ export default function Dashboard() {
                     description="Annual reporting deadline approaching"
                     action="Start Report"
                     link={createPageUrl("Reports")}
-                  />
-                </CardContent>
-              </Card>
-            )}
-            {pendingAccounts.length > 0 && (
-              <Card className="border-0 shadow-xl">
-                <CardContent className="p-0">
-                  <ActivityItem
-                    icon={AlertTriangle}
-                    iconColor="#f59e0b"
-                    title="Accounts Pending Classification"
-                    description={`${pendingAccounts.length} accounts need reportability review`}
-                    action="Review Now"
-                    link={createPageUrl("Accounts")}
                   />
                 </CardContent>
               </Card>
