@@ -25,13 +25,16 @@ import {
   AlertCircle,
   Clock,
   Users,
-  Globe
+  Globe,
+  GitBranch
 } from "lucide-react";
 import CountrySelect from "../shared/CountrySelect";
 
 export default function ControllingPersonManager({ account, tenant }) {
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
+  const [showClassification, setShowClassification] = useState(false);
+  const [classifyingPerson, setClassifyingPerson] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -39,6 +42,14 @@ export default function ControllingPersonManager({ account, tenant }) {
     queryKey: ['controlling-persons', account?.id],
     queryFn: () => base44.entities.ControllingPerson.filter({ account_id: account?.id }),
     enabled: !!account?.id
+  });
+
+  const { data: workflows = [] } = useQuery({
+    queryKey: ['workflows'],
+    queryFn: () => base44.entities.Workflow.filter({ 
+      workflow_type: 'controlling_person_classification',
+      status: 'published'
+    })
   });
 
   const createMutation = useMutation({
@@ -79,6 +90,25 @@ export default function ControllingPersonManager({ account, tenant }) {
     if (confirm("Delete this controlling person?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleClassify = (person) => {
+    setClassifyingPerson(person);
+    setShowClassification(true);
+  };
+
+  const handleClassificationComplete = async (answers) => {
+    const finalStep = answers[answers.length - 1];
+    const isReportable = finalStep?.result_status === 'reportable';
+    
+    await base44.entities.ControllingPerson.update(classifyingPerson.id, {
+      is_reportable: isReportable,
+      classification_answers: answers
+    });
+    
+    queryClient.invalidateQueries(['controlling-persons', account?.id]);
+    setShowClassification(false);
+    setClassifyingPerson(null);
   };
 
   const getStatusBadge = (isReportable) => {
@@ -213,6 +243,21 @@ export default function ControllingPersonManager({ account, tenant }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {workflows.length > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleClassify(person);
+                        }}
+                        className="text-indigo-600 hover:text-indigo-700"
+                      >
+                        <GitBranch className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       size="sm"
@@ -270,6 +315,26 @@ export default function ControllingPersonManager({ account, tenant }) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Classification Workflow Dialog */}
+      {showClassification && workflows.length > 0 && classifyingPerson && (
+        <Dialog open={showClassification} onOpenChange={setShowClassification}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
+            </DialogHeader>
+            {React.createElement(
+              require('../workflows/WorkflowTestRunner').default,
+              {
+                workflow: workflows[0],
+                initialData: { controlling_person: classifyingPerson, account },
+                onComplete: handleClassificationComplete,
+                onCancel: () => setShowClassification(false)
+              }
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
