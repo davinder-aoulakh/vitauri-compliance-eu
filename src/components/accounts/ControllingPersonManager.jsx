@@ -324,7 +324,7 @@ export default function ControllingPersonManager({ account, tenant }) {
             <DialogHeader>
               <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
             </DialogHeader>
-            <WorkflowTestRunner
+            <WorkflowRunner
               workflow={workflows[0]}
               initialData={{ controlling_person: classifyingPerson, account }}
               onComplete={handleClassificationComplete}
