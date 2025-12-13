@@ -570,6 +570,67 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
           </div>
 
+          {/* Account Holder Original Address Section */}
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Account Holder Original Address</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="holder_street">Street Address</Label>
+                <Input
+                  id="holder_street"
+                  value={formData.account_holder_address?.street || ""}
+                  onChange={(e) => handleAddressChange("street", e.target.value)}
+                  placeholder="123 Main Street"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="holder_city">City</Label>
+                <Input
+                  id="holder_city"
+                  value={formData.account_holder_address?.city || ""}
+                  onChange={(e) => handleAddressChange("city", e.target.value)}
+                  placeholder="City"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="holder_state">State/Province</Label>
+                <Input
+                  id="holder_state"
+                  value={formData.account_holder_address?.state || ""}
+                  onChange={(e) => handleAddressChange("state", e.target.value)}
+                  placeholder="State/Province"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="holder_postal_code">Postal Code</Label>
+                <Input
+                  id="holder_postal_code"
+                  value={formData.account_holder_address?.postal_code || ""}
+                  onChange={(e) => handleAddressChange("postal_code", e.target.value)}
+                  placeholder="Postal Code"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="holder_country">Country</Label>
+                <div className="mt-1.5">
+                  <CountrySelect
+                    value={formData.account_holder_address?.country || ""}
+                    onValueChange={(value) => handleAddressChange("country", value)}
+                    placeholder="Select country..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* CRS Reporting Values */}
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">CRS Reporting Values</h3>
