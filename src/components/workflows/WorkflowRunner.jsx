@@ -291,10 +291,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
       case 'date_input':
         // Ensure date value is in YYYY-MM-DD format for HTML5 date input
-        const dateValue = answer ? (typeof answer === 'string' ? answer.split('T')[0] : '') : '';
+        // Handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ" formats
+        let dateValue = '';
+        if (answer) {
+          if (typeof answer === 'string') {
+            // Extract just the date part (YYYY-MM-DD) from ISO strings or keep as-is
+            dateValue = answer.includes('T') ? answer.split('T')[0] : answer;
+          }
+        }
         
         return (
           <Input
+            key={`${currentStep.step_id}-${dateValue}`}
             type="date"
             value={dateValue}
             onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
