@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { XCircle, Save, Building2, Palette, Settings } from "lucide-react";
+import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush } from "lucide-react";
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
   const [formData, setFormData] = useState(tenant || {
@@ -34,7 +35,24 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
       font_family: "Inter"
     },
     subscription_status: "active",
-    subscription_tier: "professional"
+    subscription_tier: "professional",
+    enabled_features: {
+      ai_bulk_import: true,
+      ai_classification_assistant: true,
+      ai_data_validator: true,
+      ai_jurisdiction_advisor: true,
+      ai_help_assistant: true,
+      ai_workflow_helper: true,
+      ai_document_parser: true,
+      dashboard_builder: true,
+      guided_tours: true,
+      compliance_assistant: true,
+      workflow_automation: true,
+      advanced_reporting: true,
+      audit_logging: true,
+      user_management: true,
+      custom_branding: true
+    }
   });
 
   const handleSubmit = (e) => {
@@ -52,6 +70,46 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
       [parent]: { ...prev[parent], [field]: value }
     }));
   };
+
+  const handleFeatureToggle = (feature) => {
+    setFormData(prev => ({
+      ...prev,
+      enabled_features: {
+        ...prev.enabled_features,
+        [feature]: !prev.enabled_features[feature]
+      }
+    }));
+  };
+
+  const featureGroups = [
+    {
+      title: "AI Features",
+      icon: Brain,
+      features: [
+        { key: "ai_bulk_import", label: "AI Bulk Import", description: "AI-powered data import from files", icon: Sparkles },
+        { key: "ai_classification_assistant", label: "AI Classification Assistant", description: "AI suggestions for entity/account classification", icon: Brain },
+        { key: "ai_data_validator", label: "AI Data Validator", description: "Automated data quality checks", icon: Shield },
+        { key: "ai_jurisdiction_advisor", label: "AI Jurisdiction Advisor", description: "CRS jurisdiction guidance", icon: Brain },
+        { key: "ai_help_assistant", label: "AI Help Assistant", description: "Floating AI help widget", icon: Brain },
+        { key: "ai_workflow_helper", label: "AI Workflow Helper", description: "Smart workflow suggestions", icon: Zap },
+        { key: "ai_document_parser", label: "AI Document Parser", description: "Extract data from documents", icon: FileCheck }
+      ]
+    },
+    {
+      title: "Platform Features",
+      icon: LayoutDashboard,
+      features: [
+        { key: "dashboard_builder", label: "Dashboard Builder", description: "Custom dashboard creation", icon: LayoutDashboard },
+        { key: "guided_tours", label: "Guided Tours", description: "Interactive onboarding tours", icon: PlayCircle },
+        { key: "compliance_assistant", label: "Compliance Assistant", description: "AI compliance chat page", icon: Shield },
+        { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
+        { key: "advanced_reporting", label: "Advanced Reporting", description: "Enhanced report generation", icon: FileCheck },
+        { key: "audit_logging", label: "Activity Audit Log", description: "Detailed activity tracking", icon: Eye },
+        { key: "user_management", label: "User Management", description: "Invite and manage users", icon: Users },
+        { key: "custom_branding", label: "Custom Branding", description: "Logo and color customization", icon: Paintbrush }
+      ]
+    }
+  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -352,6 +410,47 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
               <li>• <strong>Professional:</strong> Up to 1,000 accounts, 10 entities</li>
               <li>• <strong>Enterprise:</strong> Unlimited accounts and entities</li>
             </ul>
+          </div>
+
+          <div className="border-t pt-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Feature Access Control</h3>
+              <p className="text-sm text-slate-600">Enable or disable specific features for this tenant</p>
+            </div>
+
+            {featureGroups.map((group, groupIdx) => (
+              <div key={groupIdx} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <group.icon className="w-5 h-5 text-indigo-600" />
+                  <h4 className="font-semibold text-slate-900">{group.title}</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {group.features.map((feature) => (
+                    <div
+                      key={feature.key}
+                      className="flex items-start gap-3 p-4 rounded-lg border bg-white hover:border-indigo-200 transition-colors"
+                    >
+                      <Checkbox
+                        id={feature.key}
+                        checked={formData.enabled_features?.[feature.key] ?? true}
+                        onCheckedChange={() => handleFeatureToggle(feature.key)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <label
+                          htmlFor={feature.key}
+                          className="flex items-center gap-2 text-sm font-medium text-slate-900 cursor-pointer"
+                        >
+                          <feature.icon className="w-4 h-4 text-slate-500" />
+                          {feature.label}
+                        </label>
+                        <p className="text-xs text-slate-500 mt-1">{feature.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </TabsContent>
       </Tabs>
