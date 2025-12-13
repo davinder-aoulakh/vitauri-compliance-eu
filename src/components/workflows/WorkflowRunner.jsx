@@ -438,6 +438,90 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </div>
         );
 
+      case 'address_input':
+        const addressData = answer || {
+          street: "",
+          city: "",
+          state: "",
+          postal_code: "",
+          country: ""
+        };
+
+        const handleAddressChange = (field, value) => {
+          handleAnswer(currentStep.step_id, {
+            ...addressData,
+            [field]: value
+          });
+        };
+
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium text-slate-700">
+                Street Address <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                value={addressData.street || ""}
+                onChange={(e) => handleAddressChange("street", e.target.value)}
+                placeholder="123 Main Street"
+                className="mt-1.5"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  City <span className="text-red-600">*</span>
+                </Label>
+                <Input
+                  value={addressData.city || ""}
+                  onChange={(e) => handleAddressChange("city", e.target.value)}
+                  placeholder="City"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  State/Province <span className="text-red-600">*</span>
+                </Label>
+                <Input
+                  value={addressData.state || ""}
+                  onChange={(e) => handleAddressChange("state", e.target.value)}
+                  placeholder="State/Province"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  Postal Code <span className="text-red-600">*</span>
+                </Label>
+                <Input
+                  value={addressData.postal_code || ""}
+                  onChange={(e) => handleAddressChange("postal_code", e.target.value)}
+                  placeholder="Postal Code"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  Country <span className="text-red-600">*</span>
+                </Label>
+                <Input
+                  value={addressData.country || ""}
+                  onChange={(e) => handleAddressChange("country", e.target.value)}
+                  placeholder="Country"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
       case 'info':
         return null;
 
@@ -468,6 +552,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       return true;
     }
     const answer = answers[currentStep.step_id];
+    
+    // Special validation for address_input - all fields are required
+    if (currentStep.question_type === 'address_input') {
+      if (!answer || typeof answer !== 'object') return false;
+      return !!(answer.street && answer.city && answer.state && answer.postal_code && answer.country);
+    }
+    
     return answer !== undefined && answer !== null && answer !== '';
   };
 
