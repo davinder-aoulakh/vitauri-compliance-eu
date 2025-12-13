@@ -509,7 +509,7 @@ export default function Layout({ children }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="mt-4 text-center text-xs text-slate-500">
+            <div className="mt-4 text-left text-xs text-slate-500">
               &copy; {new Date().getFullYear()} <a href="https://www.vitauri.com" target="_blank" rel="noopener noreferrer" className="hover:underline">Vitauri</a>
             </div>
           </SidebarFooter>
