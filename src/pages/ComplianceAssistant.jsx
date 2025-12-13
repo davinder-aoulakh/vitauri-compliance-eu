@@ -232,30 +232,34 @@ export default function ComplianceAssistant() {
               </div>
             </button>
 
-            <button
-              onClick={() => setActiveTab("validator")}
-              className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
-                activeTab === "validator" ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50"
-              }`}
-            >
-              <Brain className={`w-5 h-5 ${activeTab === "validator" ? "text-blue-600" : "text-slate-400"}`} />
-              <div>
-                <p className={`text-sm font-medium ${activeTab === "validator" ? "text-blue-700" : "text-slate-700"}`}>Data Validator</p>
-                <p className="text-xs text-slate-500">Find anomalies</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("classifier")}
-              className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
-                activeTab === "classifier" ? "bg-purple-50 border border-purple-200" : "hover:bg-slate-50"
-              }`}
-            >
-              <Wand2 className={`w-5 h-5 ${activeTab === "classifier" ? "text-purple-600" : "text-slate-400"}`} />
-              <div>
-                <p className={`text-sm font-medium ${activeTab === "classifier" ? "text-purple-700" : "text-slate-700"}`}>AI Classifier</p>
-                <p className="text-xs text-slate-500">Suggest classifications</p>
-              </div>
-            </button>
+            {(tenant?.enabled_features?.ai_data_validator !== false) && (
+              <button
+                onClick={() => setActiveTab("validator")}
+                className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
+                  activeTab === "validator" ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50"
+                }`}
+              >
+                <Brain className={`w-5 h-5 ${activeTab === "validator" ? "text-blue-600" : "text-slate-400"}`} />
+                <div>
+                  <p className={`text-sm font-medium ${activeTab === "validator" ? "text-blue-700" : "text-slate-700"}`}>Data Validator</p>
+                  <p className="text-xs text-slate-500">Find anomalies</p>
+                </div>
+              </button>
+            )}
+            {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
+              <button
+                onClick={() => setActiveTab("classifier")}
+                className={`w-full text-left p-3 rounded-lg transition-colors flex items-center gap-3 ${
+                  activeTab === "classifier" ? "bg-purple-50 border border-purple-200" : "hover:bg-slate-50"
+                }`}
+              >
+                <Wand2 className={`w-5 h-5 ${activeTab === "classifier" ? "text-purple-600" : "text-slate-400"}`} />
+                <div>
+                  <p className={`text-sm font-medium ${activeTab === "classifier" ? "text-purple-700" : "text-slate-700"}`}>AI Classifier</p>
+                  <p className="text-xs text-slate-500">Suggest classifications</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
 
@@ -438,7 +442,7 @@ export default function ComplianceAssistant() {
           </>
         )}
 
-        {activeTab === "validator" && (
+        {activeTab === "validator" && (tenant?.enabled_features?.ai_data_validator !== false) && (
           <ScrollArea className="flex-1 p-6">
             <div className="max-w-4xl mx-auto">
               <AIDataValidator
@@ -452,7 +456,7 @@ export default function ComplianceAssistant() {
           </ScrollArea>
         )}
 
-        {activeTab === "classifier" && (
+        {activeTab === "classifier" && (tenant?.enabled_features?.ai_classification_assistant !== false) && (
           <ScrollArea className="flex-1 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
               {/* Record Type Selection */}
