@@ -16,7 +16,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
@@ -27,6 +28,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [history, setHistory] = useState([]);
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [showAIHelper, setShowAIHelper] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState({});
+  const [dragActive, setDragActive] = useState({});
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
@@ -293,6 +296,146 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             value={answer || ""}
             onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
           />
+        );
+
+      case 'file_upload':
+        const uploadedFiles = answer || [];
+        const isUploading = uploadingFiles[currentStep.step_id];
+        const isDragging = dragActive[currentStep.step_id];
+
+        const handleFileChange = async (files) => {
+          if (!files || files.length === 0) return;
+
+          setUploadingFiles(prev => ({ ...prev, [currentStep.step_id]: true }));
+
+          try {
+            const uploadPromises = Array.from(files).map(async (file) => {
+              const { file_url } = await base44.integrations.Core.UploadFile({ file });
+              return {
+                name: file.name,
+                url: file_url,
+                size: file.size,
+                type: file.type
+              };
+            });
+
+            const newFiles = await Promise.all(uploadPromises);
+            const currentFiles = Array.isArray(answer) ? answer : [];
+            handleAnswer(currentStep.step_id, [...currentFiles, ...newFiles]);
+          } catch (error) {
+            console.error("File upload error:", error);
+            alert("Failed to upload file(s). Please try again.");
+          } finally {
+            setUploadingFiles(prev => ({ ...prev, [currentStep.step_id]: false }));
+          }
+        };
+
+        const handleDrag = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(prev => ({ ...prev, [currentStep.step_id]: true }));
+          } else if (e.type === "dragleave") {
+            setDragActive(prev => ({ ...prev, [currentStep.step_id]: false }));
+          }
+        };
+
+        const handleDrop = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragActive(prev => ({ ...prev, [currentStep.step_id]: false }));
+          
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileChange(e.dataTransfer.files);
+          }
+        };
+
+        const removeFile = (index) => {
+          const currentFiles = Array.isArray(answer) ? answer : [];
+          const newFiles = currentFiles.filter((_, i) => i !== index);
+          handleAnswer(currentStep.step_id, newFiles);
+        };
+
+        return (
+          <div className="space-y-4">
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                isDragging
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                id={`file-upload-${currentStep.step_id}`}
+                className="hidden"
+                onChange={(e) => handleFileChange(e.target.files)}
+                multiple
+                disabled={isUploading}
+              />
+              
+              <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-indigo-600' : 'text-slate-400'}`} />
+              
+              {isUploading ? (
+                <div className="space-y-2">
+                  <Loader2 className="w-8 h-8 mx-auto animate-spin text-indigo-600" />
+                  <p className="text-sm font-medium text-slate-700">Uploading files...</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    {isDragging ? 'Drop files here' : 'Drag and drop files here'}
+                  </p>
+                  <p className="text-xs text-slate-500 mb-4">or</p>
+                  <label
+                    htmlFor={`file-upload-${currentStep.step_id}`}
+                    className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Files
+                  </label>
+                </>
+              )}
+            </div>
+
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">
+                  Uploaded Files ({uploadedFiles.length})
+                </p>
+                {uploadedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileCheck className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+                        {file.size && (
+                          <p className="text-xs text-slate-500">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         );
 
       case 'info':
