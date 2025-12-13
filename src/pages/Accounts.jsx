@@ -344,14 +344,16 @@ export default function AccountsPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              onClick={() => setShowBulkImport(true)}
-              variant="outline"
-              className="gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              AI Import
-            </Button>
+            {(tenant?.enabled_features?.ai_bulk_import !== false) && (
+              <Button 
+                onClick={() => setShowBulkImport(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                AI Import
+              </Button>
+            )}
             <Button 
               onClick={() => {
                 setSelectedAccount(null);

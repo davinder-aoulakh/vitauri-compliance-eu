@@ -245,14 +245,16 @@ export default function EntitiesPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              onClick={() => setShowBulkImport(true)}
-              variant="outline"
-              className="gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              AI Import
-            </Button>
+            {(tenant?.enabled_features?.ai_bulk_import !== false) && (
+              <Button 
+                onClick={() => setShowBulkImport(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                AI Import
+              </Button>
+            )}
             <Button 
               onClick={() => {
                 setSelectedEntity(null);
@@ -436,13 +438,15 @@ export default function EntitiesPage() {
                                   Re-classify Entity
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => {
-                                setSelectedEntity(entity);
-                                setShowAIClassifier(true);
-                              }}>
-                                <Brain className="w-4 h-4 mr-2" />
-                                AI Classification Help
-                              </DropdownMenuItem>
+                              {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedEntity(entity);
+                                  setShowAIClassifier(true);
+                                }}>
+                                  <Brain className="w-4 h-4 mr-2" />
+                                  AI Classification Help
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => handleEdit(entity)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Details
