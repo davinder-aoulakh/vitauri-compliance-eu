@@ -67,7 +67,10 @@ export default function EntitiesPage() {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showAIClassifier, setShowAIClassifier] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('status') || "all";
+  });
 
   const queryClient = useQueryClient();
 
