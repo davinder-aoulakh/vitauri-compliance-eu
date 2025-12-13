@@ -78,6 +78,14 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
       const accountControllingPersons = controllingPersons.filter(cp => cp.account_id === a.id);
       return accountControllingPersons.length === 0;
     }),
+    controllingPersonNotClassified: accounts.filter(a => {
+      if (a.entity_classification !== 'passive_nfe') return false;
+      if (a.compliance_issues_resolved?.includes('cp_not_classified')) return false;
+      const accountControllingPersons = controllingPersons.filter(cp => cp.account_id === a.id);
+      // Has CPs but at least one is not classified (no reportability_status or is pending_review)
+      return accountControllingPersons.length > 0 && 
+             accountControllingPersons.some(cp => !cp.reportability_status || cp.reportability_status === 'pending_review');
+    }),
     highValueIndicia: accounts.filter(a => 
       a.account_balance > 1000000 && 
       a.indicia_found && 
@@ -316,6 +324,23 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
             }}
             actionText="Add Persons"
             issueType="passive_nfe_no_cp"
+          />
+
+          {/* Controlling Persons Not Classified */}
+          <IssueCard
+            title="Controlling Persons - Pending Classification"
+            description="Passive NFE controlling persons that haven't been classified"
+            accounts={issues.controllingPersonNotClassified}
+            icon={Eye}
+            color={{
+              border: "border-indigo-200",
+              bg: "bg-indigo-50/30",
+              iconBg: "bg-indigo-100",
+              icon: "text-indigo-600",
+              badge: "bg-indigo-100 text-indigo-800 border-indigo-300"
+            }}
+            actionText="Classify"
+            issueType="cp_not_classified"
           />
 
           {/* High Value with Uncured Indicia */}
