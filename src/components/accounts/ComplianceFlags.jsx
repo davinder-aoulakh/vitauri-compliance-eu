@@ -45,6 +45,16 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
     enabled: !!tenantId
   });
 
+  const { data: beneficiaries = [] } = useQuery({
+    queryKey: ['all-beneficiaries', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const bens = await base44.entities.Beneficiary.filter({ tenant_id: tenantId });
+      return bens;
+    },
+    enabled: !!tenantId
+  });
+
   const updateAccountMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Account.update(id, data),
     onSuccess: () => {
@@ -85,6 +95,21 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
       // Has CPs but at least one is not classified (no reportability_status or is pending_review)
       return accountControllingPersons.length > 0 && 
              accountControllingPersons.some(cp => !cp.reportability_status || cp.reportability_status === 'pending_review');
+    }),
+    missingBeneficiary: accounts.filter(a => {
+      // Beneficiaries typically required for annuities and cash value insurance
+      if (!['annuity', 'cash_value_insurance'].includes(a.account_type)) return false;
+      if (a.compliance_issues_resolved?.includes('missing_beneficiary')) return false;
+      const accountBeneficiaries = beneficiaries.filter(b => b.account_id === a.id);
+      return accountBeneficiaries.length === 0;
+    }),
+    beneficiaryNotClassified: accounts.filter(a => {
+      if (!['annuity', 'cash_value_insurance'].includes(a.account_type)) return false;
+      if (a.compliance_issues_resolved?.includes('beneficiary_not_classified')) return false;
+      const accountBeneficiaries = beneficiaries.filter(b => b.account_id === a.id);
+      // Has beneficiaries but at least one is not classified (no reportability_status or is pending_review)
+      return accountBeneficiaries.length > 0 && 
+             accountBeneficiaries.some(b => !b.reportability_status || b.reportability_status === 'pending_review');
     }),
     highValueIndicia: accounts.filter(a => 
       a.account_balance > 1000000 && 
@@ -341,6 +366,40 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
             }}
             actionText="Classify"
             issueType="cp_not_classified"
+          />
+
+          {/* Missing Beneficiary */}
+          <IssueCard
+            title="Missing Beneficiaries"
+            description="Annuity/Insurance accounts without beneficiaries identified"
+            accounts={issues.missingBeneficiary}
+            icon={Users}
+            color={{
+              border: "border-pink-200",
+              bg: "bg-pink-50/30",
+              iconBg: "bg-pink-100",
+              icon: "text-pink-600",
+              badge: "bg-pink-100 text-pink-800 border-pink-300"
+            }}
+            actionText="Add Beneficiary"
+            issueType="missing_beneficiary"
+          />
+
+          {/* Beneficiary Not Classified */}
+          <IssueCard
+            title="Beneficiaries - Pending Classification"
+            description="Beneficiaries that haven't been classified for reportability"
+            accounts={issues.beneficiaryNotClassified}
+            icon={Eye}
+            color={{
+              border: "border-teal-200",
+              bg: "bg-teal-50/30",
+              iconBg: "bg-teal-100",
+              icon: "text-teal-600",
+              badge: "bg-teal-100 text-teal-800 border-teal-300"
+            }}
+            actionText="Classify"
+            issueType="beneficiary_not_classified"
           />
 
           {/* High Value with Uncured Indicia */}
