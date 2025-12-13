@@ -344,15 +344,8 @@ export default function Dashboard() {
               <CardContent className="p-6 space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">Home Jurisdiction</span>
+                    <span className="text-sm font-medium text-slate-700">RFI Jurisdiction</span>
                     <Badge variant="outline">{tenant?.jurisdiction || "N/A"}</Badge>
-                  </div>
-                </div>
-                
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="text-xs text-slate-500 mb-1">Tenant ID</div>
-                  <div className="text-xs font-mono text-slate-700 break-all select-all">
-                    {user?.tenant_id || "Not assigned"}
                   </div>
                 </div>
                 
