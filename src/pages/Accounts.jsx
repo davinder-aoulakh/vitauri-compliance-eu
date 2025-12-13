@@ -367,29 +367,33 @@ export default function AccountsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
-            <TabsTrigger value="accounts">
-              <Wallet className="w-4 h-4 mr-2" />
-              Accounts
-            </TabsTrigger>
-            <TabsTrigger value="compliance" className="relative">
-              <Flag className="w-4 h-4 mr-2" />
-              Compliance
-              {complianceIssuesCount > 0 && (
-                <Badge className="ml-2 bg-amber-500 text-white border-0 px-2 py-0 text-xs">
-                  {complianceIssuesCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="ai-validator">
-              <Brain className="w-4 h-4 mr-2" />
-              AI Validator
-            </TabsTrigger>
-            <TabsTrigger value="jurisdiction">
-              <Globe className="w-4 h-4 mr-2" />
-              CRS Advisor
-            </TabsTrigger>
-          </TabsList>
+                <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+                  <TabsTrigger value="accounts">
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Accounts
+                  </TabsTrigger>
+                  <TabsTrigger value="compliance" className="relative">
+                    <Flag className="w-4 h-4 mr-2" />
+                    Compliance
+                    {complianceIssuesCount > 0 && (
+                      <Badge className="ml-2 bg-amber-500 text-white border-0 px-2 py-0 text-xs">
+                        {complianceIssuesCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  {(tenant?.enabled_features?.ai_data_validator !== false) && (
+                    <TabsTrigger value="ai-validator">
+                      <Brain className="w-4 h-4 mr-2" />
+                      AI Validator
+                    </TabsTrigger>
+                  )}
+                  {(tenant?.enabled_features?.ai_jurisdiction_advisor !== false) && (
+                    <TabsTrigger value="jurisdiction">
+                      <Globe className="w-4 h-4 mr-2" />
+                      CRS Advisor
+                    </TabsTrigger>
+                  )}
+                </TabsList>
 
           <TabsContent value="accounts" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -712,22 +716,26 @@ export default function AccountsPage() {
             />
           </TabsContent>
 
-          <TabsContent value="ai-validator">
-            <AIDataValidator
-              accounts={accounts}
-              entities={entities}
-              onIssueSelect={(issue) => {
-                if (issue.affected_record_type === 'account') {
-                  const account = accounts.find(a => a.id === issue.affected_record_id);
-                  if (account) handleEdit(account);
-                }
-              }}
-            />
-          </TabsContent>
+          {(tenant?.enabled_features?.ai_data_validator !== false) && (
+            <TabsContent value="ai-validator">
+              <AIDataValidator
+                accounts={accounts}
+                entities={entities}
+                onIssueSelect={(issue) => {
+                  if (issue.affected_record_type === 'account') {
+                    const account = accounts.find(a => a.id === issue.affected_record_id);
+                    if (account) handleEdit(account);
+                  }
+                }}
+              />
+            </TabsContent>
+          )}
 
-          <TabsContent value="jurisdiction">
-            <AIJurisdictionAdvisor initialJurisdiction={tenant?.jurisdiction} />
-          </TabsContent>
+          {(tenant?.enabled_features?.ai_jurisdiction_advisor !== false) && (
+            <TabsContent value="jurisdiction">
+              <AIJurisdictionAdvisor initialJurisdiction={tenant?.jurisdiction} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
