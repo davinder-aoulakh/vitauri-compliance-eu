@@ -14,7 +14,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush } from "lucide-react";
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
-  const [formData, setFormData] = useState(tenant || {
+  const defaultEnabledFeatures = {
+    ai_bulk_import: true,
+    ai_classification_assistant: true,
+    ai_data_validator: true,
+    ai_jurisdiction_advisor: true,
+    ai_help_assistant: true,
+    ai_workflow_helper: true,
+    ai_document_parser: true,
+    dashboard_builder: true,
+    guided_tours: true,
+    compliance_assistant: true,
+    workflow_automation: true,
+    advanced_reporting: true,
+    audit_logging: true,
+    user_management: true,
+    custom_branding: true
+  };
+
+  const [formData, setFormData] = useState(tenant ? {
+    ...tenant,
+    enabled_features: {
+      ...defaultEnabledFeatures,
+      ...(tenant.enabled_features || {})
+    }
+  } : {
     name: "",
     short_name: "",
     jurisdiction: "",
@@ -36,23 +60,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     },
     subscription_status: "active",
     subscription_tier: "professional",
-    enabled_features: {
-      ai_bulk_import: true,
-      ai_classification_assistant: true,
-      ai_data_validator: true,
-      ai_jurisdiction_advisor: true,
-      ai_help_assistant: true,
-      ai_workflow_helper: true,
-      ai_document_parser: true,
-      dashboard_builder: true,
-      guided_tours: true,
-      compliance_assistant: true,
-      workflow_automation: true,
-      advanced_reporting: true,
-      audit_logging: true,
-      user_management: true,
-      custom_branding: true
-    }
+    enabled_features: defaultEnabledFeatures
   });
 
   const handleSubmit = (e) => {
