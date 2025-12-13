@@ -367,7 +367,10 @@ export default function AccountsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+                <TabsList className={`grid w-full max-w-2xl ${
+                  (tenant?.enabled_features?.ai_data_validator !== false && tenant?.enabled_features?.ai_jurisdiction_advisor !== false) ? 'grid-cols-4' :
+                  ((tenant?.enabled_features?.ai_data_validator === false && tenant?.enabled_features?.ai_jurisdiction_advisor === false) ? 'grid-cols-2' : 'grid-cols-3')
+                }`}>
                   <TabsTrigger value="accounts">
                     <Wallet className="w-4 h-4 mr-2" />
                     Accounts
