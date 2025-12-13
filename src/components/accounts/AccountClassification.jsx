@@ -718,17 +718,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const { _address_config, ...savedAddress } = existingAnswer;
       setAddressValues(savedAddress);
       setSelectedValue("");
+      setDateValue("");
     } else if (existingAnswer && typeof existingAnswer === 'object' && !existingAnswer.file_url) {
       // Restore multi-field values
       setMultiFieldValues(existingAnswer);
       setSelectedValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setDateValue("");
     } else {
       setSelectedValue(existingAnswer || "");
+      setDateValue(existingAnswer || "");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setMultiFieldValues({});
     }
-    setDateValue("");
     setMultiFieldErrors({});
   };
 
@@ -759,13 +761,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setAddressValues(savedAddress);
       setSelectedValue("");
       setMultiFieldValues({});
+      setDateValue("");
     } else if (previousAnswer && typeof previousAnswer === 'object' && !previousAnswer.file_url) {
       // Restore multi-field values
       setMultiFieldValues(previousAnswer);
       setSelectedValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setDateValue("");
     } else {
       setSelectedValue(previousAnswer || "");
+      setDateValue(previousAnswer || "");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setMultiFieldValues({});
     }
@@ -1054,11 +1059,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.question_type === "date_input") {
+      // Extract just the date part (YYYY-MM-DD) from ISO strings
+      const displayDate = dateValue ? (dateValue.includes('T') ? dateValue.split('T')[0] : dateValue) : '';
+      
       return (
         <div className="space-y-3">
           <Input
             type="date"
-            value={dateValue}
+            value={displayDate}
             onChange={(e) => {
               setDateValue(e.target.value);
               setSelectedValue(e.target.value);
