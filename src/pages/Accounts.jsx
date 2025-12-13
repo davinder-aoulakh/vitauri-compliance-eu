@@ -73,6 +73,7 @@ export default function AccountsPage() {
   const [showComplianceFlags, setShowComplianceFlags] = useState(false);
   const [showAIValidator, setShowAIValidator] = useState(false);
   const [showJurisdictionAdvisor, setShowJurisdictionAdvisor] = useState(false);
+  const [complianceIssuesCount, setComplianceIssuesCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -318,12 +319,6 @@ export default function AccountsPage() {
   };
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
-
-  const complianceIssuesCount = accounts.filter(a => 
-    a.reportability_status === 'pending_review' ||
-    (a.entity_classification === 'passive_nfe' && !a.requires_controlling_persons) ||
-    (a.account_holder_type === 'individual' && !a.self_certification_obtained && a.reportability_status !== 'non_reportable')
-  ).length;
 
   if (!user) {
     return (
@@ -718,6 +713,7 @@ export default function AccountsPage() {
             <ComplianceFlags 
               tenantId={user?.tenant_id}
               onSelectAccount={handleComplianceFlagSelect}
+              onIssuesCountChange={setComplianceIssuesCount}
             />
           </TabsContent>
 

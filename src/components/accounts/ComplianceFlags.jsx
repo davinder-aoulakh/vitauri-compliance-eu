@@ -20,7 +20,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-export default function ComplianceFlags({ tenantId, onSelectAccount }) {
+export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCountChange }) {
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [resolvingIssue, setResolvingIssue] = useState(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
@@ -134,6 +134,13 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
   };
 
   const totalIssues = Object.values(issues).reduce((sum, arr) => sum + arr.length, 0);
+
+  // Notify parent of issues count changes
+  React.useEffect(() => {
+    if (onIssuesCountChange) {
+      onIssuesCountChange(totalIssues);
+    }
+  }, [totalIssues, onIssuesCountChange]);
 
   const handleResolveIssue = (account, issueType) => {
     setResolvingIssue({ account, issueType });
