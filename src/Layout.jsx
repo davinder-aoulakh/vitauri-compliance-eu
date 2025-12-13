@@ -206,7 +206,7 @@ export default function Layout({ children }) {
     }
   ];
 
-  const adminNav = [
+  const administrationNav = [
     {
       title: "Dashboard Builder",
       url: createPageUrl("DashboardBuilder"),
@@ -268,7 +268,7 @@ export default function Layout({ children }) {
 
   const navigation = isSuperAdmin 
     ? superAdminNav 
-    : [...tenantNav, ...(isTenantAdmin ? adminNav : [])];
+    : tenantNav;
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
   const fontFamily = tenant?.branding?.font_family || "Inter, system-ui, sans-serif";
@@ -378,6 +378,39 @@ export default function Layout({ children }) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {/* Administration Section - Tenant Admin Only */}
+            {isTenantAdmin && !isSuperAdmin && (
+              <SidebarGroup className="mt-6">
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+                  Administration
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {administrationNav.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton 
+                          asChild 
+                          className={`rounded-lg transition-all duration-200 ${
+                            location.pathname === item.url 
+                              ? 'text-white shadow-md' 
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          }`}
+                          style={location.pathname === item.url ? {
+                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                          } : {}}
+                        >
+                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                            <item.icon className="w-4 h-4" />
+                            <span className="font-medium text-sm">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
             {!isSuperAdmin && tenant && (
               <SidebarGroup className="mt-6">
