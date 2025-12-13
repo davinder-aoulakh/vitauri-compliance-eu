@@ -212,15 +212,15 @@ export default function AccountDetails({ account, entity }) {
           )}
 
           {/* Account Holder Original Address */}
-          {account.account_holder_address && (account.account_holder_address.street || account.account_holder_address.country) && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-slate-50">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-indigo-600" />
-                  Account Holder Original Address
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-slate-50">
+              <CardTitle className="text-base flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-indigo-600" />
+                Account Holder Original Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              {account.account_holder_address && (account.account_holder_address.street || account.account_holder_address.country) ? (
                 <div className="space-y-1 text-sm">
                   {account.account_holder_address.street && (
                     <p className="text-slate-900">{account.account_holder_address.street}</p>
@@ -236,20 +236,22 @@ export default function AccountDetails({ account, entity }) {
                     <p className="font-medium text-slate-900">{account.account_holder_address.country}</p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-sm text-slate-400">—</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Tax Residencies */}
-          {account.tax_residencies && account.tax_residencies.length > 0 && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-slate-50">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-indigo-600" />
-                  Tax Residencies
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-slate-50">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Globe className="w-5 h-5 text-indigo-600" />
+                Tax Residencies
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              {account.tax_residencies && account.tax_residencies.length > 0 ? (
                 <div className="space-y-3">
                   {account.tax_residencies.map((residency, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
@@ -274,9 +276,11 @@ export default function AccountDetails({ account, entity }) {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-sm text-slate-400">—</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
