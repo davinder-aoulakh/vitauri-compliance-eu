@@ -474,17 +474,6 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="country_of_residence">Country of Residence</Label>
-              <div className="mt-1.5">
-                <CountrySelect
-                  value={formData.country_of_residence}
-                  onValueChange={(value) => handleChange("country_of_residence", value)}
-                  placeholder="Select country..."
-                />
-              </div>
-            </div>
-
-            <div>
               <Label htmlFor="current_email">Current Email Address</Label>
               <Input
                 id="current_email"
