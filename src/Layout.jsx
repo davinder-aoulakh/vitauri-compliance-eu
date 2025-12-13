@@ -535,7 +535,9 @@ export default function Layout({ children }) {
         </main>
 
         {/* AI Help Assistant - Floating Widget */}
-        <AIHelpAssistant currentPage={navigation.find(n => n.url === location.pathname)?.title} />
+        {(tenant?.enabled_features?.ai_help_assistant !== false) && (
+          <AIHelpAssistant currentPage={navigation.find(n => n.url === location.pathname)?.title} />
+        )}
       </div>
     </SidebarProvider>
   </ThemeProvider>
