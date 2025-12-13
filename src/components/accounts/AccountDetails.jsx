@@ -53,7 +53,21 @@ export default function AccountDetails({ account, entity }) {
     enabled: !!account?.id && account?.account_holder_type === 'entity'
   });
 
+  // Fetch referenced data for labels
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data-labels'],
+    queryFn: () => base44.entities.ReferencedData.list()
+  });
+
   if (!account) return null;
+
+  // Helper function to get label from value
+  const getLabel = (entityName, fieldName, value) => {
+    const item = referencedData.find(
+      rd => rd.entity_name === entityName && rd.field_name === fieldName && rd.value === value
+    );
+    return item?.label || value?.replace(/_/g, " ");
+  };
 
   const showBeneficiaries = account.account_holder_type === 'individual' && !account.account_holder_is_alive;
   const showControllingPersons = account.account_holder_type === 'entity';
@@ -151,12 +165,12 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={CreditCard}
               label="Account Type"
-              value={account.account_type?.replace(/_/g, " ")}
+              value={getLabel('Account', 'account_type', account.account_type)}
             />
             <InfoRow
               icon={CreditCard}
               label="Balance"
-              value={formatCurrency(account.account_balance, account.currency)}
+              value={formatCurrency(account.year_end_cash_value, account.year_end_cash_value_currency)}
             />
             <InfoRow
               icon={Calendar}
