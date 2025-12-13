@@ -62,15 +62,8 @@ export default function JurisdictionOverviewWidget({
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <span className="text-sm text-slate-600">Home Jurisdiction</span>
+          <span className="text-sm text-slate-600">RFI Jurisdiction</span>
           <Badge variant="outline" className="font-medium">{tenant?.jurisdiction || 'N/A'}</Badge>
-        </div>
-        
-        <div className="space-y-1">
-          <span className="text-xs text-slate-500">Tenant ID</span>
-          <div className="bg-slate-50 rounded-lg px-3 py-2">
-            <code className="text-xs text-slate-600 break-all">{tenantId || 'N/A'}</code>
-          </div>
         </div>
       </div>
 
