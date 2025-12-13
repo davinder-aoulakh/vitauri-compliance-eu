@@ -581,7 +581,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   type="number"
                   step="0.01"
                   value={formData.year_end_cash_value}
-                  onChange={(e) => handleChange("year_end_cash_value", parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleChange("year_end_cash_value", val === "" ? "" : parseFloat(val));
+                  }}
                   placeholder="0.00"
                   className="mt-1.5"
                 />
@@ -604,7 +607,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   type="number"
                   step="0.01"
                   value={formData.gross_payments}
-                  onChange={(e) => handleChange("gross_payments", parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleChange("gross_payments", val === "" ? "" : parseFloat(val));
+                  }}
                   placeholder="0.00"
                   className="mt-1.5"
                 />
