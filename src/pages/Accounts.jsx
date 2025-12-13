@@ -663,10 +663,12 @@ export default function AccountsPage() {
                                         Classify Account
                                       </DropdownMenuItem>
                                     )}
-                                    <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Re-classify Account
-                                    </DropdownMenuItem>
+                                    {account.classification_answers && Object.keys(account.classification_answers).length > 0 && (
+                                      <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Re-classify Account
+                                      </DropdownMenuItem>
+                                    )}
                                     
                                     {account.account_holder_type === "entity" && (
                                       <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>

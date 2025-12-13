@@ -427,10 +427,12 @@ export default function EntitiesPage() {
                                   Classify Entity
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => handleClassify(entity)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                Re-classify Entity
-                              </DropdownMenuItem>
+                              {entity.classification_completed_date && (
+                                <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  Re-classify Entity
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => {
                                 setSelectedEntity(entity);
                                 setShowAIClassifier(true);
