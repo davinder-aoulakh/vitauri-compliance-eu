@@ -284,6 +284,11 @@ export default function DynamicFormRenderer({
   };
 
   const renderField = (field) => {
+    // Hide GIIN field for Entity forms
+    if (entityType === "Entity" && field.field_name === "giin") {
+      return null;
+    }
+    
     // Check conditional visibility
     const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
     if (!isVisible) return null;
