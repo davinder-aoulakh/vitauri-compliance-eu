@@ -51,6 +51,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   });
   const [beneficiariesAdded, setBeneficiariesAdded] = useState(false);
   const [controllingPersonsAdded, setControllingPersonsAdded] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   // Fetch the latest account data to ensure we have up-to-date documents
   const { data: freshAccountData } = useQuery({
@@ -1092,8 +1093,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.question_type === "file_upload") {
-      const handleFileUpload = async (e) => {
-        const file = e.target.files?.[0];
+      const handleFileUpload = async (file) => {
         if (!file) return;
 
         setUploadingFile(true);
@@ -1116,57 +1116,87 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
       };
 
+      const handleDrag = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+          setDragActive(true);
+        } else if (e.type === "dragleave") {
+          setDragActive(false);
+        }
+      };
+
+      const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleFileUpload(e.dataTransfer.files[0]);
+        }
+      };
+
       return (
         <div className="space-y-3">
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-indigo-400 hover:bg-indigo-50/30 transition-all">
+          <div 
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+              dragActive
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50'
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
             <input
               type="file"
-              onChange={handleFileUpload}
+              onChange={(e) => handleFileUpload(e.target.files?.[0])}
               className="hidden"
               id="file-upload"
               accept=".pdf,.jpg,.jpeg,.png"
               disabled={uploadingFile}
             />
-            <label htmlFor="file-upload" className="cursor-pointer">
-              {uploadingFile ? (
-                <>
-                  <Loader2 className="w-12 h-12 mx-auto mb-4 text-indigo-600 animate-spin" />
-                  <p className="text-sm font-medium text-slate-700 mb-1">Uploading...</p>
-                </>
-              ) : selectedValue?.file_url ? (
-                <>
-                  <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-green-600" />
-                  <p className="text-sm font-medium text-green-900 mb-1">
-                    {selectedValue.file_name}
-                  </p>
-                  <p className="text-xs text-green-700">
-                    Uploaded successfully
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="mt-3"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById('file-upload').click();
-                    }}
-                  >
-                    Upload Different File
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                  <p className="text-sm font-medium text-slate-700 mb-1">
-                    Click to upload self-certification document
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    PDF, JPG, or PNG (Max 10MB)
-                  </p>
-                </>
-              )}
-            </label>
+            
+            {uploadingFile ? (
+              <div className="space-y-2">
+                <Loader2 className="w-12 h-12 mx-auto text-indigo-600 animate-spin" />
+                <p className="text-sm font-medium text-slate-700">Uploading...</p>
+              </div>
+            ) : selectedValue?.file_url ? (
+              <div className="space-y-3">
+                <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
+                <p className="text-sm font-medium text-green-900">
+                  {selectedValue.file_name}
+                </p>
+                <p className="text-xs text-green-700">Uploaded successfully</p>
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Different File
+                </label>
+              </div>
+            ) : (
+              <>
+                <Upload className={`w-12 h-12 mx-auto mb-4 ${dragActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                <p className="text-sm font-medium text-slate-700 mb-2">
+                  {dragActive ? 'Drop file here' : 'Drag and drop file here'}
+                </p>
+                <p className="text-xs text-slate-500 mb-4">or</p>
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Choose File
+                </label>
+                <p className="text-xs text-slate-500 mt-3">
+                  PDF, JPG, or PNG (Max 10MB)
+                </p>
+              </>
+            )}
           </div>
         </div>
       );
