@@ -97,14 +97,17 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
              accountControllingPersons.some(cp => !cp.reportability_status || cp.reportability_status === 'pending_review');
     }),
     missingBeneficiary: accounts.filter(a => {
-      // Beneficiaries typically required for annuities and cash value insurance
+      // Beneficiaries only required for deceased account holders on annuities and cash value insurance
       if (!['annuity', 'cash_value_insurance'].includes(a.account_type)) return false;
+      if (a.account_holder_is_alive !== false && !a.account_holder_deceased_during_period) return false;
       if (a.compliance_issues_resolved?.includes('missing_beneficiary')) return false;
       const accountBeneficiaries = beneficiaries.filter(b => b.account_id === a.id);
       return accountBeneficiaries.length === 0;
     }),
     beneficiaryNotClassified: accounts.filter(a => {
+      // Beneficiaries only required for deceased account holders
       if (!['annuity', 'cash_value_insurance'].includes(a.account_type)) return false;
+      if (a.account_holder_is_alive !== false && !a.account_holder_deceased_during_period) return false;
       if (a.compliance_issues_resolved?.includes('beneficiary_not_classified')) return false;
       const accountBeneficiaries = beneficiaries.filter(b => b.account_id === a.id);
       // Has beneficiaries but at least one is not classified (no reportability_status or is pending_review)
@@ -371,7 +374,7 @@ export default function ComplianceFlags({ tenantId, onSelectAccount }) {
           {/* Missing Beneficiary */}
           <IssueCard
             title="Missing Beneficiaries"
-            description="Annuity/Insurance accounts without beneficiaries identified"
+            description="Deceased account holders without beneficiaries identified"
             accounts={issues.missingBeneficiary}
             icon={Users}
             color={{
