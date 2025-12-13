@@ -338,7 +338,10 @@ export default function DynamicFormRenderer({
               id={field.field_name}
               type="number"
               value={value}
-              onChange={(e) => handleChange(field.field_name, parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleChange(field.field_name, val === "" ? "" : parseFloat(val));
+              }}
               placeholder={field.placeholder}
               required={isRequired}
               min={field.validation?.min}
