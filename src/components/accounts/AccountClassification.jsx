@@ -591,9 +591,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setMultiFieldErrors({});
       newAnswers[currentNodeId] = multiFieldValues;
     } else if (currentNode.question_type === "address_input") {
-      // Validate required country field
-      if (!addressValues.country) {
-        alert("Country is required");
+      // Validate all required address fields
+      if (!addressValues.street || !addressValues.city || !addressValues.state || 
+          !addressValues.postal_code || !addressValues.country) {
+        alert("All address fields are required");
         return;
       }
       newAnswers[currentNodeId] = {
@@ -1243,7 +1244,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <Label htmlFor="address_street" className="text-sm font-medium text-slate-700">Street Address</Label>
+              <Label htmlFor="address_street" className="text-sm font-medium text-slate-700">
+                Street Address <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="address_street"
                 value={addressValues.street}
@@ -1255,7 +1258,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="address_city" className="text-sm font-medium text-slate-700">City</Label>
+                <Label htmlFor="address_city" className="text-sm font-medium text-slate-700">
+                  City <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="address_city"
                   value={addressValues.city}
@@ -1265,7 +1270,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 />
               </div>
               <div>
-                <Label htmlFor="address_state" className="text-sm font-medium text-slate-700">State/Province</Label>
+                <Label htmlFor="address_state" className="text-sm font-medium text-slate-700">
+                  State/Province <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="address_state"
                   value={addressValues.state}
@@ -1278,7 +1285,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="address_postal" className="text-sm font-medium text-slate-700">Postal Code</Label>
+                <Label htmlFor="address_postal" className="text-sm font-medium text-slate-700">
+                  Postal Code <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="address_postal"
                   value={addressValues.postal_code}
@@ -1288,7 +1297,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 />
               </div>
               <div>
-                <Label htmlFor="address_country" className="text-sm font-medium text-slate-700">Country *</Label>
+                <Label htmlFor="address_country" className="text-sm font-medium text-slate-700">
+                  Country <span className="text-red-600">*</span>
+                </Label>
                 <div className="mt-1.5">
                   <CountrySelect
                     value={addressValues.country}
@@ -1828,7 +1839,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
             !isActionNode(currentNode) && 
             !selectedValue && 
             !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0) &&
-            !(currentNode.question_type === "address_input" && addressValues.country) &&
+            !(currentNode.question_type === "address_input" && addressValues.street && addressValues.city && 
+              addressValues.state && addressValues.postal_code && addressValues.country) &&
             !(currentNode.question_type === "beneficiary_input" && beneficiariesAdded) &&
             !(currentNode.question_type === "controlling_person_input" && controllingPersonsAdded)
             }
