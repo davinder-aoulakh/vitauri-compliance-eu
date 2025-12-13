@@ -206,6 +206,30 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
     if (!isValid) return;
     
+    // Validate mandatory fields for individual accounts
+    if (formData.account_holder_type === 'individual') {
+      if (!formData.account_holder_name?.trim()) {
+        alert("Account Holder Name is required for individual accounts");
+        return;
+      }
+      if (!formData.date_of_birth) {
+        alert("Date of Birth is required for individual accounts");
+        return;
+      }
+      if (!formData.place_of_birth?.trim()) {
+        alert("Place of Birth is required for individual accounts");
+        return;
+      }
+      if (!formData.current_address?.street?.trim() || !formData.current_address?.country?.trim()) {
+        alert("Current Address (street and country) is required for individual accounts");
+        return;
+      }
+      if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.country?.trim()) {
+        alert("Account Holder Original Address (street and country) is required for individual accounts");
+        return;
+      }
+    }
+    
     // Auto-detect indicia
     const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
     
@@ -428,7 +452,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             {formData.account_holder_type === "individual" && (
               <>
                 <div>
-                  <Label htmlFor="date_of_birth">Date of Birth</Label>
+                  <Label htmlFor="date_of_birth">Date of Birth *</Label>
                   <Input
                     id="date_of_birth"
                     type="date"
@@ -439,7 +463,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 </div>
 
                 <div>
-                  <Label htmlFor="place_of_birth">Place of Birth</Label>
+                  <Label htmlFor="place_of_birth">Place of Birth *</Label>
                   <div className="mt-1.5">
                     <CountrySelect
                       value={formData.place_of_birth}
@@ -500,10 +524,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
           {/* Current Address Section */}
           <div className="mt-6">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Current Address</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">
+              Current Address {formData.account_holder_type === "individual" && "*"}
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="current_street">Street Address</Label>
+                <Label htmlFor="current_street">Street Address{formData.account_holder_type === "individual" && " *"}</Label>
                 <Input
                   id="current_street"
                   value={formData.current_address?.street || ""}
@@ -561,10 +587,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
           {/* Account Holder Original Address Section */}
           <div className="mt-6">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Account Holder Original Address</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">
+              Account Holder Original Address {formData.account_holder_type === "individual" && "*"}
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="holder_street">Street Address</Label>
+                <Label htmlFor="holder_street">Street Address{formData.account_holder_type === "individual" && " *"}</Label>
                 <Input
                   id="holder_street"
                   value={formData.account_holder_address?.street || ""}
@@ -608,7 +636,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="holder_country">Country</Label>
+                <Label htmlFor="holder_country">Country{formData.account_holder_type === "individual" && " *"}</Label>
                 <div className="mt-1.5">
                   <CountrySelect
                     value={formData.account_holder_address?.country || ""}
