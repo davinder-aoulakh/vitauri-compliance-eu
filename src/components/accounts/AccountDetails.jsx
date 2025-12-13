@@ -134,7 +134,7 @@ export default function AccountDetails({ account, entity }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Account Information */}
+        {/* Left Column - Account Information */}
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b bg-slate-50">
             <CardTitle className="text-base flex items-center gap-2">
@@ -180,102 +180,105 @@ export default function AccountDetails({ account, entity }) {
           </CardContent>
         </Card>
 
-        {/* Current Address */}
-        {account.current_address && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-slate-50">
-              <CardTitle className="text-base flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-indigo-600" />
-                Current Address
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-1 text-sm">
-                {account.current_address.street && (
-                  <p className="text-slate-900">{account.current_address.street}</p>
-                )}
-                <p className="text-slate-900">
-                  {[
-                    account.current_address.city,
-                    account.current_address.state,
-                    account.current_address.postal_code
-                  ].filter(Boolean).join(", ")}
-                </p>
-                {account.current_address.country && (
-                  <p className="font-medium text-slate-900">{account.current_address.country}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Account Holder Original Address */}
-        {account.account_holder_address && (account.account_holder_address.street || account.account_holder_address.country) && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-slate-50">
-              <CardTitle className="text-base flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-indigo-600" />
-                Account Holder Original Address
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-1 text-sm">
-                {account.account_holder_address.street && (
-                  <p className="text-slate-900">{account.account_holder_address.street}</p>
-                )}
-                <p className="text-slate-900">
-                  {[
-                    account.account_holder_address.city,
-                    account.account_holder_address.state,
-                    account.account_holder_address.postal_code
-                  ].filter(Boolean).join(", ")}
-                </p>
-                {account.account_holder_address.country && (
-                  <p className="font-medium text-slate-900">{account.account_holder_address.country}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Tax Residencies */}
-      {account.tax_residencies && account.tax_residencies.length > 0 && (
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="border-b bg-slate-50">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Globe className="w-5 h-5 text-indigo-600" />
-              Tax Residencies
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {account.tax_residencies.map((residency, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{residency.country}</p>
-                      {residency.tin ? (
-                        <p className="text-xs text-slate-600">TIN: <code className="bg-white px-1 py-0.5 rounded">{residency.tin}</code></p>
-                      ) : residency.tin_unavailable_reason ? (
-                        <p className="text-xs text-amber-600">TIN: {residency.tin_unavailable_reason}</p>
-                      ) : (
-                        <p className="text-xs text-red-600">TIN: Not provided</p>
-                      )}
-                    </div>
-                  </div>
-                  {residency.tin ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+        {/* Right Column - Address Stack */}
+        <div className="space-y-6">
+          {/* Current Address */}
+          {account.current_address && (
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-slate-50">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-indigo-600" />
+                  Current Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="space-y-1 text-sm">
+                  {account.current_address.street && (
+                    <p className="text-slate-900">{account.current_address.street}</p>
+                  )}
+                  <p className="text-slate-900">
+                    {[
+                      account.current_address.city,
+                      account.current_address.state,
+                      account.current_address.postal_code
+                    ].filter(Boolean).join(", ")}
+                  </p>
+                  {account.current_address.country && (
+                    <p className="font-medium text-slate-900">{account.current_address.country}</p>
                   )}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Account Holder Original Address */}
+          {account.account_holder_address && (account.account_holder_address.street || account.account_holder_address.country) && (
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-slate-50">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-indigo-600" />
+                  Account Holder Original Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="space-y-1 text-sm">
+                  {account.account_holder_address.street && (
+                    <p className="text-slate-900">{account.account_holder_address.street}</p>
+                  )}
+                  <p className="text-slate-900">
+                    {[
+                      account.account_holder_address.city,
+                      account.account_holder_address.state,
+                      account.account_holder_address.postal_code
+                    ].filter(Boolean).join(", ")}
+                  </p>
+                  {account.account_holder_address.country && (
+                    <p className="font-medium text-slate-900">{account.account_holder_address.country}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tax Residencies */}
+          {account.tax_residencies && account.tax_residencies.length > 0 && (
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-slate-50">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-indigo-600" />
+                  Tax Residencies
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  {account.tax_residencies.map((residency, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Globe className="w-4 h-4 text-slate-400" />
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{residency.country}</p>
+                          {residency.tin ? (
+                            <p className="text-xs text-slate-600">TIN: <code className="bg-white px-1 py-0.5 rounded">{residency.tin}</code></p>
+                          ) : residency.tin_unavailable_reason ? (
+                            <p className="text-xs text-amber-600">TIN: {residency.tin_unavailable_reason}</p>
+                          ) : (
+                            <p className="text-xs text-red-600">TIN: Not provided</p>
+                          )}
+                        </div>
+                      </div>
+                      {residency.tin ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* Self-Certification Document - Show latest from documents array or legacy field */}
       {(() => {
