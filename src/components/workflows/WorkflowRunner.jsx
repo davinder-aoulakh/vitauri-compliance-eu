@@ -290,10 +290,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         );
 
       case 'date_input':
+        // Ensure date value is in YYYY-MM-DD format for HTML5 date input
+        const dateValue = answer ? (typeof answer === 'string' ? answer.split('T')[0] : '') : '';
+        
         return (
           <Input
             type="date"
-            value={answer || ""}
+            value={dateValue}
             onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
           />
         );
