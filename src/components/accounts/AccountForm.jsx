@@ -220,18 +220,20 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         alert("Place of Birth is required for individual accounts");
         return;
       }
-      if (!formData.current_address?.street?.trim() || !formData.current_address?.city?.trim() || 
-          !formData.current_address?.state?.trim() || !formData.current_address?.postal_code?.trim() || 
-          !formData.current_address?.country?.trim()) {
-        alert("Current Address (all fields) is required for individual accounts");
-        return;
-      }
-      if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.city?.trim() || 
-          !formData.account_holder_address?.state?.trim() || !formData.account_holder_address?.postal_code?.trim() || 
-          !formData.account_holder_address?.country?.trim()) {
-        alert("Account Holder Original Address (all fields) is required for individual accounts");
-        return;
-      }
+    }
+    
+    // Validate mandatory address fields for both individual and entity accounts
+    if (!formData.current_address?.street?.trim() || !formData.current_address?.city?.trim() || 
+        !formData.current_address?.state?.trim() || !formData.current_address?.postal_code?.trim() || 
+        !formData.current_address?.country?.trim()) {
+      alert("Current Address (all fields) is required");
+      return;
+    }
+    if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.city?.trim() || 
+        !formData.account_holder_address?.state?.trim() || !formData.account_holder_address?.postal_code?.trim() || 
+        !formData.account_holder_address?.country?.trim()) {
+      alert("Account Holder Original Address (all fields) is required");
+      return;
     }
     
     // Auto-detect indicia
@@ -529,11 +531,11 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Current Address Section */}
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">
-              Current Address {formData.account_holder_type === "individual" && "*"}
+              Current Address *
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="current_street">Street Address{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="current_street">Street Address *</Label>
                 <Input
                   id="current_street"
                   value={formData.current_address?.street || ""}
@@ -544,7 +546,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="current_city">City{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="current_city">City *</Label>
                 <Input
                   id="current_city"
                   value={formData.current_address?.city || ""}
@@ -555,7 +557,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="current_state">State/Province{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="current_state">State/Province *</Label>
                 <Input
                   id="current_state"
                   value={formData.current_address?.state || ""}
@@ -566,7 +568,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="current_postal_code">Postal Code{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="current_postal_code">Postal Code *</Label>
                 <Input
                   id="current_postal_code"
                   value={formData.current_address?.postal_code || ""}
@@ -592,11 +594,11 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Account Holder Original Address Section */}
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">
-              Account Holder Original Address {formData.account_holder_type === "individual" && "*"}
+              Account Holder Original Address *
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="holder_street">Street Address{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="holder_street">Street Address *</Label>
                 <Input
                   id="holder_street"
                   value={formData.account_holder_address?.street || ""}
@@ -607,7 +609,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="holder_city">City{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="holder_city">City *</Label>
                 <Input
                   id="holder_city"
                   value={formData.account_holder_address?.city || ""}
@@ -618,7 +620,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="holder_state">State/Province{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="holder_state">State/Province *</Label>
                 <Input
                   id="holder_state"
                   value={formData.account_holder_address?.state || ""}
@@ -629,7 +631,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="holder_postal_code">Postal Code{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="holder_postal_code">Postal Code *</Label>
                 <Input
                   id="holder_postal_code"
                   value={formData.account_holder_address?.postal_code || ""}
@@ -640,7 +642,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="holder_country">Country{formData.account_holder_type === "individual" && " *"}</Label>
+                <Label htmlFor="holder_country">Country *</Label>
                 <div className="mt-1.5">
                   <CountrySelect
                     value={formData.account_holder_address?.country || ""}
