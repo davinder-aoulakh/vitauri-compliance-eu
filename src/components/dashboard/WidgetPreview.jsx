@@ -141,6 +141,7 @@ export default function WidgetPreview({ widget, tenantId }) {
     let subDescription = config.subDescription || null;
     let icon = <Wallet className="w-6 h-6" />;
     let iconBgColor = 'bg-indigo-100';
+    let drilldownUrl = null;
 
     const reportingFIs = entities.filter(e => e.rfi_status === 'reporting_fi').length;
     const pendingReviewCount = accounts.filter(a => a.reportability_status === 'pending_review').length;
@@ -152,12 +153,14 @@ export default function WidgetPreview({ widget, tenantId }) {
         value = accounts.length;
         icon = <Wallet className="w-6 h-6 text-indigo-600" />;
         iconBgColor = 'bg-indigo-100';
+        drilldownUrl = createPageUrl("Accounts");
         break;
       case 'total_entities':
         value = entities.length;
         icon = <Building2 className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
         if (!subDescription) subDescription = `${reportingFIs} Reporting FIs`;
+        drilldownUrl = createPageUrl("Entities");
         break;
       case 'reportable_accounts':
         value = accounts.filter(a => a.reportability_status === 'reportable').length;
@@ -167,22 +170,26 @@ export default function WidgetPreview({ widget, tenantId }) {
         if (pendingReviewCount > 0 && !trendLabel) {
           trendLabel = `${pendingReviewCount} pending review`;
         }
+        drilldownUrl = createPageUrl("Accounts") + "?status=reportable";
         break;
       case 'pending_review':
         value = pendingReviewCount;
         icon = <Clock className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
+        drilldownUrl = createPageUrl("Accounts") + "?status=pending_review";
         break;
       case 'classified_entities':
         value = entities.filter(e => e.rfi_status !== 'pending_classification').length;
         icon = <CheckCircle className="w-6 h-6 text-green-600" />;
         iconBgColor = 'bg-green-100';
+        drilldownUrl = createPageUrl("Entities");
         break;
       case 'total_crs_reports':
         value = reports.length;
         icon = <FileText className="w-6 h-6 text-emerald-600" />;
         iconBgColor = 'bg-emerald-100';
         if (!subDescription) subDescription = `Year ${new Date().getFullYear()}`;
+        drilldownUrl = createPageUrl("Reports") + `?year=${new Date().getFullYear()}`;
         break;
     }
 
@@ -203,8 +210,8 @@ export default function WidgetPreview({ widget, tenantId }) {
       return 'bg-slate-50 text-slate-700 border-slate-200';
     };
 
-    return (
-      <Card className="h-full">
+    const cardContent = (
+      <Card className="h-full hover:shadow-lg transition-all cursor-pointer">
         <CardContent className="p-5">
           <div className="flex justify-between items-start mb-2">
             <RefreshIndicator showButton={true} />
@@ -237,6 +244,12 @@ export default function WidgetPreview({ widget, tenantId }) {
         </CardContent>
       </Card>
     );
+
+    return drilldownUrl ? (
+      <Link to={drilldownUrl} className="no-underline">
+        {cardContent}
+      </Link>
+    ) : cardContent;
   }
 
   // Pie Chart Widget
