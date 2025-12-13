@@ -57,6 +57,10 @@ export default function ReportsPage() {
   const [correctionType, setCorrectionType] = useState("correction");
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [yearFilter, setYearFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('year') || null;
+  });
 
   const tourConfig = getTourByPage("Reports");
 
@@ -199,10 +203,12 @@ export default function ReportsPage() {
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
 
-  // Sort reports by reporting year desc
-  const sortedReports = [...reports].sort((a, b) => 
-    parseInt(b.reporting_year) - parseInt(a.reporting_year)
-  );
+  // Sort reports by reporting year desc and apply year filter
+  const sortedReports = [...reports]
+    .filter(r => !yearFilter || r.reporting_year === yearFilter)
+    .sort((a, b) => 
+      parseInt(b.reporting_year) - parseInt(a.reporting_year)
+    );
 
   if (!user) {
     return (

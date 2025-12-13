@@ -289,29 +289,35 @@ export default function Dashboard() {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <MetricCard
-            title="Total Entities"
-            value={entities.length}
-            subtitle={`${rfiEntities.length} Reporting FIs`}
-            icon={Building2}
-            color="#3b82f6"
-            trend="+2 this month"
-          />
-          <MetricCard
-            title="Reportable Accounts"
-            value={reportableAccounts.length}
-            subtitle={`${accounts.length} total accounts`}
-            icon={Wallet}
-            color="#10b981"
-            trend={`${pendingAccounts.length} pending review`}
-          />
-          <MetricCard
-            title="CRS Reports"
-            value={currentYearReports.length}
-            subtitle={`Year ${currentYear}`}
-            icon={FileCheck}
-            color="#8b5cf6"
-          />
+          <Link to={createPageUrl("Entities")} className="no-underline">
+            <MetricCard
+              title="Total Entities"
+              value={entities.length}
+              subtitle={`${rfiEntities.length} Reporting FIs`}
+              icon={Building2}
+              color="#3b82f6"
+              trend="+2 this month"
+            />
+          </Link>
+          <Link to={createPageUrl("Accounts") + "?status=reportable"} className="no-underline">
+            <MetricCard
+              title="Reportable Accounts"
+              value={reportableAccounts.length}
+              subtitle={`${accounts.length} total accounts`}
+              icon={Wallet}
+              color="#10b981"
+              trend={`${pendingAccounts.length} pending review`}
+            />
+          </Link>
+          <Link to={createPageUrl("Reports") + `?year=${currentYear}`} className="no-underline">
+            <MetricCard
+              title="CRS Reports"
+              value={currentYearReports.length}
+              subtitle={`Year ${currentYear}`}
+              icon={FileCheck}
+              color="#8b5cf6"
+            />
+          </Link>
         </div>
 
         {/* Main Content Grid */}
@@ -420,24 +426,30 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatusCard
-                  label="Reporting FIs"
-                  count={rfiEntities.length}
-                  color="#10b981"
-                  description="Active reporting entities"
-                />
-                <StatusCard
-                  label="Non-Reporting FIs"
-                  count={entities.filter(e => e.rfi_status === "non_reporting_fi").length}
-                  color="#6b7280"
-                  description="Exempt from reporting"
-                />
-                <StatusCard
-                  label="Pending Classification"
-                  count={entities.filter(e => e.rfi_status === "pending_classification").length}
-                  color="#f59e0b"
-                  description="Awaiting determination"
-                />
+                <Link to={createPageUrl("Entities") + "?status=reporting_fi"} className="no-underline">
+                  <StatusCard
+                    label="Reporting FIs"
+                    count={rfiEntities.length}
+                    color="#10b981"
+                    description="Active reporting entities"
+                  />
+                </Link>
+                <Link to={createPageUrl("Entities") + "?status=non_reporting_fi"} className="no-underline">
+                  <StatusCard
+                    label="Non-Reporting FIs"
+                    count={entities.filter(e => e.rfi_status === "non_reporting_fi").length}
+                    color="#6b7280"
+                    description="Exempt from reporting"
+                  />
+                </Link>
+                <Link to={createPageUrl("Entities") + "?status=pending_classification"} className="no-underline">
+                  <StatusCard
+                    label="Pending Classification"
+                    count={entities.filter(e => e.rfi_status === "pending_classification").length}
+                    color="#f59e0b"
+                    description="Awaiting determination"
+                  />
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -458,7 +470,7 @@ export default function Dashboard() {
 
 function MetricCard({ title, value, subtitle, icon: Icon, color, trend, showProgress, progress }) {
   return (
-    <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+    <Card className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center" 
@@ -508,7 +520,7 @@ function ActivityItem({ icon: Icon, iconColor, title, description, action, link 
 
 function StatusCard({ label, count, color, description }) {
   return (
-    <div className="p-4 rounded-lg border border-slate-200 bg-white hover:shadow-md transition-shadow">
+    <div className="p-4 rounded-lg border border-slate-200 bg-white hover:shadow-md transition-all cursor-pointer">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-slate-600">{label}</span>
         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>

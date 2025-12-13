@@ -74,7 +74,10 @@ export default function AccountsPage() {
   const [showAIValidator, setShowAIValidator] = useState(false);
   const [showJurisdictionAdvisor, setShowJurisdictionAdvisor] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('status') || "all";
+  });
   const [entityFilter, setEntityFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("accounts");
