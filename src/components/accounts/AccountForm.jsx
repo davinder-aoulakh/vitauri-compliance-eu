@@ -362,12 +362,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="entity_id">Related Entity *</Label>
+              <Label htmlFor="entity_id" className="text-slate-700">
+                Related Entity <span className="text-red-600">*</span>
+              </Label>
               <Select
                 value={formData.entity_id}
                 onValueChange={(value) => handleChange("entity_id", value)}
               >
-                <SelectTrigger className="mt-1.5">
+                <SelectTrigger className={`mt-1.5 ${!formData.entity_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}>
                   <SelectValue placeholder="Select entity..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -384,7 +386,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="account_number">Account Number *</Label>
+              <Label htmlFor="account_number" className="text-slate-700">
+                Account Number <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="account_number"
                 value={formData.account_number}
@@ -399,7 +403,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 }}
                 placeholder="e.g., ACC-123456"
                 required
-                className={`mt-1.5 ${accountNumberError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                className={`mt-1.5 ${accountNumberError ? 'border-red-500 focus:ring-red-500' : !formData.account_number ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               {accountNumberError && (
                 <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
@@ -410,14 +414,16 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="account_creation_date">Account Opening Date *</Label>
+              <Label htmlFor="account_creation_date" className="text-slate-700">
+                Account Opening Date <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="account_creation_date"
                 type="date"
                 value={formData.account_creation_date}
                 onChange={(e) => handleChange("account_creation_date", e.target.value)}
                 required
-                className="mt-1.5"
+                className={`mt-1.5 ${!formData.account_creation_date ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               <p className="text-xs text-slate-500 mt-1">
                 Date when the account was originally opened
@@ -460,37 +466,44 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="account_holder_name">Account Holder Name *</Label>
+              <Label htmlFor="account_holder_name" className="text-slate-700">
+                Account Holder Name <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="account_holder_name"
                 value={formData.account_holder_name}
                 onChange={(e) => handleChange("account_holder_name", e.target.value)}
                 placeholder="Full name"
                 required
-                className="mt-1.5"
+                className={`mt-1.5 ${!formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
 
             {formData.account_holder_type === "individual" && (
               <>
                 <div>
-                  <Label htmlFor="date_of_birth">Date of Birth *</Label>
+                  <Label htmlFor="date_of_birth" className="text-slate-700">
+                    Date of Birth <span className="text-red-600">*</span>
+                  </Label>
                   <Input
                     id="date_of_birth"
                     type="date"
                     value={formData.date_of_birth}
                     onChange={(e) => handleChange("date_of_birth", e.target.value)}
-                    className="mt-1.5"
+                    className={`mt-1.5 ${!formData.date_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="place_of_birth">Place of Birth *</Label>
+                  <Label htmlFor="place_of_birth" className="text-slate-700">
+                    Place of Birth <span className="text-red-600">*</span>
+                  </Label>
                   <div className="mt-1.5">
                     <CountrySelect
                       value={formData.place_of_birth}
                       onValueChange={(value) => handleChange("place_of_birth", value)}
                       placeholder="Select country..."
+                      className={!formData.place_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                     />
                   </div>
                 </div>
@@ -520,7 +533,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="current_email">Current Email Address *</Label>
+              <Label htmlFor="current_email" className="text-slate-700">
+                Current Email Address <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="current_email"
                 type="email"
@@ -528,12 +543,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 onChange={(e) => handleChange("current_email", e.target.value)}
                 placeholder="email@example.com"
                 required
-                className="mt-1.5"
+                className={`mt-1.5 ${!formData.current_email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
 
             <div>
-              <Label htmlFor="current_phone">Current Phone Number *</Label>
+              <Label htmlFor="current_phone" className="text-slate-700">
+                Current Phone Number <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="current_phone"
                 type="tel"
@@ -541,7 +558,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 onChange={(e) => handleChange("current_phone", e.target.value)}
                 placeholder="+1234567890"
                 required
-                className="mt-1.5"
+                className={`mt-1.5 ${!formData.current_phone ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
           </div>
@@ -549,60 +566,71 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Original Address Section */}
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">
-              Original Address *
+              Original Address <span className="text-red-600">*</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="holder_street">Street Address *</Label>
+                <Label htmlFor="holder_street" className="text-slate-700">
+                  Street Address <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="holder_street"
                   value={formData.account_holder_address?.street || ""}
                   onChange={(e) => handleAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.account_holder_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="holder_city">City *</Label>
+                <Label htmlFor="holder_city" className="text-slate-700">
+                  City <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="holder_city"
                   value={formData.account_holder_address?.city || ""}
                   onChange={(e) => handleAddressChange("city", e.target.value)}
                   placeholder="City"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.account_holder_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="holder_state">State/Province *</Label>
+                <Label htmlFor="holder_state" className="text-slate-700">
+                  State/Province <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="holder_state"
                   value={formData.account_holder_address?.state || ""}
                   onChange={(e) => handleAddressChange("state", e.target.value)}
                   placeholder="State/Province"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.account_holder_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="holder_postal_code">Postal Code *</Label>
+                <Label htmlFor="holder_postal_code" className="text-slate-700">
+                  Postal Code <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="holder_postal_code"
                   value={formData.account_holder_address?.postal_code || ""}
                   onChange={(e) => handleAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.account_holder_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="holder_country">Country *</Label>
+                <Label htmlFor="holder_country" className="text-slate-700">
+                  Country <span className="text-red-600">*</span>
+                </Label>
                 <div className="mt-1.5">
                   <CountrySelect
                     value={formData.account_holder_address?.country || ""}
                     onValueChange={(value) => handleAddressChange("country", value)}
                     placeholder="Select country..."
+                    className={!formData.account_holder_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                   />
                 </div>
               </div>
@@ -612,60 +640,71 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Current Address Section */}
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">
-              Current Address *
+              Current Address <span className="text-red-600">*</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="current_street">Street Address *</Label>
+                <Label htmlFor="current_street" className="text-slate-700">
+                  Street Address <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="current_street"
                   value={formData.current_address?.street || ""}
                   onChange={(e) => handleCurrentAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.current_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="current_city">City *</Label>
+                <Label htmlFor="current_city" className="text-slate-700">
+                  City <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="current_city"
                   value={formData.current_address?.city || ""}
                   onChange={(e) => handleCurrentAddressChange("city", e.target.value)}
                   placeholder="City"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.current_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="current_state">State/Province *</Label>
+                <Label htmlFor="current_state" className="text-slate-700">
+                  State/Province <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="current_state"
                   value={formData.current_address?.state || ""}
                   onChange={(e) => handleCurrentAddressChange("state", e.target.value)}
                   placeholder="State/Province"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.current_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="current_postal_code">Postal Code *</Label>
+                <Label htmlFor="current_postal_code" className="text-slate-700">
+                  Postal Code <span className="text-red-600">*</span>
+                </Label>
                 <Input
                   id="current_postal_code"
                   value={formData.current_address?.postal_code || ""}
                   onChange={(e) => handleCurrentAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${!formData.current_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
               <div>
-                <Label htmlFor="current_country">Country *</Label>
+                <Label htmlFor="current_country" className="text-slate-700">
+                  Country <span className="text-red-600">*</span>
+                </Label>
                 <div className="mt-1.5">
                   <CountrySelect
                     value={formData.current_address?.country || ""}
                     onValueChange={(value) => handleCurrentAddressChange("country", value)}
                     placeholder="Select country..."
+                    className={!formData.current_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                   />
                 </div>
               </div>
