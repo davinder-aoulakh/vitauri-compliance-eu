@@ -410,7 +410,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="account_creation_date">Account Creation Date *</Label>
+              <Label htmlFor="account_creation_date">Account Opening Date *</Label>
               <Input
                 id="account_creation_date"
                 type="date"

@@ -164,7 +164,7 @@ export default function AccountDetails({ account, entity }) {
             />
             <InfoRow
               icon={Calendar}
-              label="Account Creation Date"
+              label="Account Opening Date"
               value={account.account_creation_date ? new Date(account.account_creation_date).toLocaleDateString() : "—"}
             />
             <InfoRow
