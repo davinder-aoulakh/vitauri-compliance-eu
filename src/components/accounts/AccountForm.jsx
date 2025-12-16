@@ -90,6 +90,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   const [accountNumberError, setAccountNumberError] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [showSmartUpload, setShowSmartUpload] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (account) {
@@ -202,6 +203,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitted(true);
     
     // Validate account number uniqueness
     const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
@@ -369,7 +371,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 value={formData.entity_id}
                 onValueChange={(value) => handleChange("entity_id", value)}
               >
-                <SelectTrigger className={`mt-1.5 ${!formData.entity_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}>
+                <SelectTrigger className={`mt-1.5 ${submitted && !formData.entity_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}>
                   <SelectValue placeholder="Select entity..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -403,7 +405,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 }}
                 placeholder="e.g., ACC-123456"
                 required
-                className={`mt-1.5 ${accountNumberError ? 'border-red-500 focus:ring-red-500' : !formData.account_number ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`mt-1.5 ${accountNumberError ? 'border-red-500 focus:ring-red-500' : submitted && !formData.account_number ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               {accountNumberError && (
                 <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
@@ -423,7 +425,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 value={formData.account_creation_date}
                 onChange={(e) => handleChange("account_creation_date", e.target.value)}
                 required
-                className={`mt-1.5 ${!formData.account_creation_date ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`mt-1.5 ${submitted && !formData.account_creation_date ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               <p className="text-xs text-slate-500 mt-1">
                 Date when the account was originally opened
@@ -475,7 +477,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 onChange={(e) => handleChange("account_holder_name", e.target.value)}
                 placeholder="Full name"
                 required
-                className={`mt-1.5 ${!formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`mt-1.5 ${submitted && !formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
 
@@ -490,7 +492,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     type="date"
                     value={formData.date_of_birth}
                     onChange={(e) => handleChange("date_of_birth", e.target.value)}
-                    className={`mt-1.5 ${!formData.date_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    className={`mt-1.5 ${submitted && !formData.date_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
                 </div>
 
@@ -503,7 +505,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                       value={formData.place_of_birth}
                       onValueChange={(value) => handleChange("place_of_birth", value)}
                       placeholder="Select country..."
-                      className={!formData.place_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
+                      className={submitted && !formData.place_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                     />
                   </div>
                 </div>
@@ -543,7 +545,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 onChange={(e) => handleChange("current_email", e.target.value)}
                 placeholder="email@example.com"
                 required
-                className={`mt-1.5 ${!formData.current_email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`mt-1.5 ${submitted && !formData.current_email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
 
@@ -558,7 +560,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 onChange={(e) => handleChange("current_phone", e.target.value)}
                 placeholder="+1234567890"
                 required
-                className={`mt-1.5 ${!formData.current_phone ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`mt-1.5 ${submitted && !formData.current_phone ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
           </div>
@@ -578,7 +580,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.street || ""}
                   onChange={(e) => handleAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
-                  className={`mt-1.5 ${!formData.account_holder_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.account_holder_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -591,7 +593,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.city || ""}
                   onChange={(e) => handleAddressChange("city", e.target.value)}
                   placeholder="City"
-                  className={`mt-1.5 ${!formData.account_holder_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.account_holder_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -604,7 +606,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.state || ""}
                   onChange={(e) => handleAddressChange("state", e.target.value)}
                   placeholder="State/Province"
-                  className={`mt-1.5 ${!formData.account_holder_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.account_holder_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -617,7 +619,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.postal_code || ""}
                   onChange={(e) => handleAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
-                  className={`mt-1.5 ${!formData.account_holder_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.account_holder_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -630,7 +632,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     value={formData.account_holder_address?.country || ""}
                     onValueChange={(value) => handleAddressChange("country", value)}
                     placeholder="Select country..."
-                    className={!formData.account_holder_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
+                    className={submitted && !formData.account_holder_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                   />
                 </div>
               </div>
@@ -652,7 +654,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.street || ""}
                   onChange={(e) => handleCurrentAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
-                  className={`mt-1.5 ${!formData.current_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.current_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -665,7 +667,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.city || ""}
                   onChange={(e) => handleCurrentAddressChange("city", e.target.value)}
                   placeholder="City"
-                  className={`mt-1.5 ${!formData.current_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.current_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -678,7 +680,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.state || ""}
                   onChange={(e) => handleCurrentAddressChange("state", e.target.value)}
                   placeholder="State/Province"
-                  className={`mt-1.5 ${!formData.current_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.current_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -691,7 +693,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.postal_code || ""}
                   onChange={(e) => handleCurrentAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
-                  className={`mt-1.5 ${!formData.current_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`mt-1.5 ${submitted && !formData.current_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
 
@@ -704,7 +706,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     value={formData.current_address?.country || ""}
                     onValueChange={(value) => handleCurrentAddressChange("country", value)}
                     placeholder="Select country..."
-                    className={!formData.current_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
+                    className={submitted && !formData.current_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                   />
                 </div>
               </div>
