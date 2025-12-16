@@ -39,6 +39,19 @@ export default function AIDataValidator({ accounts, entities, controllingPersons
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("issues");
   const [copiedCorrection, setCopiedCorrection] = useState(null);
+  const [user, setUser] = useState(null);
+
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+      } catch (err) {
+        console.error("Error loading user:", err);
+      }
+    };
+    loadUser();
+  }, []);
 
   const copyCorrection = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -51,6 +64,19 @@ export default function AIDataValidator({ accounts, entities, controllingPersons
     setError(null);
 
     try {
+      // Fetch historical audit logs for trend analysis
+      const auditLogs = user?.tenant_id 
+        ? await base44.entities.AuditLog.filter({ tenant_id: user.tenant_id })
+        : [];
+
+      // Fetch custom validation rules
+      const customRules = user?.tenant_id
+        ? await base44.entities.CustomValidationRule.filter({ 
+            tenant_id: user.tenant_id,
+            is_active: true
+          })
+        : [];
+
       // Build entity-account relationship map for cross-referencing
       const entityAccountMap = {};
       accounts.forEach(a => {
@@ -60,8 +86,72 @@ export default function AIDataValidator({ accounts, entities, controllingPersons
         }
       });
 
-      // Prepare enriched data summary for AI analysis
+      // Analyze historical trends from audit logs
+      const accountChanges = {};
+      const entityChanges = {};
+      
+      auditLogs.forEach(log => {
+        if (log.target_entity_type === 'Account' && log.target_entity_id) {
+          if (!accountChanges[log.target_entity_id]) {
+            accountChanges[log.target_entity_id] = [];
+          }
+          accountChanges[log.target_entity_id].push({
+            action: log.action_type,
+            date: log.timestamp || log.created_date,
+            changes: log.changes,
+            actor: log.actor_email
+          });
+        } else if (log.target_entity_type === 'Entity' && log.target_entity_id) {
+          if (!entityChanges[log.target_entity_id]) {
+            entityChanges[log.target_entity_id] = [];
+          }
+          entityChanges[log.target_entity_id].push({
+            action: log.action_type,
+            date: log.timestamp || log.created_date,
+            changes: log.changes,
+            actor: log.actor_email
+          });
+        }
+      });
+
+      // Identify accounts with frequent reportability status changes
+      const frequentStatusChanges = Object.entries(accountChanges).map(([accountId, changes]) => {
+        const statusChanges = changes.filter(c => 
+          c.changes?.reportability_status || 
+          (c.action === 'account_classified' && c.changes)
+        );
+        return {
+          account_id: accountId,
+          change_count: statusChanges.length,
+          changes: statusChanges,
+          account_name: accounts.find(a => a.id === accountId)?.account_holder_name
+        };
+      }).filter(a => a.change_count >= 2);
+
+      // Prepare enriched data summary for AI analysis with historical context
       const dataSummary = {
+        historical_trends: {
+          account_changes: Object.keys(accountChanges).length,
+          entity_changes: Object.keys(entityChanges).length,
+          accounts_with_frequent_status_changes: frequentStatusChanges.map(a => ({
+            account_id: a.account_id,
+            account_name: a.account_name,
+            change_count: a.change_count,
+            recent_changes: a.changes.slice(-3)
+          })),
+          total_audit_events: auditLogs.length
+        },
+        custom_validation_rules: customRules.map(rule => ({
+          rule_name: rule.rule_name,
+          description: rule.description,
+          target_entity_type: rule.target_entity_type,
+          severity: rule.severity,
+          rule_type: rule.rule_type,
+          field_name: rule.field_name,
+          condition: rule.condition,
+          error_message: rule.error_message,
+          suggested_action: rule.suggested_action
+        })),
         accounts: accounts.map(a => {
           const linkedEntity = entities.find(e => e.id === a.entity_id);
           return {
@@ -139,50 +229,70 @@ export default function AIDataValidator({ accounts, entities, controllingPersons
         }
       };
 
-      const prompt = `You are an expert CRS (Common Reporting Standard) compliance analyst with advanced anomaly detection capabilities. Perform a deep analysis of the following financial data, focusing on sophisticated pattern recognition and cross-entity validation.
+      const prompt = `You are an expert CRS (Common Reporting Standard) compliance analyst with advanced anomaly detection capabilities. Perform a deep analysis of the following financial data, focusing on sophisticated pattern recognition, cross-entity validation, historical trend analysis, and custom rule validation.
 
 DATA TO ANALYZE:
 ${JSON.stringify(dataSummary, null, 2)}
 
+CRITICAL: For EVERY issue you identify, you MUST provide:
+1. **Explainable AI**: Detailed step-by-step reasoning showing WHY this is an issue
+2. **Data Point References**: Specific field values and data that led to this conclusion
+3. **Rule Applied**: Which validation rule or logic pattern was applied
+
 PERFORM THE FOLLOWING ADVANCED ANALYSES:
 
-1. **CROSS-REFERENCE VALIDATION**:
+0. **CUSTOM VALIDATION RULES** (HIGHEST PRIORITY):
+   - Apply ALL custom_validation_rules provided in the data
+   - For each rule, check if the condition is violated for relevant records
+   - Flag violations with the severity and messages defined in the rule
+   - Provide detailed explanation of which rule was violated and why
+
+1. **HISTORICAL TREND ANALYSIS**:
+   - Review accounts_with_frequent_status_changes - accounts with 2+ reportability changes may indicate:
+     * Data quality issues (inconsistent information)
+     * Complex classification scenarios requiring expert review
+     * Potential systematic problems with classification workflows
+   - Identify patterns in account changes over time
+   - Flag entities or accounts with unusual change patterns
+   - Detect if changes correlate with specific actors or time periods
+
+2. **CROSS-REFERENCE VALIDATION**:
    - Compare Entity details (name, country, address) with linked Account holder details - flag mismatches
    - Check if Entity's country_of_incorporation matches the country in linked account addresses
    - Verify controlling persons' addresses align with account holder information
    - Validate that entity classification (rfi_status) is consistent with account reportability
 
-2. **STATISTICAL ANOMALY DETECTION**:
+3. **STATISTICAL ANOMALY DETECTION**:
    - Identify account balances that deviate significantly from the average (>3 standard deviations)
    - Flag round number balances (ending in 000, 00000) that may indicate estimates
    - Detect duplicate or near-duplicate account numbers, names, or TINs
    - Identify accounts with zero or negative balances that are marked as reportable
 
-3. **TEMPORAL CONSISTENCY CHECKS**:
+4. **TEMPORAL CONSISTENCY CHECKS**:
    - Flag accounts with future dates of birth
    - Check for self-certification dates that are after the current date
    - Identify stale classifications (>12 months old) that may need review
    - Detect accounts marked as closed but with recent activity
 
-4. **IDENTITY & TIN VALIDATION**:
+5. **IDENTITY & TIN VALIDATION**:
    - Cross-check TIN formats against declared tax residency countries
    - Flag accounts with tax residencies but missing TINs (without valid unavailable reason)
    - Identify potential name mismatches between account holder and controlling persons
    - Detect implausible ages (too young for account holder, too old, etc.)
 
-5. **RELATIONSHIP INTEGRITY**:
+6. **RELATIONSHIP INTEGRITY**:
    - Entity accounts without any controlling persons defined
    - Controlling person ownership percentages that don't sum correctly
    - Passive NFE accounts without documented controlling persons
    - Orphaned accounts (linked to non-existent entities)
 
-6. **COMPLIANCE RISK SCORING**:
+7. **COMPLIANCE RISK SCORING**:
    - High-risk jurisdictions without enhanced documentation
    - Reportable accounts missing required self-certifications
    - Large balance accounts with incomplete information
    - Pattern of similar issues across multiple accounts (systematic problems)
 
-For each issue, provide ACTIONABLE CORRECTIONS with specific field values:
+For each issue, provide ACTIONABLE CORRECTIONS with specific field values AND EXPLAINABLE AI REASONING:
 
 Return a JSON object with this structure:
 {
@@ -193,12 +303,14 @@ Return a JSON object with this structure:
     "low_severity": number,
     "data_quality_score": number (0-100),
     "cross_reference_issues": number,
-    "statistical_anomalies": number
+    "statistical_anomalies": number,
+    "custom_rule_violations": number,
+    "historical_trend_issues": number
   },
   "issues": [
     {
       "severity": "high" | "medium" | "low",
-      "category": "cross_reference_mismatch" | "statistical_anomaly" | "temporal_inconsistency" | "identity_issue" | "relationship_integrity" | "compliance_risk" | "classification_concern" | "address_issue",
+      "category": "custom_rule_violation" | "historical_trend" | "cross_reference_mismatch" | "statistical_anomaly" | "temporal_inconsistency" | "identity_issue" | "relationship_integrity" | "compliance_risk" | "classification_concern" | "address_issue",
       "affected_record_id": "id",
       "affected_record_type": "account" | "entity" | "controlling_person",
       "affected_record_name": "name for display",
@@ -217,7 +329,14 @@ Return a JSON object with this structure:
         "confidence": "high" | "medium" | "low",
         "rationale": "why this correction is suggested"
       },
-      "related_issues": ["array of related issue descriptions if this is part of a pattern"]
+      "explainable_ai": {
+        "reasoning_steps": ["step 1: what was checked", "step 2: what was found", "step 3: why it's an issue"],
+        "data_points_referenced": [{"field": "field_name", "value": "actual_value", "why_relevant": "explanation"}],
+        "rule_applied": "description of the validation rule or logic pattern applied",
+        "confidence_score": number (0-100)
+      },
+      "related_issues": ["array of related issue descriptions if this is part of a pattern"],
+      "historical_context": "if relevant, describe the historical pattern or trend that led to this issue"
     }
   ],
   "cross_reference_insights": [
@@ -249,7 +368,9 @@ Return a JSON object with this structure:
                 low_severity: { type: "number" },
                 data_quality_score: { type: "number" },
                 cross_reference_issues: { type: "number" },
-                statistical_anomalies: { type: "number" }
+                statistical_anomalies: { type: "number" },
+                custom_rule_violations: { type: "number" },
+                historical_trend_issues: { type: "number" }
               }
             },
             issues: {
@@ -283,10 +404,33 @@ Return a JSON object with this structure:
                       rationale: { type: "string" }
                     }
                   },
+                  explainable_ai: {
+                    type: "object",
+                    properties: {
+                      reasoning_steps: {
+                        type: "array",
+                        items: { type: "string" }
+                      },
+                      data_points_referenced: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            field: { type: "string" },
+                            value: { type: "string" },
+                            why_relevant: { type: "string" }
+                          }
+                        }
+                      },
+                      rule_applied: { type: "string" },
+                      confidence_score: { type: "number" }
+                    }
+                  },
                   related_issues: {
                     type: "array",
                     items: { type: "string" }
-                  }
+                  },
+                  historical_context: { type: "string" }
                 }
               }
             },
@@ -347,6 +491,8 @@ Return a JSON object with this structure:
 
   const getCategoryIcon = (category) => {
     switch (category) {
+      case 'custom_rule_violation': return <Shield className="w-4 h-4" />;
+      case 'historical_trend': return <TrendingUp className="w-4 h-4" />;
       case 'financial_anomaly': return <DollarSign className="w-4 h-4" />;
       case 'statistical_anomaly': return <TrendingUp className="w-4 h-4" />;
       case 'address_issue': return <MapPin className="w-4 h-4" />;
@@ -378,6 +524,8 @@ Return a JSON object with this structure:
   }, {}) || {};
 
   const categoryLabels = {
+    custom_rule_violation: 'Custom Rule Violations',
+    historical_trend: 'Historical Trends',
     financial_anomaly: 'Financial Anomalies',
     statistical_anomaly: 'Statistical Anomalies',
     address_issue: 'Address Issues',
@@ -480,14 +628,30 @@ Return a JSON object with this structure:
                   <p className="text-xs text-violet-600">Anomalies</p>
                 </CardContent>
               </Card>
+              <Card className="border-2 border-purple-200 bg-purple-50">
+                <CardContent className="p-3 text-center">
+                  <p className="text-xl font-bold text-purple-700">{results.summary?.custom_rule_violations || 0}</p>
+                  <p className="text-xs text-purple-600">Rule Violations</p>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-orange-200 bg-orange-50">
+                <CardContent className="p-3 text-center">
+                  <p className="text-xl font-bold text-orange-700">{results.summary?.historical_trend_issues || 0}</p>
+                  <p className="text-xs text-orange-600">Trend Issues</p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Tabs for different views */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-4 w-full max-w-lg">
+              <TabsList className="grid grid-cols-5 w-full max-w-2xl">
                 <TabsTrigger value="issues" className="gap-1">
                   <AlertTriangle className="w-3 h-3" />
                   Issues
+                </TabsTrigger>
+                <TabsTrigger value="explainable" className="gap-1">
+                  <Brain className="w-3 h-3" />
+                  AI Reasoning
                 </TabsTrigger>
                 <TabsTrigger value="crossref" className="gap-1">
                   <GitCompare className="w-3 h-3" />
@@ -621,6 +785,17 @@ Return a JSON object with this structure:
                                     </div>
                                   )}
 
+                                  {/* Historical context */}
+                                  {issue.historical_context && (
+                                    <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm">
+                                      <div className="flex items-center gap-2 text-orange-700 font-medium mb-1">
+                                        <TrendingUp className="w-3 h-3" />
+                                        Historical Context
+                                      </div>
+                                      <p className="text-orange-600 text-xs">{issue.historical_context}</p>
+                                    </div>
+                                  )}
+
                                   <div className="p-2 bg-slate-50 rounded text-sm">
                                     <span className="font-medium text-slate-600">Recommendation: </span>
                                     <span className="text-slate-700">{issue.recommendation}</span>
@@ -649,6 +824,91 @@ Return a JSON object with this structure:
                       <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-3" />
                       <h3 className="text-lg font-semibold text-green-800">No Issues Detected</h3>
                       <p className="text-sm text-green-700">Your data appears to be consistent and well-formed.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Explainable AI Tab */}
+              <TabsContent value="explainable" className="space-y-4 mt-4">
+                {results.issues?.filter(i => i.explainable_ai).length > 0 ? (
+                  <div className="space-y-3">
+                    {results.issues.filter(i => i.explainable_ai).map((issue, idx) => (
+                      <Card key={idx} className="border-l-4 border-l-indigo-500">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium text-slate-900">{issue.affected_record_name}</p>
+                              <p className="text-xs text-slate-500">{issue.affected_record_type}</p>
+                            </div>
+                            <Badge className={getSeverityColor(issue.severity)}>
+                              {issue.severity?.toUpperCase()}
+                            </Badge>
+                          </div>
+                          
+                          <p className="text-sm text-slate-700">{issue.description}</p>
+
+                          <div className="p-3 bg-indigo-50 border border-indigo-200 rounded space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Brain className="w-4 h-4 text-indigo-600" />
+                              <span className="text-sm font-semibold text-indigo-800">AI Reasoning</span>
+                              {issue.explainable_ai.confidence_score && (
+                                <Badge variant="outline" className="ml-auto text-xs">
+                                  {issue.explainable_ai.confidence_score}% confidence
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Reasoning Steps */}
+                            {issue.explainable_ai.reasoning_steps?.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-indigo-700 mb-1">Reasoning Steps:</p>
+                                <ol className="list-decimal list-inside space-y-1">
+                                  {issue.explainable_ai.reasoning_steps.map((step, sidx) => (
+                                    <li key={sidx} className="text-xs text-indigo-600">{step}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+
+                            {/* Data Points Referenced */}
+                            {issue.explainable_ai.data_points_referenced?.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-indigo-700 mb-1">Data Points Referenced:</p>
+                                <div className="space-y-1">
+                                  {issue.explainable_ai.data_points_referenced.map((dp, dpidx) => (
+                                    <div key={dpidx} className="flex items-start gap-2 text-xs">
+                                      <code className="px-1.5 py-0.5 bg-white rounded text-indigo-700 font-mono">
+                                        {dp.field}
+                                      </code>
+                                      <span className="text-slate-600">= "{dp.value}"</span>
+                                      <span className="text-indigo-600 flex-1">→ {dp.why_relevant}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Rule Applied */}
+                            {issue.explainable_ai.rule_applied && (
+                              <div>
+                                <p className="text-xs font-semibold text-indigo-700 mb-1">Validation Rule Applied:</p>
+                                <p className="text-xs text-indigo-600 bg-white p-2 rounded">
+                                  {issue.explainable_ai.rule_applied}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="bg-slate-50 border-slate-200">
+                    <CardContent className="p-8 text-center">
+                      <Brain className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                      <h3 className="text-lg font-semibold text-slate-700">No AI Reasoning Available</h3>
+                      <p className="text-sm text-slate-500">No detailed AI explanations were generated.</p>
                     </CardContent>
                   </Card>
                 )}
