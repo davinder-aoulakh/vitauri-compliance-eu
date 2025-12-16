@@ -97,18 +97,18 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   }, [account]);
 
-  // Auto-determine if account is pre-existing based on created date
+  // Auto-determine if account is pre-existing based on account creation date
   useEffect(() => {
-    if (account?.created_date) {
-      const createdDate = new Date(account.created_date);
-      const crsThresholdDate = new Date('2018-01-01');
-      const isPreExisting = createdDate < crsThresholdDate;
+    if (formData.account_creation_date) {
+      const creationDate = new Date(formData.account_creation_date);
+      const crsThresholdDate = new Date('2018-12-31');
+      const isPreExisting = creationDate <= crsThresholdDate;
       
       if (formData.is_pre_existing !== isPreExisting) {
         setFormData(prev => ({ ...prev, is_pre_existing: isPreExisting }));
       }
     }
-  }, [account?.created_date]);
+  }, [formData.account_creation_date]);
 
   useEffect(() => {
     if (!initialData || !account) return;
@@ -771,7 +771,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               {/* Pre-existing Account */}
               <div>
                 <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
-                  Pre-existing Account (opened before Jan 1, 2018)
+                  Pre-existing Account (opened before Dec 31, 2018)
                 </Label>
                 <div className="mt-2">
                   <RadioGroup
