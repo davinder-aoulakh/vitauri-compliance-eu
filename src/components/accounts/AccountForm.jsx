@@ -28,6 +28,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   const [formData, setFormData] = useState({
     entity_id: account?.entity_id || "",
     account_number: account?.account_number || "",
+    account_creation_date: account?.account_creation_date || "",
     account_type: account?.account_type || "depository",
     account_holder_type: account?.account_holder_type || "individual",
     account_holder_name: account?.account_holder_name || "",
@@ -406,6 +407,21 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   {accountNumberError}
                 </p>
               )}
+            </div>
+
+            <div>
+              <Label htmlFor="account_creation_date">Account Creation Date *</Label>
+              <Input
+                id="account_creation_date"
+                type="date"
+                value={formData.account_creation_date}
+                onChange={(e) => handleChange("account_creation_date", e.target.value)}
+                required
+                className="mt-1.5"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Date when the account was originally opened
+              </p>
             </div>
 
             <div>

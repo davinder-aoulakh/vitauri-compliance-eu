@@ -163,6 +163,11 @@ export default function AccountDetails({ account, entity }) {
               value={account.account_number}
             />
             <InfoRow
+              icon={Calendar}
+              label="Account Creation Date"
+              value={account.account_creation_date ? new Date(account.account_creation_date).toLocaleDateString() : "—"}
+            />
+            <InfoRow
               icon={CreditCard}
               label="Account Type"
               value={getLabel('Account', 'account_type', account.account_type)}
