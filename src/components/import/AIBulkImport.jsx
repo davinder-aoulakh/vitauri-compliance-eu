@@ -55,12 +55,13 @@ export default function AIBulkImport({
       headers = [
         "Entity ID", "Account Number", "Account Creation Date", "Account Type", "Account Holder Type", "Account Holder Name",
         "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive",
-        "Street Address", "City", "State/Province", "Postal Code", "Country",
+        "Original Street", "Original City", "Original State", "Original Postal Code", "Original Country",
+        "Current Street", "Current City", "Current State", "Current Postal Code", "Current Country",
         "Country of Residence", "Current Email Address", "Current Phone Number",
         "Year-end Cash Value", "Year-end Currency", "Gross Payments", "Gross Payments Currency",
         "Reporting Year", "Tax Residency 1 Country", "Tax Residency 1 TIN"
       ];
-      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,individual,John Smith,1985-06-15,United States,false,true,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,United States,123-45-6789`;
+      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,individual,John Smith,1985-06-15,United States,false,true,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,United States,123-45-6789`;
     } else {
       headers = [
         "Entity Name", "Entity Type", "Country of Incorporation", "Tax ID", "GIIN",
