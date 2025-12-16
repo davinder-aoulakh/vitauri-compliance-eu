@@ -14,6 +14,7 @@ import Activity from './pages/Activity';
 import ComplianceAssistant from './pages/ComplianceAssistant';
 import DashboardBuilder from './pages/DashboardBuilder';
 import JurisdictionSettings from './pages/JurisdictionSettings';
+import CustomValidationRules from './pages/CustomValidationRules';
 import __Layout from './Layout.jsx';
 
 
@@ -34,6 +35,7 @@ export const PAGES = {
     "ComplianceAssistant": ComplianceAssistant,
     "DashboardBuilder": DashboardBuilder,
     "JurisdictionSettings": JurisdictionSettings,
+    "CustomValidationRules": CustomValidationRules,
 }
 
 export const pagesConfig = {
