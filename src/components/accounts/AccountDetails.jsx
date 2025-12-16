@@ -235,7 +235,7 @@ export default function AccountDetails({ account, entity }) {
             <CardHeader className="border-b bg-slate-50">
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-indigo-600" />
-                Account Holder Original Address
+                Original Address
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">

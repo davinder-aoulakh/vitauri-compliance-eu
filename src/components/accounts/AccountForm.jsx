@@ -233,7 +233,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.city?.trim() || 
         !formData.account_holder_address?.state?.trim() || !formData.account_holder_address?.postal_code?.trim() || 
         !formData.account_holder_address?.country?.trim()) {
-      alert("Account Holder Original Address (all fields) is required");
+      alert("Original Address (all fields) is required");
       return;
     }
     
@@ -610,7 +610,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Account Holder Original Address Section */}
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">
-              Account Holder Original Address *
+              Original Address *
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
