@@ -219,6 +219,42 @@ export default function AIBulkImport({
     }
   };
 
+  const validateRecord = (record, rowData) => {
+    const errors = [];
+    
+    if (importType === "Account") {
+      // Required fields validation
+      if (!record.entity_id) errors.push("Missing Entity ID");
+      if (!record.account_number) errors.push("Missing Account Number");
+      if (!record.account_creation_date) errors.push("Missing Account Creation Date");
+      if (!record.account_holder_name) errors.push("Missing Account Holder Name");
+      if (!record.current_email) errors.push("Missing Current Email Address");
+      if (!record.current_phone) errors.push("Missing Current Phone Number");
+      
+      // Email format validation
+      if (record.current_email && !record.current_email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        errors.push("Invalid email format");
+      }
+      
+      // Date format validation
+      if (record.account_creation_date && isNaN(Date.parse(record.account_creation_date))) {
+        errors.push("Invalid Account Creation Date format");
+      }
+      
+      // Individual-specific validations
+      if (record.account_holder_type === 'individual') {
+        if (!record.date_of_birth) errors.push("Missing Date of Birth (required for individuals)");
+        if (!record.place_of_birth) errors.push("Missing Place of Birth (required for individuals)");
+      }
+    } else {
+      // Entity validations
+      if (!record.entity_name) errors.push("Missing Entity Name");
+      if (!record.country_of_incorporation) errors.push("Missing Country of Incorporation");
+    }
+    
+    return errors;
+  };
+
   const handleImport = async () => {
     setImporting(true);
     setProgress(0);
@@ -246,8 +282,26 @@ export default function AIBulkImport({
       }
       
       for (let i = 0; i < dataToImport.length; i++) {
+        const rowData = dataToImport[i];
+        let recordName = '';
+        
         try {
-          const record = convertToEntity(dataToImport[i]);
+          const record = convertToEntity(rowData);
+          recordName = record.account_holder_name || record.entity_name || `Row ${i + 2}`;
+          
+          // Validate before attempting to save
+          const validationErrors = validateRecord(record, rowData);
+          if (validationErrors.length > 0) {
+            failed.push({ 
+              row: i + 2, 
+              name: recordName,
+              error: validationErrors.join('; '),
+              data: rowData,
+              type: 'validation'
+            });
+            setProgress(Math.round(((i + 1) / dataToImport.length) * 100));
+            continue;
+          }
           
           let existing;
           if (importType === "Account") {
@@ -263,18 +317,51 @@ export default function AIBulkImport({
             } else {
               await base44.entities.Entity.update(existing.id, record);
             }
-            updated.push({ row: i + 2, name: record.account_holder_name || record.entity_name });
+            updated.push({ 
+              row: i + 2, 
+              name: recordName,
+              action: 'updated',
+              id: existing.id
+            });
           } else {
             // Create
+            let newRecord;
             if (importType === "Account") {
-              await base44.entities.Account.create(record);
+              newRecord = await base44.entities.Account.create(record);
             } else {
-              await base44.entities.Entity.create(record);
+              newRecord = await base44.entities.Entity.create(record);
             }
-            imported.push({ row: i + 2, name: record.account_holder_name || record.entity_name });
+            imported.push({ 
+              row: i + 2, 
+              name: recordName,
+              action: 'created',
+              id: newRecord.id
+            });
           }
         } catch (err) {
-          failed.push({ row: i + 2, error: err.message });
+          // Parse error message for more specific feedback
+          let errorMsg = err.message;
+          let errorType = 'database';
+          
+          if (errorMsg.includes('duplicate') || errorMsg.includes('unique')) {
+            errorType = 'duplicate';
+            errorMsg = 'Duplicate record detected';
+          } else if (errorMsg.includes('foreign key') || errorMsg.includes('reference')) {
+            errorType = 'reference';
+            errorMsg = 'Invalid reference (e.g., Entity ID not found)';
+          } else if (errorMsg.includes('required') || errorMsg.includes('null')) {
+            errorType = 'missing_field';
+            errorMsg = 'Missing required field: ' + errorMsg;
+          }
+          
+          failed.push({ 
+            row: i + 2, 
+            name: recordName,
+            error: errorMsg,
+            data: rowData,
+            type: errorType,
+            fullError: err.message
+          });
         }
         
         setProgress(Math.round(((i + 1) / dataToImport.length) * 100));
@@ -300,6 +387,71 @@ export default function AIBulkImport({
     return csvData.slice(0, 5).map(row => 
       csvHeaders.map(h => row[h] || '')
     );
+  };
+
+  const downloadErrorReport = () => {
+    if (!results || results.failedRecords.length === 0) return;
+    
+    // Create CSV with original data + error column
+    const errorData = results.failedRecords.map(failure => {
+      const originalRow = failure.data || csvData[failure.row - 2];
+      return {
+        ...originalRow,
+        'ERROR_TYPE': failure.type || 'unknown',
+        'ERROR_DETAILS': failure.error,
+        'ROW_NUMBER': failure.row
+      };
+    });
+    
+    // Generate CSV
+    const headers = [...csvHeaders, 'ERROR_TYPE', 'ERROR_DETAILS', 'ROW_NUMBER'];
+    const csvContent = [
+      headers.join(','),
+      ...errorData.map(row => 
+        headers.map(h => {
+          const value = row[h] || '';
+          // Escape commas and quotes
+          return value.toString().includes(',') || value.toString().includes('"') 
+            ? `"${value.toString().replace(/"/g, '""')}"` 
+            : value;
+        }).join(',')
+      )
+    ].join('\n');
+    
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${importType.toLowerCase()}_import_errors_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  };
+
+  const getErrorTypeLabel = (type) => {
+    const labels = {
+      validation: 'Validation Error',
+      duplicate: 'Duplicate Record',
+      reference: 'Invalid Reference',
+      missing_field: 'Missing Field',
+      database: 'Database Error',
+      unknown: 'Unknown Error'
+    };
+    return labels[type] || labels.unknown;
+  };
+
+  const getErrorTypeColor = (type) => {
+    const colors = {
+      validation: 'bg-amber-100 text-amber-800 border-amber-200',
+      duplicate: 'bg-blue-100 text-blue-800 border-blue-200',
+      reference: 'bg-purple-100 text-purple-800 border-purple-200',
+      missing_field: 'bg-red-100 text-red-800 border-red-200',
+      database: 'bg-slate-100 text-slate-800 border-slate-200',
+      unknown: 'bg-slate-100 text-slate-800 border-slate-200'
+    };
+    return colors[type] || colors.unknown;
   };
 
   return (
@@ -491,58 +643,168 @@ export default function AIBulkImport({
 
       {/* Results */}
       {results && (
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              Import Complete
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-4 gap-4">
-              <div className="text-center p-4 rounded-lg bg-slate-50 border">
-                <p className="text-2xl font-bold">{results.total}</p>
-                <p className="text-xs text-slate-600">Total</p>
+        <div className="space-y-6">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                Import Complete
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center p-4 rounded-lg bg-slate-50 border">
+                  <p className="text-2xl font-bold">{results.total}</p>
+                  <p className="text-xs text-slate-600">Total</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+                  <p className="text-2xl font-bold text-green-600">{results.imported}</p>
+                  <p className="text-xs text-green-700">Created</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-2xl font-bold text-amber-600">{results.updated}</p>
+                  <p className="text-xs text-amber-700">Updated</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
+                  <p className="text-2xl font-bold text-red-600">{results.failed}</p>
+                  <p className="text-xs text-red-700">Failed</p>
+                </div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
-                <p className="text-2xl font-bold text-green-600">{results.imported}</p>
-                <p className="text-xs text-green-700">Created</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-amber-50 border border-amber-200">
-                <p className="text-2xl font-bold text-amber-600">{results.updated}</p>
-                <p className="text-xs text-amber-700">Updated</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
-                <p className="text-2xl font-bold text-red-600">{results.failed}</p>
-                <p className="text-xs text-red-700">Failed</p>
-              </div>
-            </div>
 
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setFile(null);
-                  setCsvHeaders([]);
-                  setCsvData([]);
-                  setMappings({});
-                  setCleanedData(null);
-                  setResults(null);
-                  setCurrentStep(0);
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Import Another File
-              </Button>
-              <Button
-                onClick={onComplete}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                Done
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {/* Detailed Tabs */}
+              <Tabs defaultValue={results.failed > 0 ? "failed" : "imported"} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="imported">
+                    Created ({results.imported})
+                  </TabsTrigger>
+                  <TabsTrigger value="updated">
+                    Updated ({results.updated})
+                  </TabsTrigger>
+                  <TabsTrigger value="failed">
+                    Failed ({results.failed})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="imported" className="space-y-3 mt-4">
+                  {results.importedRecords.length === 0 ? (
+                    <p className="text-center text-sm text-slate-500 py-4">No records were created</p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {results.importedRecords.map((record, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-green-900 truncate">{record.name}</p>
+                            <p className="text-xs text-green-700">Row {record.row}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="updated" className="space-y-3 mt-4">
+                  {results.updatedRecords.length === 0 ? (
+                    <p className="text-center text-sm text-slate-500 py-4">No records were updated</p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {results.updatedRecords.map((record, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-amber-900 truncate">{record.name}</p>
+                            <p className="text-xs text-amber-700">Row {record.row}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="failed" className="space-y-3 mt-4">
+                  {results.failedRecords.length === 0 ? (
+                    <p className="text-center text-sm text-slate-500 py-4">No errors - all records processed successfully!</p>
+                  ) : (
+                    <>
+                      <Alert className="bg-red-50 border-red-200">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        <AlertDescription className="text-sm text-red-900">
+                          {results.failed} record{results.failed !== 1 ? 's' : ''} failed to import. 
+                          Review the errors below and download the error report to fix and re-import.
+                        </AlertDescription>
+                      </Alert>
+
+                      <Button
+                        onClick={downloadErrorReport}
+                        variant="outline"
+                        className="w-full border-red-200 text-red-700 hover:bg-red-50"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Error Report (CSV)
+                      </Button>
+
+                      <div className="max-h-96 overflow-y-auto space-y-2">
+                        {results.failedRecords.map((failure, idx) => (
+                          <div key={idx} className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+                            <div className="flex items-start gap-3">
+                              <XCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="text-sm font-medium text-red-900 truncate">
+                                    {failure.name}
+                                  </p>
+                                  <Badge className={getErrorTypeColor(failure.type)}>
+                                    {getErrorTypeLabel(failure.type)}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-red-700 mb-1">Row {failure.row}</p>
+                                <p className="text-sm text-red-800">{failure.error}</p>
+                                {failure.fullError && failure.fullError !== failure.error && (
+                                  <details className="mt-2">
+                                    <summary className="text-xs text-red-600 cursor-pointer hover:underline">
+                                      View full error details
+                                    </summary>
+                                    <p className="text-xs text-red-700 mt-1 p-2 bg-red-100 rounded border border-red-200 font-mono">
+                                      {failure.fullError}
+                                    </p>
+                                  </details>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <Button
+                  onClick={() => {
+                    setFile(null);
+                    setCsvHeaders([]);
+                    setCsvData([]);
+                    setMappings({});
+                    setCleanedData(null);
+                    setResults(null);
+                    setCurrentStep(0);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Import Another File
+                </Button>
+                <Button
+                  onClick={onComplete}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  Done
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Cancel */}
