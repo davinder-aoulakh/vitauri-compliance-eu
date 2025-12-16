@@ -56,7 +56,7 @@ export default function AIBulkImport({
         "Entity ID", "Account Number", "Account Creation Date", "Account Type", "Account Holder Type", "Account Holder Name",
         "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive",
         "Street Address", "City", "State/Province", "Postal Code", "Country",
-        "Country of Residence", "Email Address", "Phone Number",
+        "Country of Residence", "Current Email Address", "Current Phone Number",
         "Year-end Cash Value", "Year-end Currency", "Gross Payments", "Gross Payments Currency",
         "Reporting Year", "Tax Residency 1 Country", "Tax Residency 1 TIN"
       ];

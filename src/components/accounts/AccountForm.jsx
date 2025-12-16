@@ -520,25 +520,27 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
-              <Label htmlFor="current_email">Current Email Address</Label>
+              <Label htmlFor="current_email">Current Email Address *</Label>
               <Input
                 id="current_email"
                 type="email"
                 value={formData.current_email}
                 onChange={(e) => handleChange("current_email", e.target.value)}
                 placeholder="email@example.com"
+                required
                 className="mt-1.5"
               />
             </div>
 
             <div>
-              <Label htmlFor="current_phone">Current Phone Number</Label>
+              <Label htmlFor="current_phone">Current Phone Number *</Label>
               <Input
                 id="current_phone"
                 type="tel"
                 value={formData.current_phone}
                 onChange={(e) => handleChange("current_phone", e.target.value)}
                 placeholder="+1234567890"
+                required
                 className="mt-1.5"
               />
             </div>
