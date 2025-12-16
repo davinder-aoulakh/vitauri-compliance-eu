@@ -53,7 +53,7 @@ export default function AIBulkImport({
     
     if (importType === "Account") {
       headers = [
-        "Entity ID", "Account Number", "Account Creation Date", "Account Type", "Account Holder Type", "Account Holder Name",
+        "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Type", "Account Holder Name",
         "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive",
         "Original Street", "Original City", "Original State", "Original Postal Code", "Original Country",
         "Current Street", "Current City", "Current State", "Current Postal Code", "Current Country",
@@ -226,7 +226,7 @@ export default function AIBulkImport({
       // Required fields validation
       if (!record.entity_id) errors.push("Missing Entity ID");
       if (!record.account_number) errors.push("Missing Account Number");
-      if (!record.account_creation_date) errors.push("Missing Account Creation Date");
+      if (!record.account_creation_date) errors.push("Missing Account Opening Date");
       if (!record.account_holder_name) errors.push("Missing Account Holder Name");
       if (!record.current_email) errors.push("Missing Current Email Address");
       if (!record.current_phone) errors.push("Missing Current Phone Number");
@@ -238,7 +238,7 @@ export default function AIBulkImport({
       
       // Date format validation
       if (record.account_creation_date && isNaN(Date.parse(record.account_creation_date))) {
-        errors.push("Invalid Account Creation Date format");
+        errors.push("Invalid Account Opening Date format");
       }
       
       // Individual-specific validations
