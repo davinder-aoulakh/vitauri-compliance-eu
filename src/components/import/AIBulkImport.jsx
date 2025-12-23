@@ -47,6 +47,8 @@ export default function AIBulkImport({
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState(null);
   const [errors, setErrors] = useState([]);
+  const [user, setUser] = useState(null);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState(null);
 
   const downloadTemplate = () => {
     let headers, example;
@@ -93,6 +95,34 @@ export default function AIBulkImport({
     
     setFile(selectedFile);
     setErrors([]);
+    
+    // Upload CSV file first for audit trail
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+      
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: selectedFile });
+      setUploadedFileUrl(file_url);
+      
+      // Create audit log entry for bulk import initiation
+      await base44.entities.AuditLog.create({
+        tenant_id: tenant.id,
+        action_type: "bulk_import_initiated",
+        actor_email: currentUser.email,
+        actor_role: currentUser.user_role,
+        target_entity_type: importType,
+        target_entity_name: selectedFile.name,
+        file_url: file_url,
+        changes: {
+          file_name: selectedFile.name,
+          file_size: selectedFile.size,
+          import_type: importType
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error uploading file or creating audit log:", error);
+    }
     
     // Parse CSV
     const text = await selectedFile.text();
@@ -376,8 +406,56 @@ export default function AIBulkImport({
         updatedRecords: updated,
         failedRecords: failed
       });
+      
+      // Create audit log entry for bulk import completion
+      const currentUser = user || await base44.auth.me();
+      const isSuccess = failed.length === 0;
+      
+      await base44.entities.AuditLog.create({
+        tenant_id: tenant.id,
+        action_type: isSuccess ? "bulk_import_completed" : "bulk_import_failed",
+        actor_email: currentUser.email,
+        actor_role: currentUser.user_role,
+        target_entity_type: importType,
+        target_entity_name: file?.name || "Bulk Import",
+        file_url: uploadedFileUrl,
+        changes: {
+          file_name: file?.name,
+          total_records: dataToImport.length,
+          created: imported.length,
+          updated: updated.length,
+          failed: failed.length,
+          success_rate: `${Math.round(((imported.length + updated.length) / dataToImport.length) * 100)}%`,
+          imported_records: imported.map(r => ({ row: r.row, name: r.name })),
+          updated_records: updated.map(r => ({ row: r.row, name: r.name })),
+          failed_records: failed.map(f => ({ row: f.row, name: f.name, error: f.error, type: f.type }))
+        },
+        timestamp: new Date().toISOString()
+      });
     } catch (err) {
       setErrors([err.message]);
+      
+      // Create audit log entry for import failure
+      try {
+        const currentUser = user || await base44.auth.me();
+        await base44.entities.AuditLog.create({
+          tenant_id: tenant.id,
+          action_type: "bulk_import_failed",
+          actor_email: currentUser.email,
+          actor_role: currentUser.user_role,
+          target_entity_type: importType,
+          target_entity_name: file?.name || "Bulk Import",
+          file_url: uploadedFileUrl,
+          changes: {
+            file_name: file?.name,
+            error: err.message,
+            stack_trace: err.stack
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (auditError) {
+        console.error("Error creating audit log for failed import:", auditError);
+      }
     } finally {
       setImporting(false);
     }
