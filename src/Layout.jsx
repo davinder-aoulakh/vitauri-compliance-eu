@@ -202,9 +202,10 @@ export default function Layout({ children }) {
   };
 
   // Get menu order from tenant settings or use defaults
-  const crsMenuOrder = tenant?.navigation_settings?.crs_menu_order || 
+  const navigationSettings = tenant?.navigation_settings || {};
+  const crsMenuOrder = navigationSettings.crs_menu_order || 
     ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant"];
-  const fatcaMenuOrder = tenant?.navigation_settings?.fatca_menu_order || 
+  const fatcaMenuOrder = navigationSettings.fatca_menu_order || 
     ["Dashboard", "Activity Log", "FFI Entities", "Accounts", "FATCA Reports"];
 
   // Build navigation arrays based on order
@@ -377,7 +378,7 @@ export default function Layout({ children }) {
           <SidebarContent className="p-3">
             {/* CRS Navigation Group */}
             {!isSuperAdmin && crsEnabled && (
-              <Collapsible defaultOpen={!(tenant?.navigation_settings?.crs_default_collapsed ?? false)} className="group/collapsible">
+              <Collapsible defaultOpen={!(navigationSettings.crs_default_collapsed ?? false)} className="group/collapsible">
                 <SidebarGroup>
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
@@ -417,7 +418,7 @@ export default function Layout({ children }) {
 
             {/* FATCA Navigation Group */}
             {!isSuperAdmin && fatcaEnabled && (
-              <Collapsible defaultOpen={!(tenant?.navigation_settings?.fatca_default_collapsed ?? false)} className="group/collapsible">
+              <Collapsible defaultOpen={!(navigationSettings.fatca_default_collapsed ?? false)} className="group/collapsible">
                 <SidebarGroup className="mt-6">
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
@@ -457,7 +458,7 @@ export default function Layout({ children }) {
 
             {/* Administration Section - Tenant Admin Only */}
             {isTenantAdmin && !isSuperAdmin && (
-              <Collapsible defaultOpen={!(tenant?.navigation_settings?.administration_default_collapsed ?? false)} className="group/collapsible">
+              <Collapsible defaultOpen={!(navigationSettings.administration_default_collapsed ?? false)} className="group/collapsible">
                 <SidebarGroup className="mt-6">
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
