@@ -189,79 +189,34 @@ export default function Layout({ children }) {
   const isSuperAdmin = user?.user_role === "super_admin";
   const isTenantAdmin = user?.user_role === "tenant_admin";
 
-  // CRS Navigation Items
-  const crsNav = [
-    {
-      title: "Dashboard",
-      url: createPageUrl("Dashboard"),
-      icon: LayoutDashboard,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "Activity Log",
-      url: createPageUrl("Activity"),
-      icon: Eye,
-      roles: ["tenant_admin"]
-    },
-    {
-      title: "RFI Entities",
-      url: createPageUrl("Entities"),
-      icon: Building2,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "Accounts",
-      url: createPageUrl("Accounts"),
-      icon: Wallet,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "CRS Reports",
-      url: createPageUrl("Reports"),
-      icon: FileText,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "AI Assistant",
-      url: createPageUrl("ComplianceAssistant"),
-      icon: Shield,
-      roles: ["tenant_admin", "tenant_user"]
-    }
-  ];
+  // Menu item mapping
+  const menuItemMap = {
+    "Dashboard": { url: createPageUrl("Dashboard"), icon: LayoutDashboard, roles: ["tenant_admin", "tenant_user"] },
+    "Activity Log": { url: createPageUrl("Activity"), icon: Eye, roles: ["tenant_admin"] },
+    "RFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"] },
+    "FFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"] },
+    "Accounts": { url: createPageUrl("Accounts"), icon: Wallet, roles: ["tenant_admin", "tenant_user"] },
+    "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"] },
+    "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"] },
+    "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"] }
+  };
 
-  // FATCA Navigation Items (using same pages as CRS for now)
-  const fatcaNav = [
-    {
-      title: "Dashboard",
-      url: createPageUrl("Dashboard"),
-      icon: LayoutDashboard,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "Activity Log",
-      url: createPageUrl("Activity"),
-      icon: Eye,
-      roles: ["tenant_admin"]
-    },
-    {
-      title: "FFI Entities",
-      url: createPageUrl("Entities"),
-      icon: Building2,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "Accounts",
-      url: createPageUrl("Accounts"),
-      icon: Wallet,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "FATCA Reports",
-      url: createPageUrl("Reports"),
-      icon: FileText,
-      roles: ["tenant_admin", "tenant_user"]
-    }
-  ];
+  // Get menu order from tenant settings or use defaults
+  const crsMenuOrder = tenant?.navigation_settings?.crs_menu_order || 
+    ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant"];
+  const fatcaMenuOrder = tenant?.navigation_settings?.fatca_menu_order || 
+    ["Dashboard", "Activity Log", "FFI Entities", "Accounts", "FATCA Reports"];
+
+  // Build navigation arrays based on order
+  const crsNav = crsMenuOrder.map(title => ({
+    title,
+    ...menuItemMap[title]
+  })).filter(item => item.url);
+
+  const fatcaNav = fatcaMenuOrder.map(title => ({
+    title,
+    ...menuItemMap[title]
+  })).filter(item => item.url);
 
   const administrationNav = [
     {
@@ -422,7 +377,7 @@ export default function Layout({ children }) {
           <SidebarContent className="p-3">
             {/* CRS Navigation Group */}
             {!isSuperAdmin && crsEnabled && (
-              <Collapsible defaultOpen className="group/collapsible">
+              <Collapsible defaultOpen={!tenant?.navigation_settings?.crs_default_collapsed} className="group/collapsible">
                 <SidebarGroup>
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
@@ -462,7 +417,7 @@ export default function Layout({ children }) {
 
             {/* FATCA Navigation Group */}
             {!isSuperAdmin && fatcaEnabled && (
-              <Collapsible defaultOpen className="group/collapsible">
+              <Collapsible defaultOpen={!tenant?.navigation_settings?.fatca_default_collapsed} className="group/collapsible">
                 <SidebarGroup className="mt-6">
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
@@ -502,7 +457,7 @@ export default function Layout({ children }) {
 
             {/* Administration Section - Tenant Admin Only */}
             {isTenantAdmin && !isSuperAdmin && (
-              <Collapsible defaultOpen className="group/collapsible">
+              <Collapsible defaultOpen={!tenant?.navigation_settings?.administration_default_collapsed} className="group/collapsible">
                 <SidebarGroup className="mt-6">
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">

@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush } from "lucide-react";
+import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush, Menu, GripVertical } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
   const defaultEnabledFeatures = {
@@ -62,7 +63,14 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     },
     subscription_status: "active",
     subscription_tier: "professional",
-    enabled_features: defaultEnabledFeatures
+    enabled_features: defaultEnabledFeatures,
+    navigation_settings: {
+      crs_menu_order: ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant"],
+      fatca_menu_order: ["Dashboard", "Activity Log", "FFI Entities", "Accounts", "FATCA Reports"],
+      crs_default_collapsed: false,
+      fatca_default_collapsed: false,
+      administration_default_collapsed: false
+    }
   });
 
   const handleSubmit = (e) => {
@@ -87,6 +95,33 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
       enabled_features: {
         ...prev.enabled_features,
         [feature]: !prev.enabled_features[feature]
+      }
+    }));
+  };
+
+  const handleNavigationOrderChange = (solution, result) => {
+    if (!result.destination) return;
+
+    const field = solution === 'crs' ? 'crs_menu_order' : 'fatca_menu_order';
+    const items = Array.from(formData.navigation_settings[field]);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setFormData(prev => ({
+      ...prev,
+      navigation_settings: {
+        ...prev.navigation_settings,
+        [field]: items
+      }
+    }));
+  };
+
+  const handleCollapseToggle = (field) => {
+    setFormData(prev => ({
+      ...prev,
+      navigation_settings: {
+        ...prev.navigation_settings,
+        [field]: !prev.navigation_settings[field]
       }
     }));
   };
@@ -132,7 +167,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">
             <Building2 className="w-4 h-4 mr-2" />
             Basic Info
@@ -140,6 +175,10 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
           <TabsTrigger value="branding">
             <Palette className="w-4 h-4 mr-2" />
             Branding
+          </TabsTrigger>
+          <TabsTrigger value="navigation">
+            <Menu className="w-4 h-4 mr-2" />
+            Navigation
           </TabsTrigger>
           <TabsTrigger value="subscription">
             <Settings className="w-4 h-4 mr-2" />
@@ -379,6 +418,135 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
               >
                 <h3 className="text-xl font-bold mb-2">{formData.short_name || "Your Institution"}</h3>
                 <p className="text-sm opacity-90">CRS Compliance Platform</p>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="navigation" className="space-y-6 mt-6">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Menu Configuration</h3>
+              <p className="text-sm text-slate-600">Configure the order and collapse behavior of navigation menu items</p>
+            </div>
+
+            {/* CRS Menu Order */}
+            <div className="p-4 border rounded-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-slate-900">CRS Solution Menu</h4>
+                  <p className="text-sm text-slate-600">Drag to reorder menu items</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="crs_default_collapsed"
+                    checked={formData.navigation_settings?.crs_default_collapsed ?? false}
+                    onCheckedChange={() => handleCollapseToggle('crs_default_collapsed')}
+                  />
+                  <Label htmlFor="crs_default_collapsed" className="text-sm cursor-pointer">
+                    Collapsed by default
+                  </Label>
+                </div>
+              </div>
+              <DragDropContext onDragEnd={(result) => handleNavigationOrderChange('crs', result)}>
+                <Droppable droppableId="crs-menu">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-2"
+                    >
+                      {formData.navigation_settings?.crs_menu_order?.map((item, index) => (
+                        <Draggable key={item} draggableId={item} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`flex items-center gap-3 p-3 rounded-lg border bg-white ${
+                                snapshot.isDragging ? 'shadow-lg border-indigo-300' : 'border-slate-200'
+                              }`}
+                            >
+                              <GripVertical className="w-4 h-4 text-slate-400" />
+                              <span className="text-sm font-medium text-slate-900">{item}</span>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </div>
+
+            {/* FATCA Menu Order */}
+            <div className="p-4 border rounded-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-slate-900">FATCA Solution Menu</h4>
+                  <p className="text-sm text-slate-600">Drag to reorder menu items</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="fatca_default_collapsed"
+                    checked={formData.navigation_settings?.fatca_default_collapsed ?? false}
+                    onCheckedChange={() => handleCollapseToggle('fatca_default_collapsed')}
+                  />
+                  <Label htmlFor="fatca_default_collapsed" className="text-sm cursor-pointer">
+                    Collapsed by default
+                  </Label>
+                </div>
+              </div>
+              <DragDropContext onDragEnd={(result) => handleNavigationOrderChange('fatca', result)}>
+                <Droppable droppableId="fatca-menu">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-2"
+                    >
+                      {formData.navigation_settings?.fatca_menu_order?.map((item, index) => (
+                        <Draggable key={item} draggableId={item} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`flex items-center gap-3 p-3 rounded-lg border bg-white ${
+                                snapshot.isDragging ? 'shadow-lg border-indigo-300' : 'border-slate-200'
+                              }`}
+                            >
+                              <GripVertical className="w-4 h-4 text-slate-400" />
+                              <span className="text-sm font-medium text-slate-900">{item}</span>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </div>
+
+            {/* Administration Collapse */}
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-slate-900">Administration Section</h4>
+                  <p className="text-sm text-slate-600">Configure default collapse behavior</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="administration_default_collapsed"
+                    checked={formData.navigation_settings?.administration_default_collapsed ?? false}
+                    onCheckedChange={() => handleCollapseToggle('administration_default_collapsed')}
+                  />
+                  <Label htmlFor="administration_default_collapsed" className="text-sm cursor-pointer">
+                    Collapsed by default
+                  </Label>
+                </div>
               </div>
             </div>
           </div>
