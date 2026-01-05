@@ -27,7 +27,10 @@ import {
   LayoutDashboard,
   Shield,
   LogOut,
-  Mail
+  Mail,
+  Building2,
+  Upload,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import ThemeSelector from "@/components/theme/ThemeSelector";
@@ -35,6 +38,7 @@ import EmailNotificationConfig from "@/components/settings/EmailNotificationConf
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
+  const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -60,6 +64,14 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState("UTC");
   const [emailEventConfig, setEmailEventConfig] = useState({});
 
+  // Branding Settings
+  const [vitauriName, setVitauriName] = useState("Vitauri CRS");
+  const [vitauriTagline, setVitauriTagline] = useState("Compliance Platform");
+  const [vitauriLogoUrl, setVitauriLogoUrl] = useState("https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png");
+  const [tenantName, setTenantName] = useState("");
+  const [tenantLogoUrl, setTenantLogoUrl] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -68,6 +80,15 @@ export default function SettingsPage() {
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
+      
+      // Load tenant data
+      if (currentUser.tenant_id) {
+        const tenants = await base44.entities.Tenant.list();
+        const userTenant = tenants.find(t => t.id === currentUser.tenant_id);
+        setTenant(userTenant);
+        setTenantName(userTenant?.short_name || "");
+        setTenantLogoUrl(userTenant?.branding?.logo_url || "");
+      }
       
       // Load accessibility preferences from user data
       const prefs = currentUser.accessibility_preferences || {};
@@ -93,6 +114,12 @@ export default function SettingsPage() {
       setDateFormat(general.dateFormat || "MM/DD/YYYY");
       setTimezone(general.timezone || "UTC");
       setEmailEventConfig(general.emailEventConfig || {});
+      
+      // Load Vitauri branding (super admin only)
+      const branding = currentUser.vitauri_branding || {};
+      setVitauriName(branding.name || "Vitauri CRS");
+      setVitauriTagline(branding.tagline || "Compliance Platform");
+      setVitauriLogoUrl(branding.logo_url || "https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png");
       
       // Apply settings to document
       applyAccessibilitySettings(prefs);
@@ -240,6 +267,99 @@ export default function SettingsPage() {
     toast.info("Settings reset to defaults (click Save to apply)");
   };
 
+  const handleLogoUpload = async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      if (type === 'vitauri') {
+        setVitauriLogoUrl(file_url);
+      } else {
+        setTenantLogoUrl(file_url);
+      }
+      
+      toast.success('Logo uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error('Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleSaveVitauriBranding = async () => {
+    setSaving(true);
+    try {
+      const before = user?.vitauri_branding || {};
+      const branding = {
+        name: vitauriName,
+        tagline: vitauriTagline,
+        logo_url: vitauriLogoUrl
+      };
+      
+      await base44.auth.updateMe({
+        vitauri_branding: branding
+      });
+      
+      await auditLog.settingsChanged('vitauri_branding', before, branding);
+      toast.success("Vitauri branding saved successfully");
+      
+      // Reload page to reflect changes in sidebar
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error("Error saving Vitauri branding:", error);
+      toast.error("Failed to save Vitauri branding");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveTenantBranding = async () => {
+    if (!tenant) {
+      toast.error("No tenant found");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const before = { 
+        short_name: tenant.short_name,
+        logo_url: tenant.branding?.logo_url 
+      };
+      
+      await base44.entities.Tenant.update(tenant.id, {
+        short_name: tenantName,
+        branding: {
+          ...tenant.branding,
+          logo_url: tenantLogoUrl
+        }
+      });
+      
+      await auditLog.settingsChanged('tenant_branding', before, {
+        short_name: tenantName,
+        logo_url: tenantLogoUrl
+      });
+      
+      toast.success("Tenant branding saved successfully");
+      
+      // Reload page to reflect changes in sidebar
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error("Error saving tenant branding:", error);
+      toast.error("Failed to save tenant branding");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -267,7 +387,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="accessibility" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="accessibility" className="flex items-center gap-2">
             <Eye className="w-4 h-4" />
             Accessibility
@@ -275,6 +395,10 @@ export default function SettingsPage() {
           <TabsTrigger value="appearance" className="flex items-center gap-2">
             <Palette className="w-4 h-4" />
             Appearance
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Branding
           </TabsTrigger>
           <TabsTrigger value="general" className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
@@ -516,6 +640,269 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Branding Tab */}
+        <TabsContent value="branding" className="space-y-6">
+          {/* Vitauri Branding - Super Admin Only */}
+          {user?.user_role === 'super_admin' && (
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-transparent">
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-600" />
+                  Vitauri Platform Branding
+                </CardTitle>
+                <p className="text-sm text-slate-600 mt-1">
+                  Configure the global platform branding visible to all users
+                </p>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-3">
+                  <Label htmlFor="vitauriName" className="text-base font-semibold">
+                    Platform Name
+                  </Label>
+                  <Input
+                    id="vitauriName"
+                    value={vitauriName}
+                    onChange={(e) => setVitauriName(e.target.value)}
+                    placeholder="Vitauri CRS"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="vitauriTagline" className="text-base font-semibold">
+                    Platform Tagline
+                  </Label>
+                  <Input
+                    id="vitauriTagline"
+                    value={vitauriTagline}
+                    onChange={(e) => setVitauriTagline(e.target.value)}
+                    placeholder="Compliance Platform"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">
+                    Platform Logo
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {vitauriLogoUrl && (
+                      <div className="relative">
+                        <img 
+                          src={vitauriLogoUrl} 
+                          alt="Vitauri Logo" 
+                          className="h-16 w-auto object-contain border rounded p-2"
+                        />
+                        <button
+                          onClick={() => setVitauriLogoUrl("")}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleLogoUpload(e, 'vitauri')}
+                        className="hidden"
+                        id="vitauri-logo-upload"
+                        disabled={uploadingLogo}
+                      />
+                      <label htmlFor="vitauri-logo-upload">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={uploadingLogo}
+                          className="cursor-pointer"
+                          asChild
+                        >
+                          <span>
+                            <Upload className="w-4 h-4 mr-2" />
+                            {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Recommended: PNG or SVG with transparent background, max 200px height
+                  </p>
+                </div>
+
+                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                  <p className="text-sm font-semibold text-indigo-900 mb-2">Preview:</p>
+                  <div className="flex items-center gap-3 p-3 bg-white rounded border">
+                    {vitauriLogoUrl ? (
+                      <img src={vitauriLogoUrl} alt="Preview" className="h-8 w-auto" />
+                    ) : (
+                      <div className="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold">
+                        V
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-sm">{vitauriName}</p>
+                      <p className="text-xs text-slate-500">{vitauriTagline}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={handleSaveVitauriBranding}
+                    disabled={saving}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Vitauri Branding
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tenant Branding - Tenant Admin Only */}
+          {user?.user_role === 'tenant_admin' && tenant && (
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-transparent">
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-purple-600" />
+                  Organization Branding
+                </CardTitle>
+                <p className="text-sm text-slate-600 mt-1">
+                  Configure your organization's branding
+                </p>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-3">
+                  <Label htmlFor="tenantName" className="text-base font-semibold">
+                    Organization Short Name
+                  </Label>
+                  <Input
+                    id="tenantName"
+                    value={tenantName}
+                    onChange={(e) => setTenantName(e.target.value)}
+                    placeholder="ACME Financial"
+                  />
+                  <p className="text-xs text-slate-500">
+                    This name will appear in the sidebar footer
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">
+                    Organization Logo
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {tenantLogoUrl && (
+                      <div className="relative">
+                        <img 
+                          src={tenantLogoUrl} 
+                          alt="Organization Logo" 
+                          className="h-16 w-auto object-contain border rounded p-2"
+                        />
+                        <button
+                          onClick={() => setTenantLogoUrl("")}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleLogoUpload(e, 'tenant')}
+                        className="hidden"
+                        id="tenant-logo-upload"
+                        disabled={uploadingLogo}
+                      />
+                      <label htmlFor="tenant-logo-upload">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={uploadingLogo}
+                          className="cursor-pointer"
+                          asChild
+                        >
+                          <span>
+                            <Upload className="w-4 h-4 mr-2" />
+                            {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Recommended: PNG or SVG, square format, max 200px
+                  </p>
+                </div>
+
+                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <p className="text-sm font-semibold text-purple-900 mb-2">Preview:</p>
+                  <div className="flex items-center gap-2 p-3 bg-white rounded border">
+                    {tenantLogoUrl ? (
+                      <img src={tenantLogoUrl} alt="Preview" className="h-6 w-auto" />
+                    ) : (
+                      <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center text-white font-bold text-xs">
+                        {tenantName?.[0] || 'O'}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-semibold">{tenantName || 'Organization Name'}</p>
+                      <p className="text-xs text-slate-500">{tenant.jurisdiction}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={handleSaveTenantBranding}
+                    disabled={saving}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Organization Branding
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No access message for regular users */}
+          {user?.user_role !== 'super_admin' && user?.user_role !== 'tenant_admin' && (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Shield className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  Admin Access Required
+                </h3>
+                <p className="text-slate-600">
+                  Only administrators can configure branding settings.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* General Tab */}

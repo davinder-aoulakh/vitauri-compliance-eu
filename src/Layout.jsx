@@ -108,6 +108,13 @@ export default function Layout({ children }) {
     applyAccessibilitySettings();
   }, []);
 
+  // Get Vitauri branding from user preferences or defaults
+  const vitauriBranding = user?.vitauri_branding || {
+    name: "Vitauri CRS",
+    tagline: "Compliance Platform",
+    logo_url: "https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
+  };
+
   const applyAccessibilitySettings = () => {
     // Apply saved accessibility preferences on load
     const prefs = user?.accessibility_preferences || {};
@@ -327,7 +334,7 @@ export default function Layout({ children }) {
       <div className="min-h-screen flex w-full bg-slate-50" role="application" aria-label="CRS Platform">
         <Sidebar className="border-r border-slate-200 bg-white" role="navigation" aria-label="Main navigation">
           <SidebarHeader className="border-b border-slate-100 p-5">
-            {/* Vitauri Branding - Primary */}
+            {/* Vitauri Branding - Primary (configurable by super admin) */}
             <a 
               href="https://www.vitauri.com" 
               target="_blank" 
@@ -335,16 +342,16 @@ export default function Layout({ children }) {
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
               <img 
-                src="https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
-                alt="Vitauri"
+                src={vitauriBranding.logo_url}
+                alt={vitauriBranding.name}
                 className="h-8 w-auto"
               />
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold text-slate-900 text-sm">
-                  Vitauri CRS
+                  {vitauriBranding.name}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Compliance Platform
+                  {vitauriBranding.tagline}
                 </p>
               </div>
             </a>

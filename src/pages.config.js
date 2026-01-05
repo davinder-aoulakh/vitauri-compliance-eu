@@ -10,12 +10,12 @@ import Home from './pages/Home';
 import JurisdictionSettings from './pages/JurisdictionSettings';
 import ReferencedDataManagement from './pages/ReferencedDataManagement';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import Setup from './pages/Setup';
 import SuperAdmin from './pages/SuperAdmin';
 import TenantManagement from './pages/TenantManagement';
 import UserManagement from './pages/UserManagement';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import Settings from './pages/Settings';
 import __Layout from './Layout.jsx';
 
 
@@ -32,12 +32,12 @@ export const PAGES = {
     "JurisdictionSettings": JurisdictionSettings,
     "ReferencedDataManagement": ReferencedDataManagement,
     "Reports": Reports,
-    "Settings": Settings,
     "Setup": Setup,
     "SuperAdmin": SuperAdmin,
     "TenantManagement": TenantManagement,
     "UserManagement": UserManagement,
     "WorkflowBuilder": WorkflowBuilder,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
