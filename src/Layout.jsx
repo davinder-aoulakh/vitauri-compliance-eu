@@ -276,6 +276,12 @@ export default function Layout({ children }) {
       url: createPageUrl("JurisdictionSettings"),
       icon: Globe,
       roles: ["super_admin"]
+    },
+    {
+      title: "Settings",
+      url: createPageUrl("Settings"),
+      icon: Settings,
+      roles: ["super_admin"]
     }
   ];
 
