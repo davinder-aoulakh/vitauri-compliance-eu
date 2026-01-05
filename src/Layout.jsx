@@ -184,19 +184,14 @@ export default function Layout({ children }) {
   const isSuperAdmin = user?.user_role === "super_admin";
   const isTenantAdmin = user?.user_role === "tenant_admin";
 
-  const tenantNav = [
-    {
-      title: "Dashboard",
-      url: createPageUrl("Dashboard"),
-      icon: LayoutDashboard,
-      roles: ["tenant_admin", "tenant_user"]
-    },
+  // CRS Navigation Items
+  const crsNav = [
     {
       title: "RFI Entities",
       url: createPageUrl("Entities"),
       icon: Building2,
       roles: ["tenant_admin", "tenant_user"]
-      },
+    },
     {
       title: "Accounts",
       url: createPageUrl("Accounts"),
@@ -213,6 +208,38 @@ export default function Layout({ children }) {
       title: "AI Assistant",
       url: createPageUrl("ComplianceAssistant"),
       icon: Shield,
+      roles: ["tenant_admin", "tenant_user"]
+    }
+  ];
+
+  // FATCA Navigation Items (placeholder for future)
+  const fatcaNav = [
+    {
+      title: "FFI Entities",
+      url: createPageUrl("FatcaEntities"),
+      icon: Building2,
+      roles: ["tenant_admin", "tenant_user"]
+    },
+    {
+      title: "Accounts",
+      url: createPageUrl("FatcaAccounts"),
+      icon: Wallet,
+      roles: ["tenant_admin", "tenant_user"]
+    },
+    {
+      title: "FATCA Reports",
+      url: createPageUrl("FatcaReports"),
+      icon: FileText,
+      roles: ["tenant_admin", "tenant_user"]
+    }
+  ];
+
+  // Common Navigation Items (not solution-specific)
+  const commonNav = [
+    {
+      title: "Dashboard",
+      url: createPageUrl("Dashboard"),
+      icon: LayoutDashboard,
       roles: ["tenant_admin", "tenant_user"]
     },
     {
@@ -295,9 +322,9 @@ export default function Layout({ children }) {
     }
   ];
 
-  const navigation = isSuperAdmin 
-    ? superAdminNav 
-    : tenantNav;
+  // Determine which solutions are enabled for the tenant
+  const crsEnabled = tenant?.enabled_features?.crs_enabled !== false; // Default true
+  const fatcaEnabled = tenant?.enabled_features?.fatca_enabled === true; // Default false
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
   const fontFamily = tenant?.branding?.font_family || "Inter, system-ui, sans-serif";
@@ -374,35 +401,137 @@ export default function Layout({ children }) {
           </SidebarHeader>
           
           <SidebarContent className="p-3">
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
-                {isSuperAdmin ? "Administration" : "Main Menu"}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
-                  {navigation.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        asChild 
-                        className={`rounded-lg transition-all duration-200 ${
-                          location.pathname === item.url 
-                            ? 'text-white shadow-md' 
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        }`}
-                        style={location.pathname === item.url ? {
-                          background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
-                        } : {}}
-                      >
-                        <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                          <item.icon className="w-4 h-4" />
-                          <span className="font-medium text-sm">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* Super Admin Navigation */}
+            {isSuperAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+                  Administration
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {superAdminNav.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton 
+                          asChild 
+                          className={`rounded-lg transition-all duration-200 ${
+                            location.pathname === item.url 
+                              ? 'text-white shadow-md' 
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          }`}
+                          style={location.pathname === item.url ? {
+                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                          } : {}}
+                        >
+                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                            <item.icon className="w-4 h-4" />
+                            <span className="font-medium text-sm">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Tenant Navigation - Common Items */}
+            {!isSuperAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+                  Main Menu
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {commonNav.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton 
+                          asChild 
+                          className={`rounded-lg transition-all duration-200 ${
+                            location.pathname === item.url 
+                              ? 'text-white shadow-md' 
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          }`}
+                          style={location.pathname === item.url ? {
+                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                          } : {}}
+                        >
+                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                            <item.icon className="w-4 h-4" />
+                            <span className="font-medium text-sm">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* CRS Navigation Group */}
+            {!isSuperAdmin && crsEnabled && (
+              <SidebarGroup className="mt-6">
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+                  CRS (Common Reporting Standard)
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {crsNav.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton 
+                          asChild 
+                          className={`rounded-lg transition-all duration-200 ${
+                            location.pathname === item.url 
+                              ? 'text-white shadow-md' 
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          }`}
+                          style={location.pathname === item.url ? {
+                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                          } : {}}
+                        >
+                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                            <item.icon className="w-4 h-4" />
+                            <span className="font-medium text-sm">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* FATCA Navigation Group */}
+            {!isSuperAdmin && fatcaEnabled && (
+              <SidebarGroup className="mt-6">
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+                  FATCA (Foreign Account Tax Compliance)
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {fatcaNav.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton 
+                          asChild 
+                          className={`rounded-lg transition-all duration-200 ${
+                            location.pathname === item.url 
+                              ? 'text-white shadow-md' 
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          }`}
+                          style={location.pathname === item.url ? {
+                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                          } : {}}
+                        >
+                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                            <item.icon className="w-4 h-4" />
+                            <span className="font-medium text-sm">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
             {/* Administration Section - Tenant Admin Only */}
             {isTenantAdmin && !isSuperAdmin && (
