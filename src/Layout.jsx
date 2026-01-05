@@ -47,6 +47,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -187,6 +192,18 @@ export default function Layout({ children }) {
   // CRS Navigation Items
   const crsNav = [
     {
+      title: "Dashboard",
+      url: createPageUrl("Dashboard"),
+      icon: LayoutDashboard,
+      roles: ["tenant_admin", "tenant_user"]
+    },
+    {
+      title: "Activity Log",
+      url: createPageUrl("Activity"),
+      icon: Eye,
+      roles: ["tenant_admin"]
+    },
+    {
       title: "RFI Entities",
       url: createPageUrl("Entities"),
       icon: Building2,
@@ -212,30 +229,8 @@ export default function Layout({ children }) {
     }
   ];
 
-  // FATCA Navigation Items (placeholder for future)
+  // FATCA Navigation Items (using same pages as CRS for now)
   const fatcaNav = [
-    {
-      title: "FFI Entities",
-      url: createPageUrl("FatcaEntities"),
-      icon: Building2,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "Accounts",
-      url: createPageUrl("FatcaAccounts"),
-      icon: Wallet,
-      roles: ["tenant_admin", "tenant_user"]
-    },
-    {
-      title: "FATCA Reports",
-      url: createPageUrl("FatcaReports"),
-      icon: FileText,
-      roles: ["tenant_admin", "tenant_user"]
-    }
-  ];
-
-  // Common Navigation Items (not solution-specific)
-  const commonNav = [
     {
       title: "Dashboard",
       url: createPageUrl("Dashboard"),
@@ -247,6 +242,24 @@ export default function Layout({ children }) {
       url: createPageUrl("Activity"),
       icon: Eye,
       roles: ["tenant_admin"]
+    },
+    {
+      title: "FFI Entities",
+      url: createPageUrl("Entities"),
+      icon: Building2,
+      roles: ["tenant_admin", "tenant_user"]
+    },
+    {
+      title: "Accounts",
+      url: createPageUrl("Accounts"),
+      icon: Wallet,
+      roles: ["tenant_admin", "tenant_user"]
+    },
+    {
+      title: "FATCA Reports",
+      url: createPageUrl("Reports"),
+      icon: FileText,
+      roles: ["tenant_admin", "tenant_user"]
     }
   ];
 
@@ -329,7 +342,7 @@ export default function Layout({ children }) {
   // Helper to find current page title from all navigation items
   const allNavItems = isSuperAdmin 
     ? superAdminNav 
-    : [...commonNav, ...(crsEnabled ? crsNav : []), ...(fatcaEnabled ? fatcaNav : [])];
+    : [...(crsEnabled ? crsNav : []), ...(fatcaEnabled ? fatcaNav : [])];
   const currentPageTitle = allNavItems.find(n => n.url === location.pathname)?.title;
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
@@ -407,169 +420,124 @@ export default function Layout({ children }) {
           </SidebarHeader>
           
           <SidebarContent className="p-3">
-            {/* Super Admin Navigation */}
-            {isSuperAdmin && (
-              <SidebarGroup>
-                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
-                  Administration
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
-                    {superAdminNav.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-lg transition-all duration-200 ${
-                            location.pathname === item.url 
-                              ? 'text-white shadow-md' 
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                          }`}
-                          style={location.pathname === item.url ? {
-                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
-                          } : {}}
-                        >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className="w-4 h-4" />
-                            <span className="font-medium text-sm">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
-
-            {/* Tenant Navigation - Common Items */}
-            {!isSuperAdmin && (
-              <SidebarGroup>
-                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
-                  Main Menu
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
-                    {commonNav.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-lg transition-all duration-200 ${
-                            location.pathname === item.url 
-                              ? 'text-white shadow-md' 
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                          }`}
-                          style={location.pathname === item.url ? {
-                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
-                          } : {}}
-                        >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className="w-4 h-4" />
-                            <span className="font-medium text-sm">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
-
             {/* CRS Navigation Group */}
             {!isSuperAdmin && crsEnabled && (
-              <SidebarGroup className="mt-6">
-                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
-                  CRS (Common Reporting Standard)
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
-                    {crsNav.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-lg transition-all duration-200 ${
-                            location.pathname === item.url 
-                              ? 'text-white shadow-md' 
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                          }`}
-                          style={location.pathname === item.url ? {
-                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
-                          } : {}}
-                        >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className="w-4 h-4" />
-                            <span className="font-medium text-sm">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
+                      <span>CRS Solution</span>
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=closed]/collapsible:-rotate-90" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="space-y-1">
+                        {crsNav.map((item) => (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton 
+                              asChild 
+                              className={`rounded-lg transition-all duration-200 ${
+                                location.pathname === item.url 
+                                  ? 'text-white shadow-md' 
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                              }`}
+                              style={location.pathname === item.url ? {
+                                background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                              } : {}}
+                            >
+                              <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                                <item.icon className="w-4 h-4" />
+                                <span className="font-medium text-sm">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
             )}
 
             {/* FATCA Navigation Group */}
             {!isSuperAdmin && fatcaEnabled && (
-              <SidebarGroup className="mt-6">
-                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
-                  FATCA (Foreign Account Tax Compliance)
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
-                    {fatcaNav.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-lg transition-all duration-200 ${
-                            location.pathname === item.url 
-                              ? 'text-white shadow-md' 
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                          }`}
-                          style={location.pathname === item.url ? {
-                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
-                          } : {}}
-                        >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className="w-4 h-4" />
-                            <span className="font-medium text-sm">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarGroup className="mt-6">
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
+                      <span>FATCA Solution</span>
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=closed]/collapsible:-rotate-90" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="space-y-1">
+                        {fatcaNav.map((item) => (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton 
+                              asChild 
+                              className={`rounded-lg transition-all duration-200 ${
+                                location.pathname === item.url 
+                                  ? 'text-white shadow-md' 
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                              }`}
+                              style={location.pathname === item.url ? {
+                                background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                              } : {}}
+                            >
+                              <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                                <item.icon className="w-4 h-4" />
+                                <span className="font-medium text-sm">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
             )}
 
             {/* Administration Section - Tenant Admin Only */}
             {isTenantAdmin && !isSuperAdmin && (
-              <SidebarGroup className="mt-6">
-                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
-                  Administration
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
-                    {administrationNav.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-lg transition-all duration-200 ${
-                            location.pathname === item.url 
-                              ? 'text-white shadow-md' 
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                          }`}
-                          style={location.pathname === item.url ? {
-                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
-                          } : {}}
-                        >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className="w-4 h-4" />
-                            <span className="font-medium text-sm">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarGroup className="mt-6">
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
+                      <span>Administration</span>
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=closed]/collapsible:-rotate-90" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="space-y-1">
+                        {administrationNav.map((item) => (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton 
+                              asChild 
+                              className={`rounded-lg transition-all duration-200 ${
+                                location.pathname === item.url 
+                                  ? 'text-white shadow-md' 
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                              }`}
+                              style={location.pathname === item.url ? {
+                                background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                              } : {}}
+                            >
+                              <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                                <item.icon className="w-4 h-4" />
+                                <span className="font-medium text-sm">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
             )}
 
             {!isSuperAdmin && tenant && (
@@ -597,6 +565,46 @@ export default function Layout({ children }) {
                   </div>
                 </SidebarGroupContent>
               </SidebarGroup>
+            )}
+
+            {/* Super Admin Navigation */}
+            {isSuperAdmin && (
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
+                      <span>Administration</span>
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=closed]/collapsible:-rotate-90" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="space-y-1">
+                        {superAdminNav.map((item) => (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton 
+                              asChild 
+                              className={`rounded-lg transition-all duration-200 ${
+                                location.pathname === item.url 
+                                  ? 'text-white shadow-md' 
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                              }`}
+                              style={location.pathname === item.url ? {
+                                background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`
+                              } : {}}
+                            >
+                              <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                                <item.icon className="w-4 h-4" />
+                                <span className="font-medium text-sm">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
             )}
 
             {/* Setup Link for Super Admin Only */}
