@@ -57,12 +57,140 @@ export default function WidgetConfigDialog({ open, onOpenChange, widget, onSave 
                   <SelectItem value="total_accounts">Total Accounts</SelectItem>
                   <SelectItem value="total_entities">Total Entities</SelectItem>
                   <SelectItem value="reportable_accounts">Reportable Accounts</SelectItem>
+                  <SelectItem value="non_reportable_accounts">Non-Reportable Accounts</SelectItem>
                   <SelectItem value="pending_review">Pending Review</SelectItem>
+                  <SelectItem value="excluded_accounts">Excluded Accounts</SelectItem>
                   <SelectItem value="classified_entities">Classified Entities</SelectItem>
+                  <SelectItem value="reporting_fi_entities">Reporting FI Entities</SelectItem>
+                  <SelectItem value="non_reporting_fi_entities">Non-Reporting FI Entities</SelectItem>
+                  <SelectItem value="active_nfe_entities">Active NFE Entities</SelectItem>
+                  <SelectItem value="passive_nfe_entities">Passive NFE Entities</SelectItem>
                   <SelectItem value="total_crs_reports">Total CRS Reports</SelectItem>
+                  <SelectItem value="custom_account_filter">Custom Account Filter</SelectItem>
+                  <SelectItem value="custom_entity_filter">Custom Entity Filter</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Custom Filter Configuration */}
+            {editedWidget.config?.metric === 'custom_account_filter' && (
+              <div className="p-3 border-2 border-indigo-100 rounded-lg bg-indigo-50/30 space-y-3">
+                <Label className="text-sm font-semibold">Account Filter Configuration</Label>
+                <div>
+                  <Label>Filter by Status</Label>
+                  <Select
+                    value={editedWidget.config?.customFilter?.status || 'all'}
+                    onValueChange={(value) => updateConfig('customFilter', { 
+                      ...editedWidget.config?.customFilter, 
+                      status: value 
+                    })}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="reportable">Reportable</SelectItem>
+                      <SelectItem value="non_reportable">Non-Reportable</SelectItem>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
+                      <SelectItem value="excluded">Excluded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Filter by Type</Label>
+                  <Select
+                    value={editedWidget.config?.customFilter?.account_type || 'all'}
+                    onValueChange={(value) => updateConfig('customFilter', { 
+                      ...editedWidget.config?.customFilter, 
+                      account_type: value 
+                    })}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="depository">Depository</SelectItem>
+                      <SelectItem value="custodial">Custodial</SelectItem>
+                      <SelectItem value="equity_debt_interest">Equity/Debt Interest</SelectItem>
+                      <SelectItem value="cash_value_insurance">Cash Value Insurance</SelectItem>
+                      <SelectItem value="annuity">Annuity</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Filter by Holder Type</Label>
+                  <Select
+                    value={editedWidget.config?.customFilter?.account_holder_type || 'all'}
+                    onValueChange={(value) => updateConfig('customFilter', { 
+                      ...editedWidget.config?.customFilter, 
+                      account_holder_type: value 
+                    })}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Holder Types</SelectItem>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="entity">Entity</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {editedWidget.config?.metric === 'custom_entity_filter' && (
+              <div className="p-3 border-2 border-purple-100 rounded-lg bg-purple-50/30 space-y-3">
+                <Label className="text-sm font-semibold">Entity Filter Configuration</Label>
+                <div>
+                  <Label>Filter by Classification</Label>
+                  <Select
+                    value={editedWidget.config?.customFilter?.rfi_status || 'all'}
+                    onValueChange={(value) => updateConfig('customFilter', { 
+                      ...editedWidget.config?.customFilter, 
+                      rfi_status: value 
+                    })}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Classifications</SelectItem>
+                      <SelectItem value="reporting_fi">Reporting FI</SelectItem>
+                      <SelectItem value="non_reporting_fi">Non-Reporting FI</SelectItem>
+                      <SelectItem value="nfe_active">Active NFE</SelectItem>
+                      <SelectItem value="nfe_passive">Passive NFE</SelectItem>
+                      <SelectItem value="pending_classification">Pending Classification</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Filter by Entity Type</Label>
+                  <Select
+                    value={editedWidget.config?.customFilter?.entity_type || 'all'}
+                    onValueChange={(value) => updateConfig('customFilter', { 
+                      ...editedWidget.config?.customFilter, 
+                      entity_type: value 
+                    })}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="corporation">Corporation</SelectItem>
+                      <SelectItem value="trust">Trust</SelectItem>
+                      <SelectItem value="partnership">Partnership</SelectItem>
+                      <SelectItem value="fund">Fund</SelectItem>
+                      <SelectItem value="branch">Branch</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             <div>
               <Label>Sub-description (Optional)</Label>
               <Input

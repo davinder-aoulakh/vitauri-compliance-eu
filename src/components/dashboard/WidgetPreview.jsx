@@ -172,16 +172,58 @@ export default function WidgetPreview({ widget, tenantId }) {
         }
         drilldownUrl = createPageUrl("Accounts") + "?status=reportable";
         break;
+      case 'non_reportable_accounts':
+        value = accounts.filter(a => a.reportability_status === 'non_reportable').length;
+        icon = <CheckCircle className="w-6 h-6 text-green-600" />;
+        iconBgColor = 'bg-green-100';
+        if (!subDescription) subDescription = `${accounts.length} total accounts`;
+        drilldownUrl = createPageUrl("Accounts") + "?status=non_reportable";
+        break;
       case 'pending_review':
         value = pendingReviewCount;
         icon = <Clock className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
         drilldownUrl = createPageUrl("Accounts") + "?status=pending_review";
         break;
+      case 'excluded_accounts':
+        value = accounts.filter(a => a.reportability_status === 'excluded').length;
+        icon = <AlertTriangle className="w-6 h-6 text-slate-600" />;
+        iconBgColor = 'bg-slate-100';
+        if (!subDescription) subDescription = `${accounts.length} total accounts`;
+        drilldownUrl = createPageUrl("Accounts") + "?status=excluded";
+        break;
       case 'classified_entities':
         value = entities.filter(e => e.rfi_status !== 'pending_classification').length;
         icon = <CheckCircle className="w-6 h-6 text-green-600" />;
         iconBgColor = 'bg-green-100';
+        drilldownUrl = createPageUrl("Entities");
+        break;
+      case 'reporting_fi_entities':
+        value = entities.filter(e => e.rfi_status === 'reporting_fi').length;
+        icon = <Building2 className="w-6 h-6 text-amber-600" />;
+        iconBgColor = 'bg-amber-100';
+        if (!subDescription) subDescription = `${entities.length} total entities`;
+        drilldownUrl = createPageUrl("Entities");
+        break;
+      case 'non_reporting_fi_entities':
+        value = entities.filter(e => e.rfi_status === 'non_reporting_fi').length;
+        icon = <Building2 className="w-6 h-6 text-green-600" />;
+        iconBgColor = 'bg-green-100';
+        if (!subDescription) subDescription = `${entities.length} total entities`;
+        drilldownUrl = createPageUrl("Entities");
+        break;
+      case 'active_nfe_entities':
+        value = entities.filter(e => e.rfi_status === 'nfe_active').length;
+        icon = <Building2 className="w-6 h-6 text-blue-600" />;
+        iconBgColor = 'bg-blue-100';
+        if (!subDescription) subDescription = `${entities.length} total entities`;
+        drilldownUrl = createPageUrl("Entities");
+        break;
+      case 'passive_nfe_entities':
+        value = entities.filter(e => e.rfi_status === 'nfe_passive').length;
+        icon = <Building2 className="w-6 h-6 text-purple-600" />;
+        iconBgColor = 'bg-purple-100';
+        if (!subDescription) subDescription = `${entities.length} total entities`;
         drilldownUrl = createPageUrl("Entities");
         break;
       case 'total_crs_reports':
@@ -190,6 +232,43 @@ export default function WidgetPreview({ widget, tenantId }) {
         iconBgColor = 'bg-emerald-100';
         if (!subDescription) subDescription = `Year ${new Date().getFullYear()}`;
         drilldownUrl = createPageUrl("Reports") + `?year=${new Date().getFullYear()}`;
+        break;
+      case 'custom_account_filter':
+        const customAccountFilter = config.customFilter || {};
+        let filteredAccounts = [...accounts];
+        
+        if (customAccountFilter.status && customAccountFilter.status !== 'all') {
+          filteredAccounts = filteredAccounts.filter(a => a.reportability_status === customAccountFilter.status);
+        }
+        if (customAccountFilter.account_type && customAccountFilter.account_type !== 'all') {
+          filteredAccounts = filteredAccounts.filter(a => a.account_type === customAccountFilter.account_type);
+        }
+        if (customAccountFilter.account_holder_type && customAccountFilter.account_holder_type !== 'all') {
+          filteredAccounts = filteredAccounts.filter(a => a.account_holder_type === customAccountFilter.account_holder_type);
+        }
+        
+        value = filteredAccounts.length;
+        icon = <Wallet className="w-6 h-6 text-indigo-600" />;
+        iconBgColor = 'bg-indigo-100';
+        if (!subDescription) subDescription = `${accounts.length} total accounts`;
+        drilldownUrl = createPageUrl("Accounts");
+        break;
+      case 'custom_entity_filter':
+        const customEntityFilter = config.customFilter || {};
+        let filteredEntities = [...entities];
+        
+        if (customEntityFilter.rfi_status && customEntityFilter.rfi_status !== 'all') {
+          filteredEntities = filteredEntities.filter(e => e.rfi_status === customEntityFilter.rfi_status);
+        }
+        if (customEntityFilter.entity_type && customEntityFilter.entity_type !== 'all') {
+          filteredEntities = filteredEntities.filter(e => e.entity_type === customEntityFilter.entity_type);
+        }
+        
+        value = filteredEntities.length;
+        icon = <Building2 className="w-6 h-6 text-blue-600" />;
+        iconBgColor = 'bg-blue-100';
+        if (!subDescription) subDescription = `${entities.length} total entities`;
+        drilldownUrl = createPageUrl("Entities");
         break;
     }
 
