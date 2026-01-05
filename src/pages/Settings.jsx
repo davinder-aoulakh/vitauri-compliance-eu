@@ -115,11 +115,27 @@ export default function SettingsPage() {
       setTimezone(general.timezone || "UTC");
       setEmailEventConfig(general.emailEventConfig || {});
       
-      // Load Vitauri branding (super admin only)
-      const branding = currentUser.vitauri_branding || {};
-      setVitauriName(branding.name || "Vitauri CRS");
-      setVitauriTagline(branding.tagline || "Compliance Platform");
-      setVitauriLogoUrl(branding.logo_url || "https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png");
+      // Load Vitauri branding from global platform settings
+      try {
+        const platformSettings = await base44.entities.PlatformSettings.filter({ setting_key: "vitauri_branding" });
+        const brandingSetting = platformSettings[0];
+        if (brandingSetting?.setting_value) {
+          setVitauriName(brandingSetting.setting_value.name || "Vitauri CRS");
+          setVitauriTagline(brandingSetting.setting_value.tagline || "Compliance Platform");
+          setVitauriLogoUrl(brandingSetting.setting_value.logo_url || "https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png");
+        } else {
+          // Defaults
+          setVitauriName("Vitauri CRS");
+          setVitauriTagline("Compliance Platform");
+          setVitauriLogoUrl("https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png");
+        }
+      } catch (error) {
+        console.error("Error loading Vitauri branding:", error);
+        // Use defaults
+        setVitauriName("Vitauri CRS");
+        setVitauriTagline("Compliance Platform");
+        setVitauriLogoUrl("https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png");
+      }
       
       // Apply settings to document
       applyAccessibilitySettings(prefs);
@@ -298,18 +314,34 @@ export default function SettingsPage() {
   const handleSaveVitauriBranding = async () => {
     setSaving(true);
     try {
-      const before = user?.vitauri_branding || {};
       const branding = {
         name: vitauriName,
         tagline: vitauriTagline,
         logo_url: vitauriLogoUrl
       };
       
-      await base44.auth.updateMe({
-        vitauri_branding: branding
-      });
+      // Check if setting exists
+      const existingSettings = await base44.entities.PlatformSettings.filter({ setting_key: "vitauri_branding" });
       
-      await auditLog.settingsChanged('vitauri_branding', before, branding);
+      if (existingSettings.length > 0) {
+        // Update existing
+        const before = existingSettings[0].setting_value;
+        await base44.entities.PlatformSettings.update(existingSettings[0].id, {
+          setting_value: branding,
+          updated_by: user.email
+        });
+        await auditLog.settingsChanged('vitauri_branding', before, branding);
+      } else {
+        // Create new
+        await base44.entities.PlatformSettings.create({
+          setting_key: "vitauri_branding",
+          setting_value: branding,
+          description: "Global Vitauri platform branding",
+          updated_by: user.email
+        });
+        await auditLog.settingsChanged('vitauri_branding', {}, branding);
+      }
+      
       toast.success("Vitauri branding saved successfully");
       
       // Reload page to reflect changes in sidebar

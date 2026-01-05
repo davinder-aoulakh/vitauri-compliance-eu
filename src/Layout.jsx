@@ -64,6 +64,11 @@ export default function Layout({ children }) {
   const [loading, setLoading] = useState(true);
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(120);
+  const [vitauriBranding, setVitauriBranding] = useState({
+    name: "Vitauri CRS",
+    tagline: "Compliance Platform",
+    logo_url: "https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
+  });
 
   // Handle inactivity warning
   const handleInactivityWarning = useCallback((warningTime) => {
@@ -108,13 +113,6 @@ export default function Layout({ children }) {
     applyAccessibilitySettings();
   }, []);
 
-  // Get Vitauri branding from user preferences or defaults
-  const vitauriBranding = user?.vitauri_branding || {
-    name: "Vitauri CRS",
-    tagline: "Compliance Platform",
-    logo_url: "https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
-  };
-
   const applyAccessibilitySettings = () => {
     // Apply saved accessibility preferences on load
     const prefs = user?.accessibility_preferences || {};
@@ -152,6 +150,18 @@ export default function Layout({ children }) {
         const tenantData = await base44.entities.Tenant.list();
         const userTenant = tenantData.find(t => t.id === currentUser.tenant_id);
         setTenant(userTenant);
+      }
+      
+      // Load Vitauri branding from global platform settings
+      try {
+        const platformSettings = await base44.entities.PlatformSettings.filter({ setting_key: "vitauri_branding" });
+        const brandingSetting = platformSettings[0];
+        if (brandingSetting?.setting_value) {
+          setVitauriBranding(brandingSetting.setting_value);
+        }
+      } catch (error) {
+        console.error("Error loading Vitauri branding:", error);
+        // Use defaults already set in state
       }
       
       setLoading(false);
