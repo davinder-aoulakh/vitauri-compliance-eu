@@ -359,13 +359,13 @@ export default function Layout({ children }) {
                 href="https://www.vitauri.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg bg-white hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
               >
                 <span className="text-xs text-slate-500">Powered by</span>
                 <img 
                   src="https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
                   alt="Vitauri"
-                  className="h-8 w-auto"
+                  className="h-5 w-auto"
                 />
               </a>
             </div>
