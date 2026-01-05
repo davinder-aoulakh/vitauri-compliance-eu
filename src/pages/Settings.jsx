@@ -27,10 +27,7 @@ import {
   LayoutDashboard,
   Shield,
   LogOut,
-  Mail,
-  Building2,
-  Upload,
-  Image as ImageIcon
+  Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import ThemeSelector from "@/components/theme/ThemeSelector";
@@ -38,7 +35,6 @@ import EmailNotificationConfig from "@/components/settings/EmailNotificationConf
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
-  const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -64,11 +60,6 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState("UTC");
   const [emailEventConfig, setEmailEventConfig] = useState({});
 
-  // Tenant Branding Settings
-  const [tenantName, setTenantName] = useState("");
-  const [tenantLogo, setTenantLogo] = useState("");
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
   useEffect(() => {
     loadSettings();
   }, []);
@@ -77,15 +68,6 @@ export default function SettingsPage() {
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-      
-      // Load tenant data
-      if (currentUser.tenant_id) {
-        const tenants = await base44.entities.Tenant.list();
-        const userTenant = tenants.find(t => t.id === currentUser.tenant_id);
-        setTenant(userTenant);
-        setTenantName(userTenant?.short_name || "");
-        setTenantLogo(userTenant?.branding?.logo_url || "");
-      }
       
       // Load accessibility preferences from user data
       const prefs = currentUser.accessibility_preferences || {};
@@ -258,53 +240,6 @@ export default function SettingsPage() {
     toast.info("Settings reset to defaults (click Save to apply)");
   };
 
-  const handleLogoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingLogo(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setTenantLogo(file_url);
-      toast.success("Logo uploaded successfully");
-    } catch (error) {
-      console.error("Error uploading logo:", error);
-      toast.error("Failed to upload logo");
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
-  const handleSaveBranding = async () => {
-    if (!tenant) {
-      toast.error("No tenant found");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await base44.entities.Tenant.update(tenant.id, {
-        short_name: tenantName,
-        branding: {
-          ...tenant.branding,
-          logo_url: tenantLogo
-        }
-      });
-
-      await auditLog.settingsChanged('tenant_branding', 
-        { short_name: tenant.short_name, logo_url: tenant.branding?.logo_url },
-        { short_name: tenantName, logo_url: tenantLogo }
-      );
-
-      toast.success("Branding settings saved successfully. Please refresh to see changes.");
-    } catch (error) {
-      console.error("Error saving branding:", error);
-      toast.error("Failed to save branding settings");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -332,7 +267,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="accessibility" className="space-y-6">
-        <TabsList className={`grid w-full ${user?.user_role === 'tenant_admin' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="accessibility" className="flex items-center gap-2">
             <Eye className="w-4 h-4" />
             Accessibility
@@ -345,12 +280,6 @@ export default function SettingsPage() {
             <SettingsIcon className="w-4 h-4" />
             General
           </TabsTrigger>
-          {user?.user_role === 'tenant_admin' && (
-            <TabsTrigger value="branding" className="flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              Branding
-            </TabsTrigger>
-          )}
         </TabsList>
 
         {/* Accessibility Tab */}
@@ -861,130 +790,6 @@ export default function SettingsPage() {
             </Button>
           </div>
         </TabsContent>
-
-        {/* Tenant Branding Tab - Admin Only */}
-        {user?.user_role === 'tenant_admin' && (
-          <TabsContent value="branding" className="space-y-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-transparent">
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-indigo-600" />
-                  Tenant Branding
-                </CardTitle>
-                <p className="text-sm text-slate-600 mt-1">
-                  Customize your organization's name and logo
-                </p>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                {/* Tenant Name */}
-                <div className="space-y-3">
-                  <Label htmlFor="tenantName" className="text-base font-semibold">
-                    Organization Name
-                  </Label>
-                  <p className="text-sm text-slate-600">
-                    This name will appear in the sidebar footer
-                  </p>
-                  <Input
-                    id="tenantName"
-                    value={tenantName}
-                    onChange={(e) => setTenantName(e.target.value)}
-                    placeholder="Enter organization name"
-                    className="max-w-md"
-                  />
-                </div>
-
-                {/* Tenant Logo */}
-                <div className="space-y-3">
-                  <Label htmlFor="tenantLogo" className="text-base font-semibold">
-                    Organization Logo
-                  </Label>
-                  <p className="text-sm text-slate-600">
-                    Upload a logo to display in the sidebar footer (recommended size: 200x50px)
-                  </p>
-                  
-                  {/* Logo Preview */}
-                  {tenantLogo && (
-                    <div className="p-4 bg-slate-50 rounded-lg border inline-block">
-                      <img 
-                        src={tenantLogo} 
-                        alt="Tenant logo preview" 
-                        className="h-12 w-auto object-contain"
-                      />
-                    </div>
-                  )}
-
-                  {/* Upload Button */}
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={uploadingLogo}
-                      onClick={() => document.getElementById('logoUpload')?.click()}
-                      className="gap-2"
-                    >
-                      {uploadingLogo ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-600" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          Upload Logo
-                        </>
-                      )}
-                    </Button>
-                    <input
-                      id="logoUpload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                    />
-                    {tenantLogo && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setTenantLogo("")}
-                        className="text-red-600"
-                      >
-                        Remove Logo
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="flex justify-end pt-4 border-t">
-                  <Button
-                    onClick={handleSaveBranding}
-                    disabled={saving || uploadingLogo}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  >
-                    {saving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Branding
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Info Box */}
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-900">
-                    <strong>Note:</strong> After saving branding changes, please refresh the page to see the updates reflected in the sidebar.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
