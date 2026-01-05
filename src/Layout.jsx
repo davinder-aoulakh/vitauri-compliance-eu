@@ -326,6 +326,12 @@ export default function Layout({ children }) {
   const crsEnabled = tenant?.enabled_features?.crs_enabled !== false; // Default true
   const fatcaEnabled = tenant?.enabled_features?.fatca_enabled === true; // Default false
 
+  // Helper to find current page title from all navigation items
+  const allNavItems = isSuperAdmin 
+    ? superAdminNav 
+    : [...commonNav, ...(crsEnabled ? crsNav : []), ...(fatcaEnabled ? fatcaNav : [])];
+  const currentPageTitle = allNavItems.find(n => n.url === location.pathname)?.title;
+
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
   const fontFamily = tenant?.branding?.font_family || "Inter, system-ui, sans-serif";
 
@@ -720,7 +726,7 @@ export default function Layout({ children }) {
 
         {/* AI Help Assistant - Floating Widget */}
         {(tenant?.enabled_features?.ai_help_assistant !== false) && (
-          <AIHelpAssistant currentPage={navigation.find(n => n.url === location.pathname)?.title} />
+          <AIHelpAssistant currentPage={currentPageTitle} />
         )}
       </div>
     </SidebarProvider>
