@@ -15,6 +15,8 @@ import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDas
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
   const defaultEnabledFeatures = {
+    crs_enabled: true,
+    fatca_enabled: false,
     ai_bulk_import: true,
     ai_classification_assistant: true,
     ai_data_validator: true,
@@ -90,6 +92,14 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
   };
 
   const featureGroups = [
+    {
+      title: "Solutions",
+      icon: Settings,
+      features: [
+        { key: "crs_enabled", label: "CRS Solution", description: "Common Reporting Standard compliance solution", icon: FileCheck },
+        { key: "fatca_enabled", label: "FATCA Solution", description: "Foreign Account Tax Compliance Act solution", icon: Shield }
+      ]
+    },
     {
       title: "AI Features",
       icon: Brain,
