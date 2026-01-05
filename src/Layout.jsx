@@ -377,7 +377,7 @@ export default function Layout({ children }) {
           <SidebarContent className="p-3">
             {/* CRS Navigation Group */}
             {!isSuperAdmin && crsEnabled && (
-              <Collapsible defaultOpen={!tenant?.navigation_settings?.crs_default_collapsed} className="group/collapsible">
+              <Collapsible defaultOpen={!(tenant?.navigation_settings?.crs_default_collapsed ?? false)} className="group/collapsible">
                 <SidebarGroup>
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
@@ -417,7 +417,7 @@ export default function Layout({ children }) {
 
             {/* FATCA Navigation Group */}
             {!isSuperAdmin && fatcaEnabled && (
-              <Collapsible defaultOpen={!tenant?.navigation_settings?.fatca_default_collapsed} className="group/collapsible">
+              <Collapsible defaultOpen={!(tenant?.navigation_settings?.fatca_default_collapsed ?? false)} className="group/collapsible">
                 <SidebarGroup className="mt-6">
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
@@ -457,7 +457,7 @@ export default function Layout({ children }) {
 
             {/* Administration Section - Tenant Admin Only */}
             {isTenantAdmin && !isSuperAdmin && (
-              <Collapsible defaultOpen={!tenant?.navigation_settings?.administration_default_collapsed} className="group/collapsible">
+              <Collapsible defaultOpen={!(tenant?.navigation_settings?.administration_default_collapsed ?? false)} className="group/collapsible">
                 <SidebarGroup className="mt-6">
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2 hover:bg-slate-50 rounded-lg transition-colors">
