@@ -352,6 +352,19 @@ export default function Layout({ children }) {
                 </p>
               </div>
             </div>
+
+            {/* Vitauri Branding */}
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-center gap-1.5">
+              <span className="text-xs text-slate-500">Powered by</span>
+              <a 
+                href="https://www.vitauri.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
+              >
+                Vitauri
+              </a>
+            </div>
           </SidebarHeader>
           
           <SidebarContent className="p-3">
