@@ -40,6 +40,14 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     enabled_features: {
       ...defaultEnabledFeatures,
       ...(tenant.enabled_features || {})
+    },
+    navigation_settings: {
+      crs_menu_order: ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant"],
+      fatca_menu_order: ["Dashboard", "Activity Log", "FFI Entities", "Accounts", "FATCA Reports"],
+      crs_default_collapsed: false,
+      fatca_default_collapsed: false,
+      administration_default_collapsed: false,
+      ...(tenant.navigation_settings || {})
     }
   } : {
     name: "",
