@@ -354,15 +354,19 @@ export default function Layout({ children }) {
             </div>
 
             {/* Vitauri Branding */}
-            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-center gap-1.5">
-              <span className="text-xs text-slate-500">Powered by</span>
+            <div className="mt-4 pt-4 border-t border-slate-100">
               <a 
                 href="https://www.vitauri.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
+                className="flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
               >
-                Vitauri
+                <span className="text-xs text-slate-500">Powered by</span>
+                <img 
+                  src="https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
+                  alt="Vitauri"
+                  className="h-5 w-auto"
+                />
               </a>
             </div>
           </SidebarHeader>
