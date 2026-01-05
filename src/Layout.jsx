@@ -327,48 +327,27 @@ export default function Layout({ children }) {
       <div className="min-h-screen flex w-full bg-slate-50" role="application" aria-label="CRS Platform">
         <Sidebar className="border-r border-slate-200 bg-white" role="navigation" aria-label="Main navigation">
           <SidebarHeader className="border-b border-slate-100 p-5">
-            <div className="flex items-center gap-3">
-              {tenant?.branding?.logo_url ? (
-                <img 
-                  src={tenant.branding.logo_url} 
-                  alt={`${tenant.name} logo`}
-                  className="h-8 w-auto object-contain"
-                  role="img"
-                />
-              ) : (
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                  style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-                >
-                  {isSuperAdmin ? "SA" : (tenant?.short_name?.[0] || "C")}
-                </div>
-              )}
+            {/* Vitauri Branding - Primary */}
+            <a 
+              href="https://www.vitauri.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <img 
+                src="https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
+                alt="Vitauri"
+                className="h-8 w-auto"
+              />
               <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-slate-900 text-sm truncate">
-                  {isSuperAdmin ? "CRS Platform Admin" : (tenant?.short_name || "CRS Platform")}
+                <h2 className="font-semibold text-slate-900 text-sm">
+                  Vitauri CRS
                 </h2>
-                <p className="text-xs text-slate-500 truncate">
-                  {isSuperAdmin ? "System Management" : "Compliance Management"}
+                <p className="text-xs text-slate-500">
+                  Compliance Platform
                 </p>
               </div>
-            </div>
-
-            {/* Vitauri Branding */}
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <a 
-                href="https://www.vitauri.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
-              >
-                <span className="text-xs text-slate-500">Powered by</span>
-                <img 
-                  src="https://www.vitauri.com/wp-content/uploads/2023/05/vitauri-logo.png"
-                  alt="Vitauri"
-                  className="h-5 w-auto"
-                />
-              </a>
-            </div>
+            </a>
           </SidebarHeader>
           
           <SidebarContent className="p-3">
@@ -492,6 +471,36 @@ export default function Layout({ children }) {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-slate-100 p-4">
+            {/* Tenant Branding */}
+            {!isSuperAdmin && tenant && (
+              <div className="mb-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                  {tenant?.branding?.logo_url ? (
+                    <img 
+                      src={tenant.branding.logo_url} 
+                      alt={`${tenant.name} logo`}
+                      className="h-6 w-auto object-contain"
+                    />
+                  ) : (
+                    <div 
+                      className="w-6 h-6 rounded-lg flex items-center justify-center text-white font-bold text-xs"
+                      style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+                    >
+                      {tenant?.short_name?.[0] || "C"}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-900 truncate">
+                      {tenant?.short_name || "Client"}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {tenant.jurisdiction}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 w-full hover:bg-slate-50 rounded-lg p-2 transition-colors">
