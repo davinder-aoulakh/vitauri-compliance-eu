@@ -97,23 +97,73 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const evaluateConditionalLogic = (logic, currentAnswer, allAnswers) => {
     if (!logic?.conditions || logic.conditions.length === 0) return logic.else_step;
 
+    // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
+    const getFieldValue = (fieldPath) => {
+      if (!fieldPath) return undefined;
+      
+      // Check if it's a dotted path (multi-field or address input sub-field)
+      if (fieldPath.includes('.')) {
+        const [stepId, subField] = fieldPath.split('.');
+        const stepAnswer = allAnswers[stepId];
+        
+        // If step answer is an object (multi-field or address input), get the sub-field
+        if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
+          return stepAnswer[subField];
+        }
+        return undefined;
+      }
+      
+      // Simple field - direct lookup
+      return allAnswers[fieldPath];
+    };
+
     let conditionsMet = true;
     for (const condition of logic.conditions) {
-      const fieldAnswer = allAnswers[condition.field];
+      const fieldAnswer = getFieldValue(condition.field);
+      
+      // Get comparison value - either static or from another field
+      let comparisonValue = condition.value;
+      if (condition.value_type === 'field_reference') {
+        comparisonValue = getFieldValue(condition.value);
+      }
+      
       let met = false;
 
       switch (condition.operator) {
         case '=':
-          met = fieldAnswer === condition.value;
+          met = fieldAnswer === comparisonValue;
           break;
         case '!=':
-          met = fieldAnswer !== condition.value;
+          met = fieldAnswer !== comparisonValue;
+          break;
+        case '>':
+          met = Number(fieldAnswer) > Number(comparisonValue);
+          break;
+        case '<':
+          met = Number(fieldAnswer) < Number(comparisonValue);
+          break;
+        case '>=':
+          met = Number(fieldAnswer) >= Number(comparisonValue);
+          break;
+        case '<=':
+          met = Number(fieldAnswer) <= Number(comparisonValue);
           break;
         case 'contains':
-          met = String(fieldAnswer).includes(condition.value);
+          met = String(fieldAnswer || '').includes(String(comparisonValue));
           break;
         case 'in':
-          met = condition.value.split(',').includes(fieldAnswer);
+          met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+          break;
+        case 'not_in':
+          met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+          break;
+        case 'is_crs':
+          // Check if country is a CRS country (async check would be needed in real scenario)
+          // For now, assume any non-empty country value is CRS
+          met = !!fieldAnswer;
+          break;
+        case 'is_not_crs':
+          met = !fieldAnswer;
           break;
         default:
           met = false;
