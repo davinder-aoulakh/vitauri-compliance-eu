@@ -1313,67 +1313,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
           {uploadedDocument && (
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <FileCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <FileCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold text-blue-900 mb-1">Self-Certification Document</p>
+                      <p className="text-sm font-semibold text-blue-900">Self-Certification Document</p>
                       <p className="text-xs text-blue-700">{uploadedDocument.file_name}</p>
                     </div>
-                    
-                    {isImage && (
-                      <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
-                        <img 
-                          src={uploadedDocument.file_url} 
-                          alt="Self-certification document" 
-                          className="w-full h-auto max-h-96 object-contain"
-                        />
-                      </div>
-                    )}
-                    
-                    {isPDF && (
-                      <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
-                        <object 
-                          data={`${uploadedDocument.file_url}#view=FitH`} 
-                          type="application/pdf"
-                          className="w-full h-96"
-                          aria-label="Self-certification PDF document"
-                        >
-                          <div className="p-8 text-center">
-                            <FileCheck className="w-12 h-12 mx-auto mb-3 text-slate-400" />
-                            <p className="text-sm text-slate-600 mb-4">PDF preview not available in this browser</p>
-                            <a 
-                              href={uploadedDocument.file_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                window.open(uploadedDocument.file_url, '_blank');
-                              }}
-                              className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                            >
-                              <FileCheck className="w-4 h-4 mr-2" />
-                              Open PDF in New Tab
-                            </a>
-                          </div>
-                        </object>
-                      </div>
-                    )}
-                    
-                    <a 
-                      href={uploadedDocument.file_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        window.open(uploadedDocument.file_url, '_blank');
-                      }}
-                      className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline"
-                    >
-                      <FileCheck className="w-4 h-4" />
-                      Open in new tab
-                    </a>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => window.open(uploadedDocument.file_url, '_blank')}
+                    className="bg-white hover:bg-blue-100 text-blue-700 border-blue-300"
+                  >
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    Preview
+                  </Button>
                 </div>
               </CardContent>
             </Card>
