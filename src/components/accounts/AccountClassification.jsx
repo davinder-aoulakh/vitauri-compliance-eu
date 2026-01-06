@@ -1204,11 +1204,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
                         className="w-full h-auto max-h-96 object-contain"
                       />
                     ) : selectedValue.file_name?.match(/\.pdf$/i) ? (
-                      <iframe 
-                        src={selectedValue.file_url} 
+                      <object 
+                        data={`${selectedValue.file_url}#view=FitH`} 
+                        type="application/pdf"
                         className="w-full h-96"
-                        title="Uploaded document"
-                      />
+                        aria-label="Uploaded PDF document"
+                      >
+                        <div className="p-8 text-center">
+                          <FileCheck className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                          <p className="text-sm text-slate-600 mb-4">PDF preview not available in this browser</p>
+                          <a 
+                            href={selectedValue.file_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                          >
+                            <FileCheck className="w-4 h-4 mr-2" />
+                            Open PDF in New Tab
+                          </a>
+                        </div>
+                      </object>
                     ) : null}
                   </div>
                 )}
@@ -1218,6 +1233,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     href={selectedValue.file_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.open(selectedValue.file_url, '_blank');
+                    }}
                     className="inline-flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
                   >
                     <FileCheck className="w-4 h-4 mr-2" />
@@ -1314,11 +1333,30 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     
                     {isPDF && (
                       <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
-                        <iframe 
-                          src={uploadedDocument.file_url} 
+                        <object 
+                          data={`${uploadedDocument.file_url}#view=FitH`} 
+                          type="application/pdf"
                           className="w-full h-96"
-                          title="Self-certification document"
-                        />
+                          aria-label="Self-certification PDF document"
+                        >
+                          <div className="p-8 text-center">
+                            <FileCheck className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                            <p className="text-sm text-slate-600 mb-4">PDF preview not available in this browser</p>
+                            <a 
+                              href={uploadedDocument.file_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                window.open(uploadedDocument.file_url, '_blank');
+                              }}
+                              className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                            >
+                              <FileCheck className="w-4 h-4 mr-2" />
+                              Open PDF in New Tab
+                            </a>
+                          </div>
+                        </object>
                       </div>
                     )}
                     
@@ -1326,6 +1364,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                       href={uploadedDocument.file_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.open(uploadedDocument.file_url, '_blank');
+                      }}
                       className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline"
                     >
                       <FileCheck className="w-4 h-4" />
