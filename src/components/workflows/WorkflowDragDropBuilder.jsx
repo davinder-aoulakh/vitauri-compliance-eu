@@ -608,6 +608,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     option_values: Array.isArray(step.conditional_logic.option_values) ? step.conditional_logic.option_values : (step.conditional_logic.option_values ? [step.conditional_logic.option_values] : [])
   } : { conditions: [], next_step: "", else_step: "", option_values: [] };
 
+  console.log(`[StepEditor] Initializing StepEditor for ${step.step_id}:`, {
+    original_option_values: step.conditional_logic?.option_values,
+    normalized_option_values: normalizedConditionalLogic.option_values,
+    option_values_next_step: step.conditional_logic?.option_values_next_step,
+    option_values_else_step: step.conditional_logic?.option_values_else_step
+  });
+
   const [editedStep, setEditedStep] = useState({ 
     ...step,
     default_next_step: step.default_next_step || "",
