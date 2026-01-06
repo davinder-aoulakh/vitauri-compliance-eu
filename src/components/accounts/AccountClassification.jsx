@@ -632,8 +632,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Determine next step - CONDITIONAL LOGIC FIRST (highest priority)
     let nextNodeId = null;
 
-    // Check selection count branching for multiple_choice first
-    if (currentNode.question_type === "multiple_choice" && currentNode.conditional_logic?.use_selection_count) {
+    // Check option-based branching for multiple_choice first (NEW - highest priority)
+    if (currentNode.question_type === "multiple_choice" && 
+        currentNode.conditional_logic?.option_values?.length > 0) {
+      const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
+      const matchFound = selectedOptions.some(selectedOpt => 
+        currentNode.conditional_logic.option_values.includes(selectedOpt)
+      );
+      
+      if (matchFound) {
+        nextNodeId = currentNode.conditional_logic.option_values_next_step;
+      } else {
+        nextNodeId = currentNode.conditional_logic.option_values_else_step;
+      }
+    }
+
+    // Check selection count branching for multiple_choice
+    if (!nextNodeId && currentNode.question_type === "multiple_choice" && currentNode.conditional_logic?.use_selection_count) {
       const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
       const selectionCount = selectedOptions.length;
       const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
