@@ -52,11 +52,22 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
     return {
       ...step,
       default_next_step: step.default_next_step || "",
-      // Normalize conditional_logic to ensure value_type is preserved
+      // Normalize conditional_logic to ensure all fields are preserved
       conditional_logic: step.conditional_logic ? {
         ...step.conditional_logic,
-        conditions: normalizedConditions
-      } : { conditions: [], next_step: "", else_step: "" }
+        conditions: normalizedConditions,
+        // Preserve option-based branching fields
+        option_values: step.conditional_logic.option_values || [],
+        option_values_next_step: step.conditional_logic.option_values_next_step || "",
+        option_values_else_step: step.conditional_logic.option_values_else_step || ""
+      } : { 
+        conditions: [], 
+        next_step: "", 
+        else_step: "",
+        option_values: [],
+        option_values_next_step: "",
+        option_values_else_step: ""
+      }
     };
   });
   
