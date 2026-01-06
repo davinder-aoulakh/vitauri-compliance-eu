@@ -1611,19 +1611,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                 setShowAdvancedLogic(false);
                 setEditedStep({
                   ...editedStep,
-                  conditional_logic: { 
-                    conditions: [], 
-                    next_step: "", 
-                    else_step: "",
-                    // Preserve multiple choice branching fields
-                    option_values: editedStep.conditional_logic?.option_values || null,
-                    option_values_next_step: editedStep.conditional_logic?.option_values_next_step || null,
-                    option_values_else_step: editedStep.conditional_logic?.option_values_else_step || null,
-                    selection_count_operator: editedStep.conditional_logic?.selection_count_operator || null,
-                    selection_count_value: editedStep.conditional_logic?.selection_count_value || null,
-                    selection_count_next_step: editedStep.conditional_logic?.selection_count_next_step || null,
-                    selection_count_else_step: editedStep.conditional_logic?.selection_count_else_step || null
-                  }
+                  conditional_logic: { conditions: [], next_step: "", else_step: "" }
                 });
               }}
               className="w-full text-xs text-slate-600"
