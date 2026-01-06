@@ -1740,7 +1740,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               />
             ) : previewDocument?.file_name?.match(/\.pdf$/i) ? (
               <iframe 
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDocument.file_url)}&embedded=true`}
+                src={previewDocument.file_url}
                 className="w-full h-full border-0"
                 title="PDF preview"
               />
