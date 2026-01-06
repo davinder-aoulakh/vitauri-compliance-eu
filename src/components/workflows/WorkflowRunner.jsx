@@ -95,6 +95,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const evaluateConditionalLogic = (logic, currentAnswer, allAnswers) => {
+    // Check option-based branching for multiple choice (check if specific options were selected)
+    if (logic?.option_values && logic.option_values.length > 0 && Array.isArray(currentAnswer)) {
+      // Check if ANY of the user's selected options match ANY of the configured option values
+      const matchFound = currentAnswer.some(selectedOpt => logic.option_values.includes(selectedOpt));
+      return matchFound ? logic.option_values_next_step : logic.option_values_else_step;
+    }
+    
     if (!logic?.conditions || logic.conditions.length === 0) return logic.else_step;
 
     // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
