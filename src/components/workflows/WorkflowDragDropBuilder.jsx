@@ -1182,15 +1182,16 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                           {editedStep.options?.map((opt, idx) => (
                             <div key={idx} className="flex items-center gap-2">
                               <Checkbox
-                                id={`opt-branch-${idx}`}
-                                checked={editedStep.conditional_logic?.option_values?.includes(opt.value) || false}
-                                onCheckedChange={(checked) => {
-                                  const currentValues = editedStep.conditional_logic?.option_values || [];
-                                  const newValues = checked 
-                                    ? [...currentValues, opt.value]
-                                    : currentValues.filter(v => v !== opt.value);
-                                  handleConditionalLogicChange("option_values", newValues);
-                                }}
+                              id={`opt-branch-${idx}`}
+                              checked={editedStep.conditional_logic?.option_values?.includes(opt.value) || false}
+                              onCheckedChange={(checked) => {
+                                const currentValues = editedStep.conditional_logic?.option_values || [];
+                                const newValues = checked 
+                                  ? [...currentValues, opt.value]
+                                  : currentValues.filter(v => v !== opt.value);
+                                console.log(`[StepEditor] Checkbox changed for ${opt.value}:`, { checked, currentValues, newValues });
+                                handleConditionalLogicChange("option_values", newValues);
+                              }}
                               />
                               <Label htmlFor={`opt-branch-${idx}`} className="text-xs cursor-pointer">
                                 {opt.label} ({opt.value})
