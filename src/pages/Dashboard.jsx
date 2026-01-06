@@ -215,19 +215,19 @@ export default function Dashboard() {
           </div>
 
           {/* Custom Dashboard Widgets */}
-          <div className="grid grid-cols-12 gap-4" style={{ gridAutoRows: 'minmax(0, auto)' }}>
+          <div className="grid grid-cols-12 gap-4">
             {customDashboard.layout.map((widget) => (
               <div
                 key={widget.widget_id}
+                className="h-full"
                 style={{ 
-                  gridColumn: `span ${widget.position?.w || 6}`,
-                  gridRow: `${(widget.position?.y || 0) + 1} / span ${widget.position?.h || 1}`
+                  gridColumn: `span ${widget.position?.w || 6}`
                 }}
               >
                 <WidgetPreview widget={widget} tenantId={user.tenant_id} />
               </div>
             ))}
-            </div>
+          </div>
 
             {showTour && tourConfig && (
             <GuidedTour
