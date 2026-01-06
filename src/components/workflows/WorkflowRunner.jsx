@@ -44,6 +44,56 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     // Add current step to history
     setHistory(prev => [...prev, currentStep.step_id]);
     
+    // Check option-based branching for multiple choice (BEFORE conditional logic)
+    if (currentStep.question_type === 'multiple_choice' && 
+        currentStep.conditional_logic?.option_values && 
+        currentStep.conditional_logic.option_values.length > 0 && 
+        Array.isArray(answer)) {
+      const matchFound = answer.some(selectedOpt => currentStep.conditional_logic.option_values.includes(selectedOpt));
+      const nextStepId = matchFound 
+        ? currentStep.conditional_logic.option_values_next_step 
+        : currentStep.conditional_logic.option_values_else_step;
+      
+      if (nextStepId) {
+        const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
+        if (nextIndex !== -1) {
+          setCurrentStepIndex(nextIndex);
+          return;
+        }
+      }
+    }
+    
+    // Check selection count branching for multiple choice
+    if (currentStep.question_type === 'multiple_choice' && 
+        currentStep.conditional_logic?.selection_count_operator && 
+        Array.isArray(answer)) {
+      const selectionCount = answer.length;
+      const targetCount = currentStep.conditional_logic.selection_count_value || 0;
+      const operator = currentStep.conditional_logic.selection_count_operator;
+      
+      let conditionMet = false;
+      switch (operator) {
+        case '=': conditionMet = selectionCount === targetCount; break;
+        case '!=': conditionMet = selectionCount !== targetCount; break;
+        case '>': conditionMet = selectionCount > targetCount; break;
+        case '<': conditionMet = selectionCount < targetCount; break;
+        case '>=': conditionMet = selectionCount >= targetCount; break;
+        case '<=': conditionMet = selectionCount <= targetCount; break;
+      }
+      
+      const nextStepId = conditionMet 
+        ? currentStep.conditional_logic.selection_count_next_step 
+        : currentStep.conditional_logic.selection_count_else_step;
+      
+      if (nextStepId) {
+        const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
+        if (nextIndex !== -1) {
+          setCurrentStepIndex(nextIndex);
+          return;
+        }
+      }
+    }
+    
     // Check conditional logic
     if (currentStep.conditional_logic) {
       const nextStepId = evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
