@@ -213,18 +213,18 @@ export default function WidgetPreview({ widget, tenantId }) {
         drilldownUrl = createPageUrl("Entities");
         break;
       case 'active_nfe_entities':
-        value = entities.filter(e => e.rfi_status === 'nfe_active').length;
+        value = accounts.filter(a => a.entity_classification === 'active_nfe').length;
         icon = <Building2 className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
         if (!subDescription) subDescription = `${entities.length} total entities`;
-        drilldownUrl = createPageUrl("Entities");
+        drilldownUrl = createPageUrl("Accounts");
         break;
       case 'passive_nfe_entities':
-        value = entities.filter(e => e.rfi_status === 'nfe_passive').length;
+        value = accounts.filter(a => a.entity_classification === 'passive_nfe').length;
         icon = <Building2 className="w-6 h-6 text-purple-600" />;
         iconBgColor = 'bg-purple-100';
         if (!subDescription) subDescription = `${entities.length} total entities`;
-        drilldownUrl = createPageUrl("Entities");
+        drilldownUrl = createPageUrl("Accounts");
         break;
       case 'total_crs_reports':
         value = reports.length;
