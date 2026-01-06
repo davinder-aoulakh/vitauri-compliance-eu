@@ -200,7 +200,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         selection_count_value: step.conditional_logic.selection_count_value || null,
         selection_count_next_step: step.conditional_logic.selection_count_next_step || null,
         selection_count_else_step: step.conditional_logic.selection_count_else_step || null,
-        option_values: step.conditional_logic.option_values || null,
+        option_values: Array.isArray(step.conditional_logic.option_values) ? step.conditional_logic.option_values : [],
         option_values_next_step: step.conditional_logic.option_values_next_step || null,
         option_values_else_step: step.conditional_logic.option_values_else_step || null
       } : { conditions: [], next_step: "", else_step: "" };
