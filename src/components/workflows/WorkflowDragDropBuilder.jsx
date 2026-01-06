@@ -191,6 +191,13 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   };
 
   const handleSave = () => {
+    console.log(`[WorkflowDragDropBuilder] handleSave - Current steps state before processing:`, steps.map(s => ({ 
+      id: s.step_id, 
+      option_values: s.conditional_logic?.option_values,
+      option_values_next: s.conditional_logic?.option_values_next_step,
+      option_values_else: s.conditional_logic?.option_values_else_step
+    })));
+    
     // Ensure all steps have properly formatted conditional_logic with value_type preserved
     const processedSteps = steps.map(step => {
       const processedConditionalLogic = step.conditional_logic ? {
@@ -215,7 +222,12 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         option_values_else_step: step.conditional_logic.option_values_else_step || null
       } : { conditions: [], next_step: "", else_step: "", option_values: null };
       
-      console.log("Saving step conditional_logic:", step.step_id, JSON.stringify(processedConditionalLogic.conditions));
+      console.log(`[WorkflowDragDropBuilder] Processing step ${step.step_id}:`, {
+        original_option_values: step.conditional_logic?.option_values,
+        processed_option_values: processedConditionalLogic.option_values,
+        processed_option_values_next_step: processedConditionalLogic.option_values_next_step,
+        processed_option_values_else_step: processedConditionalLogic.option_values_else_step
+      });
       
       return {
         ...step,
@@ -231,7 +243,12 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
       outcome_rules: outcomeRules,
       last_modified_by: "current_user"
     };
-    console.log("Saving workflow data:", JSON.stringify(workflowData.steps?.map(s => ({ id: s.step_id, conditions: s.conditional_logic?.conditions })), null, 2));
+    console.log("[WorkflowDragDropBuilder] Final workflow data being saved:", JSON.stringify(workflowData.steps?.map(s => ({ 
+      id: s.step_id, 
+      option_values: s.conditional_logic?.option_values,
+      option_values_next_step: s.conditional_logic?.option_values_next_step,
+      option_values_else_step: s.conditional_logic?.option_values_else_step
+    })), null, 2));
     onSave(workflowData);
   };
 
