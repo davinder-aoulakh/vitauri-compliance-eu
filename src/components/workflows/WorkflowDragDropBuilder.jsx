@@ -571,14 +571,15 @@ const getSuggestedValuesForField = (entityType, fieldName) => {
 
 // Step Editor Component
 function StepEditor({ step, allSteps, onUpdate, onClose }) {
-  // Ensure all conditions have value_type defaulted
+  // Ensure all conditions have value_type defaulted and option_values is always an array
   const normalizedConditionalLogic = step.conditional_logic ? {
     ...step.conditional_logic,
     conditions: (step.conditional_logic.conditions || []).map(c => ({
       ...c,
       value_type: c.value_type || "static"
-    }))
-  } : { conditions: [], next_step: "", else_step: "" };
+    })),
+    option_values: Array.isArray(step.conditional_logic.option_values) ? step.conditional_logic.option_values : (step.conditional_logic.option_values ? [step.conditional_logic.option_values] : [])
+  } : { conditions: [], next_step: "", else_step: "", option_values: [] };
 
   const [editedStep, setEditedStep] = useState({ 
     ...step,
