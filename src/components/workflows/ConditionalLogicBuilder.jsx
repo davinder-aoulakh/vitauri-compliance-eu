@@ -120,11 +120,31 @@ export default function ConditionalLogicBuilder({
                           <SelectValue placeholder="Select step..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableSteps.map((step) => (
-                            <SelectItem key={step.step_id} value={step.step_id}>
-                              {step.step_title || step.step_id}
-                            </SelectItem>
-                          ))}
+                          {availableSteps.map((step) => {
+                            // If step has multi_fields, create sub-options for each field
+                            if (step.multi_fields && step.multi_fields.length > 0) {
+                              return [
+                                <SelectItem key={step.step_id} value={step.step_id}>
+                                  {step.step_title || step.step_id} (All)
+                                </SelectItem>,
+                                ...step.multi_fields.map((field) => (
+                                  <SelectItem 
+                                    key={`${step.step_id}.${field.field_id}`} 
+                                    value={`${step.step_id}.${field.field_id}`}
+                                    className="pl-6"
+                                  >
+                                    ↳ {field.display_label}
+                                  </SelectItem>
+                                ))
+                              ];
+                            }
+                            // Regular step
+                            return (
+                              <SelectItem key={step.step_id} value={step.step_id}>
+                                {step.step_title || step.step_id}
+                              </SelectItem>
+                            );
+                          })}
                           <SelectItem value="custom">Custom Field</SelectItem>
                         </SelectContent>
                       </Select>
