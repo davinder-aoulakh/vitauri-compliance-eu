@@ -52,6 +52,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [beneficiariesAdded, setBeneficiariesAdded] = useState(false);
   const [controllingPersonsAdded, setControllingPersonsAdded] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState(null);
 
   // Fetch the latest account data to ensure we have up-to-date documents
   const { data: freshAccountData } = useQuery({
@@ -1198,7 +1200,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => window.open(selectedValue.file_url, '_blank')}
+                    onClick={() => {
+                      setPreviewDocument(selectedValue);
+                      setShowDocumentPreview(true);
+                    }}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700"
                   >
                     <FileCheck className="w-4 h-4 mr-2" />
@@ -1286,7 +1291,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => window.open(uploadedDocument.file_url, '_blank')}
+                    onClick={() => {
+                      setPreviewDocument(uploadedDocument);
+                      setShowDocumentPreview(true);
+                    }}
                     className="bg-white hover:bg-blue-100 text-blue-700 border-blue-300"
                   >
                     <FileCheck className="w-4 h-4 mr-2" />
@@ -1705,6 +1713,34 @@ export default function AccountClassification({ account, onComplete, onCancel })
               });
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Preview Dialog */}
+      <Dialog open={showDocumentPreview} onOpenChange={setShowDocumentPreview}>
+        <DialogContent className="max-w-5xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{previewDocument?.file_name}</DialogTitle>
+          </DialogHeader>
+          <div className="w-full h-[70vh]">
+            {previewDocument?.file_name?.match(/\.(jpg|jpeg|png)$/i) ? (
+              <img 
+                src={previewDocument.file_url} 
+                alt="Document preview" 
+                className="w-full h-full object-contain"
+              />
+            ) : previewDocument?.file_name?.match(/\.pdf$/i) ? (
+              <iframe 
+                src={previewDocument.file_url} 
+                className="w-full h-full border-0"
+                title="PDF preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-slate-500">Preview not available for this file type</p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
