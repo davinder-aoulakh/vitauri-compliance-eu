@@ -1187,19 +1187,50 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 <p className="text-sm font-medium text-slate-700">Uploading...</p>
               </div>
             ) : selectedValue?.file_url ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
                 <p className="text-sm font-medium text-green-900">
                   {selectedValue.file_name}
                 </p>
                 <p className="text-xs text-green-700">Uploaded successfully</p>
-                <label
-                  htmlFor="file-upload"
-                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Different File
-                </label>
+
+                {/* Document Preview */}
+                {selectedValue.file_url && (
+                  <div className="border-2 border-green-300 rounded-lg overflow-hidden bg-white max-w-2xl mx-auto">
+                    {selectedValue.file_name?.match(/\.(jpg|jpeg|png)$/i) ? (
+                      <img 
+                        src={selectedValue.file_url} 
+                        alt="Uploaded document" 
+                        className="w-full h-auto max-h-96 object-contain"
+                      />
+                    ) : selectedValue.file_name?.match(/\.pdf$/i) ? (
+                      <iframe 
+                        src={selectedValue.file_url} 
+                        className="w-full h-96"
+                        title="Uploaded document"
+                      />
+                    ) : null}
+                  </div>
+                )}
+                
+                <div className="flex gap-3 justify-center">
+                  <a 
+                    href={selectedValue.file_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                  >
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    View Document
+                  </a>
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Different File
+                  </label>
+                </div>
               </div>
             ) : (
               <>
@@ -1243,8 +1274,69 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const currentAccount = latestAccountData || account;
       const existingAddress = currentAccount[targetField] || {};
 
+      // Find uploaded document from previous file_upload step
+      const uploadedDocument = (() => {
+        for (const [stepId, answerValue] of Object.entries(answers)) {
+          const step = workflow.steps.find(s => s.step_id === stepId);
+          if (step?.question_type === 'file_upload' && answerValue?.file_url) {
+            return answerValue;
+          }
+        }
+        return null;
+      })();
+
+      const isImage = uploadedDocument?.file_name?.match(/\.(jpg|jpeg|png)$/i);
+      const isPDF = uploadedDocument?.file_name?.match(/\.pdf$/i);
+
       return (
         <div className="space-y-4">
+          {/* Show uploaded self-certification document */}
+          {uploadedDocument && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <FileCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900 mb-1">Self-Certification Document</p>
+                      <p className="text-xs text-blue-700">{uploadedDocument.file_name}</p>
+                    </div>
+                    
+                    {isImage && (
+                      <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
+                        <img 
+                          src={uploadedDocument.file_url} 
+                          alt="Self-certification document" 
+                          className="w-full h-auto max-h-96 object-contain"
+                        />
+                      </div>
+                    )}
+                    
+                    {isPDF && (
+                      <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
+                        <iframe 
+                          src={uploadedDocument.file_url} 
+                          className="w-full h-96"
+                          title="Self-certification document"
+                        />
+                      </div>
+                    )}
+                    
+                    <a 
+                      href={uploadedDocument.file_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                      Open in new tab
+                    </a>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Show existing address if available */}
           {(existingAddress.street || existingAddress.city || existingAddress.country) && (
             <Alert className="bg-slate-50 border-slate-200">
