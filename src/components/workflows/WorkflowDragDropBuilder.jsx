@@ -847,6 +847,12 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   };
 
   const handleSave = () => {
+    console.log(`[StepEditor] Saving step ${editedStep.step_id}:`, {
+      option_values: editedStep.conditional_logic?.option_values,
+      option_values_next_step: editedStep.conditional_logic?.option_values_next_step,
+      option_values_else_step: editedStep.conditional_logic?.option_values_else_step,
+      full_conditional_logic: editedStep.conditional_logic
+    });
     onUpdate(editedStep);
     onClose();
   };
