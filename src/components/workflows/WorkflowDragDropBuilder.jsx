@@ -1372,13 +1372,6 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                     const selectedField = availableConditionFields.find(f => f.value === condition.field);
                     const isCountryField = selectedField?.isCountry;
 
-                    // Group fields by their group property
-                    const groupedFields = availableConditionFields.reduce((acc, field) => {
-                      if (!acc[field.group]) acc[field.group] = [];
-                      acc[field.group].push(field);
-                      return acc;
-                    }, {});
-
                     return (
                       <div key={index} className="p-3 bg-white border-2 border-purple-200 rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
