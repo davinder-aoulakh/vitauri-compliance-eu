@@ -1720,23 +1720,44 @@ export default function AccountClassification({ account, onComplete, onCancel })
       <Dialog open={showDocumentPreview} onOpenChange={setShowDocumentPreview}>
         <DialogContent className="max-w-5xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>{previewDocument?.file_name}</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{previewDocument?.file_name}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(previewDocument?.file_url, '_blank')}
+              >
+                Open in New Tab
+              </Button>
+            </DialogTitle>
           </DialogHeader>
           <div className="w-full h-[70vh]">
             {previewDocument?.file_name?.match(/\.(jpg|jpeg|png)$/i) ? (
               <img 
                 src={previewDocument.file_url} 
                 alt="Document preview" 
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain bg-slate-100"
               />
             ) : previewDocument?.file_name?.match(/\.pdf$/i) ? (
-              <iframe 
-                src={previewDocument.file_url} 
-                className="w-full h-full border-0"
-                title="PDF preview"
-              />
+              <object 
+                data={`${previewDocument.file_url}#view=FitH`} 
+                type="application/pdf"
+                className="w-full h-full"
+              >
+                <div className="flex flex-col items-center justify-center h-full bg-slate-50 p-8">
+                  <FileCheck className="w-16 h-16 text-slate-400 mb-4" />
+                  <p className="text-slate-600 mb-4">PDF preview not available in this browser</p>
+                  <Button
+                    onClick={() => window.open(previewDocument.file_url, '_blank')}
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    Open PDF in New Tab
+                  </Button>
+                </div>
+              </object>
             ) : (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full bg-slate-50">
                 <p className="text-slate-500">Preview not available for this file type</p>
               </div>
             )}
