@@ -129,12 +129,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       
       let met = false;
 
+      // Handle array answers (multi-choice questions)
+      const isArrayAnswer = Array.isArray(fieldAnswer);
+      
       switch (condition.operator) {
         case '=':
-          met = fieldAnswer === comparisonValue;
+          if (isArrayAnswer) {
+            // For array answers, check if any selected option matches
+            met = fieldAnswer.includes(comparisonValue);
+          } else {
+            met = fieldAnswer === comparisonValue;
+          }
           break;
         case '!=':
-          met = fieldAnswer !== comparisonValue;
+          if (isArrayAnswer) {
+            // For array answers, check if none of the selected options match
+            met = !fieldAnswer.includes(comparisonValue);
+          } else {
+            met = fieldAnswer !== comparisonValue;
+          }
           break;
         case '>':
           met = Number(fieldAnswer) > Number(comparisonValue);
@@ -149,17 +162,32 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           met = Number(fieldAnswer) <= Number(comparisonValue);
           break;
         case 'contains':
-          met = String(fieldAnswer || '').includes(String(comparisonValue));
+          if (isArrayAnswer) {
+            // For array answers, check if any selected option contains the value
+            met = fieldAnswer.some(opt => String(opt).includes(String(comparisonValue)));
+          } else {
+            met = String(fieldAnswer || '').includes(String(comparisonValue));
+          }
           break;
         case 'in':
-          met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+          if (isArrayAnswer) {
+            // For array answers, check if ANY selected option is in the comparison list
+            const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
+            met = fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+          } else {
+            met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+          }
           break;
         case 'not_in':
-          met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+          if (isArrayAnswer) {
+            // For array answers, check if NONE of the selected options are in the comparison list
+            const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
+            met = !fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+          } else {
+            met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+          }
           break;
         case 'is_crs':
-          // Check if country is a CRS country (async check would be needed in real scenario)
-          // For now, assume any non-empty country value is CRS
           met = !!fieldAnswer;
           break;
         case 'is_not_crs':
