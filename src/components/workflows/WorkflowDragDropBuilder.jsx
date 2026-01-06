@@ -1399,7 +1399,11 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                                 <SelectValue placeholder={isLoadingFields ? "Loading fields..." : "Select field..."} />
                               </SelectTrigger>
                               <SelectContent className="max-h-[300px]">
-                                {Object.entries(groupedFields).map(([group, fields]) => (
+                                {Object.entries(availableConditionFields.reduce((acc, field) => {
+                                  if (!acc[field.group]) acc[field.group] = [];
+                                  acc[field.group].push(field);
+                                  return acc;
+                                }, {})).map(([group, fields]) => (
                                   <React.Fragment key={group}>
                                     <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1 first:border-t-0 first:mt-0">
                                       {group}
