@@ -535,6 +535,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return false;
     }
 
+    // Check for option-based branching on multiple_choice (NEW)
+    if (step.question_type === "multiple_choice" && step.conditional_logic?.option_values?.length > 0) {
+      if (step.conditional_logic.option_values_next_step || step.conditional_logic.option_values_else_step) {
+        return false;
+      }
+    }
+
     // Check for selection count branching on multiple_choice
     if (step.question_type === "multiple_choice" && step.conditional_logic?.use_selection_count) {
       if (step.conditional_logic.selection_count_next_step || step.conditional_logic.selection_count_else_step) {
