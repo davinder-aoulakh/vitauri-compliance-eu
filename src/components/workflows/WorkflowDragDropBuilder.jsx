@@ -131,8 +131,17 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   };
 
   const handleUpdateStep = (updatedStep) => {
+    console.log(`[WorkflowDragDropBuilder] handleUpdateStep called for ${updatedStep.step_id}:`, {
+      option_values: updatedStep.conditional_logic?.option_values,
+      option_values_next_step: updatedStep.conditional_logic?.option_values_next_step,
+      option_values_else_step: updatedStep.conditional_logic?.option_values_else_step
+    });
     const newSteps = steps.map(s => s.step_id === updatedStep.step_id ? updatedStep : s);
     setSteps(newSteps);
+    console.log(`[WorkflowDragDropBuilder] Updated steps state:`, newSteps.map(s => ({ 
+      id: s.step_id, 
+      option_values: s.conditional_logic?.option_values 
+    })));
     // Update selectedStep with the new reference to ensure editor re-renders with fresh data
     setSelectedStep(newSteps.find(s => s.step_id === updatedStep.step_id) || updatedStep);
   };
