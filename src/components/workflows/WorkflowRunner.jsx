@@ -465,8 +465,68 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           });
         };
 
+        // Find uploaded document from previous file_upload step
+        const uploadedDocument = (() => {
+          for (const [stepId, answerValue] of Object.entries(answers)) {
+            const step = workflow.steps.find(s => s.step_id === stepId);
+            if (step?.question_type === 'file_upload' && Array.isArray(answerValue) && answerValue.length > 0) {
+              return answerValue[0]; // Get the first uploaded file
+            }
+          }
+          return null;
+        })();
+
+        const isImage = uploadedDocument?.type?.startsWith('image/');
+        const isPDF = uploadedDocument?.type === 'application/pdf' || uploadedDocument?.url?.endsWith('.pdf');
+
         return (
           <div className="space-y-4">
+            {uploadedDocument && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <FileCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900 mb-1">Self-Certification Document</p>
+                        <p className="text-xs text-blue-700">{uploadedDocument.name}</p>
+                      </div>
+                      
+                      {isImage && (
+                        <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
+                          <img 
+                            src={uploadedDocument.url} 
+                            alt="Self-certification document" 
+                            className="w-full h-auto max-h-96 object-contain"
+                          />
+                        </div>
+                      )}
+                      
+                      {isPDF && (
+                        <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
+                          <iframe 
+                            src={uploadedDocument.url} 
+                            className="w-full h-96"
+                            title="Self-certification document"
+                          />
+                        </div>
+                      )}
+                      
+                      <a 
+                        href={uploadedDocument.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline"
+                      >
+                        <FileCheck className="w-4 h-4" />
+                        Open in new tab
+                      </a>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div>
               <Label className="text-sm font-medium text-slate-700">
                 Street Address <span className="text-red-600">*</span>
