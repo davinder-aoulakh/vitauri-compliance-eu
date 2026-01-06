@@ -1193,55 +1193,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   {selectedValue.file_name}
                 </p>
                 <p className="text-xs text-green-700">Uploaded successfully</p>
-
-                {/* Document Preview */}
-                {selectedValue.file_url && (
-                  <div className="border-2 border-green-300 rounded-lg overflow-hidden bg-white max-w-2xl mx-auto">
-                    {selectedValue.file_name?.match(/\.(jpg|jpeg|png)$/i) ? (
-                      <img 
-                        src={selectedValue.file_url} 
-                        alt="Uploaded document" 
-                        className="w-full h-auto max-h-96 object-contain"
-                      />
-                    ) : selectedValue.file_name?.match(/\.pdf$/i) ? (
-                      <object 
-                        data={`${selectedValue.file_url}#view=FitH`} 
-                        type="application/pdf"
-                        className="w-full h-96"
-                        aria-label="Uploaded PDF document"
-                      >
-                        <div className="p-8 text-center">
-                          <FileCheck className="w-12 h-12 mx-auto mb-3 text-slate-400" />
-                          <p className="text-sm text-slate-600 mb-4">PDF preview not available in this browser</p>
-                          <a 
-                            href={selectedValue.file_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                          >
-                            <FileCheck className="w-4 h-4 mr-2" />
-                            Open PDF in New Tab
-                          </a>
-                        </div>
-                      </object>
-                    ) : null}
-                  </div>
-                )}
                 
                 <div className="flex gap-3 justify-center">
-                  <a 
-                    href={selectedValue.file_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.open(selectedValue.file_url, '_blank');
-                    }}
-                    className="inline-flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => window.open(selectedValue.file_url, '_blank')}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700"
                   >
                     <FileCheck className="w-4 h-4 mr-2" />
-                    View Document
-                  </a>
+                    Preview Document
+                  </Button>
                   <label
                     htmlFor="file-upload"
                     className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors"
