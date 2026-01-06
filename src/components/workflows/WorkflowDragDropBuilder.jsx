@@ -211,12 +211,13 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         selection_count_value: step.conditional_logic.selection_count_value || null,
         selection_count_next_step: step.conditional_logic.selection_count_next_step || null,
         selection_count_else_step: step.conditional_logic.selection_count_else_step || null,
-        option_values: step.conditional_logic.option_values || null,
+        // CRITICAL: Preserve arrays properly - empty array should not become null
+        option_values: step.conditional_logic.option_values !== undefined ? step.conditional_logic.option_values : null,
         option_values_next_step: step.conditional_logic.option_values_next_step || null,
         option_values_else_step: step.conditional_logic.option_values_else_step || null
       } : { conditions: [], next_step: "", else_step: "" };
       
-      console.log("Saving step conditional_logic:", step.step_id, JSON.stringify(processedConditionalLogic.conditions));
+      console.log("Saving step conditional_logic:", step.step_id, JSON.stringify(processedConditionalLogic));
       
       return {
         ...step,
