@@ -1739,23 +1739,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 className="w-full h-full object-contain bg-slate-100"
               />
             ) : previewDocument?.file_name?.match(/\.pdf$/i) ? (
-              <object 
-                data={`${previewDocument.file_url}#view=FitH`} 
-                type="application/pdf"
-                className="w-full h-full"
-              >
-                <div className="flex flex-col items-center justify-center h-full bg-slate-50 p-8">
-                  <FileCheck className="w-16 h-16 text-slate-400 mb-4" />
-                  <p className="text-slate-600 mb-4">PDF preview not available in this browser</p>
-                  <Button
-                    onClick={() => window.open(previewDocument.file_url, '_blank')}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    <FileCheck className="w-4 h-4 mr-2" />
-                    Open PDF in New Tab
-                  </Button>
-                </div>
-              </object>
+              <iframe 
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDocument.file_url)}&embedded=true`}
+                className="w-full h-full border-0"
+                title="PDF preview"
+              />
             ) : (
               <div className="flex items-center justify-center h-full bg-slate-50">
                 <p className="text-slate-500">Preview not available for this file type</p>
