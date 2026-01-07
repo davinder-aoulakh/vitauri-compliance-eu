@@ -76,7 +76,11 @@ export default function UserManagement() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      // Use service role to update user information
+      const response = await base44.functions.invoke('updateTenantUser', { userId: id, userData: data });
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(['tenant-users']);
       setShowEditForm(false);
