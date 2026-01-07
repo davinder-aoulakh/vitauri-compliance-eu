@@ -14,6 +14,7 @@ import { Save, X } from "lucide-react";
 
 export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
+    full_name: user?.full_name || "",
     job_title: user?.job_title || "",
     department: user?.department || "",
     user_role: user?.user_role || "tenant_user",
@@ -72,17 +73,28 @@ export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* User Info (Read-only) */}
+      {/* User Email (Read-only) */}
       <div className="p-4 bg-slate-50 rounded-lg border">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-semibold text-lg">
-            {user?.full_name?.[0]?.toUpperCase() || "U"}
+            {formData.full_name?.[0]?.toUpperCase() || user?.full_name?.[0]?.toUpperCase() || "U"}
           </div>
           <div>
-            <p className="font-semibold text-slate-900">{user?.full_name || "Unknown"}</p>
             <p className="text-sm text-slate-500">{user?.email}</p>
           </div>
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="full_name">Full Name</Label>
+        <Input
+          id="full_name"
+          value={formData.full_name}
+          onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+          placeholder="John Doe"
+          className="mt-1.5"
+          required
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
