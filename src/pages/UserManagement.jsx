@@ -85,6 +85,11 @@ export default function UserManagement() {
       queryClient.invalidateQueries(['tenant-users']);
       setShowEditForm(false);
       setSelectedUser(null);
+      alert('User updated successfully!');
+    },
+    onError: (error) => {
+      console.error('Error updating user:', error);
+      alert('Failed to update user: ' + (error.message || 'Unknown error'));
     }
   });
 
