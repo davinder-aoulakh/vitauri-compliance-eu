@@ -814,7 +814,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               {/* Pre-existing Account */}
               <div>
                 <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
-                  Pre-existing Account (opened before Dec 31, 2018)
+                  Pre-existing Account (opened before Dec 31, 2017)
                 </Label>
                 <div className="mt-2">
                   <RadioGroup
