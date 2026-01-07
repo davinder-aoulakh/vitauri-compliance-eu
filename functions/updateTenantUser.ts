@@ -15,8 +15,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Only tenant admins can update users' }, { status: 403 });
     }
 
-    // Get request body
-    const { userId, userData } = await req.json();
+    // Parse request body
+    const body = await req.json();
+    const { userId, userData } = body;
     
     if (!userId || !userData) {
       return Response.json({ error: 'Missing userId or userData' }, { status: 400 });
