@@ -217,14 +217,14 @@ export default function WidgetPreview({ widget, tenantId }) {
         icon = <Building2 className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
         if (!subDescription) subDescription = `${entities.length} total entities`;
-        drilldownUrl = createPageUrl("Accounts");
+        drilldownUrl = createPageUrl("Accounts") + "?entity_classification=active_nfe";
         break;
       case 'passive_nfe_entities':
         value = accounts.filter(a => a.entity_classification === 'passive_nfe').length;
         icon = <Building2 className="w-6 h-6 text-purple-600" />;
         iconBgColor = 'bg-purple-100';
         if (!subDescription) subDescription = `${entities.length} total entities`;
-        drilldownUrl = createPageUrl("Accounts");
+        drilldownUrl = createPageUrl("Accounts") + "?entity_classification=passive_nfe";
         break;
       case 'total_crs_reports':
         value = reports.length;
