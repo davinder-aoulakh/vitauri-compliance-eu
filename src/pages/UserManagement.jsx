@@ -304,10 +304,10 @@ export default function UserManagement() {
                               className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0"
                               style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
                             >
-                              {u.full_name?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase() || "U"}
+                              {(u.display_name || u.full_name)?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase() || "U"}
                             </div>
                             <div>
-                              <p className="font-semibold text-slate-900">{u.full_name || "—"}</p>
+                              <p className="font-semibold text-slate-900">{u.display_name || u.full_name || "—"}</p>
                               <p className="text-xs text-slate-500">{u.email}</p>
                             </div>
                           </div>

@@ -31,23 +31,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'User not found in your organization' }, { status: 404 });
     }
 
-    // Update user - separate built-in fields from custom fields
-    const { full_name, ...customFields } = userData;
-    
-    // Update custom fields using entities API
-    let updatedUser = await base44.asServiceRole.entities.User.update(userId, customFields);
-    
-    // If full_name needs to be updated, use auth.updateMe for the current user
-    // or store it in a custom field since built-in full_name can't be modified for other users
-    if (full_name && userId === user.id) {
-      updatedUser = await base44.auth.updateMe({ full_name });
-    } else if (full_name) {
-      // Store in a custom field instead since we can't update other users' built-in full_name
-      updatedUser = await base44.asServiceRole.entities.User.update(userId, { 
-        ...customFields,
-        display_name: full_name 
-      });
-    }
+    // Update user using service role
+    const updatedUser = await base44.asServiceRole.entities.User.update(userId, userData);
 
     return Response.json({ user: updatedUser }, { status: 200 });
   } catch (error) {

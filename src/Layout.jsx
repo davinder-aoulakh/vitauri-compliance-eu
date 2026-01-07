@@ -630,11 +630,11 @@ export default function Layout({ children }) {
                     className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-semibold text-sm shadow-sm"
                     style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
                   >
-                    {user?.full_name?.[0]?.toUpperCase() || "U"}
+                    {(user?.display_name || user?.full_name)?.[0]?.toUpperCase() || "U"}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="font-medium text-slate-900 text-sm truncate">
-                      {user?.full_name || "User"}
+                      {user?.display_name || user?.full_name || "User"}
                     </p>
                     <p className="text-xs text-slate-500 truncate capitalize">
                       {user?.user_role?.replace("_", " ") || "User"}
