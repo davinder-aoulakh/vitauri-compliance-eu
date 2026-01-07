@@ -69,8 +69,7 @@ export default function UserManagement() {
     queryKey: ['tenant-users', user?.tenant_id],
     queryFn: async () => {
       if (!user?.tenant_id) return [];
-      const allUsers = await base44.entities.User.list();
-      return allUsers.filter(u => u.tenant_id === user.tenant_id);
+      return base44.entities.User.filter({ tenant_id: user.tenant_id });
     },
     enabled: !!user?.tenant_id
   });
