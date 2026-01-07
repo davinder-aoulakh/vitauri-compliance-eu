@@ -183,7 +183,7 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
-                Welcome back, {user?.full_name?.split(' ')[0] || "User"}
+                Welcome back, {(user?.display_name || user?.full_name)?.split(' ')[0] || "User"}
               </h1>
               <p className="text-slate-600">
                 {customDashboard.description || `Here's your CRS compliance overview for ${tenant?.name || "your organization"}`}
@@ -250,7 +250,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
-              Welcome back, {user?.full_name?.split(' ')[0] || "User"}
+              Welcome back, {(user?.display_name || user?.full_name)?.split(' ')[0] || "User"}
             </h1>
             <p className="text-slate-600">
               Here's your CRS compliance overview for {tenant?.name || "your organization"}
