@@ -77,8 +77,15 @@ export default function XMLValidator({
       validationResults.is_valid = validationResults.errors.length === 0;
       validationResults.passed_checks = validationResults.total_checks - validationResults.errors.length;
 
+      // Convert error/warning objects to strings for storage
+      const resultsForStorage = {
+        ...validationResults,
+        errors: validationResults.errors.map(e => typeof e === 'string' ? e : e.message || JSON.stringify(e)),
+        warnings: validationResults.warnings.map(w => typeof w === 'string' ? w : w.message || JSON.stringify(w))
+      };
+      
       setResults(validationResults);
-      onValidationComplete?.(validationResults);
+      onValidationComplete?.(resultsForStorage);
 
     } catch (error) {
       validationResults.errors.push({

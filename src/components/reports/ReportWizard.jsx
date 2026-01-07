@@ -182,7 +182,7 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
         validation_results: {
           is_valid: previewData.validation_warnings.length === 0,
           errors: [],
-          warnings: previewData.validation_warnings,
+          warnings: previewData.validation_warnings.map(w => typeof w === 'string' ? w : w.message || JSON.stringify(w)),
           validated_date: new Date().toISOString()
         }
       };
