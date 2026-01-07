@@ -31,8 +31,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'User not found in your organization' }, { status: 404 });
     }
 
-    // Update the user using service role
-    const updatedUser = await base44.asServiceRole.entities.User.update(userId, userData);
+    // Update the user using auth API (for built-in fields like full_name)
+    const updatedUser = await base44.asServiceRole.auth.updateUser(userId, userData);
 
     return Response.json({ user: updatedUser }, { status: 200 });
   } catch (error) {
