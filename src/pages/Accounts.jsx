@@ -20,12 +20,14 @@ import {
   Flag,
   FileCheck,
   Brain,
-  Globe
+  Globe,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -59,6 +61,7 @@ import ComplianceFlags from "../components/accounts/ComplianceFlags";
 import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluator";
 import AIDataValidator from "../components/ai/AIDataValidator";
 import AIJurisdictionAdvisor from "../components/ai/AIJurisdictionAdvisor";
+import BulkUpdateForm from "../components/accounts/BulkUpdateForm";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -82,6 +85,8 @@ export default function AccountsPage() {
   const [entityFilter, setEntityFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("accounts");
+  const [selectedAccountIds, setSelectedAccountIds] = useState([]);
+  const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -228,6 +233,45 @@ export default function AccountsPage() {
     }
   });
 
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ field, value }) => {
+      const updatePromises = selectedAccountIds.map(id =>
+        base44.entities.Account.update(id, { [field]: value })
+      );
+      return await Promise.all(updatePromises);
+    },
+    onSuccess: async (updatedAccounts) => {
+      queryClient.invalidateQueries(['accounts']);
+      setShowBulkUpdate(false);
+      setSelectedAccountIds([]);
+      
+      // Create audit log entries
+      try {
+        const auditPromises = updatedAccounts.map(account =>
+          base44.entities.AuditLog.create({
+            tenant_id: user.tenant_id,
+            action_type: "account_updated",
+            actor_email: user.email,
+            actor_role: user.user_role,
+            target_entity_type: "Account",
+            target_entity_id: account.id,
+            changes: { bulk_update: true },
+            timestamp: new Date().toISOString()
+          })
+        );
+        await Promise.all(auditPromises);
+      } catch (error) {
+        console.error("Error creating audit logs:", error);
+      }
+      
+      alert(`Successfully updated ${updatedAccounts.length} account(s)`);
+    },
+    onError: (error) => {
+      console.error("Bulk update error:", error);
+      alert("Error updating accounts: " + error.message);
+    }
+  });
+
   const handleEdit = (account) => {
     setSelectedAccount(account);
     setShowForm(true);
@@ -258,6 +302,26 @@ export default function AccountsPage() {
   const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this account?")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleBulkUpdate = (field, value) => {
+    bulkUpdateMutation.mutate({ field, value });
+  };
+
+  const handleSelectAccount = (accountId) => {
+    setSelectedAccountIds(prev =>
+      prev.includes(accountId)
+        ? prev.filter(id => id !== accountId)
+        : [...prev, accountId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedAccountIds.length === filteredAccounts.length) {
+      setSelectedAccountIds([]);
+    } else {
+      setSelectedAccountIds(filteredAccounts.map(a => a.id));
     }
   };
 
@@ -339,6 +403,16 @@ export default function AccountsPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            {selectedAccountIds.length > 0 && (
+              <Button 
+                onClick={() => setShowBulkUpdate(true)}
+                variant="outline"
+                className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Bulk Update ({selectedAccountIds.length})
+              </Button>
+            )}
             {(tenant?.enabled_features?.ai_bulk_import !== false) && (
               <Button 
                 onClick={() => setShowBulkImport(true)}
@@ -579,6 +653,12 @@ export default function AccountsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/50">
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={selectedAccountIds.length === filteredAccounts.length && filteredAccounts.length > 0}
+                              onCheckedChange={handleSelectAll}
+                            />
+                          </TableHead>
                           <TableHead>Account Holder</TableHead>
                           <TableHead>Account Number</TableHead>
                           <TableHead>Type</TableHead>
@@ -596,6 +676,12 @@ export default function AccountsPage() {
                           
                           return (
                             <TableRow key={account.id} className="hover:bg-slate-50/50">
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedAccountIds.includes(account.id)}
+                                  onCheckedChange={() => handleSelectAccount(account.id)}
+                                />
+                              </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <div 
@@ -841,6 +927,20 @@ export default function AccountsPage() {
               queryClient.invalidateQueries(['accounts']);
             }}
             onCancel={() => setShowBulkImport(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkUpdate} onOpenChange={setShowBulkUpdate}>
+        <DialogContent className="max-w-xl" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Bulk Update Accounts</DialogTitle>
+          </DialogHeader>
+          <BulkUpdateForm
+            selectedAccounts={accounts.filter(a => selectedAccountIds.includes(a.id))}
+            onUpdate={handleBulkUpdate}
+            onCancel={() => setShowBulkUpdate(false)}
+            isLoading={bulkUpdateMutation.isPending}
           />
         </DialogContent>
       </Dialog>
