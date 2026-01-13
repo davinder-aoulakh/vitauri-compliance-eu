@@ -535,6 +535,26 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
 
             <div>
+              <Label htmlFor="status">Account Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleChange("status", value)}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="dormant">Dormant</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500 mt-1">
+                Current operational status of the account
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="current_email" className="text-slate-700">
                 Current Email Address <span className="text-red-600">*</span>
               </Label>
