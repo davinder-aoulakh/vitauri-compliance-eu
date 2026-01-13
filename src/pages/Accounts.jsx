@@ -87,6 +87,7 @@ export default function AccountsPage() {
   const [activeTab, setActiveTab] = useState("accounts");
   const [selectedAccountIds, setSelectedAccountIds] = useState([]);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -272,6 +273,45 @@ export default function AccountsPage() {
     }
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async () => {
+      const deletePromises = selectedAccountIds.map(id =>
+        base44.entities.Account.delete(id)
+      );
+      return await Promise.all(deletePromises);
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries(['accounts']);
+      setShowBulkDelete(false);
+      setSelectedAccountIds([]);
+      
+      // Create audit log entries
+      try {
+        const auditPromises = selectedAccountIds.map(id =>
+          base44.entities.AuditLog.create({
+            tenant_id: user.tenant_id,
+            action_type: "account_deleted",
+            actor_email: user.email,
+            actor_role: user.user_role,
+            target_entity_type: "Account",
+            target_entity_id: id,
+            changes: { bulk_delete: true },
+            timestamp: new Date().toISOString()
+          })
+        );
+        await Promise.all(auditPromises);
+      } catch (error) {
+        console.error("Error creating audit logs:", error);
+      }
+      
+      alert(`Successfully deleted ${selectedAccountIds.length} account(s)`);
+    },
+    onError: (error) => {
+      console.error("Bulk delete error:", error);
+      alert("Error deleting accounts: " + error.message);
+    }
+  });
+
   const handleEdit = (account) => {
     setSelectedAccount(account);
     setShowForm(true);
@@ -404,14 +444,24 @@ export default function AccountsPage() {
           </div>
           <div className="flex gap-2">
             {selectedAccountIds.length > 0 && (
-              <Button 
-                onClick={() => setShowBulkUpdate(true)}
-                variant="outline"
-                className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Bulk Update ({selectedAccountIds.length})
-              </Button>
+              <>
+                <Button 
+                  onClick={() => setShowBulkUpdate(true)}
+                  variant="outline"
+                  className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Bulk Update ({selectedAccountIds.length})
+                </Button>
+                <Button 
+                  onClick={() => setShowBulkDelete(true)}
+                  variant="outline"
+                  className="gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Bulk Delete ({selectedAccountIds.length})
+                </Button>
+              </>
             )}
             {(tenant?.enabled_features?.ai_bulk_import !== false) && (
               <Button 
@@ -942,6 +992,66 @@ export default function AccountsPage() {
             onCancel={() => setShowBulkUpdate(false)}
             isLoading={bulkUpdateMutation.isPending}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+        <DialogContent className="max-w-xl" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Confirm Bulk Delete</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <Alert className="bg-red-50 border-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <AlertDescription className="text-red-900">
+                <strong>Warning: This action cannot be undone!</strong>
+                <p className="mt-2">
+                  You are about to permanently delete <strong>{selectedAccountIds.length}</strong> account{selectedAccountIds.length !== 1 ? 's' : ''}.
+                </p>
+              </AlertDescription>
+            </Alert>
+
+            <div className="bg-slate-50 rounded-lg p-4 max-h-48 overflow-y-auto">
+              <h4 className="text-sm font-semibold text-slate-700 mb-2">Accounts to be deleted:</h4>
+              <ul className="space-y-1">
+                {accounts.filter(a => selectedAccountIds.includes(a.id)).map((account) => (
+                  <li key={account.id} className="text-sm text-slate-600 flex items-center gap-2">
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                    <span className="font-medium">{account.account_holder_name}</span>
+                    <span className="text-slate-400">({account.account_number})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowBulkDelete(false)}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => bulkDeleteMutation.mutate()}
+                disabled={bulkDeleteMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {bulkDeleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Confirm Delete
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -10,11 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function BulkUpdateForm({ selectedAccounts, onUpdate, onCancel, isLoading }) {
   const [selectedField, setSelectedField] = useState("");
   const [fieldValue, setFieldValue] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Define updateable fields with their types and options
   const updateableFields = [
@@ -82,8 +83,81 @@ export default function BulkUpdateForm({ selectedAccounts, onUpdate, onCancel, i
       alert("Please select a field and provide a value");
       return;
     }
+    setShowConfirmation(true);
+  };
+
+  const handleConfirm = () => {
     onUpdate(selectedField, fieldValue);
   };
+
+  const getFieldLabel = () => {
+    return updateableFields.find(f => f.key === selectedField)?.label || selectedField;
+  };
+
+  const getValueLabel = () => {
+    if (selectedFieldConfig?.type === "select") {
+      return selectedFieldConfig.options.find(o => o.value === fieldValue)?.label || fieldValue;
+    }
+    return fieldValue;
+  };
+
+  if (showConfirmation) {
+    return (
+      <div className="space-y-6">
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <AlertDescription className="text-amber-900">
+            <strong>Confirm Bulk Update</strong>
+            <div className="mt-3 space-y-2">
+              <p>You are about to update <strong>{selectedAccounts.length}</strong> account{selectedAccounts.length !== 1 ? 's' : ''}:</p>
+              <div className="bg-white rounded p-3 border border-amber-200">
+                <p className="font-semibold">Field: <span className="text-slate-900">{getFieldLabel()}</span></p>
+                <p className="font-semibold">New Value: <span className="text-slate-900">{getValueLabel()}</span></p>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+
+        <div className="bg-slate-50 rounded-lg p-4 max-h-48 overflow-y-auto">
+          <h4 className="text-sm font-semibold text-slate-700 mb-2">Affected Accounts:</h4>
+          <ul className="space-y-1">
+            {selectedAccounts.map((account, idx) => (
+              <li key={idx} className="text-sm text-slate-600 flex items-center gap-2">
+                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                <span className="font-medium">{account.account_holder_name}</span>
+                <span className="text-slate-400">({account.account_number})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => setShowConfirmation(false)} 
+            disabled={isLoading}
+          >
+            Back
+          </Button>
+          <Button 
+            onClick={handleConfirm}
+            disabled={isLoading}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              `Confirm Update`
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
