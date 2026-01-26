@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
+  const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
   const [formData, setFormData] = useState({
     entity_id: account?.entity_id || "",
     account_number: account?.account_number || "",
@@ -110,6 +112,16 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       }
     }
   }, [formData.account_creation_date]);
+
+  // Handle "Same as Original Address" checkbox
+  useEffect(() => {
+    if (isCurrentAddressSameAsOriginal) {
+      setFormData(prev => ({
+        ...prev,
+        current_address: { ...prev.account_holder_address }
+      }));
+    }
+  }, [isCurrentAddressSameAsOriginal, formData.account_holder_address]);
 
   useEffect(() => {
     if (!initialData || !account) return;
@@ -661,9 +673,21 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
           {/* Current Address Section */}
           <div className="mt-6">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">
-              Current Address <span className="text-red-600">*</span>
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">
+                Current Address <span className="text-red-600">*</span>
+              </h3>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="same_as_original"
+                  checked={isCurrentAddressSameAsOriginal}
+                  onCheckedChange={setIsCurrentAddressSameAsOriginal}
+                />
+                <Label htmlFor="same_as_original" className="text-sm font-normal cursor-pointer">
+                  Same as Original Address
+                </Label>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <Label htmlFor="current_street" className="text-slate-700">
@@ -674,6 +698,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.street || ""}
                   onChange={(e) => handleCurrentAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
+                  disabled={isCurrentAddressSameAsOriginal}
                   className={`mt-1.5 ${submitted && !formData.current_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -687,6 +712,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.city || ""}
                   onChange={(e) => handleCurrentAddressChange("city", e.target.value)}
                   placeholder="City"
+                  disabled={isCurrentAddressSameAsOriginal}
                   className={`mt-1.5 ${submitted && !formData.current_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -700,6 +726,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.state || ""}
                   onChange={(e) => handleCurrentAddressChange("state", e.target.value)}
                   placeholder="State/Province"
+                  disabled={isCurrentAddressSameAsOriginal}
                   className={`mt-1.5 ${submitted && !formData.current_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -713,6 +740,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.current_address?.postal_code || ""}
                   onChange={(e) => handleCurrentAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
+                  disabled={isCurrentAddressSameAsOriginal}
                   className={`mt-1.5 ${submitted && !formData.current_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -726,6 +754,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     value={formData.current_address?.country || ""}
                     onValueChange={(value) => handleCurrentAddressChange("country", value)}
                     placeholder="Select country..."
+                    disabled={isCurrentAddressSameAsOriginal}
                     className={submitted && !formData.current_address?.country ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                   />
                 </div>
