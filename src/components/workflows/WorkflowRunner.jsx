@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,12 @@ import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
-export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel }) {
+export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [mappedEntityData, setMappedEntityData] = useState(null);
+  const [mappedEntityType, setMappedEntityType] = useState(null);
+  const [mappedEntityId, setMappedEntityId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [showFlowchart, setShowFlowchart] = useState(false);
@@ -37,6 +40,60 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleAnswer = (stepId, answer) => {
     setAnswers(prev => ({ ...prev, [stepId]: answer }));
   };
+
+  // Effect to load mapped entity data and pre-fill answers
+  useEffect(() => {
+    const loadMappedEntityData = async () => {
+      if (!workflow || (!accountId && !entityId)) return;
+
+      let entityType = null;
+      let entityData = null;
+      let id = null;
+
+      if (accountId) {
+        entityType = "Account";
+        id = accountId;
+        const accounts = await base44.entities.Account.filter({ id: accountId });
+        entityData = accounts[0];
+      } else if (entityId) {
+        entityType = "Entity";
+        id = entityId;
+        const entities = await base44.entities.Entity.filter({ id: entityId });
+        entityData = entities[0];
+      }
+
+      if (entityData) {
+        setMappedEntityData(entityData);
+        setMappedEntityType(entityType);
+        setMappedEntityId(id);
+        
+        const initialAnswers = {};
+        workflow.steps.forEach(step => {
+          if (step.mapped_field && step.mapped_field.entity_type === entityType && step.mapped_field.field_name) {
+            const fieldName = step.mapped_field.field_name;
+            let fieldValue = entityData[fieldName];
+
+            // Only pre-fill if the field value is not blank
+            if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
+              // Special handling for boolean fields from entity to 'YES'/'NO' for workflow
+              if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
+                initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+              } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
+                initialAnswers[step.step_id] = fieldValue;
+              } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {
+                initialAnswers[step.step_id] = fieldValue;
+              } else {
+                initialAnswers[step.step_id] = String(fieldValue);
+              }
+            }
+          }
+        });
+        setAnswers(prev => ({ ...prev, ...initialAnswers }));
+      }
+    };
+
+    loadMappedEntityData();
+  }, [workflow, accountId, entityId]);
 
   const handleNext = () => {
     const answer = answers[currentStep.step_id];
@@ -260,7 +317,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return conditionsMet ? logic.next_step : logic.else_step;
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     setLoading(true);
     
     // Build completion data
@@ -275,8 +332,42 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       };
     });
 
-    onComplete(completionData);
-    setLoading(false);
+    // Update mapped entity fields
+    const updates = {};
+    for (const [stepId, answer] of Object.entries(answers)) {
+      const step = workflow.steps.find(s => s.step_id === stepId);
+      if (step?.mapped_field && step.mapped_field.entity_type === mappedEntityType && step.mapped_field.field_name) {
+        const fieldName = step.mapped_field.field_name;
+        let valueToUpdate = answer;
+
+        // Type conversions based on question type
+        if (step.question_type === 'yes_no') {
+          valueToUpdate = (answer === 'YES');
+        } else if (step.question_type === 'number_input') {
+          valueToUpdate = Number(answer);
+        } else if (step.question_type === 'date_input' && answer) {
+          valueToUpdate = answer.includes('T') ? answer.split('T')[0] : answer;
+        }
+
+        updates[fieldName] = valueToUpdate;
+      }
+    }
+
+    try {
+      if (Object.keys(updates).length > 0 && mappedEntityType && mappedEntityId) {
+        if (mappedEntityType === "Account") {
+          await base44.entities.Account.update(mappedEntityId, updates);
+        } else if (mappedEntityType === "Entity") {
+          await base44.entities.Entity.update(mappedEntityId, updates);
+        }
+      }
+      onComplete(completionData);
+    } catch (error) {
+      console.error("Error updating mapped entity fields:", error);
+      alert("Workflow completed, but failed to update mapped fields: " + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderQuestionInput = () => {

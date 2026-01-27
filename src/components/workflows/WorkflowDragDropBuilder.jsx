@@ -499,6 +499,20 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   );
 }
 
+// Helper function to determine the field type of a workflow question
+const getQuestionFieldType = (questionType) => {
+  switch (questionType) {
+    case 'yes_no': return 'boolean';
+    case 'text_input':
+    case 'single_choice':
+    case 'multiple_choice': return 'string'; 
+    case 'number_input': return 'number';
+    case 'date_input': return 'date';
+    case 'address_input': return 'object'; // Address input is an object with sub-fields
+    default: return null;
+  }
+};
+
 // Define Entity and Account field schemas with their possible values
 const ENTITY_FIELDS_SCHEMA = {
   rfi_status: {
@@ -618,7 +632,8 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const [editedStep, setEditedStep] = useState({ 
     ...step,
     default_next_step: step.default_next_step || "",
-    conditional_logic: normalizedConditionalLogic
+    conditional_logic: normalizedConditionalLogic,
+    mapped_field: step.mapped_field || { entity_type: "", field_name: "" }
   });
   const [showAdvancedLogic, setShowAdvancedLogic] = useState(
     step.conditional_logic?.conditions?.length > 0
@@ -631,20 +646,49 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   const accountFields = React.useMemo(() => {
     return [
       { value: "account_number", label: "Account Number", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_creation_date", label: "Account Creation Date", type: "date", isCountry: false, group: "Account Fields" },
       { value: "account_type", label: "Account Type", type: "string", isCountry: false, group: "Account Fields" },
       { value: "account_holder_type", label: "Account Holder Type", type: "string", isCountry: false, group: "Account Fields" },
       { value: "account_holder_name", label: "Account Holder Name", type: "string", isCountry: false, group: "Account Fields" },
-      { value: "date_of_birth", label: "Date of Birth", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "date_of_birth", label: "Date of Birth", type: "date", isCountry: false, group: "Account Fields" },
       { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true, group: "Account Fields" },
       { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean", isCountry: false, group: "Account Fields" },
       { value: "account_holder_is_alive", label: "Account Holder Is Alive", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_deceased_during_period", label: "Account Holder Deceased During Period", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "death_certificate_requested", label: "Death Certificate Requested", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "death_certificate_received", label: "Death Certificate Received", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "will_or_inheritance_requested", label: "Will or Inheritance Requested", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "will_or_inheritance_received", label: "Will or Inheritance Received", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "legacy_of_deceased_settled", label: "Legacy of Deceased Settled", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "entity_managed_by_fiduciary_trust", label: "Entity Managed by Fiduciary Trust", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "entity_managed_by_asset_manager", label: "Entity Managed by Asset Manager", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "gross_income_from_financial_assets", label: "Gross Income From Financial Assets", type: "boolean", isCountry: false, group: "Account Fields" },
       { value: "account_closed_during_period", label: "Account Closed During Period", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "current_address", label: "Current Address (Object)", type: "object", isCountry: false, group: "Account Fields" },
+      { value: "current_address.street", label: "Current Address Street", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "current_address.city", label: "Current Address City", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "current_address.state", label: "Current Address State", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "current_address.postal_code", label: "Current Address Postal Code", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "current_address.country", label: "Current Address Country", type: "string", isCountry: true, group: "Account Fields" },
+      { value: "account_holder_address", label: "Account Holder Address (Object)", type: "object", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_address.street", label: "Account Holder Address Street", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_address.city", label: "Account Holder Address City", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_address.state", label: "Account Holder Address State", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_address.postal_code", label: "Account Holder Address Postal Code", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "account_holder_address.country", label: "Account Holder Address Country", type: "string", isCountry: true, group: "Account Fields" },
       { value: "country_of_residence", label: "Country of Residence", type: "string", isCountry: true, group: "Account Fields" },
+      { value: "current_email", label: "Current Email", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "current_phone", label: "Current Phone", type: "string", isCountry: false, group: "Account Fields" },
+      { value: "entity_classification", label: "Entity Classification", type: "string", isCountry: false, group: "Account Fields" },
       { value: "year_end_cash_value", label: "Year End Cash Value", type: "number", isCountry: false, group: "Account Fields" },
       { value: "gross_payments", label: "Gross Payments", type: "number", isCountry: false, group: "Account Fields" },
+      { value: "reporting_year", label: "Reporting Year", type: "string", isCountry: false, group: "Account Fields" },
       { value: "reportability_status", label: "Reportability Status", type: "string", isCountry: false, group: "Account Fields" },
-      { value: "account_holder_address.country", label: "Account Holder Address Country", type: "string", isCountry: true, group: "Account Fields" },
-      { value: "current_address.country", label: "Current Address Country", type: "string", isCountry: true, group: "Account Fields" },
+      { value: "us_person_indic", label: "US Person Indicia", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "self_certification_obtained", label: "Self-Certification Obtained", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "self_certification_date", label: "Self-Certification Date", type: "date", isCountry: false, group: "Account Fields" },
+      { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean", isCountry: false, group: "Account Fields" },
+      { value: "status", label: "Status", type: "string", isCountry: false, group: "Account Fields" }
     ];
   }, []);
 
@@ -658,8 +702,15 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       { value: "giin", label: "GIIN", type: "string", isCountry: false, group: "Entity Fields" },
       { value: "rfi_status", label: "RFI Status", type: "string", isCountry: false, group: "Entity Fields" },
       { value: "fi_type", label: "FI Type", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "non_reporting_reason", label: "Non-Reporting Reason", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "classification_completed_date", label: "Classification Completed Date", type: "date", isCountry: false, group: "Entity Fields" },
+      { value: "address", label: "Address (Object)", type: "object", isCountry: false, group: "Entity Fields" },
+      { value: "address.street", label: "Address Street", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "address.city", label: "Address City", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "address.state", label: "Address State", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "address.postal_code", label: "Address Postal Code", type: "string", isCountry: false, group: "Entity Fields" },
       { value: "address.country", label: "Address Country", type: "string", isCountry: true, group: "Entity Fields" },
-      { value: "status", label: "Status", type: "string", isCountry: false, group: "Entity Fields" },
+      { value: "status", label: "Status", type: "string", isCountry: false, group: "Entity Fields" }
     ];
   }, []);
 
@@ -879,12 +930,45 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     });
   };
 
+  const handleMappedFieldChange = (field, value) => {
+    setEditedStep(prev => ({
+      ...prev,
+      mapped_field: {
+        ...prev.mapped_field,
+        [field]: value
+      }
+    }));
+  };
+
+  const filteredMappedFields = React.useMemo(() => {
+    if (!editedStep.mapped_field?.entity_type) return [];
+    const allFields = editedStep.mapped_field.entity_type === "Account" ? accountFields : entityFields;
+    const questionFieldType = getQuestionFieldType(editedStep.question_type);
+    
+    if (!questionFieldType) return [];
+
+    // Filter fields based on type compatibility
+    return allFields.filter(field => {
+      // Special handling for address_input - can only map to address object fields
+      if (editedStep.question_type === 'address_input') {
+        return field.type === 'object' && (field.value === 'current_address' || field.value === 'account_holder_address');
+      }
+
+      // Match field types
+      if (field.type === questionFieldType) {
+        return true;
+      }
+      return false;
+    });
+  }, [editedStep.mapped_field?.entity_type, editedStep.question_type, accountFields, entityFields]);
+
   const handleSave = () => {
     console.log(`[StepEditor] Saving step ${editedStep.step_id}:`, {
       option_values: editedStep.conditional_logic?.option_values,
       option_values_next_step: editedStep.conditional_logic?.option_values_next_step,
       option_values_else_step: editedStep.conditional_logic?.option_values_else_step,
-      full_conditional_logic: editedStep.conditional_logic
+      full_conditional_logic: editedStep.conditional_logic,
+      mapped_field: editedStep.mapped_field
     });
     onUpdate(editedStep);
     onClose();
@@ -1811,6 +1895,66 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               );
             })}
           </div>
+        )}
+      </div>
+
+      {/* Mapped Field Configuration */}
+      <div className="border-t pt-4">
+        <Label className="flex items-center gap-2 mb-2">
+          <LinkIcon className="w-4 h-4 text-emerald-600" />
+          Map to Entity/Account Field (Optional)
+        </Label>
+        <p className="text-xs text-slate-600 mb-3">
+          Link this question to an entity or account field for pre-filling and automated updates.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs">Target Entity Type</Label>
+            <Select
+              value={editedStep.mapped_field?.entity_type || ""}
+              onValueChange={(value) => handleMappedFieldChange("entity_type", value)}
+            >
+              <SelectTrigger className="h-8 text-xs mt-1">
+                <SelectValue placeholder="Select entity type..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>None</SelectItem>
+                <SelectItem value="Account">Account</SelectItem>
+                <SelectItem value="Entity">Entity</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Target Field</Label>
+            <Select
+              value={editedStep.mapped_field?.field_name || ""}
+              onValueChange={(value) => handleMappedFieldChange("field_name", value)}
+              disabled={!editedStep.mapped_field?.entity_type}
+            >
+              <SelectTrigger className="h-8 text-xs mt-1">
+                <SelectValue placeholder="Select field..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {filteredMappedFields.length === 0 ? (
+                  <div className="p-2 text-xs text-slate-500 italic">
+                    {editedStep.mapped_field?.entity_type ? "No compatible fields for this question type" : "Select entity type first"}
+                  </div>
+                ) : (
+                  filteredMappedFields.map(field => (
+                    <SelectItem key={`mapped-field-${field.value}`} value={field.value}>
+                      {field.label}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {editedStep.mapped_field?.entity_type && editedStep.mapped_field?.field_name && (
+          <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
+            <LinkIcon className="w-3 h-3" />
+            This question will pre-fill from and update: {editedStep.mapped_field.entity_type}.{editedStep.mapped_field.field_name}
+          </p>
         )}
       </div>
 
