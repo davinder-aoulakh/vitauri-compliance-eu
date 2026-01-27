@@ -56,10 +56,17 @@ Deno.serve(async (req) => {
         }
 
         // Update the account with the classification result
-        await base44.asServiceRole.entities.Account.update(accountId, {
+        const updateData = {
             reportability_status: matchedRule.classification_result,
             reportability_reason: matchedRule.classification_reason
-        });
+        };
+        
+        // If entity_classification_result is set and account is entity type, update it
+        if (matchedRule.entity_classification_result && account.account_holder_type === "entity") {
+            updateData.entity_classification = matchedRule.entity_classification_result;
+        }
+        
+        await base44.asServiceRole.entities.Account.update(accountId, updateData);
 
         // Create classification history entry
         await base44.asServiceRole.entities.AccountClassificationHistory.create({
