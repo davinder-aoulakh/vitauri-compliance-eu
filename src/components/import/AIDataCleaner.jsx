@@ -344,11 +344,32 @@ Return JSON:
       case 'whitespace':
         return value?.trim() || '';
       case 'invalid_date':
-        // Try to parse and standardize date
+        // Try to parse and standardize date from various formats
+        if (!value) return value;
+        
+        // Check for DD/MM/YYYY format
+        const ddmmyyyyMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (ddmmyyyyMatch) {
+          const [, day, month, year] = ddmmyyyyMatch;
+          return `${year}-${month}-${day}`;
+        }
+        
+        // Check for DD-MM-YYYY format
+        const ddmmyyyyDashMatch = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (ddmmyyyyDashMatch) {
+          const [, day, month, year] = ddmmyyyyDashMatch;
+          return `${year}-${month}-${day}`;
+        }
+        
+        // Try parsing as standard date
         const date = new Date(value);
         if (!isNaN(date.getTime())) {
-          return date.toISOString().split('T')[0];
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         }
+        
         return value;
       case 'invalid_boolean':
         const lower = String(value).toLowerCase().trim();
