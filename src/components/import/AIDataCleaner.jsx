@@ -294,13 +294,25 @@ Return JSON:
 
   const isValidDate = (str) => {
     if (!str) return false;
-    // Try multiple date formats
-    const formats = [
-      /^\d{4}-\d{2}-\d{2}$/,
-      /^\d{2}\/\d{2}\/\d{4}$/,
-      /^\d{2}-\d{2}-\d{4}$/,
-    ];
-    return formats.some(f => f.test(str)) && !isNaN(new Date(str).getTime());
+    
+    // Accept YYYY-MM-DD format (target format)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const date = new Date(str);
+      return !isNaN(date.getTime());
+    }
+    
+    // Reject other formats (need conversion)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+      return false; // DD/MM/YYYY needs conversion
+    }
+    
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+      return false; // DD-MM-YYYY needs conversion
+    }
+    
+    // Try parsing as standard date
+    const date = new Date(str);
+    return !isNaN(date.getTime());
   };
 
   const isValidEmail = (str) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
