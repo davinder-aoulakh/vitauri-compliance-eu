@@ -34,6 +34,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     account_type: account?.account_type || "depository",
     account_holder_type: account?.account_holder_type || "individual",
     account_holder_name: account?.account_holder_name || "",
+    first_name: account?.first_name || "",
+    last_name: account?.last_name || "",
     date_of_birth: account?.date_of_birth || "",
     place_of_birth: account?.place_of_birth || "",
     is_pre_existing: account?.is_pre_existing || false,
@@ -223,8 +225,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     
     // Validate mandatory fields for individual accounts
     if (formData.account_holder_type === 'individual') {
-      if (!formData.account_holder_name?.trim()) {
-        alert("Account Holder Name is required for individual accounts");
+      if (!formData.first_name?.trim()) {
+        alert("First Name is required for individual accounts");
+        return;
+      }
+      if (!formData.last_name?.trim()) {
+        alert("Last Name is required for individual accounts");
         return;
       }
       if (!formData.date_of_birth) {
@@ -233,6 +239,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       }
       if (!formData.place_of_birth?.trim()) {
         alert("Place of Birth is required for individual accounts");
+        return;
+      }
+    }
+    
+    // Validate mandatory fields for entity accounts
+    if (formData.account_holder_type === 'entity') {
+      if (!formData.account_holder_name?.trim()) {
+        alert("Account Holder Name is required for entity accounts");
         return;
       }
     }
@@ -264,6 +278,11 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       indicia_found: newIndicia.length > 0 ? newIndicia : undefined,
       needs_reclassification: needsReclassification
     };
+    
+    // For individual accounts, construct account_holder_name from first_name and last_name
+    if (formData.account_holder_type === 'individual') {
+      updatedData.account_holder_name = `${formData.first_name} ${formData.last_name}`.trim();
+    }
 
     onSubmit(updatedData);
   };
@@ -479,19 +498,51 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="account_holder_name" className="text-slate-700">
-                Account Holder Name <span className="text-red-600">*</span>
-              </Label>
-              <Input
-                id="account_holder_name"
-                value={formData.account_holder_name}
-                onChange={(e) => handleChange("account_holder_name", e.target.value)}
-                placeholder="Full name"
-                required
-                className={`mt-1.5 ${submitted && !formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-              />
-            </div>
+            {formData.account_holder_type === "entity" && (
+              <div>
+                <Label htmlFor="account_holder_name" className="text-slate-700">
+                  Account Holder Name <span className="text-red-600">*</span>
+                </Label>
+                <Input
+                  id="account_holder_name"
+                  value={formData.account_holder_name}
+                  onChange={(e) => handleChange("account_holder_name", e.target.value)}
+                  placeholder="Entity name"
+                  required
+                  className={`mt-1.5 ${submitted && !formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                />
+              </div>
+            )}
+
+            {formData.account_holder_type === "individual" && (
+              <>
+                <div>
+                  <Label htmlFor="first_name" className="text-slate-700">
+                    First Name <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={(e) => handleChange("first_name", e.target.value)}
+                    placeholder="First name"
+                    className={`mt-1.5 ${submitted && !formData.first_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="last_name" className="text-slate-700">
+                    Last Name <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={(e) => handleChange("last_name", e.target.value)}
+                    placeholder="Last name"
+                    className={`mt-1.5 ${submitted && !formData.last_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  />
+                </div>
+              </>
+            )}
 
             {formData.account_holder_type === "individual" && (
               <>

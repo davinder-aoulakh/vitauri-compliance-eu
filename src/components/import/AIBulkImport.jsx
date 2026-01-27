@@ -55,7 +55,8 @@ export default function AIBulkImport({
     
     if (importType === "Account") {
       headers = [
-        "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Type", "Account Holder Name",
+        "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Type", 
+        "Account Holder Name (Entity Only)", "First Name (Individual Only)", "Last Name (Individual Only)",
         "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive", "Deceased During Period", "Account Closed During Period",
         "Death Certificate Requested", "Death Certificate Requested Date", "Death Certificate Received", "Death Certificate Received Date",
         "Will/Inheritance Requested", "Will/Inheritance Requested Date", "Will/Inheritance Received", "Will/Inheritance Received Date",
@@ -68,7 +69,7 @@ export default function AIBulkImport({
         "Reporting Year", "US Person Indicator", "Self Certification Obtained", "Self Certification Date",
         "Account Status", "Tax Residency 1 Country", "Tax Residency 1 TIN", "Tax Residency 2 Country", "Tax Residency 2 TIN"
       ];
-      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,individual,John Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
+      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,individual,,John,Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
     } else {
       headers = [
         "Entity Name", "Entity Type", "Country of Incorporation", "Tax ID", "GIIN",
@@ -244,6 +245,11 @@ export default function AIBulkImport({
         }
       });
       
+      // For individual accounts, construct account_holder_name from first_name and last_name
+      if (account.account_holder_type === 'individual' && account.first_name && account.last_name) {
+        account.account_holder_name = `${account.first_name} ${account.last_name}`.trim();
+      }
+      
       // Clean up tax residencies
       if (account.tax_residencies) {
         account.tax_residencies = account.tax_residencies.filter(t => t?.country);
@@ -282,7 +288,6 @@ export default function AIBulkImport({
       if (!record.entity_id) errors.push("Missing Entity ID");
       if (!record.account_number) errors.push("Missing Account Number");
       if (!record.account_creation_date) errors.push("Missing Account Opening Date");
-      if (!record.account_holder_name) errors.push("Missing Account Holder Name");
       if (!record.current_email) errors.push("Missing Current Email Address");
       if (!record.current_phone) errors.push("Missing Current Phone Number");
       
@@ -298,8 +303,15 @@ export default function AIBulkImport({
       
       // Individual-specific validations
       if (record.account_holder_type === 'individual') {
+        if (!record.first_name) errors.push("Missing First Name (required for individuals)");
+        if (!record.last_name) errors.push("Missing Last Name (required for individuals)");
         if (!record.date_of_birth) errors.push("Missing Date of Birth (required for individuals)");
         if (!record.place_of_birth) errors.push("Missing Place of Birth (required for individuals)");
+      }
+      
+      // Entity-specific validations
+      if (record.account_holder_type === 'entity') {
+        if (!record.account_holder_name) errors.push("Missing Account Holder Name (required for entities)");
       }
     } else {
       // Entity validations
