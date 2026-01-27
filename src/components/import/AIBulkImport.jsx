@@ -210,13 +210,33 @@ export default function AIBulkImport({
             if (!account.tax_residencies[idx]) account.tax_residencies[idx] = {};
             account.tax_residencies[idx][field] = value;
           }
-        } else if (['street', 'city', 'state', 'postal_code', 'country'].includes(targetField)) {
-          // Handle address fields
-          if (!account.account_holder_address) account.account_holder_address = {};
-          account.account_holder_address[targetField] = value;
+        } else if (targetField.startsWith('account_holder_')) {
+          // Handle account_holder_address fields
+          const addressField = targetField.replace('account_holder_', '');
+          if (['street', 'city', 'state', 'postal_code', 'country'].includes(addressField)) {
+            if (!account.account_holder_address) account.account_holder_address = {};
+            account.account_holder_address[addressField] = value;
+          } else {
+            account[targetField] = value;
+          }
+        } else if (targetField.startsWith('current_')) {
+          // Handle current_address fields
+          const addressField = targetField.replace('current_', '');
+          if (['street', 'city', 'state', 'postal_code', 'country'].includes(addressField)) {
+            if (!account.current_address) account.current_address = {};
+            account.current_address[addressField] = value;
+          } else {
+            account[targetField] = value;
+          }
         } else if (['year_end_cash_value', 'gross_payments'].includes(targetField)) {
           account[targetField] = parseFloat(value?.replace(/[,$]/g, '')) || 0;
-        } else if (['is_pre_existing', 'account_holder_is_alive', 'account_closed_during_period'].includes(targetField)) {
+        } else if ([
+          'is_pre_existing', 'account_holder_is_alive', 'account_holder_deceased_during_period',
+          'account_closed_during_period', 'death_certificate_requested', 'death_certificate_received',
+          'will_or_inheritance_requested', 'will_or_inheritance_received', 'legacy_of_deceased_settled',
+          'entity_managed_by_fiduciary_trust', 'entity_managed_by_asset_manager',
+          'gross_income_from_financial_assets', 'us_person_indic', 'self_certification_obtained'
+        ].includes(targetField)) {
           const lower = String(value).toLowerCase().trim();
           account[targetField] = ['true', 'yes', '1', 'y'].includes(lower);
         } else {
