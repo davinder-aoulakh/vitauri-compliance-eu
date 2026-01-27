@@ -39,6 +39,7 @@ import {
   X
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import ConditionGroupBuilder from "../components/rules/ConditionGroupBuilder";
 
 export default function AutoClassificationRulesPage() {
   const [user, setUser] = useState(null);
@@ -48,6 +49,11 @@ export default function AutoClassificationRulesPage() {
     rule_name: "",
     description: "",
     entity_type: "Account",
+    condition_group: {
+      logic_operator: "AND",
+      conditions: [],
+      subGroups: []
+    },
     conditions: [{ field: "", operator: "equals", value: "", logic_operator: "AND" }],
     classification_result: "reportable",
     classification_reason: "",
@@ -55,6 +61,7 @@ export default function AutoClassificationRulesPage() {
     priority: 0,
     is_active: true
   });
+  const [useGroupedConditions, setUseGroupedConditions] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -114,6 +121,11 @@ export default function AutoClassificationRulesPage() {
       rule_name: "",
       description: "",
       entity_type: "Account",
+      condition_group: {
+        logic_operator: "AND",
+        conditions: [],
+        subGroups: []
+      },
       conditions: [{ field: "", operator: "equals", value: "", logic_operator: "AND" }],
       classification_result: "reportable",
       classification_reason: "",
@@ -122,14 +134,22 @@ export default function AutoClassificationRulesPage() {
       is_active: true
     });
     setEditingRule(null);
+    setUseGroupedConditions(false);
   };
 
   const handleEdit = (rule) => {
     setEditingRule(rule);
+    const hasGroupedConditions = rule.condition_group && (rule.condition_group.conditions?.length > 0 || rule.condition_group.subGroups?.length > 0);
+    setUseGroupedConditions(hasGroupedConditions);
     setFormData({
       rule_name: rule.rule_name,
       description: rule.description || "",
       entity_type: rule.entity_type,
+      condition_group: rule.condition_group || {
+        logic_operator: "AND",
+        conditions: [],
+        subGroups: []
+      },
       conditions: rule.conditions || [{ field: "", operator: "equals", value: "", logic_operator: "AND" }],
       classification_result: rule.classification_result,
       classification_reason: rule.classification_reason,
@@ -149,23 +169,44 @@ export default function AutoClassificationRulesPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Filter out empty conditions
-    const validConditions = formData.conditions.filter(c => c.field && c.value);
-    
-    if (validConditions.length === 0) {
-      alert("Please add at least one valid condition");
-      return;
-    }
-
-    const submitData = {
-      ...formData,
-      conditions: validConditions
-    };
-
-    if (editingRule) {
-      updateMutation.mutate({ id: editingRule.id, data: submitData });
+    if (useGroupedConditions) {
+      // Validate grouped conditions
+      const hasConditions = formData.condition_group.conditions?.length > 0 || formData.condition_group.subGroups?.length > 0;
+      if (!hasConditions) {
+        alert("Please add at least one condition or group");
+        return;
+      }
+      
+      const submitData = {
+        ...formData,
+        conditions: null // Clear legacy field
+      };
+      
+      if (editingRule) {
+        updateMutation.mutate({ id: editingRule.id, data: submitData });
+      } else {
+        createMutation.mutate(submitData);
+      }
     } else {
-      createMutation.mutate(submitData);
+      // Filter out empty conditions (legacy mode)
+      const validConditions = formData.conditions.filter(c => c.field && c.value);
+      
+      if (validConditions.length === 0) {
+        alert("Please add at least one valid condition");
+        return;
+      }
+
+      const submitData = {
+        ...formData,
+        conditions: validConditions,
+        condition_group: null // Clear grouped field
+      };
+
+      if (editingRule) {
+        updateMutation.mutate({ id: editingRule.id, data: submitData });
+      } else {
+        createMutation.mutate(submitData);
+      }
     }
   };
 
@@ -450,13 +491,33 @@ export default function AutoClassificationRulesPage() {
               </div>
 
               <div>
-                <Label className="flex items-center justify-between mb-2">
-                  <span>Conditions *</span>
-                  <Button type="button" variant="outline" size="sm" onClick={addCondition}>
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Condition
-                  </Button>
-                </Label>
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-sm font-semibold">Conditions *</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-slate-600">Use Advanced Grouping:</Label>
+                    <Switch
+                      checked={useGroupedConditions}
+                      onCheckedChange={setUseGroupedConditions}
+                    />
+                  </div>
+                </div>
+
+                {useGroupedConditions ? (
+                  <ConditionGroupBuilder
+                    group={formData.condition_group}
+                    onChange={(updatedGroup) => setFormData({ ...formData, condition_group: updatedGroup })}
+                    accountFields={accountFields}
+                    operators={operators}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-600">Simple Conditions (flat list)</span>
+                      <Button type="button" variant="outline" size="sm" onClick={addCondition}>
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Condition
+                      </Button>
+                    </div>
                 <div className="space-y-3 border rounded-lg p-4 bg-slate-50">
                   {formData.conditions.map((condition, index) => (
                     <div key={index} className="space-y-2 p-3 bg-white rounded-lg border">
@@ -632,6 +693,8 @@ export default function AutoClassificationRulesPage() {
                     </div>
                   ))}
                 </div>
+                  </>
+                )}
               </div>
 
               <div className="space-y-4">

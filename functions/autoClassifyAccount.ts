@@ -53,7 +53,16 @@ Deno.serve(async (req) => {
         // Evaluate each rule
         let matchedRule = null;
         for (const rule of sortedRules) {
-            if (evaluateConditions(rule.conditions, account, entity)) {
+            let ruleMatches = false;
+            
+            // Check if rule uses new grouped conditions or legacy flat conditions
+            if (rule.condition_group && (rule.condition_group.conditions?.length > 0 || rule.condition_group.subGroups?.length > 0)) {
+                ruleMatches = evaluateConditionGroup(rule.condition_group, account, entity);
+            } else if (rule.conditions && rule.conditions.length > 0) {
+                ruleMatches = evaluateConditions(rule.conditions, account, entity);
+            }
+            
+            if (ruleMatches) {
                 matchedRule = rule;
                 break;
             }
@@ -110,7 +119,56 @@ Deno.serve(async (req) => {
     }
 });
 
-// Helper function to evaluate conditions
+// Recursive function to evaluate condition groups
+function evaluateConditionGroup(group, account, entity = null) {
+    if (!group) return false;
+    
+    const logic = group.logic_operator || "AND";
+    let result = logic === "AND" ? true : false;
+    
+    // Evaluate conditions in this group
+    if (group.conditions && group.conditions.length > 0) {
+        for (const condition of group.conditions) {
+            let fieldValue;
+            if (condition.field.startsWith('entity.')) {
+                if (!entity) return false;
+                const entityField = condition.field.replace('entity.', '');
+                fieldValue = entity[entityField];
+            } else {
+                fieldValue = account[condition.field];
+            }
+            
+            const conditionResult = evaluateSingleCondition(condition, fieldValue);
+            
+            if (logic === "AND") {
+                result = result && conditionResult;
+                if (!result) return false; // Short circuit
+            } else {
+                result = result || conditionResult;
+                if (result) return true; // Short circuit
+            }
+        }
+    }
+    
+    // Evaluate sub-groups recursively
+    if (group.subGroups && group.subGroups.length > 0) {
+        for (const subGroup of group.subGroups) {
+            const subGroupResult = evaluateConditionGroup(subGroup, account, entity);
+            
+            if (logic === "AND") {
+                result = result && subGroupResult;
+                if (!result) return false; // Short circuit
+            } else {
+                result = result || subGroupResult;
+                if (result) return true; // Short circuit
+            }
+        }
+    }
+    
+    return result;
+}
+
+// Helper function to evaluate conditions (legacy flat structure)
 function evaluateConditions(conditions, account, entity = null) {
     if (!conditions || conditions.length === 0) {
         return false;
