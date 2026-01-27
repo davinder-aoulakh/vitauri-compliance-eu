@@ -447,17 +447,16 @@ export default function AutoClassificationRulesPage() {
                     <div key={index} className="space-y-2 p-3 bg-white rounded-lg border">
                       <div className="grid grid-cols-3 gap-2">
                         <Select
-                          value={condition.field}
+                          value={condition.field || ""}
                           onValueChange={(value) => {
                             updateCondition(index, "field", value);
-                            // Clear value when field changes
                             updateCondition(index, "value", "");
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select field" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto">
                             {accountFields.map((field) => (
                               <SelectItem key={field.value} value={field.value}>
                                 {field.label}
@@ -467,13 +466,13 @@ export default function AutoClassificationRulesPage() {
                         </Select>
 
                         <Select
-                          value={condition.operator}
+                          value={condition.operator || "equals"}
                           onValueChange={(value) => updateCondition(index, "operator", value)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Operator" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto">
                             {operators.map((op) => (
                               <SelectItem key={op.value} value={op.value}>
                                 {op.label}
@@ -487,13 +486,13 @@ export default function AutoClassificationRulesPage() {
                           if (selectedField?.type === "select" && selectedField?.options) {
                             return (
                               <Select
-                                value={condition.value}
+                                value={condition.value || ""}
                                 onValueChange={(value) => updateCondition(index, "value", value)}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Select value" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="max-h-[300px] overflow-y-auto">
                                   {selectedField.options.map((option) => (
                                     <SelectItem key={option} value={option}>
                                       {option}
@@ -506,9 +505,10 @@ export default function AutoClassificationRulesPage() {
                           return (
                             <Input
                               type={selectedField?.type === "number" ? "number" : "text"}
-                              value={condition.value}
+                              value={condition.value || ""}
                               onChange={(e) => updateCondition(index, "value", e.target.value)}
                               placeholder="Value"
+                              className="w-full"
                             />
                           );
                         })()}
