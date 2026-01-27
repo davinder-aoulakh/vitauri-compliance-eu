@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -20,45 +19,16 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     full_name: "",
     job_title: "",
     department: "",
-    user_role: "tenant_user",
-    permissions: {
-      manage_entities: false,
-      manage_accounts: false,
-      classify_accounts: true,
-      generate_reports: false,
-      manage_users: false,
-      configure_branding: false,
-      view_audit_logs: false
-    }
+    user_role: "tenant_user"
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const handlePermissionChange = (key, value) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: {
-        ...prev.permissions,
-        [key]: value
-      }
-    }));
-  };
-
   const handleRoleChange = (role) => {
-    const isAdmin = role === "tenant_admin";
     setFormData(prev => ({
       ...prev,
-      user_role: role,
-      permissions: {
-        manage_entities: isAdmin,
-        manage_accounts: isAdmin,
-        classify_accounts: true,
-        generate_reports: isAdmin,
-        manage_users: isAdmin,
-        configure_branding: isAdmin,
-        view_audit_logs: isAdmin
-      }
+      user_role: role
     }));
   };
 
@@ -75,8 +45,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
         user_role: formData.user_role,
         tenant_id: tenant?.id,
         job_title: formData.job_title,
-        department: formData.department,
-        permissions: formData.permissions
+        department: formData.department
       });
       
       if (response.data?.error) {
@@ -92,15 +61,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
     }
   };
 
-  const permissionsList = [
-    { key: "manage_entities", label: "Manage Entities", description: "Create, edit, and classify legal entities" },
-    { key: "manage_accounts", label: "Manage Accounts", description: "Create and edit account records" },
-    { key: "classify_accounts", label: "Classify Accounts", description: "Determine account reportability status" },
-    { key: "generate_reports", label: "Generate Reports", description: "Create and submit CRS XML reports" },
-    { key: "manage_users", label: "Manage Users", description: "Invite and manage team members" },
-    { key: "configure_branding", label: "Configure Branding", description: "Customize organization appearance" },
-    { key: "view_audit_logs", label: "View Audit Logs", description: "Access compliance audit trail" }
-  ];
+
 
   if (success) {
     return (
@@ -243,26 +204,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
         </div>
       </div>
 
-      {/* Permissions */}
-      <div className="border-t pt-4">
-        <Label className="text-base font-semibold">Permissions</Label>
-        <div className="mt-3 space-y-3">
-          {permissionsList.map((perm) => (
-            <div key={perm.key} className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-slate-900">{perm.label}</p>
-                <p className="text-xs text-slate-500">{perm.description}</p>
-              </div>
-              <Switch
-                checked={formData.permissions[perm.key]}
-                onCheckedChange={(checked) => handlePermissionChange(perm.key, checked)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-3 pt-6 border-t">
         <Button type="button" variant="outline" onClick={onCancel}>
           <X className="w-4 h-4 mr-2" />
           Cancel
