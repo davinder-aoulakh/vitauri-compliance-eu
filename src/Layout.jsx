@@ -30,7 +30,8 @@ import {
   Database,
   Eye,
   Palette,
-  Globe
+  Globe,
+  Sparkles
 } from "lucide-react";
 import {
   Sidebar,
@@ -269,6 +270,12 @@ export default function Layout({ children }) {
       title: "Form Builder",
       url: createPageUrl("FormBuilder"),
       icon: Settings,
+      roles: ["super_admin"]
+    },
+    {
+      title: "Auto Classification Rules",
+      url: createPageUrl("AutoClassificationRules"),
+      icon: Sparkles,
       roles: ["super_admin"]
     },
     {
