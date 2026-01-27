@@ -567,6 +567,9 @@ export default function ActivityPage() {
                   <SelectItem value="widget_removed">Widget Removed</SelectItem>
                   <SelectItem value="data_exported">Data Exported</SelectItem>
                   <SelectItem value="data_imported">Data Imported</SelectItem>
+                  <SelectItem value="bulk_import_initiated">Bulk Import Initiated</SelectItem>
+                  <SelectItem value="bulk_import_completed">Bulk Import Completed</SelectItem>
+                  <SelectItem value="bulk_import_failed">Bulk Import Failed</SelectItem>
                   <SelectItem value="settings_changed">Settings Changed</SelectItem>
                 </SelectContent>
               </Select>
