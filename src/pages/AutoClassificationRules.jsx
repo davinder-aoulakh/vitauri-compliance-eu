@@ -187,15 +187,29 @@ export default function AutoClassificationRulesPage() {
   };
 
   const accountFields = [
-    { value: "account_holder_type", label: "Account Holder Type" },
-    { value: "account_type", label: "Account Type" },
-    { value: "account_holder_is_alive", label: "Account Holder Alive" },
-    { value: "is_pre_existing", label: "Pre-existing Account" },
-    { value: "account_closed_during_period", label: "Account Closed" },
-    { value: "year_end_cash_value", label: "Year-end Cash Value" },
-    { value: "gross_payments", label: "Gross Payments" },
-    { value: "country_of_residence", label: "Country of Residence" },
-    { value: "entity_classification", label: "Entity Classification" },
+    { value: "account_holder_type", label: "Account Holder Type", type: "select", options: ["individual", "entity"] },
+    { value: "account_type", label: "Account Type", type: "select", options: ["depository", "custodial", "equity_debt_interest", "cash_value_insurance", "annuity"] },
+    { value: "account_holder_is_alive", label: "Account Holder Alive", type: "select", options: ["true", "false"] },
+    { value: "account_holder_deceased_during_period", label: "Deceased During Period", type: "select", options: ["true", "false"] },
+    { value: "is_pre_existing", label: "Pre-existing Account", type: "select", options: ["true", "false"] },
+    { value: "account_closed_during_period", label: "Account Closed", type: "select", options: ["true", "false"] },
+    { value: "death_certificate_requested", label: "Death Certificate Requested", type: "select", options: ["true", "false"] },
+    { value: "death_certificate_received", label: "Death Certificate Received", type: "select", options: ["true", "false"] },
+    { value: "will_or_inheritance_requested", label: "Will/Inheritance Requested", type: "select", options: ["true", "false"] },
+    { value: "will_or_inheritance_received", label: "Will/Inheritance Received", type: "select", options: ["true", "false"] },
+    { value: "legacy_of_deceased_settled", label: "Legacy Settled", type: "select", options: ["true", "false"] },
+    { value: "entity_managed_by_fiduciary_trust", label: "Managed by Fiduciary Trust", type: "select", options: ["true", "false"] },
+    { value: "entity_managed_by_asset_manager", label: "Managed by Asset Manager", type: "select", options: ["true", "false"] },
+    { value: "gross_income_from_financial_assets", label: "Gross Income from Financial Assets", type: "select", options: ["true", "false"] },
+    { value: "year_end_cash_value", label: "Year-end Cash Value", type: "number" },
+    { value: "gross_payments", label: "Gross Payments", type: "number" },
+    { value: "country_of_residence", label: "Country of Residence", type: "text" },
+    { value: "place_of_birth", label: "Place of Birth", type: "text" },
+    { value: "entity_classification", label: "Entity Classification", type: "select", options: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
+    { value: "reportability_status", label: "Reportability Status", type: "select", options: ["pending_review", "reportable", "non_reportable", "excluded"] },
+    { value: "us_person_indic", label: "US Person Indicator", type: "select", options: ["true", "false"] },
+    { value: "self_certification_obtained", label: "Self Certification Obtained", type: "select", options: ["true", "false"] },
+    { value: "status", label: "Account Status", type: "select", options: ["active", "closed", "dormant"] },
   ];
 
   const operators = [
@@ -431,7 +445,11 @@ export default function AutoClassificationRulesPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <Select
                           value={condition.field}
-                          onValueChange={(value) => updateCondition(index, "field", value)}
+                          onValueChange={(value) => {
+                            updateCondition(index, "field", value);
+                            // Clear value when field changes
+                            updateCondition(index, "value", "");
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select field" />
@@ -461,11 +479,36 @@ export default function AutoClassificationRulesPage() {
                           </SelectContent>
                         </Select>
 
-                        <Input
-                          value={condition.value}
-                          onChange={(e) => updateCondition(index, "value", e.target.value)}
-                          placeholder="Value"
-                        />
+                        {(() => {
+                          const selectedField = accountFields.find(f => f.value === condition.field);
+                          if (selectedField?.type === "select" && selectedField?.options) {
+                            return (
+                              <Select
+                                value={condition.value}
+                                onValueChange={(value) => updateCondition(index, "value", value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select value" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {selectedField.options.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            );
+                          }
+                          return (
+                            <Input
+                              type={selectedField?.type === "number" ? "number" : "text"}
+                              value={condition.value}
+                              onChange={(e) => updateCondition(index, "value", e.target.value)}
+                              placeholder="Value"
+                            />
+                          );
+                        })()}
                       </div>
 
                       <div className="flex items-center justify-between">

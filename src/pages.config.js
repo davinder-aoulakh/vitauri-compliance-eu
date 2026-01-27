@@ -1,6 +1,5 @@
 import Accounts from './pages/Accounts';
 import Activity from './pages/Activity';
-import AutoClassificationRules from './pages/AutoClassificationRules';
 import ComplianceAssistant from './pages/ComplianceAssistant';
 import CustomValidationRules from './pages/CustomValidationRules';
 import Dashboard from './pages/Dashboard';
@@ -17,13 +16,13 @@ import SuperAdmin from './pages/SuperAdmin';
 import TenantManagement from './pages/TenantManagement';
 import UserManagement from './pages/UserManagement';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import AutoClassificationRules from './pages/AutoClassificationRules';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Accounts": Accounts,
     "Activity": Activity,
-    "AutoClassificationRules": AutoClassificationRules,
     "ComplianceAssistant": ComplianceAssistant,
     "CustomValidationRules": CustomValidationRules,
     "Dashboard": Dashboard,
@@ -40,6 +39,7 @@ export const PAGES = {
     "TenantManagement": TenantManagement,
     "UserManagement": UserManagement,
     "WorkflowBuilder": WorkflowBuilder,
+    "AutoClassificationRules": AutoClassificationRules,
 }
 
 export const pagesConfig = {
