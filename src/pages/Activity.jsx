@@ -44,7 +44,8 @@ import {
   Upload,
   Shield,
   UserMinus,
-  Archive
+  Archive,
+  XCircle
 } from "lucide-react";
 import { auditLog } from "@/components/utils/auditLogger";
 import moment from "moment";
