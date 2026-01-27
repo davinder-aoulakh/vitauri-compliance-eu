@@ -218,7 +218,10 @@ export default function ActivityPage() {
       widget_removed: "bg-orange-100 text-orange-800",
       data_exported: "bg-violet-100 text-violet-800",
       data_imported: "bg-fuchsia-100 text-fuchsia-800",
-      permission_changed: "bg-rose-100 text-rose-800"
+      permission_changed: "bg-rose-100 text-rose-800",
+      bulk_import_initiated: "bg-fuchsia-100 text-fuchsia-800",
+      bulk_import_completed: "bg-green-100 text-green-800",
+      bulk_import_failed: "bg-red-100 text-red-800"
     };
 
     const formattedAction = actionType?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
