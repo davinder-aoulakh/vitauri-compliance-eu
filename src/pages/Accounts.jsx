@@ -163,6 +163,17 @@ export default function AccountsPage() {
         console.error("Error creating audit log:", error);
       }
       
+      // Trigger auto-classification
+      try {
+        await base44.functions.invoke('autoClassifyAccount', {
+          accountId: newAccount.id,
+          event_type: 'created'
+        });
+        queryClient.invalidateQueries(['accounts']);
+      } catch (error) {
+        console.error('Auto-classification failed:', error);
+      }
+      
       // Check for workflow triggers
       const suggestedWorkflows = await suggestWorkflows(newAccount, 'account_created');
       if (suggestedWorkflows.length > 0) {
@@ -173,7 +184,7 @@ export default function AccountsPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Account.update(id, data),
-    onSuccess: async (updatedAccount) => {
+    onSuccess: async (updatedAccount, variables) => {
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
       setShowClassification(false);
@@ -196,6 +207,17 @@ export default function AccountsPage() {
         });
       } catch (error) {
         console.error("Error creating audit log:", error);
+      }
+      
+      // Trigger auto-classification
+      try {
+        await base44.functions.invoke('autoClassifyAccount', {
+          accountId: variables.id,
+          event_type: 'updated'
+        });
+        queryClient.invalidateQueries(['accounts']);
+      } catch (error) {
+        console.error('Auto-classification failed:', error);
       }
       
       // Check for workflow triggers

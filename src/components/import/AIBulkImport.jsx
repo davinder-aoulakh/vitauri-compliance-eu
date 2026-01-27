@@ -344,6 +344,15 @@ export default function AIBulkImport({
             // Update
             if (importType === "Account") {
               await base44.entities.Account.update(existing.id, record);
+              // Trigger auto-classification for updated account
+              try {
+                await base44.functions.invoke('autoClassifyAccount', {
+                  accountId: existing.id,
+                  event_type: 'updated'
+                });
+              } catch (error) {
+                console.error('Auto-classification failed for updated account:', error);
+              }
             } else {
               await base44.entities.Entity.update(existing.id, record);
             }
@@ -358,6 +367,15 @@ export default function AIBulkImport({
             let newRecord;
             if (importType === "Account") {
               newRecord = await base44.entities.Account.create(record);
+              // Trigger auto-classification for new account
+              try {
+                await base44.functions.invoke('autoClassifyAccount', {
+                  accountId: newRecord.id,
+                  event_type: 'created'
+                });
+              } catch (error) {
+                console.error('Auto-classification failed for new account:', error);
+              }
             } else {
               newRecord = await base44.entities.Entity.create(record);
             }
