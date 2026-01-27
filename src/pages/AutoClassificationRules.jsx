@@ -213,6 +213,13 @@ export default function AutoClassificationRulesPage() {
     { value: "us_person_indic", label: "US Person Indicator", type: "select", options: ["true", "false"] },
     { value: "self_certification_obtained", label: "Self Certification Obtained", type: "select", options: ["true", "false"] },
     { value: "status", label: "Account Status", type: "select", options: ["active", "closed", "dormant"] },
+    { value: "account_creation_date", label: "Account Creation Date", type: "date" },
+    { value: "created_date", label: "Record Created Date", type: "date" },
+    { value: "updated_date", label: "Record Updated Date", type: "date" },
+    { value: "entity.entity_name", label: "Entity: Name", type: "text", isRelated: true },
+    { value: "entity.entity_type", label: "Entity: Type", type: "select", options: ["corporation", "trust", "partnership", "fund", "branch", "other"], isRelated: true },
+    { value: "entity.country_of_incorporation", label: "Entity: Country of Incorporation", type: "text", isRelated: true },
+    { value: "entity.rfi_status", label: "Entity: RFI Status", type: "select", options: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"], isRelated: true },
   ];
 
   const operators = [
@@ -224,7 +231,15 @@ export default function AutoClassificationRulesPage() {
     { value: "less_than_or_equal", label: "Less Than or Equal" },
     { value: "contains", label: "Contains" },
     { value: "in", label: "In (comma-separated)" },
-    { value: "not_in", label: "Not In (comma-separated)" }
+    { value: "not_in", label: "Not In (comma-separated)" },
+    { value: "days_ago_greater_than", label: "Days Ago > (date fields)" },
+    { value: "days_ago_less_than", label: "Days Ago < (date fields)" },
+    { value: "months_ago_greater_than", label: "Months Ago > (date fields)" },
+    { value: "months_ago_less_than", label: "Months Ago < (date fields)" },
+    { value: "years_ago_greater_than", label: "Years Ago > (date fields)" },
+    { value: "years_ago_less_than", label: "Years Ago < (date fields)" },
+    { value: "is_empty", label: "Is Empty/Null" },
+    { value: "is_not_empty", label: "Is Not Empty/Null" }
   ];
 
   if (!user) {
@@ -497,6 +512,36 @@ export default function AutoClassificationRulesPage() {
                         <div>
                           {(() => {
                             const selectedField = accountFields.find(f => f.value === condition.field);
+                            const isDateOperator = condition.operator?.includes('ago');
+                            const isEmptyOperator = condition.operator === 'is_empty' || condition.operator === 'is_not_empty';
+                            
+                            if (isEmptyOperator) {
+                              return (
+                                <Input
+                                  value="N/A"
+                                  disabled
+                                  className="h-9 bg-slate-100"
+                                  placeholder="No value needed"
+                                />
+                              );
+                            }
+                            
+                            if (isDateOperator) {
+                              return (
+                                <Input
+                                  type="number"
+                                  value={condition.value || ""}
+                                  onChange={(e) => {
+                                    const newConditions = [...formData.conditions];
+                                    newConditions[index] = { ...newConditions[index], value: e.target.value };
+                                    setFormData({ ...formData, conditions: newConditions });
+                                  }}
+                                  placeholder="Enter number (e.g., 30)"
+                                  className="h-9"
+                                />
+                              );
+                            }
+                            
                             if (selectedField?.type === "select" && selectedField?.options) {
                               return (
                                 <Select
@@ -520,6 +565,22 @@ export default function AutoClassificationRulesPage() {
                                 </Select>
                               );
                             }
+                            
+                            if (selectedField?.type === "date") {
+                              return (
+                                <Input
+                                  type="date"
+                                  value={condition.value || ""}
+                                  onChange={(e) => {
+                                    const newConditions = [...formData.conditions];
+                                    newConditions[index] = { ...newConditions[index], value: e.target.value };
+                                    setFormData({ ...formData, conditions: newConditions });
+                                  }}
+                                  className="h-9"
+                                />
+                              );
+                            }
+                            
                             return (
                               <Input
                                 type={selectedField?.type === "number" ? "number" : "text"}
