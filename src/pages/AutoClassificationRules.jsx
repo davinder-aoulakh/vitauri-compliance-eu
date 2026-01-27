@@ -51,6 +51,7 @@ export default function AutoClassificationRulesPage() {
     conditions: [{ field: "", operator: "equals", value: "", logic_operator: "AND" }],
     classification_result: "reportable",
     classification_reason: "",
+    entity_classification_result: "",
     priority: 0,
     is_active: true
   });
@@ -116,6 +117,7 @@ export default function AutoClassificationRulesPage() {
       conditions: [{ field: "", operator: "equals", value: "", logic_operator: "AND" }],
       classification_result: "reportable",
       classification_reason: "",
+      entity_classification_result: "",
       priority: 0,
       is_active: true
     });
@@ -131,6 +133,7 @@ export default function AutoClassificationRulesPage() {
       conditions: rule.conditions || [{ field: "", operator: "equals", value: "", logic_operator: "AND" }],
       classification_result: rule.classification_result,
       classification_reason: rule.classification_reason,
+      entity_classification_result: rule.entity_classification_result || "",
       priority: rule.priority || 0,
       is_active: rule.is_active !== false
     });
@@ -543,33 +546,57 @@ export default function AutoClassificationRulesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Classification Result *</Label>
-                  <Select
-                    value={formData.classification_result}
-                    onValueChange={(value) => setFormData({ ...formData, classification_result: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="reportable">Reportable</SelectItem>
-                      <SelectItem value="non_reportable">Non-Reportable</SelectItem>
-                      <SelectItem value="pending_review">Pending Review</SelectItem>
-                      <SelectItem value="excluded">Excluded</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Classification Result *</Label>
+                    <Select
+                      value={formData.classification_result}
+                      onValueChange={(value) => setFormData({ ...formData, classification_result: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="reportable">Reportable</SelectItem>
+                        <SelectItem value="non_reportable">Non-Reportable</SelectItem>
+                        <SelectItem value="pending_review">Pending Review</SelectItem>
+                        <SelectItem value="excluded">Excluded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Classification Reason *</Label>
+                    <Input
+                      value={formData.classification_reason}
+                      onChange={(e) => setFormData({ ...formData, classification_reason: e.target.value })}
+                      placeholder="e.g., High value threshold exceeded"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <Label>Classification Reason *</Label>
-                  <Input
-                    value={formData.classification_reason}
-                    onChange={(e) => setFormData({ ...formData, classification_reason: e.target.value })}
-                    placeholder="e.g., High value threshold exceeded"
-                    required
-                  />
+                  <Label>Entity Classification Result (Optional)</Label>
+                  <Select
+                    value={formData.entity_classification_result}
+                    onValueChange={(value) => setFormData({ ...formData, entity_classification_result: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select entity classification (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>None</SelectItem>
+                      <SelectItem value="financial_institution">Financial Institution</SelectItem>
+                      <SelectItem value="active_nfe">Active NFE</SelectItem>
+                      <SelectItem value="passive_nfe">Passive NFE</SelectItem>
+                      <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    For entity accounts, optionally set the entity classification
+                  </p>
                 </div>
               </div>
             </div>
