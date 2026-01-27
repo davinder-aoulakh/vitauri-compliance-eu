@@ -327,16 +327,46 @@ export default function AccountClassification({ account, onComplete, onCancel })
   }, [workflows, workflow, account]);
 
   useEffect(() => {
-    if (account && !answers._account_data_loaded) {
-      setAnswers(prev => ({
-        ...prev,
+    if (account && !answers._account_data_loaded && workflow) {
+      const preFillAnswers = {
         _account_data_loaded: true,
         _is_pre_existing: account.is_pre_existing,
         _account_holder_is_alive: account.account_holder_is_alive,
         _account_holder_type: account.account_holder_type
-      }));
+      };
+
+      // Pre-fill mapped fields from account data
+      workflow.steps.forEach(step => {
+        if (step.mapped_field?.entity_type === "Account" && step.mapped_field?.field_name) {
+          const fieldName = step.mapped_field.field_name;
+          let fieldValue = account[fieldName];
+
+          // Only pre-fill if the field value is not blank
+          if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
+            // Type conversions based on question type
+            if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
+              preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+            } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
+              preFillAnswers[step.step_id] = fieldValue.join(',');
+            } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {
+              preFillAnswers[step.step_id] = {
+                ...fieldValue,
+                _address_config: step.address_config || { target_field: "current_address", track_changes: true }
+              };
+            } else if (step.question_type === 'date_input') {
+              preFillAnswers[step.step_id] = String(fieldValue);
+            } else if (step.question_type === 'number_input') {
+              preFillAnswers[step.step_id] = String(fieldValue);
+            } else {
+              preFillAnswers[step.step_id] = String(fieldValue);
+            }
+          }
+        }
+      });
+
+      setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
-  }, [account]);
+  }, [account, workflow]);
 
   const loadUser = async () => {
     try {
@@ -751,9 +781,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setSelectedValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setDateValue("");
-    } else {
+    } else if (existingAnswer) {
       setSelectedValue(existingAnswer || "");
       setDateValue(existingAnswer || "");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setMultiFieldValues({});
+    } else {
+      // No existing answer - reset all values
+      setSelectedValue("");
+      setDateValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setMultiFieldValues({});
     }
