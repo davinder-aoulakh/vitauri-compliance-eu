@@ -446,88 +446,80 @@ export default function AutoClassificationRulesPage() {
                   {formData.conditions.map((condition, index) => (
                     <div key={index} className="space-y-2 p-3 bg-white rounded-lg border">
                       <div className="grid grid-cols-3 gap-2">
-                        <Select
-                          value={condition.field || ""}
-                          onValueChange={(value) => {
-                            updateCondition(index, "field", value);
-                            updateCondition(index, "value", "");
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select field" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[300px] overflow-y-auto">
+                        <div>
+                          <select
+                            value={condition.field || ""}
+                            onChange={(e) => {
+                              updateCondition(index, "field", e.target.value);
+                              updateCondition(index, "value", "");
+                            }}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <option value="">Select field</option>
                             {accountFields.map((field) => (
-                              <SelectItem key={field.value} value={field.value}>
+                              <option key={field.value} value={field.value}>
                                 {field.label}
-                              </SelectItem>
+                              </option>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </select>
+                        </div>
 
-                        <Select
-                          value={condition.operator || "equals"}
-                          onValueChange={(value) => updateCondition(index, "operator", value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Operator" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[300px] overflow-y-auto">
+                        <div>
+                          <select
+                            value={condition.operator || "equals"}
+                            onChange={(e) => updateCondition(index, "operator", e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
                             {operators.map((op) => (
-                              <SelectItem key={op.value} value={op.value}>
+                              <option key={op.value} value={op.value}>
                                 {op.label}
-                              </SelectItem>
+                              </option>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </select>
+                        </div>
 
-                        {(() => {
-                          const selectedField = accountFields.find(f => f.value === condition.field);
-                          if (selectedField?.type === "select" && selectedField?.options) {
-                            return (
-                              <Select
-                                value={condition.value || ""}
-                                onValueChange={(value) => updateCondition(index, "value", value)}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select value" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px] overflow-y-auto">
+                        <div>
+                          {(() => {
+                            const selectedField = accountFields.find(f => f.value === condition.field);
+                            if (selectedField?.type === "select" && selectedField?.options) {
+                              return (
+                                <select
+                                  value={condition.value || ""}
+                                  onChange={(e) => updateCondition(index, "value", e.target.value)}
+                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                  <option value="">Select value</option>
                                   {selectedField.options.map((option) => (
-                                    <SelectItem key={option} value={option}>
+                                    <option key={option} value={option}>
                                       {option}
-                                    </SelectItem>
+                                    </option>
                                   ))}
-                                </SelectContent>
-                              </Select>
+                                </select>
+                              );
+                            }
+                            return (
+                              <Input
+                                type={selectedField?.type === "number" ? "number" : "text"}
+                                value={condition.value || ""}
+                                onChange={(e) => updateCondition(index, "value", e.target.value)}
+                                placeholder="Value"
+                                className="w-full"
+                              />
                             );
-                          }
-                          return (
-                            <Input
-                              type={selectedField?.type === "number" ? "number" : "text"}
-                              value={condition.value || ""}
-                              onChange={(e) => updateCondition(index, "value", e.target.value)}
-                              placeholder="Value"
-                              className="w-full"
-                            />
-                          );
-                        })()}
+                          })()}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between">
                         {index < formData.conditions.length - 1 && (
-                          <Select
+                          <select
                             value={condition.logic_operator}
-                            onValueChange={(value) => updateCondition(index, "logic_operator", value)}
+                            onChange={(e) => updateCondition(index, "logic_operator", e.target.value)}
+                            className="flex h-9 w-24 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           >
-                            <SelectTrigger className="w-24">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="AND">AND</SelectItem>
-                              <SelectItem value="OR">OR</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <option value="AND">AND</option>
+                            <option value="OR">OR</option>
+                          </select>
                         )}
                         {formData.conditions.length > 1 && (
                           <Button
