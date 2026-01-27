@@ -183,7 +183,10 @@ export default function ActivityPage() {
       widget_removed: <Trash2 className="w-4 h-4" />,
       data_exported: <Download className="w-4 h-4" />,
       data_imported: <Upload className="w-4 h-4" />,
-      permission_changed: <Shield className="w-4 h-4" />
+      permission_changed: <Shield className="w-4 h-4" />,
+      bulk_import_initiated: <Upload className="w-4 h-4" />,
+      bulk_import_completed: <CheckCircle className="w-4 h-4" />,
+      bulk_import_failed: <XCircle className="w-4 h-4" />
     };
     return iconMap[actionType] || <ActivityIcon className="w-4 h-4" />;
   };
