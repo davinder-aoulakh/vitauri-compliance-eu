@@ -447,35 +447,51 @@ export default function AutoClassificationRulesPage() {
                     <div key={index} className="space-y-2 p-3 bg-white rounded-lg border">
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <select
+                          <Select
                             value={condition.field || ""}
-                            onChange={(e) => {
-                              updateCondition(index, "field", e.target.value);
-                              updateCondition(index, "value", "");
+                            onValueChange={(value) => {
+                              const newConditions = [...formData.conditions];
+                              newConditions[index] = { 
+                                ...newConditions[index], 
+                                field: value,
+                                value: "" // Clear value when field changes
+                              };
+                              setFormData({ ...formData, conditions: newConditions });
                             }}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           >
-                            <option value="">Select field</option>
-                            {accountFields.map((field) => (
-                              <option key={field.value} value={field.value}>
-                                {field.label}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select field" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px]">
+                              {accountFields.map((field) => (
+                                <SelectItem key={field.value} value={field.value}>
+                                  {field.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div>
-                          <select
+                          <Select
                             value={condition.operator || "equals"}
-                            onChange={(e) => updateCondition(index, "operator", e.target.value)}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            onValueChange={(value) => {
+                              const newConditions = [...formData.conditions];
+                              newConditions[index] = { ...newConditions[index], operator: value };
+                              setFormData({ ...formData, conditions: newConditions });
+                            }}
                           >
-                            {operators.map((op) => (
-                              <option key={op.value} value={op.value}>
-                                {op.label}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Operator" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px]">
+                              {operators.map((op) => (
+                                <SelectItem key={op.value} value={op.value}>
+                                  {op.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div>
@@ -483,27 +499,38 @@ export default function AutoClassificationRulesPage() {
                             const selectedField = accountFields.find(f => f.value === condition.field);
                             if (selectedField?.type === "select" && selectedField?.options) {
                               return (
-                                <select
+                                <Select
                                   value={condition.value || ""}
-                                  onChange={(e) => updateCondition(index, "value", e.target.value)}
-                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  onValueChange={(value) => {
+                                    const newConditions = [...formData.conditions];
+                                    newConditions[index] = { ...newConditions[index], value: value };
+                                    setFormData({ ...formData, conditions: newConditions });
+                                  }}
                                 >
-                                  <option value="">Select value</option>
-                                  {selectedField.options.map((option) => (
-                                    <option key={option} value={option}>
-                                      {option}
-                                    </option>
-                                  ))}
-                                </select>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Select value" />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-[300px]">
+                                    {selectedField.options.map((option) => (
+                                      <SelectItem key={option} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               );
                             }
                             return (
                               <Input
                                 type={selectedField?.type === "number" ? "number" : "text"}
                                 value={condition.value || ""}
-                                onChange={(e) => updateCondition(index, "value", e.target.value)}
+                                onChange={(e) => {
+                                  const newConditions = [...formData.conditions];
+                                  newConditions[index] = { ...newConditions[index], value: e.target.value };
+                                  setFormData({ ...formData, conditions: newConditions });
+                                }}
                                 placeholder="Value"
-                                className="w-full"
+                                className="h-9"
                               />
                             );
                           })()}
@@ -512,14 +539,22 @@ export default function AutoClassificationRulesPage() {
 
                       <div className="flex items-center justify-between">
                         {index < formData.conditions.length - 1 && (
-                          <select
-                            value={condition.logic_operator}
-                            onChange={(e) => updateCondition(index, "logic_operator", e.target.value)}
-                            className="flex h-9 w-24 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          <Select
+                            value={condition.logic_operator || "AND"}
+                            onValueChange={(value) => {
+                              const newConditions = [...formData.conditions];
+                              newConditions[index] = { ...newConditions[index], logic_operator: value };
+                              setFormData({ ...formData, conditions: newConditions });
+                            }}
                           >
-                            <option value="AND">AND</option>
-                            <option value="OR">OR</option>
-                          </select>
+                            <SelectTrigger className="h-9 w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AND">AND</SelectItem>
+                              <SelectItem value="OR">OR</SelectItem>
+                            </SelectContent>
+                          </Select>
                         )}
                         {formData.conditions.length > 1 && (
                           <Button
