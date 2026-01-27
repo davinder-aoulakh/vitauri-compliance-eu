@@ -262,6 +262,100 @@ export default function ActivityPage() {
       );
     }
 
+    // Handle bulk import changes format
+    if (changes.imported_records || changes.updated_records || changes.failed_records) {
+      return (
+        <div className="space-y-3">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-4 gap-2">
+            {changes.total_records && (
+              <div className="bg-slate-50 p-2 rounded">
+                <p className="text-xs text-slate-500">Total</p>
+                <p className="text-sm font-bold text-slate-900">{changes.total_records}</p>
+              </div>
+            )}
+            {changes.created !== undefined && (
+              <div className="bg-green-50 p-2 rounded">
+                <p className="text-xs text-green-600">Created</p>
+                <p className="text-sm font-bold text-green-700">{changes.created}</p>
+              </div>
+            )}
+            {changes.updated !== undefined && (
+              <div className="bg-amber-50 p-2 rounded">
+                <p className="text-xs text-amber-600">Updated</p>
+                <p className="text-sm font-bold text-amber-700">{changes.updated}</p>
+              </div>
+            )}
+            {changes.failed !== undefined && (
+              <div className="bg-red-50 p-2 rounded">
+                <p className="text-xs text-red-600">Failed</p>
+                <p className="text-sm font-bold text-red-700">{changes.failed}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Detailed Records - Collapsible */}
+          {changes.imported_records && changes.imported_records.length > 0 && (
+            <details className="bg-green-50 border border-green-200 rounded p-2">
+              <summary className="text-xs font-medium text-green-800 cursor-pointer">
+                View {changes.imported_records.length} Created Records
+              </summary>
+              <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                {changes.imported_records.map((record, idx) => (
+                  <div key={idx} className="text-xs text-green-700 flex items-center gap-2">
+                    <span className="font-mono text-green-600">Row {record.row}:</span>
+                    <span className="truncate">{record.name}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {changes.updated_records && changes.updated_records.length > 0 && (
+            <details className="bg-amber-50 border border-amber-200 rounded p-2">
+              <summary className="text-xs font-medium text-amber-800 cursor-pointer">
+                View {changes.updated_records.length} Updated Records
+              </summary>
+              <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                {changes.updated_records.map((record, idx) => (
+                  <div key={idx} className="text-xs text-amber-700 flex items-center gap-2">
+                    <span className="font-mono text-amber-600">Row {record.row}:</span>
+                    <span className="truncate">{record.name}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {changes.failed_records && changes.failed_records.length > 0 && (
+            <details className="bg-red-50 border border-red-200 rounded p-2">
+              <summary className="text-xs font-medium text-red-800 cursor-pointer">
+                View {changes.failed_records.length} Failed Records
+              </summary>
+              <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                {changes.failed_records.map((record, idx) => (
+                  <div key={idx} className="text-xs bg-red-100 p-2 rounded border border-red-300">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-red-600">Row {record.row}:</span>
+                      <span className="font-medium truncate text-red-900">{record.name}</span>
+                      {record.type && (
+                        <Badge className="text-xs bg-red-200 text-red-900">
+                          {record.type.replace(/_/g, ' ')}
+                        </Badge>
+                      )}
+                    </div>
+                    {record.error && (
+                      <p className="text-red-700 ml-2">{record.error}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      );
+    }
+
     // Handle generic object changes
     return Object.entries(changes).map(([key, value]) => (
       <div key={key} className="border-b border-slate-200 pb-2 last:border-0 last:pb-0">
