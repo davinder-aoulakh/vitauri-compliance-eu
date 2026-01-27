@@ -39,10 +39,21 @@ Deno.serve(async (req) => {
         // Sort rules by priority (highest first)
         const sortedRules = rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
+        // Fetch related entity if account has entity_id
+        let entity = null;
+        if (account.entity_id) {
+            try {
+                const entities = await base44.asServiceRole.entities.Entity.filter({ id: account.entity_id });
+                entity = entities[0] || null;
+            } catch (error) {
+                console.error("Error fetching related entity:", error);
+            }
+        }
+
         // Evaluate each rule
         let matchedRule = null;
         for (const rule of sortedRules) {
-            if (evaluateConditions(rule.conditions, account)) {
+            if (evaluateConditions(rule.conditions, account, entity)) {
                 matchedRule = rule;
                 break;
             }
@@ -100,7 +111,7 @@ Deno.serve(async (req) => {
 });
 
 // Helper function to evaluate conditions
-function evaluateConditions(conditions, account) {
+function evaluateConditions(conditions, account, entity = null) {
     if (!conditions || conditions.length === 0) {
         return false;
     }
@@ -110,7 +121,17 @@ function evaluateConditions(conditions, account) {
 
     for (let i = 0; i < conditions.length; i++) {
         const condition = conditions[i];
-        const fieldValue = account[condition.field];
+        
+        // Handle related entity fields
+        let fieldValue;
+        if (condition.field.startsWith('entity.')) {
+            if (!entity) return false;
+            const entityField = condition.field.replace('entity.', '');
+            fieldValue = entity[entityField];
+        } else {
+            fieldValue = account[condition.field];
+        }
+        
         const conditionResult = evaluateSingleCondition(condition, fieldValue);
 
         if (i === 0) {
@@ -132,9 +153,53 @@ function evaluateConditions(conditions, account) {
 function evaluateSingleCondition(condition, fieldValue) {
     const { operator, value } = condition;
     
+    // Handle is_empty and is_not_empty operators
+    if (operator === "is_empty") {
+        return fieldValue === null || fieldValue === undefined || fieldValue === "";
+    }
+    if (operator === "is_not_empty") {
+        return fieldValue !== null && fieldValue !== undefined && fieldValue !== "";
+    }
+    
+    // Handle date-based operators
+    if (operator && operator.includes('ago')) {
+        if (!fieldValue) return false;
+        
+        const fieldDate = new Date(fieldValue);
+        const now = new Date();
+        const diffMs = now - fieldDate;
+        
+        const thresholdValue = parseFloat(value);
+        
+        if (operator === "days_ago_greater_than") {
+            const daysDiff = diffMs / (1000 * 60 * 60 * 24);
+            return daysDiff > thresholdValue;
+        }
+        if (operator === "days_ago_less_than") {
+            const daysDiff = diffMs / (1000 * 60 * 60 * 24);
+            return daysDiff < thresholdValue;
+        }
+        if (operator === "months_ago_greater_than") {
+            const monthsDiff = diffMs / (1000 * 60 * 60 * 24 * 30);
+            return monthsDiff > thresholdValue;
+        }
+        if (operator === "months_ago_less_than") {
+            const monthsDiff = diffMs / (1000 * 60 * 60 * 24 * 30);
+            return monthsDiff < thresholdValue;
+        }
+        if (operator === "years_ago_greater_than") {
+            const yearsDiff = diffMs / (1000 * 60 * 60 * 24 * 365);
+            return yearsDiff > thresholdValue;
+        }
+        if (operator === "years_ago_less_than") {
+            const yearsDiff = diffMs / (1000 * 60 * 60 * 24 * 365);
+            return yearsDiff < thresholdValue;
+        }
+    }
+    
     // Handle null/undefined field values
     if (fieldValue === null || fieldValue === undefined) {
-        return operator === "is_empty" || operator === "not_equals";
+        return operator === "not_equals";
     }
 
     switch (operator) {
