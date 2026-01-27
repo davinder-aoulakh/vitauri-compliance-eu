@@ -745,10 +745,23 @@ export default function ActivityPage() {
                             <summary className="text-sm text-indigo-600 hover:text-indigo-800">
                               View Changes
                             </summary>
-                            <div className="mt-2 bg-slate-50 p-3 rounded border text-sm space-y-2 max-h-48 overflow-auto">
+                            <div className="mt-2 bg-slate-50 p-3 rounded border text-sm space-y-2 max-h-64 overflow-auto">
                               {renderChanges(log.changes)}
                             </div>
                           </details>
+                        )}
+                        {log.file_url && (
+                          <div className="mt-2">
+                            <a
+                              href={log.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              View Original File
+                            </a>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
