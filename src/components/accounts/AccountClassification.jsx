@@ -326,6 +326,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   }, [workflows, workflow, account]);
 
+  // Effect to sync selectedValue when currentNodeId changes (for pre-filled answers)
+  useEffect(() => {
+    if (!currentNodeId) return;
+    
+    const currentNode = stepMap[currentNodeId];
+    const existingAnswer = answers[currentNodeId];
+    
+    if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
+      const { _address_config, ...savedAddress } = existingAnswer;
+      setAddressValues(savedAddress);
+      setSelectedValue("");
+    } else if (existingAnswer && typeof existingAnswer === 'object' && !existingAnswer.file_url) {
+      setMultiFieldValues(existingAnswer);
+      setSelectedValue("");
+    } else if (existingAnswer) {
+      setSelectedValue(existingAnswer);
+      setDateValue(existingAnswer);
+    }
+  }, [currentNodeId, answers]);
+
   useEffect(() => {
     if (account && !answers._account_data_loaded && workflow) {
       const preFillAnswers = {
