@@ -35,6 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import InviteUserForm from "../components/users/InviteUserForm.jsx";
 import EditUserForm from "../components/users/EditUserForm.jsx";
+import RolePermissionsManager from "../components/users/RolePermissionsManager.jsx";
 
 export default function UserManagement() {
   const [user, setUser] = useState(null);
@@ -124,6 +125,7 @@ export default function UserManagement() {
   const getRoleBadge = (role) => {
     const config = {
       tenant_admin: { label: "Admin", color: "bg-blue-100 text-blue-800 border-blue-200", icon: Shield },
+      tenant_supervisor: { label: "Supervisor", color: "bg-purple-100 text-purple-800 border-purple-200", icon: Shield },
       tenant_user: { label: "User", color: "bg-green-100 text-green-800 border-green-200", icon: UserCheck }
     };
     const { label, color, icon: Icon } = config[role] || config.tenant_user;
@@ -226,13 +228,16 @@ export default function UserManagement() {
                 <div>
                   <p className="text-sm text-slate-600">Regular Users</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {tenantUsers.filter(u => u.user_role === "tenant_user").length}
+                    {tenantUsers.filter(u => u.user_role === "tenant_user" || u.user_role === "tenant_supervisor").length}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Role Permissions Management */}
+        <RolePermissionsManager tenant={tenant} />
 
         {/* Search */}
         <Card className="border-0 shadow-lg">

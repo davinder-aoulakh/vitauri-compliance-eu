@@ -136,6 +136,12 @@ export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
                 <span className="text-xs text-slate-500">Full access to manage organization</span>
               </div>
             </SelectItem>
+            <SelectItem value="tenant_supervisor">
+              <div className="flex flex-col">
+                <span className="font-medium">Supervisor</span>
+                <span className="text-xs text-slate-500">Elevated access with oversight capabilities</span>
+              </div>
+            </SelectItem>
             <SelectItem value="tenant_user">
               <div className="flex flex-col">
                 <span className="font-medium">User</span>
