@@ -123,6 +123,7 @@ export default function BeneficiaryManager({ account, tenant }) {
           </h3>
         </div>
         <Button
+          type="button"
           size="sm"
           onClick={() => {
             setEditingBeneficiary(null);
