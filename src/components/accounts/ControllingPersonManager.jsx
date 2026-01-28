@@ -354,7 +354,7 @@ function ControllingPersonForm({ person, onSubmit, onCancel }) {
     first_name: person?.first_name || "",
     last_name: person?.last_name || "",
     date_of_birth: person?.date_of_birth || "",
-    control_type: person?.control_type || "ownership",
+    control_type: person?.control_type || "legal_person_ownership",
     ownership_percentage: person?.ownership_percentage || 0,
     is_reportable: person?.is_reportable || false,
     address: person?.address || {
@@ -455,14 +455,24 @@ function ControllingPersonForm({ person, onSubmit, onCancel }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ownership">Ownership</SelectItem>
-              <SelectItem value="senior_management">Senior Management</SelectItem>
-              <SelectItem value="other_means">Other Means</SelectItem>
+              <SelectItem value="legal_person_ownership">Controlling Person of a legal person – control by ownership</SelectItem>
+              <SelectItem value="legal_person_other_means">Controlling Person of a legal person – control by other means</SelectItem>
+              <SelectItem value="legal_person_senior_managing_official">Controlling Person of a legal person – senior managing official</SelectItem>
+              <SelectItem value="trust_settlor">Controlling Person of a trust - settlor</SelectItem>
+              <SelectItem value="trust_trustee">Controlling Person of a trust – trustee</SelectItem>
+              <SelectItem value="trust_protector">Controlling Person of a trust – protector</SelectItem>
+              <SelectItem value="trust_beneficiary">Controlling Person of a trust – beneficiary</SelectItem>
+              <SelectItem value="trust_other">Controlling Person of a trust – other</SelectItem>
+              <SelectItem value="legal_arrangement_settlor_equivalent">Controlling Person of a legal arrangement (non-trust) – settlor-equivalent</SelectItem>
+              <SelectItem value="legal_arrangement_trustee_equivalent">Controlling Person of a legal arrangement (non-trust) – trustee-equivalent</SelectItem>
+              <SelectItem value="legal_arrangement_protector_equivalent">Controlling Person of a legal arrangement (non-trust) – protector-equivalent</SelectItem>
+              <SelectItem value="legal_arrangement_beneficiary_equivalent">Controlling Person of a legal arrangement (non-trust) – beneficiary-equivalent</SelectItem>
+              <SelectItem value="legal_arrangement_other_equivalent">Controlling Person of a legal arrangement (non-trust) – other-equivalent</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {formData.control_type === "ownership" && (
+        {formData.control_type === "legal_person_ownership" && (
           <div>
             <Label htmlFor="ownership_percentage">Ownership Percentage</Label>
             <Input
