@@ -40,7 +40,8 @@ export default function BeneficiaryInputRenderer({
   function createEmptyBeneficiary() {
     return {
       id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      full_name: "",
+      first_name: "",
+      last_name: "",
       date_of_birth: "",
       place_of_birth: "",
       address: {
@@ -96,8 +97,11 @@ export default function BeneficiaryInputRenderer({
     const newErrors = {};
     
     beneficiaries.forEach((b, index) => {
-      if (!b.full_name?.trim()) {
-        newErrors[`${index}.full_name`] = "Name is required";
+      if (!b.first_name?.trim()) {
+        newErrors[`${index}.first_name`] = "First name is required";
+      }
+      if (!b.last_name?.trim()) {
+        newErrors[`${index}.last_name`] = "Last name is required";
       }
       if (!b.address?.country) {
         newErrors[`${index}.address.country`] = "Country is required";
@@ -127,7 +131,9 @@ export default function BeneficiaryInputRenderer({
       for (const b of beneficiaries) {
         // Check if a beneficiary with the same name already exists for this account
         const existingMatch = existingBeneficiaries.find(
-          existing => existing.full_name?.toLowerCase().trim() === b.full_name?.toLowerCase().trim()
+          existing => 
+            existing.first_name?.toLowerCase().trim() === b.first_name?.toLowerCase().trim() &&
+            existing.last_name?.toLowerCase().trim() === b.last_name?.toLowerCase().trim()
         );
         
         if (existingMatch) {
@@ -139,7 +145,8 @@ export default function BeneficiaryInputRenderer({
         const beneficiaryData = {
           tenant_id: tenant?.id || account?.tenant_id,
           account_id: account.id,
-          full_name: b.full_name,
+          first_name: b.first_name,
+          last_name: b.last_name,
           date_of_birth: b.date_of_birth || null,
           place_of_birth: b.place_of_birth || null,
           address: b.address,
@@ -162,7 +169,7 @@ export default function BeneficiaryInputRenderer({
     }
   };
 
-  const isValid = beneficiaries.every(b => b.full_name?.trim() && b.address?.country);
+  const isValid = beneficiaries.every(b => b.first_name?.trim() && b.last_name?.trim() && b.address?.country);
 
   return (
     <div className="space-y-4">
@@ -201,16 +208,29 @@ export default function BeneficiaryInputRenderer({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label className="text-sm">Full Name *</Label>
+                <div>
+                  <Label className="text-sm">First Name *</Label>
                   <Input
-                    value={beneficiary.full_name}
-                    onChange={(e) => handleBeneficiaryChange(index, "full_name", e.target.value)}
-                    placeholder="Enter full name"
-                    className={`mt-1 ${errors[`${index}.full_name`] ? 'border-red-500' : ''}`}
+                    value={beneficiary.first_name}
+                    onChange={(e) => handleBeneficiaryChange(index, "first_name", e.target.value)}
+                    placeholder="First name"
+                    className={`mt-1 ${errors[`${index}.first_name`] ? 'border-red-500' : ''}`}
                   />
-                  {errors[`${index}.full_name`] && (
-                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.full_name`]}</p>
+                  {errors[`${index}.first_name`] && (
+                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.first_name`]}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-sm">Last Name *</Label>
+                  <Input
+                    value={beneficiary.last_name}
+                    onChange={(e) => handleBeneficiaryChange(index, "last_name", e.target.value)}
+                    placeholder="Last name"
+                    className={`mt-1 ${errors[`${index}.last_name`] ? 'border-red-500' : ''}`}
+                  />
+                  {errors[`${index}.last_name`] && (
+                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.last_name`]}</p>
                   )}
                 </div>
 

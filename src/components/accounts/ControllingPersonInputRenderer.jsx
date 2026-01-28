@@ -40,7 +40,8 @@ export default function ControllingPersonInputRenderer({
   function createEmptyPerson() {
     return {
       id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      full_name: "",
+      first_name: "",
+      last_name: "",
       date_of_birth: "",
       control_type: "ownership",
       ownership_percentage: 0,
@@ -126,8 +127,11 @@ export default function ControllingPersonInputRenderer({
     const newErrors = {};
     
     persons.forEach((p, index) => {
-      if (!p.full_name?.trim()) {
-        newErrors[`${index}.full_name`] = "Name is required";
+      if (!p.first_name?.trim()) {
+        newErrors[`${index}.first_name`] = "First name is required";
+      }
+      if (!p.last_name?.trim()) {
+        newErrors[`${index}.last_name`] = "Last name is required";
       }
       if (!p.address?.country) {
         newErrors[`${index}.address.country`] = "Country is required";
@@ -154,7 +158,8 @@ export default function ControllingPersonInputRenderer({
         const personData = {
           tenant_id: account?.tenant_id,
           account_id: account.id,
-          full_name: p.full_name,
+          first_name: p.first_name,
+          last_name: p.last_name,
           date_of_birth: p.date_of_birth || null,
           control_type: p.control_type,
           ownership_percentage: parseFloat(p.ownership_percentage) || 0,
@@ -180,7 +185,7 @@ export default function ControllingPersonInputRenderer({
     }
   };
 
-  const isValid = persons.every(p => p.full_name?.trim() && p.address?.country);
+  const isValid = persons.every(p => p.first_name?.trim() && p.last_name?.trim() && p.address?.country);
 
   return (
     <div className="space-y-4">
@@ -219,16 +224,29 @@ export default function ControllingPersonInputRenderer({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label className="text-sm">Full Name *</Label>
+                <div>
+                  <Label className="text-sm">First Name *</Label>
                   <Input
-                    value={person.full_name}
-                    onChange={(e) => handlePersonChange(index, "full_name", e.target.value)}
-                    placeholder="Enter full name"
-                    className={`mt-1 ${errors[`${index}.full_name`] ? 'border-red-500' : ''}`}
+                    value={person.first_name}
+                    onChange={(e) => handlePersonChange(index, "first_name", e.target.value)}
+                    placeholder="First name"
+                    className={`mt-1 ${errors[`${index}.first_name`] ? 'border-red-500' : ''}`}
                   />
-                  {errors[`${index}.full_name`] && (
-                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.full_name`]}</p>
+                  {errors[`${index}.first_name`] && (
+                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.first_name`]}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-sm">Last Name *</Label>
+                  <Input
+                    value={person.last_name}
+                    onChange={(e) => handlePersonChange(index, "last_name", e.target.value)}
+                    placeholder="Last name"
+                    className={`mt-1 ${errors[`${index}.last_name`] ? 'border-red-500' : ''}`}
+                  />
+                  {errors[`${index}.last_name`] && (
+                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.last_name`]}</p>
                   )}
                 </div>
 

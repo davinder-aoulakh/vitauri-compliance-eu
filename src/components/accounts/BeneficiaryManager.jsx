@@ -188,7 +188,11 @@ export default function BeneficiaryManager({ account, tenant }) {
                       <User className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900">{beneficiary.full_name}</h4>
+                      <h4 className="font-semibold text-slate-900">
+                        {beneficiary.first_name && beneficiary.last_name 
+                          ? `${beneficiary.first_name} ${beneficiary.last_name}`
+                          : beneficiary.full_name || "N/A"}
+                      </h4>
                       {beneficiary.address?.country && (
                         <div className="flex items-center gap-1 text-sm text-slate-600 mt-1">
                           <MapPin className="w-3 h-3" />
@@ -283,7 +287,9 @@ export default function BeneficiaryManager({ account, tenant }) {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
-              Classify Beneficiary: {selectedBeneficiary?.full_name}
+              Classify Beneficiary: {selectedBeneficiary?.first_name && selectedBeneficiary?.last_name 
+                ? `${selectedBeneficiary.first_name} ${selectedBeneficiary.last_name}`
+                : selectedBeneficiary?.full_name}
             </DialogTitle>
           </DialogHeader>
           {selectedBeneficiary && (
@@ -306,7 +312,8 @@ export default function BeneficiaryManager({ account, tenant }) {
 // Beneficiary Form Component
 function BeneficiaryForm({ beneficiary, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
-    full_name: beneficiary?.full_name || "",
+    first_name: beneficiary?.first_name || "",
+    last_name: beneficiary?.last_name || "",
     date_of_birth: beneficiary?.date_of_birth || "",
     place_of_birth: beneficiary?.place_of_birth || "",
     address: beneficiary?.address || {
@@ -333,13 +340,25 @@ function BeneficiaryForm({ beneficiary, onSubmit, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <Label htmlFor="full_name">Full Name *</Label>
+        <div>
+          <Label htmlFor="first_name">First Name *</Label>
           <Input
-            id="full_name"
-            value={formData.full_name}
-            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-            placeholder="Enter beneficiary's full name"
+            id="first_name"
+            value={formData.first_name}
+            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+            placeholder="First name"
+            required
+            className="mt-1.5"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="last_name">Last Name *</Label>
+          <Input
+            id="last_name"
+            value={formData.last_name}
+            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+            placeholder="Last name"
             required
             className="mt-1.5"
           />
@@ -439,7 +458,7 @@ function BeneficiaryForm({ beneficiary, onSubmit, onCancel }) {
         <Button 
           type="submit" 
           className="bg-purple-600 hover:bg-purple-700 text-white"
-          disabled={!formData.full_name}
+          disabled={!formData.first_name || !formData.last_name}
         >
           {beneficiary ? "Update Beneficiary" : "Add Beneficiary"}
         </Button>

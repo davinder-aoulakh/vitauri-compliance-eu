@@ -208,7 +208,11 @@ export default function ControllingPersonManager({ account, tenant }) {
                       <User className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900">{person.full_name}</h4>
+                      <h4 className="font-semibold text-slate-900">
+                        {person.first_name && person.last_name 
+                          ? `${person.first_name} ${person.last_name}`
+                          : person.full_name || "N/A"}
+                      </h4>
                       <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
                         {person.control_type && (
                           <Badge variant="outline" className="capitalize text-xs">
@@ -322,7 +326,11 @@ export default function ControllingPersonManager({ account, tenant }) {
         <Dialog open={showClassification} onOpenChange={setShowClassification}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
+              <DialogTitle>
+                Classify Controlling Person: {classifyingPerson.first_name && classifyingPerson.last_name 
+                  ? `${classifyingPerson.first_name} ${classifyingPerson.last_name}`
+                  : classifyingPerson.full_name}
+              </DialogTitle>
             </DialogHeader>
             <WorkflowRunner
               workflow={workflows[0]}
@@ -340,7 +348,8 @@ export default function ControllingPersonManager({ account, tenant }) {
 // Controlling Person Form Component
 function ControllingPersonForm({ person, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
-    full_name: person?.full_name || "",
+    first_name: person?.first_name || "",
+    last_name: person?.last_name || "",
     date_of_birth: person?.date_of_birth || "",
     control_type: person?.control_type || "ownership",
     ownership_percentage: person?.ownership_percentage || 0,
@@ -398,13 +407,25 @@ function ControllingPersonForm({ person, onSubmit, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <Label htmlFor="full_name">Full Name *</Label>
+        <div>
+          <Label htmlFor="first_name">First Name *</Label>
           <Input
-            id="full_name"
-            value={formData.full_name}
-            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-            placeholder="Enter full name"
+            id="first_name"
+            value={formData.first_name}
+            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+            placeholder="First name"
+            required
+            className="mt-1.5"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="last_name">Last Name *</Label>
+          <Input
+            id="last_name"
+            value={formData.last_name}
+            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+            placeholder="Last name"
             required
             className="mt-1.5"
           />
@@ -594,7 +615,7 @@ function ControllingPersonForm({ person, onSubmit, onCancel }) {
         <Button 
           type="submit" 
           className="bg-indigo-600 hover:bg-indigo-700 text-white"
-          disabled={!formData.full_name}
+          disabled={!formData.first_name || !formData.last_name}
         >
           {person ? "Update Controlling Person" : "Add Controlling Person"}
         </Button>
