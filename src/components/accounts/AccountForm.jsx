@@ -886,8 +886,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               <Select
                 value={formData.reportability_status}
                 onValueChange={(value) => handleChange("reportability_status", value)}
+                disabled={!account}
               >
-                <SelectTrigger className="mt-1.5">
+                <SelectTrigger className="mt-1.5 bg-slate-50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -897,6 +898,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   <SelectItem value="excluded">Excluded</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-slate-500 mt-1">
+                {!account ? "New accounts default to Pending Review status" : "Classification workflow updates this status"}
+              </p>
             </div>
           </div>
 
