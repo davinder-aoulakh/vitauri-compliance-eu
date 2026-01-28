@@ -258,29 +258,31 @@ export default function BeneficiaryManager({ account, tenant }) {
       )}
 
       {/* Add/Edit Beneficiary Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingBeneficiary ? "Edit Beneficiary" : "Add Beneficiary"}
-            </DialogTitle>
-          </DialogHeader>
-          <BeneficiaryForm
-            beneficiary={editingBeneficiary}
-            onSubmit={(data) => {
-              if (editingBeneficiary) {
-                updateMutation.mutate({ id: editingBeneficiary.id, data });
-              } else {
-                createMutation.mutate(data);
-              }
-            }}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingBeneficiary(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {showForm && (
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingBeneficiary ? "Edit Beneficiary" : "Add Beneficiary"}
+              </DialogTitle>
+            </DialogHeader>
+            <BeneficiaryForm
+              beneficiary={editingBeneficiary}
+              onSubmit={(data) => {
+                if (editingBeneficiary) {
+                  updateMutation.mutate({ id: editingBeneficiary.id, data });
+                } else {
+                  createMutation.mutate(data);
+                }
+              }}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingBeneficiary(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Classification Dialog */}
       <Dialog open={showClassification} onOpenChange={setShowClassification}>

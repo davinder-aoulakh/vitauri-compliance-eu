@@ -297,29 +297,31 @@ export default function ControllingPersonManager({ account, tenant }) {
       )}
 
       {/* Add/Edit Controlling Person Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingPerson ? "Edit Controlling Person" : "Add Controlling Person"}
-            </DialogTitle>
-          </DialogHeader>
-          <ControllingPersonForm
-            person={editingPerson}
-            onSubmit={(data) => {
-              if (editingPerson) {
-                updateMutation.mutate({ id: editingPerson.id, data });
-              } else {
-                createMutation.mutate(data);
-              }
-            }}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingPerson(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {showForm && (
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingPerson ? "Edit Controlling Person" : "Add Controlling Person"}
+              </DialogTitle>
+            </DialogHeader>
+            <ControllingPersonForm
+              person={editingPerson}
+              onSubmit={(data) => {
+                if (editingPerson) {
+                  updateMutation.mutate({ id: editingPerson.id, data });
+                } else {
+                  createMutation.mutate(data);
+                }
+              }}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingPerson(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Classification Workflow Dialog */}
       {showClassification && workflows.length > 0 && classifyingPerson && (
