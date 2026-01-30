@@ -128,7 +128,7 @@ export default function DashboardTemplates() {
             Create and manage global dashboard templates for all tenants
           </p>
         </div>
-        <Button onClick={() => window.location.href = createPageUrl("DashboardBuilder")}>
+        <Button onClick={() => window.location.href = createPageUrl("DashboardBuilder") + "?template=true"}>
           <Plus className="w-4 h-4 mr-2" />
           Create Template
         </Button>
