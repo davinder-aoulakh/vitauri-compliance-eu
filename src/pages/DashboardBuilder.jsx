@@ -78,11 +78,17 @@ export default function DashboardBuilder() {
   const [editingWidget, setEditingWidget] = useState(null);
   const [newDashboard, setNewDashboard] = useState({ dashboard_name: "", description: "" });
   const [previewMode, setPreviewMode] = useState(false);
+  const [isTemplateMode, setIsTemplateMode] = useState(false);
 
   const queryClient = useQueryClient();
 
   useEffect(() => {
     loadUser();
+    // Check URL params for template mode
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('template')) {
+      setIsTemplateMode(true);
+    }
   }, []);
 
   const loadUser = async () => {
@@ -95,46 +101,69 @@ export default function DashboardBuilder() {
   };
 
   const { data: dashboards = [], isLoading } = useQuery({
-    queryKey: ['dashboard-configurations', user?.tenant_id],
-    queryFn: () => base44.entities.DashboardConfiguration.filter({ tenant_id: user?.tenant_id }),
-    enabled: !!user?.tenant_id
+    queryKey: isTemplateMode ? ['dashboard-templates'] : ['dashboard-configurations', user?.tenant_id],
+    queryFn: () => isTemplateMode 
+      ? base44.entities.DashboardTemplate.list('-created_date')
+      : base44.entities.DashboardConfiguration.filter({ tenant_id: user?.tenant_id }),
+    enabled: isTemplateMode ? !!user : !!user?.tenant_id
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.DashboardConfiguration.create({
-      ...data,
-      tenant_id: user.tenant_id,
-      layout: []
-    }),
+    mutationFn: (data) => {
+      if (isTemplateMode) {
+        return base44.entities.DashboardTemplate.create({
+          template_name: data.dashboard_name,
+          description: data.description,
+          layout: [],
+          created_by: user.email
+        });
+      } else {
+        return base44.entities.DashboardConfiguration.create({
+          ...data,
+          tenant_id: user.tenant_id,
+          layout: []
+        });
+      }
+    },
     onSuccess: async (newDashboard) => {
-      queryClient.invalidateQueries(['dashboard-configurations']);
+      queryClient.invalidateQueries(isTemplateMode ? ['dashboard-templates'] : ['dashboard-configurations']);
       setShowCreateDialog(false);
       setSelectedDashboard(newDashboard);
       setNewDashboard({ dashboard_name: "", description: "" });
-      await auditLog.dashboardCreated(newDashboard.id, newDashboard);
-      toast.success("Dashboard created");
+      if (!isTemplateMode) {
+        await auditLog.dashboardCreated(newDashboard.id, newDashboard);
+      }
+      toast.success(isTemplateMode ? "Template created" : "Dashboard created");
     }
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data, before }) => base44.entities.DashboardConfiguration.update(id, data).then(() => ({ id, data, before })),
+    mutationFn: ({ id, data, before }) => {
+      const entity = isTemplateMode ? base44.entities.DashboardTemplate : base44.entities.DashboardConfiguration;
+      return entity.update(id, data).then(() => ({ id, data, before }));
+    },
     onSuccess: async ({ id, data, before }) => {
-      queryClient.invalidateQueries(['dashboard-configurations']);
-      await auditLog.dashboardUpdated(id, before, data);
-      toast.success("Dashboard saved");
+      queryClient.invalidateQueries(isTemplateMode ? ['dashboard-templates'] : ['dashboard-configurations']);
+      if (!isTemplateMode) {
+        await auditLog.dashboardUpdated(id, before, data);
+      }
+      toast.success(isTemplateMode ? "Template saved" : "Dashboard saved");
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (dashboard) => {
-      await base44.entities.DashboardConfiguration.delete(dashboard.id);
+      const entity = isTemplateMode ? base44.entities.DashboardTemplate : base44.entities.DashboardConfiguration;
+      await entity.delete(dashboard.id);
       return dashboard;
     },
     onSuccess: async (dashboard) => {
-      queryClient.invalidateQueries(['dashboard-configurations']);
-      await auditLog.dashboardDeleted(dashboard.id, dashboard);
+      queryClient.invalidateQueries(isTemplateMode ? ['dashboard-templates'] : ['dashboard-configurations']);
+      if (!isTemplateMode) {
+        await auditLog.dashboardDeleted(dashboard.id, dashboard);
+      }
       setSelectedDashboard(null);
-      toast.success("Dashboard deleted");
+      toast.success(isTemplateMode ? "Template deleted" : "Dashboard deleted");
     }
   });
 
@@ -199,40 +228,56 @@ export default function DashboardBuilder() {
 
   const handleSaveDashboard = () => {
     const beforeData = dashboards.find(d => d.id === selectedDashboard.id);
+    const data = isTemplateMode ? {
+      template_name: selectedDashboard.dashboard_name || selectedDashboard.template_name,
+      description: selectedDashboard.description,
+      layout: selectedDashboard.layout,
+      theme: selectedDashboard.theme,
+      last_modified_by: user.email
+    } : {
+      dashboard_name: selectedDashboard.dashboard_name,
+      description: selectedDashboard.description,
+      layout: selectedDashboard.layout,
+      theme: selectedDashboard.theme
+    };
     updateMutation.mutate({
       id: selectedDashboard.id,
-      data: {
-        dashboard_name: selectedDashboard.dashboard_name,
-        description: selectedDashboard.description,
-        layout: selectedDashboard.layout,
-        theme: selectedDashboard.theme
-      },
+      data,
       before: beforeData
     });
   };
 
   const handlePublishDashboard = async () => {
-    // If setting as default, unset other defaults first
-    if (!selectedDashboard.is_default) {
-      const otherDefaults = dashboards.filter(d => d.is_default && d.id !== selectedDashboard.id);
-      for (const d of otherDefaults) {
-        await base44.entities.DashboardConfiguration.update(d.id, { is_default: false });
+    if (isTemplateMode) {
+      // For templates, just set is_published
+      await base44.entities.DashboardTemplate.update(selectedDashboard.id, {
+        is_published: true,
+        last_modified_by: user.email
+      });
+      queryClient.invalidateQueries(['dashboard-templates']);
+      toast.success("Template published");
+    } else {
+      // If setting as default, unset other defaults first
+      if (!selectedDashboard.is_default) {
+        const otherDefaults = dashboards.filter(d => d.is_default && d.id !== selectedDashboard.id);
+        for (const d of otherDefaults) {
+          await base44.entities.DashboardConfiguration.update(d.id, { is_default: false });
+        }
       }
+
+      const publishData = {
+        is_published: true,
+        is_default: true,
+        published_date: new Date().toISOString(),
+        published_by: user.email
+      };
+
+      await base44.entities.DashboardConfiguration.update(selectedDashboard.id, publishData);
+      queryClient.invalidateQueries(['dashboard-configurations']);
+      
+      await auditLog.dashboardPublished(selectedDashboard.id, { ...selectedDashboard, ...publishData });
+      toast.success("Dashboard published");
     }
-
-    const beforeData = dashboards.find(d => d.id === selectedDashboard.id);
-    const publishData = {
-      is_published: true,
-      is_default: true,
-      published_date: new Date().toISOString(),
-      published_by: user.email
-    };
-
-    await base44.entities.DashboardConfiguration.update(selectedDashboard.id, publishData);
-    queryClient.invalidateQueries(['dashboard-configurations']);
-    
-    await auditLog.dashboardPublished(selectedDashboard.id, { ...selectedDashboard, ...publishData });
-    toast.success("Dashboard published");
   };
 
   const handleDuplicateDashboard = () => {
@@ -268,13 +313,17 @@ export default function DashboardBuilder() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <LayoutDashboard className="w-8 h-8 text-indigo-600" />
-              Dashboard Builder
+              {isTemplateMode ? "Dashboard Template Builder" : "Dashboard Builder"}
             </h1>
-            <p className="text-slate-600 mt-1">Create and customize dashboards for your team</p>
+            <p className="text-slate-600 mt-1">
+              {isTemplateMode 
+                ? "Create global dashboard templates for all tenants" 
+                : "Create and customize dashboards for your team"}
+            </p>
           </div>
           <Button onClick={() => setShowCreateDialog(true)} className="bg-indigo-600 hover:bg-indigo-700">
             <Plus className="w-4 h-4 mr-2" />
-            New Dashboard
+            {isTemplateMode ? "New Template" : "New Dashboard"}
           </Button>
         </div>
 
@@ -287,7 +336,9 @@ export default function DashboardBuilder() {
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{dashboard.dashboard_name}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {dashboard.dashboard_name || dashboard.template_name}
+                  </CardTitle>
                   <div className="flex gap-1">
                     {dashboard.is_published && (
                       <Badge className="bg-green-100 text-green-800">Published</Badge>
@@ -328,15 +379,17 @@ export default function DashboardBuilder() {
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Dashboard</DialogTitle>
+              <DialogTitle>
+                {isTemplateMode ? "Create New Template" : "Create New Dashboard"}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Dashboard Name *</Label>
+                <Label>{isTemplateMode ? "Template Name *" : "Dashboard Name *"}</Label>
                 <Input
                   value={newDashboard.dashboard_name}
                   onChange={(e) => setNewDashboard({ ...newDashboard, dashboard_name: e.target.value })}
-                  placeholder="e.g., Executive Overview"
+                  placeholder={isTemplateMode ? "e.g., Default Compliance Overview" : "e.g., Executive Overview"}
                 />
               </div>
               <div>
@@ -377,8 +430,13 @@ export default function DashboardBuilder() {
               </Button>
               <div>
                 <Input
-                  value={selectedDashboard.dashboard_name}
-                  onChange={(e) => setSelectedDashboard({ ...selectedDashboard, dashboard_name: e.target.value })}
+                  value={selectedDashboard.dashboard_name || selectedDashboard.template_name}
+                  onChange={(e) => setSelectedDashboard({ 
+                    ...selectedDashboard, 
+                    ...(isTemplateMode 
+                      ? { template_name: e.target.value } 
+                      : { dashboard_name: e.target.value })
+                  })}
                   className="text-xl font-bold border-none p-0 h-auto focus-visible:ring-0"
                 />
                 <div className="flex items-center gap-2 mt-1">
