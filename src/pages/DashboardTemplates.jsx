@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -127,7 +128,7 @@ export default function DashboardTemplates() {
             Create and manage global dashboard templates for all tenants
           </p>
         </div>
-        <Button onClick={() => window.location.href = '/dashboard-builder'}>
+        <Button onClick={() => window.location.href = createPageUrl("DashboardBuilder")}>
           <Plus className="w-4 h-4 mr-2" />
           Create Template
         </Button>
@@ -231,7 +232,7 @@ export default function DashboardTemplates() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.location.href = `/dashboard-builder?template=${template.id}`}
+                    onClick={() => window.location.href = `${createPageUrl("DashboardBuilder")}?template=${template.id}`}
                     className="flex-1"
                   >
                     <Edit className="w-4 h-4 mr-1" />
