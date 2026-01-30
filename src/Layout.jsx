@@ -261,6 +261,12 @@ export default function Layout({ children }) {
       roles: ["super_admin"]
     },
     {
+      title: "Dashboard Templates",
+      url: createPageUrl("DashboardTemplates"),
+      icon: LayoutDashboard,
+      roles: ["super_admin"]
+    },
+    {
       title: "Workflows",
       url: createPageUrl("WorkflowBuilder"),
       icon: GitBranch,
