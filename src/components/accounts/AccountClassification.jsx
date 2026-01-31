@@ -586,35 +586,29 @@ export default function AccountClassification({ account, onComplete, onCancel })
         groupResults.push({ group, result: groupResult });
       }
 
-      // Return the step ID based on overall logic
-      if (logic.overall_logic_operator) {
-        console.log(`\n  Combining groups with ${logic.overall_logic_operator}:`);
-        let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
-
-        for (let i = 0; i < groupResults.length; i++) {
-          const { result } = groupResults[i];
-          if (logic.overall_logic_operator === 'AND') {
-            finalResult = finalResult && result;
-            if (!finalResult) break;
-          } else {
-            finalResult = finalResult || result;
-            if (finalResult) break;
-          }
-        }
-
-        console.log(`  >>> FINAL RESULT: ${finalResult}`);
-        console.log(`  >>> RETURNING: ${finalResult ? 'TRUE' : 'FALSE'} (will use overall_${finalResult ? 'true' : 'false'}_step)`);
-        console.log('========== END CONDITIONAL LOGIC ==========\n');
+      // NEW BEHAVIOR: First match wins - return the step ID directly
+      console.log(`\n--- FIRST MATCH WINS LOGIC ---`);
+      for (let i = 0; i < groupResults.length; i++) {
+        const { group, result } = groupResults[i];
+        console.log(`  Checking Group ${i + 1} (${group.group_name}): ${result ? 'TRUE ✅' : 'FALSE ❌'}`);
         
-        // Return true/false to indicate which path to take (caller will use overall_true_step or overall_false_step)
-        return finalResult;
-      } else {
-        // No overall operator - use first group's result
-        const firstResult = groupResults[0]?.result || false;
-        console.log(`  No overall operator, using first group result: ${firstResult}`);
-        console.log('========== END CONDITIONAL LOGIC ==========\n');
-        return firstResult;
+        if (result === true) {
+          console.log(`  🎯 FIRST MATCH FOUND! Using Group ${i + 1}'s TRUE path`);
+          console.log(`  >>> RETURNING STEP: ${group.true_step}`);
+          console.log('========== END CONDITIONAL LOGIC ==========\n');
+          return group.true_step; // Return the step ID directly
+        }
       }
+      
+      // No groups matched - use fallback
+      console.log(`  ⚠️ NO GROUPS MATCHED`);
+      // Use the last group's false_step, or overall_false_step, or first group's false_step
+      const fallbackStep = logic.overall_false_step || 
+                           groupResults[groupResults.length - 1]?.group.false_step || 
+                           groupResults[0]?.group.false_step;
+      console.log(`  >>> RETURNING FALLBACK STEP: ${fallbackStep}`);
+      console.log('========== END CONDITIONAL LOGIC ==========\n');
+      return fallbackStep; // Return the step ID directly
     }
 
     // LEGACY: Fallback to old simple conditions
