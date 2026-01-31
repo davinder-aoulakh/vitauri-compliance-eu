@@ -504,13 +504,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
 
     // LEGACY: Fallback to old single conditions array
+    console.log('\n--- EVALUATING LEGACY SIMPLE CONDITIONS ---');
     if (!logic?.conditions || logic.conditions.length === 0) {
-      console.log('No conditions found, returning else_step:', logic.else_step);
+      console.log('No simple conditions found, returning else_step:', logic.else_step);
+      console.log('========== END CONDITIONAL LOGIC EVALUATION ==========\n');
       return logic.else_step;
     }
 
+    console.log(`Evaluating ${logic.conditions.length} simple conditions`);
     let conditionsMet = true;
-    for (const condition of logic.conditions) {
+    for (let i = 0; i < logic.conditions.length; i++) {
+      const condition = logic.conditions[i];
+      console.log(`\nSimple Condition ${i + 1}/${logic.conditions.length}:`);
       const met = await evaluateCondition(condition);
       
       if (condition.logic_operator === 'AND' && !met) {
@@ -525,11 +530,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
 
-    console.log('Final conditionsMet:', conditionsMet);
-    console.log('Returning:', conditionsMet ? logic.next_step : logic.else_step);
-    console.log('=== END CONDITIONAL LOGIC EVALUATION ===\n');
+    console.log('\n>>> Final conditionsMet:', conditionsMet);
+    const resultStep = conditionsMet ? logic.next_step : logic.else_step;
+    console.log(`>>> Returning: ${resultStep} (${conditionsMet ? 'next_step' : 'else_step'})`);
+    console.log('========== END CONDITIONAL LOGIC EVALUATION ==========\n');
     
-    return conditionsMet ? logic.next_step : logic.else_step;
+    return resultStep;
   };
 
   const handleComplete = async () => {
