@@ -1939,106 +1939,132 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">Target Entity</Label>
-                      <Select
-                        value={action.target_entity_type || "Entity"}
-                        onValueChange={(value) => {
-                          handleActionChange(index, "target_entity_type", value, { field_to_update: "", value: "" });
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs mt-1">
-                          <SelectValue placeholder="Select entity..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Entity">Entity</SelectItem>
-                          <SelectItem value="Account">Account</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Field to Update</Label>
-                      <Select
-                        value={action.field_to_update || ""}
-                        onValueChange={(value) => {
-                          handleActionChange(index, "field_to_update", value, { value: "" });
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs mt-1">
-                          <SelectValue placeholder="Select field..." />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                          {fieldOptions.map(opt => (
-                            <SelectItem key={`field-${opt.value}`} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Value Source</Label>
-                      <Select
-                        value={action.value_source || "from_step_answer"}
-                        onValueChange={(value) => {
-                          handleActionChange(index, "value_source", value, { value: "" });
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="from_step_answer">From Step Answer</SelectItem>
-                          <SelectItem value="static_value">Static Value</SelectItem>
-                          <SelectItem value="from_workflow_outcome">From Workflow Outcome</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">
-                        {action.value_source === "from_step_answer" ? "Step ID" : "Value"}
-                      </Label>
-                      {action.value_source === "from_step_answer" ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Target Entity</Label>
                         <Select
-                          value={action.value || ""}
-                          onValueChange={(value) => handleActionChange(index, "value", value)}
+                          value={action.target_entity_type || "Entity"}
+                          onValueChange={(value) => {
+                            handleActionChange(index, "target_entity_type", value, { field_to_update: "", value: "" });
+                          }}
                         >
                           <SelectTrigger className="h-8 text-xs mt-1">
-                            <SelectValue placeholder="Select step..." />
+                            <SelectValue placeholder="Select entity..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {allSteps.map(s => (
-                              <SelectItem key={`step-${s.step_id}`} value={s.step_id}>
-                                {s.step_title}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="Entity">Entity</SelectItem>
+                            <SelectItem value="Account">Account</SelectItem>
                           </SelectContent>
                         </Select>
-                      ) : suggestedValues ? (
+                      </div>
+                      <div>
+                        <Label className="text-xs">Field to Update</Label>
                         <Select
-                          value={action.value || ""}
-                          onValueChange={(value) => handleActionChange(index, "value", value)}
+                          value={action.field_to_update || ""}
+                          onValueChange={(value) => {
+                            handleActionChange(index, "field_to_update", value, { value: "" });
+                          }}
                         >
                           <SelectTrigger className="h-8 text-xs mt-1">
-                            <SelectValue placeholder="Select value..." />
+                            <SelectValue placeholder="Select field..." />
                           </SelectTrigger>
-                          <SelectContent>
-                            {suggestedValues.map(opt => (
-                              <SelectItem key={`val-${opt.value}`} value={opt.value}>
+                          <SelectContent className="max-h-[300px]">
+                            {fieldOptions.map(opt => (
+                              <SelectItem key={`field-${opt.value}`} value={opt.value}>
                                 {opt.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <Input
-                          value={action.value || ""}
-                          onChange={(e) => handleActionChange(index, "value", e.target.value)}
-                          placeholder="Enter value..."
-                          className="h-8 text-xs mt-1"
-                        />
-                      )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold text-indigo-700">Execution Timing</Label>
+                      <Select
+                        value={action.execution_timing || "after_step"}
+                        onValueChange={(value) => handleActionChange(index, "execution_timing", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="after_step">After This Step (when clicking Next)</SelectItem>
+                          <SelectItem value="after_workflow">After Entire Workflow (when completing)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {action.execution_timing === "after_workflow" 
+                          ? "⏱️ Updates when the entire workflow is completed" 
+                          : "⚡ Updates immediately when user clicks Next on this step"}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Value Source</Label>
+                        <Select
+                          value={action.value_source || "from_step_answer"}
+                          onValueChange={(value) => {
+                            handleActionChange(index, "value_source", value, { value: "" });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="from_step_answer">From Step Answer</SelectItem>
+                            <SelectItem value="static_value">Static Value</SelectItem>
+                            <SelectItem value="from_workflow_outcome">From Workflow Outcome</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">
+                          {action.value_source === "from_step_answer" ? "Step ID" : "Value"}
+                        </Label>
+                        {action.value_source === "from_step_answer" ? (
+                          <Select
+                            value={action.value || ""}
+                            onValueChange={(value) => handleActionChange(index, "value", value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue placeholder="Select step..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allSteps.map(s => (
+                                <SelectItem key={`step-${s.step_id}`} value={s.step_id}>
+                                  {s.step_title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : suggestedValues ? (
+                          <Select
+                            value={action.value || ""}
+                            onValueChange={(value) => handleActionChange(index, "value", value)}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue placeholder="Select value..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suggestedValues.map(opt => (
+                                <SelectItem key={`val-${opt.value}`} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={action.value || ""}
+                            onChange={(e) => handleActionChange(index, "value", e.target.value)}
+                            placeholder="Enter value..."
+                            className="h-8 text-xs mt-1"
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
