@@ -130,6 +130,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
     console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
     
+    // Execute post-completion actions for this step
+    if (currentStep.post_completion_actions && currentStep.post_completion_actions.length > 0) {
+      console.log(`\n[POST-COMPLETION ACTIONS] Executing ${currentStep.post_completion_actions.length} action(s) for step: ${currentStep.step_title}`);
+      await executePostCompletionActions(currentStep.post_completion_actions);
+    }
+    
     // Add current step to history
     setHistory(prev => [...prev, currentStep.step_id]);
     
@@ -563,6 +569,107 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log('========== END CONDITIONAL LOGIC EVALUATION ==========\n');
     
     return resultStep;
+  };
+
+  // Execute post-completion actions for a step
+  const executePostCompletionActions = async (actions) => {
+    if (!actions || actions.length === 0) return;
+
+    for (const action of actions) {
+      try {
+        console.log(`[POST-COMPLETION ACTION] Executing action:`, action);
+        
+        // Determine the target entity
+        let targetEntityId = null;
+        let targetEntityType = action.target_entity_type;
+
+        if (targetEntityType === "Account" && accountId) {
+          targetEntityId = accountId;
+        } else if (targetEntityType === "Entity" && entityId) {
+          targetEntityId = entityId;
+        } else if (targetEntityType === "ControllingPerson") {
+          console.warn("ControllingPerson target not yet supported in post-completion actions");
+          continue;
+        }
+
+        if (!targetEntityId || !targetEntityType) {
+          console.warn(`[POST-COMPLETION ACTION] No valid target entity found for action:`, action);
+          continue;
+        }
+
+        // Determine the value to update
+        let valueToUpdate = null;
+        
+        if (action.value_source === "static_value") {
+          valueToUpdate = action.value;
+        } else if (action.value_source === "from_step_answer") {
+          const sourceStepId = action.value;
+          valueToUpdate = answers[sourceStepId];
+          
+          // Convert Yes/No to boolean if needed
+          if (valueToUpdate === 'YES') valueToUpdate = true;
+          if (valueToUpdate === 'NO') valueToUpdate = false;
+        } else if (action.value_source === "from_workflow_outcome") {
+          // Get the final outcome/result from the workflow
+          const resultStep = workflow.steps.find(s => s.question_type === 'result');
+          valueToUpdate = resultStep?.result_description || action.value;
+        }
+
+        // Check if there's a condition
+        if (action.condition) {
+          const conditionField = action.condition.field;
+          const conditionOperator = action.condition.operator;
+          const conditionValue = action.condition.value;
+          
+          const fieldValue = answers[conditionField];
+          
+          let conditionMet = false;
+          switch (conditionOperator) {
+            case '=':
+              conditionMet = fieldValue === conditionValue;
+              break;
+            case '!=':
+              conditionMet = fieldValue !== conditionValue;
+              break;
+            case 'contains':
+              conditionMet = String(fieldValue || '').includes(String(conditionValue));
+              break;
+            case 'in':
+              conditionMet = String(conditionValue).split(',').map(v => v.trim()).includes(String(fieldValue));
+              break;
+            case 'not_in':
+              conditionMet = !String(conditionValue).split(',').map(v => v.trim()).includes(String(fieldValue));
+              break;
+            default:
+              conditionMet = false;
+          }
+          
+          console.log(`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
+          
+          if (!conditionMet) {
+            console.log(`[POST-COMPLETION ACTION] Condition not met, skipping action`);
+            continue;
+          }
+        }
+
+        // Perform the update
+        const fieldToUpdate = action.field_to_update;
+        const updateData = { [fieldToUpdate]: valueToUpdate };
+
+        console.log(`[POST-COMPLETION ACTION] Updating ${targetEntityType}.${fieldToUpdate} = ${valueToUpdate}`);
+
+        if (targetEntityType === "Account") {
+          await base44.entities.Account.update(targetEntityId, updateData);
+        } else if (targetEntityType === "Entity") {
+          await base44.entities.Entity.update(targetEntityId, updateData);
+        }
+
+        console.log(`[POST-COMPLETION ACTION] Successfully updated ${targetEntityType} field: ${fieldToUpdate}`);
+      } catch (error) {
+        console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
+        // Continue with other actions even if one fails
+      }
+    }
   };
 
   const handleComplete = async () => {
