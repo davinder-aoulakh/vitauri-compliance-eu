@@ -904,10 +904,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     setAnswers(newAnswers);
     
-    // Execute post-completion actions for this step BEFORE navigating
+    // Execute post-completion actions for this step (only those with "after_step" timing)
     if (currentNode.post_completion_actions && currentNode.post_completion_actions.length > 0) {
-      console.log(`[POST-COMPLETION ACTIONS] Executing ${currentNode.post_completion_actions.length} action(s) for step: ${currentNode.step_title}`);
-      await executePostCompletionActions(currentNode.post_completion_actions, newAnswers);
+      const afterStepActions = currentNode.post_completion_actions.filter(
+        action => (action.execution_timing || "after_step") === "after_step"
+      );
+      if (afterStepActions.length > 0) {
+        console.log(`[POST-COMPLETION ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for step: ${currentNode.step_title}`);
+        await executePostCompletionActions(afterStepActions, newAnswers);
+      }
     }
     
     // Only add to history if not already present (prevent duplicates)
@@ -1117,6 +1122,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
+    // Execute "after_workflow" post-completion actions from all steps
+    console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
+    for (const stepId of completedPath) {
+      const step = stepMap[stepId];
+      if (step?.post_completion_actions && step.post_completion_actions.length > 0) {
+        const afterWorkflowActions = step.post_completion_actions.filter(
+          action => action.execution_timing === "after_workflow"
+        );
+        if (afterWorkflowActions.length > 0) {
+          console.log(`[POST-COMPLETION ACTIONS] Executing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
+          await executePostCompletionActions(afterWorkflowActions, cleanedAnswers);
+        }
+      }
+    }
+
     let reportabilityStatus = "pending_review";
     let reason = finalNode?.help_text || finalNode?.step_title || "Classification completed";
 
@@ -1144,13 +1164,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
       self_certification_obtained: finalNode?.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
 
-    // Execute post-completion actions from all completed steps
+    // Note: "after_workflow" post-completion actions are now executed above before building classificationData
+    // This allows them to update the account in real-time
+    
+    // Legacy support: Still apply post-completion actions to classificationData for backward compatibility
     const allCompletedSteps = [...completedPath];
     for (const stepId of allCompletedSteps) {
       const step = stepMap[stepId];
       if (step?.post_completion_actions?.length > 0) {
         for (const action of step.post_completion_actions) {
-          if (action.target_entity_type === "Account") {
+          // Only apply to classificationData if it's an "after_step" action (already executed)
+          // or if it doesn't have execution_timing set (legacy behavior)
+          if (action.target_entity_type === "Account" && (!action.execution_timing || action.execution_timing === "after_step")) {
             let newValue = action.value;
             
             // Determine the value based on source
@@ -1175,7 +1200,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Also check the final node for post-completion actions
     if (finalNode?.post_completion_actions?.length > 0) {
       for (const action of finalNode.post_completion_actions) {
-        if (action.target_entity_type === "Account") {
+        if (action.target_entity_type === "Account" && (!action.execution_timing || action.execution_timing === "after_step")) {
           let newValue = action.value;
           
           if (action.value_source === "from_step_answer") {

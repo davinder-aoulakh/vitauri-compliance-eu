@@ -675,6 +675,20 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleComplete = async () => {
     setLoading(true);
     
+    // Execute post-completion actions with "after_workflow" timing from all steps
+    console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
+    for (const step of workflow.steps) {
+      if (step.post_completion_actions && step.post_completion_actions.length > 0) {
+        const afterWorkflowActions = step.post_completion_actions.filter(
+          action => action.execution_timing === "after_workflow"
+        );
+        if (afterWorkflowActions.length > 0) {
+          console.log(`[POST-COMPLETION ACTIONS] Executing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
+          await executePostCompletionActions(afterWorkflowActions);
+        }
+      }
+    }
+    
     // Build completion data
     const completionData = Object.entries(answers).map(([stepId, answer]) => {
       const step = workflow.steps.find(s => s.step_id === stepId);
