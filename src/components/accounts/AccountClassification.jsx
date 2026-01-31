@@ -482,7 +482,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const normalizeCountryForComparison = (val) => {
         if (!val) return '';
         const valLower = String(val).toLowerCase();
-        // Check if this is a country code or name and get the normalized code
         const countryInfo = crsCountryMap[valLower];
         if (countryInfo?.code) {
           return countryInfo.code.toLowerCase();
@@ -490,7 +489,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return valLower;
       };
 
-      // Check if either field is a country field for normalization
       const isCountryComparison = (
         condition.field?.toLowerCase().includes('country') ||
         condition.value?.toLowerCase().includes('country')
@@ -499,7 +497,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       switch (condition.operator) {
         case "=":
           if (isCountryComparison) {
-            // Normalize both to country codes for comparison
             conditionMet = normalizeCountryForComparison(fieldValue) === normalizeCountryForComparison(comparisonValue);
           } else {
             conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
@@ -507,7 +504,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           break;
         case "!=":
           if (isCountryComparison) {
-            // Normalize both to country codes for comparison
             conditionMet = normalizeCountryForComparison(fieldValue) !== normalizeCountryForComparison(comparisonValue);
           } else {
             conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
@@ -537,12 +533,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
           break;
         case "is_crs":
-          // Check if country is a CRS participating country - now supports both name and code
           const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
           conditionMet = countryLookup?.isCrs === true;
           break;
         case "is_not_crs":
-          // Check if country is NOT a CRS participating country
           const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
           conditionMet = countryLookupNot?.isCrs === false;
           break;
