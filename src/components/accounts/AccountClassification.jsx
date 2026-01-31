@@ -455,11 +455,24 @@ export default function AccountClassification({ account, onComplete, onCancel })
         comparisonValue = getFieldValue(condition.value, linkedEntity);
       }
 
+      // Normalize YES/NO to true/false for boolean comparisons
+      const normalizeBoolean = (val) => {
+        if (val === 'YES') return 'true';
+        if (val === 'NO') return 'false';
+        if (val === true) return 'true';
+        if (val === false) return 'false';
+        return val;
+      };
+
+      const originalFieldValue = fieldValue;
+      const originalComparisonValue = comparisonValue;
+      
+      fieldValue = normalizeBoolean(fieldValue);
+      comparisonValue = normalizeBoolean(comparisonValue);
+
       console.log(`  🔍 Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}", value_type="${condition.value_type}"`);
-      console.log(`  📊 Field value (type: ${typeof fieldValue}):`, fieldValue);
-      console.log(`  📊 Comparison value (type: ${typeof comparisonValue}):`, comparisonValue);
-      console.log(`  📋 Field value stringified:`, String(fieldValue));
-      console.log(`  📋 Comparison value stringified:`, String(comparisonValue));
+      console.log(`  📊 Original field value:`, originalFieldValue, `→ Normalized:`, fieldValue);
+      console.log(`  📊 Original comparison value:`, originalComparisonValue, `→ Normalized:`, comparisonValue);
 
       let conditionMet = false;
 
