@@ -386,7 +386,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           met = false;
       }
 
-      console.log('Condition met:', met);
+      console.log(`    >>> Condition Result: ${met}`);
+      console.log('    --- End Single Condition ---\n');
       return met;
     };
 
