@@ -386,57 +386,112 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
     // NEW: Check for condition_groups (advanced multi-group conditional logic)
     if (logic?.condition_groups && logic.condition_groups.length > 0) {
-      console.log('=== EVALUATING CONDITION GROUPS ===');
+      console.log('\n========== EVALUATING CONDITION GROUPS ==========');
+      console.log(`Total condition_groups: ${logic.condition_groups.length}`);
+      console.log('Overall Logic Operator:', logic.overall_logic_operator);
+      console.log('Overall True Step:', logic.overall_true_step);
+      console.log('Overall False Step:', logic.overall_false_step);
+      
       const groupResults = [];
 
-      for (const group of logic.condition_groups) {
-        console.log(`--- Evaluating Group: ${group.group_name || group.group_id} ---`);
+      for (let i = 0; i < logic.condition_groups.length; i++) {
+        const group = logic.condition_groups[i];
+        console.log(`\n--- EVALUATING GROUP ${i + 1}: ${group.group_name || group.group_id} ---`);
+        console.log(`Group ID: ${group.group_id}`);
         console.log(`Group Operator: ${group.group_operator}`);
+        console.log(`Number of conditions in group: ${group.conditions?.length || 0}`);
+        console.log(`Group True Step: ${group.true_step}`);
+        console.log(`Group False Step: ${group.false_step}`);
+
+        if (!group.conditions || group.conditions.length === 0) {
+          console.log(`WARNING: Group ${group.group_name} has no conditions! Treating as FALSE.`);
+          groupResults.push({ group, result: false });
+          continue;
+        }
 
         let groupResult = group.group_operator === 'AND' ? true : false;
 
-        for (const condition of group.conditions) {
+        for (let j = 0; j < group.conditions.length; j++) {
+          const condition = group.conditions[j];
+          console.log(`\n  Condition ${j + 1}/${group.conditions.length}:`);
+          console.log(`  - Field: ${condition.field}`);
+          console.log(`  - Operator: ${condition.operator}`);
+          console.log(`  - Value: ${condition.value}`);
+          console.log(`  - Value Type: ${condition.value_type}`);
+          
           const conditionMet = await evaluateCondition(condition);
+          console.log(`  - Result: ${conditionMet}`);
           
           if (group.group_operator === 'AND') {
             groupResult = groupResult && conditionMet;
-            if (!groupResult) break; // Short-circuit AND
+            console.log(`  - Running AND: groupResult = ${groupResult}`);
+            if (!groupResult) {
+              console.log(`  - Short-circuit AND (group failed)`);
+              break;
+            }
           } else { // OR
             groupResult = groupResult || conditionMet;
-            if (groupResult) break; // Short-circuit OR
+            console.log(`  - Running OR: groupResult = ${groupResult}`);
+            if (groupResult) {
+              console.log(`  - Short-circuit OR (group succeeded)`);
+              break;
+            }
           }
         }
 
-        console.log(`Group ${group.group_name || group.group_id} result:`, groupResult);
+        console.log(`\n>>> GROUP ${i + 1} FINAL RESULT: ${groupResult}`);
         groupResults.push({ group, result: groupResult });
       }
 
+      console.log('\n--- ALL GROUP RESULTS ---');
+      groupResults.forEach(({ group, result }, idx) => {
+        console.log(`Group ${idx + 1} (${group.group_name}): ${result}`);
+      });
+
       // Determine final step based on group results and overall operator
       if (logic.overall_logic_operator) {
-        console.log(`Overall Logic Operator: ${logic.overall_logic_operator}`);
+        console.log(`\n--- COMBINING GROUPS with ${logic.overall_logic_operator} ---`);
         let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
 
-        for (const { result } of groupResults) {
+        for (let i = 0; i < groupResults.length; i++) {
+          const { result } = groupResults[i];
           if (logic.overall_logic_operator === 'AND') {
             finalResult = finalResult && result;
-            if (!finalResult) break;
+            console.log(`After group ${i + 1}: finalResult = ${finalResult} (AND logic)`);
+            if (!finalResult) {
+              console.log('Short-circuit AND - stopping evaluation');
+              break;
+            }
           } else { // OR
             finalResult = finalResult || result;
-            if (finalResult) break;
+            console.log(`After group ${i + 1}: finalResult = ${finalResult} (OR logic)`);
+            if (finalResult) {
+              console.log('Short-circuit OR - stopping evaluation');
+              break;
+            }
           }
         }
 
-        console.log('Final Overall Result:', finalResult);
+        console.log(`\n>>> FINAL OVERALL RESULT: ${finalResult}`);
         const nextStep = finalResult ? logic.overall_true_step : logic.overall_false_step;
-        console.log('Returning next step:', nextStep);
-        console.log('=== END CONDITION GROUPS EVALUATION ===\n');
+        console.log(`>>> RETURNING NEXT STEP: ${nextStep} (${finalResult ? 'TRUE' : 'FALSE'} path)`);
+        
+        const nextStepObj = workflow.steps.find(s => s.step_id === nextStep);
+        if (nextStepObj) {
+          console.log(`>>> Next step title: ${nextStepObj.step_title}`);
+        } else {
+          console.log(`>>> WARNING: Next step "${nextStep}" not found in workflow!`);
+        }
+        
+        console.log('========== END CONDITION GROUPS EVALUATION ==========\n');
         return nextStep;
       } else {
-        // No overall operator - use first group's true/false steps
+        console.log('\n--- NO OVERALL OPERATOR - using first group result ---');
         const firstGroup = groupResults[0];
         const nextStep = firstGroup.result ? firstGroup.group.true_step : firstGroup.group.false_step;
-        console.log('No overall operator, using first group result:', nextStep);
-        console.log('=== END CONDITION GROUPS EVALUATION ===\n');
+        console.log(`First group result: ${firstGroup.result}`);
+        console.log(`Returning next step: ${nextStep}`);
+        console.log('========== END CONDITION GROUPS EVALUATION ==========\n');
         return nextStep;
       }
     }
