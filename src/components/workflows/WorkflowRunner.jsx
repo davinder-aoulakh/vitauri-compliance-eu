@@ -234,9 +234,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const evaluateConditionalLogic = async (logic, currentAnswer, allAnswers) => {
-    console.log('=== EVALUATING CONDITIONAL LOGIC ===');
-    console.log('Logic:', JSON.stringify(logic, null, 2));
-    console.log('All Answers:', JSON.stringify(allAnswers, null, 2));
+    console.log('\n========== EVALUATING CONDITIONAL LOGIC ==========');
+    console.log('Full Logic Object:', JSON.stringify(logic, null, 2));
+    console.log('All Current Answers:', JSON.stringify(allAnswers, null, 2));
+    console.log('Trigger Field:', logic?.trigger_field);
+    console.log('Trigger Value:', logic?.trigger_value);
+    console.log('Has condition_groups:', !!logic?.condition_groups?.length);
+    console.log('Number of condition_groups:', logic?.condition_groups?.length || 0);
     
     // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
     const getFieldValue = (fieldPath) => {
