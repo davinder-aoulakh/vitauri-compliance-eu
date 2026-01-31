@@ -49,6 +49,15 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         value_type: valueType
       };
     });
+
+    // Normalize condition_groups to ensure all fields are preserved
+    const normalizedConditionGroups = (step.conditional_logic?.condition_groups || []).map(group => ({
+      ...group,
+      conditions: (group.conditions || []).map(c => ({
+        ...c,
+        value_type: c.value_type !== undefined ? c.value_type : "static"
+      }))
+    }));
     
     return {
       ...step,
@@ -57,8 +66,12 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
       conditional_logic: step.conditional_logic ? {
         ...step.conditional_logic,
         conditions: normalizedConditions,
-        option_values: Array.isArray(step.conditional_logic.option_values) ? step.conditional_logic.option_values : []
-      } : { conditions: [], next_step: "", else_step: "", option_values: [] }
+        option_values: Array.isArray(step.conditional_logic.option_values) ? step.conditional_logic.option_values : [],
+        condition_groups: normalizedConditionGroups,
+        overall_logic_operator: step.conditional_logic.overall_logic_operator || null,
+        overall_true_step: step.conditional_logic.overall_true_step || null,
+        overall_false_step: step.conditional_logic.overall_false_step || null
+      } : { conditions: [], next_step: "", else_step: "", option_values: [], condition_groups: [] }
     };
   });
   
