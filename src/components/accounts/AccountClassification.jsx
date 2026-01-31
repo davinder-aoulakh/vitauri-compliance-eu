@@ -455,6 +455,91 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
+  // Execute post-completion actions for a step
+  const executePostCompletionActions = async (actions, currentAnswers) => {
+    if (!actions || actions.length === 0) return;
+
+    for (const action of actions) {
+      try {
+        console.log(`[POST-COMPLETION ACTION] Executing action:`, action);
+        
+        // Only support Account target for now
+        if (action.target_entity_type !== "Account" || !account?.id) {
+          console.warn(`[POST-COMPLETION ACTION] Unsupported target or no account ID:`, action.target_entity_type);
+          continue;
+        }
+
+        // Determine the value to update
+        let valueToUpdate = null;
+        
+        if (action.value_source === "static_value") {
+          valueToUpdate = action.value;
+        } else if (action.value_source === "from_step_answer") {
+          const sourceStepId = action.value;
+          valueToUpdate = currentAnswers[sourceStepId];
+          
+          // Convert Yes/No to boolean if needed
+          if (valueToUpdate === 'YES') valueToUpdate = true;
+          if (valueToUpdate === 'NO') valueToUpdate = false;
+        } else if (action.value_source === "from_workflow_outcome") {
+          // Not available mid-workflow, only at end
+          console.warn(`[POST-COMPLETION ACTION] from_workflow_outcome not available mid-workflow`);
+          continue;
+        }
+
+        // Check if there's a condition
+        if (action.condition) {
+          const conditionField = action.condition.field;
+          const conditionOperator = action.condition.operator;
+          const conditionValue = action.condition.value;
+          
+          const fieldValue = currentAnswers[conditionField];
+          
+          let conditionMet = false;
+          switch (conditionOperator) {
+            case '=':
+              conditionMet = String(fieldValue || '').toLowerCase() === String(conditionValue || '').toLowerCase();
+              break;
+            case '!=':
+              conditionMet = String(fieldValue || '').toLowerCase() !== String(conditionValue || '').toLowerCase();
+              break;
+            case 'contains':
+              conditionMet = String(fieldValue || '').toLowerCase().includes(String(conditionValue || '').toLowerCase());
+              break;
+            case 'in':
+              conditionMet = String(conditionValue).split(',').map(v => v.trim().toLowerCase()).includes(String(fieldValue || '').toLowerCase());
+              break;
+            case 'not_in':
+              conditionMet = !String(conditionValue).split(',').map(v => v.trim().toLowerCase()).includes(String(fieldValue || '').toLowerCase());
+              break;
+            default:
+              conditionMet = false;
+          }
+          
+          console.log(`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
+          
+          if (!conditionMet) {
+            console.log(`[POST-COMPLETION ACTION] Condition not met, skipping action`);
+            continue;
+          }
+        }
+
+        // Perform the update
+        const fieldToUpdate = action.field_to_update;
+        const updateData = { [fieldToUpdate]: valueToUpdate };
+
+        console.log(`[POST-COMPLETION ACTION] Updating Account.${fieldToUpdate} = ${valueToUpdate}`);
+
+        await base44.entities.Account.update(account.id, updateData);
+
+        console.log(`[POST-COMPLETION ACTION] Successfully updated Account field: ${fieldToUpdate}`);
+      } catch (error) {
+        console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
+        // Continue with other actions even if one fails
+      }
+    }
+  };
+
   const evaluateConditionalLogic = (logic, currentAnswers) => {
     console.log('\n========== EVALUATING CONDITIONAL LOGIC (AccountClassification) ==========');
     console.log('Full Logic Object:', JSON.stringify(logic, null, 2));
@@ -757,7 +842,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     return !step.options.some(opt => opt.next_step);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const currentNode = stepMap[currentNodeId];
     if (!currentNode) return;
 
@@ -818,6 +903,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     setAnswers(newAnswers);
+    
+    // Execute post-completion actions for this step BEFORE navigating
+    if (currentNode.post_completion_actions && currentNode.post_completion_actions.length > 0) {
+      console.log(`[POST-COMPLETION ACTIONS] Executing ${currentNode.post_completion_actions.length} action(s) for step: ${currentNode.step_title}`);
+      await executePostCompletionActions(currentNode.post_completion_actions, newAnswers);
+    }
+    
     // Only add to history if not already present (prevent duplicates)
     const newHistory = history.includes(currentNodeId) 
       ? history 
