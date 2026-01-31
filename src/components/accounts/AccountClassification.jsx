@@ -56,7 +56,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [previewDocument, setPreviewDocument] = useState(null);
 
   // Fetch the latest account data to ensure we have up-to-date documents
-  const { data: freshAccountData } = useQuery({
+  const { data: freshAccountData, refetch: refetchAccount } = useQuery({
     queryKey: ['account-fresh', account?.id],
     queryFn: async () => {
       if (!account?.id) return null;
@@ -73,6 +73,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setLatestAccountData(freshAccountData);
     }
   }, [freshAccountData]);
+
+  // Listen for account updates and refetch
+  useEffect(() => {
+    const handleAccountUpdate = (event) => {
+      console.log('[ACCOUNT UPDATE EVENT] Received:', event.detail);
+      // Refetch the account data to get latest values
+      refetchAccount();
+    };
+
+    window.addEventListener('account-updated', handleAccountUpdate);
+    return () => window.removeEventListener('account-updated', handleAccountUpdate);
+  }, [refetchAccount]);
 
   // Fetch published account classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -348,23 +360,47 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     if (account && !answers._account_data_loaded && workflow) {
+      const currentAccount = latestAccountData || account;
+      console.log('[PREFILL] Using account data:', currentAccount);
+      
       const preFillAnswers = {
         _account_data_loaded: true,
-        _is_pre_existing: account.is_pre_existing,
-        _account_holder_is_alive: account.account_holder_is_alive,
-        _account_holder_type: account.account_holder_type
+        _is_pre_existing: currentAccount.is_pre_existing,
+        _account_holder_is_alive: currentAccount.account_holder_is_alive,
+        _account_holder_type: currentAccount.account_holder_type
       };
 
       // Pre-fill mapped fields from account data
       workflow.steps.forEach(step => {
         if (step.mapped_field?.entity_type === "Account" && step.mapped_field?.field_name) {
           const fieldName = step.mapped_field.field_name;
-          let fieldValue = account[fieldName];
+          let fieldValue = currentAccount[fieldName];
+          console.log(`[PREFILL] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}"`);
 
           // Only pre-fill if the field value is not blank
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
+            // NEW: Check for prefill_config for Yes/No questions
+            if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
+              const prefillType = step.mapped_field.prefill_config.prefill_type;
+              
+              if (prefillType === 'country_crs') {
+                // Check if country is CRS
+                const normalizedCountry = String(fieldValue).toLowerCase();
+                const countryInfo = crsCountryMap[normalizedCountry];
+                if (countryInfo) {
+                  preFillAnswers[step.step_id] = countryInfo.isCrs ? 'YES' : 'NO';
+                  console.log(`[PREFILL] country_crs: ${fieldValue} -> ${countryInfo.isCrs ? 'YES' : 'NO'}`);
+                }
+              } else if (prefillType === 'enum_match') {
+                // Check if value matches any of the match_values
+                const matchValues = step.mapped_field.prefill_config.match_values || [];
+                const isMatch = matchValues.includes(String(fieldValue));
+                preFillAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
+                console.log(`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
+              }
+            }
             // Type conversions based on question type
-            if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
+            else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
             } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
               preFillAnswers[step.step_id] = fieldValue.join(',');
@@ -442,9 +478,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
       });
 
+      console.log('[PREFILL] Final pre-fill answers:', preFillAnswers);
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
-  }, [account, workflow]);
+  }, [account, workflow, latestAccountData, crsCountryMap]);
 
   const loadUser = async () => {
     try {
@@ -528,13 +565,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
-        console.log(`[POST-COMPLETION ACTION] Updating Account.${fieldToUpdate} = ${valueToUpdate}`);
+        console.log(`[POST-COMPLETION ACTION] Updating Account.${fieldToUpdate} = "${valueToUpdate}"`);
+        console.log(`[POST-COMPLETION ACTION] Update data:`, updateData);
 
         await base44.entities.Account.update(account.id, updateData);
 
         console.log(`[POST-COMPLETION ACTION] Successfully updated Account field: ${fieldToUpdate}`);
+        
+        // Force a refresh of the account data in the UI to reflect the update
+        // This will trigger the pre-fill logic to re-run with the new field value
+        window.dispatchEvent(new CustomEvent('account-updated', { detail: { accountId: account.id, field: fieldToUpdate, value: valueToUpdate } }));
       } catch (error) {
         console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
+        console.error(`[POST-COMPLETION ACTION] Error details:`, error.message);
         // Continue with other actions even if one fails
       }
     }

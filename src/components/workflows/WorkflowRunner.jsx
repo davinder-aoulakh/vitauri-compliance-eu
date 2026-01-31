@@ -91,6 +91,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                     });
                     const isCrsCountry = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
                     initialAnswers[step.step_id] = isCrsCountry ? 'YES' : 'NO';
+                    console.log(`[PREFILL] country_crs: ${fieldValue} -> ${isCrsCountry ? 'YES' : 'NO'}`);
                   } catch (error) {
                     console.error("Error checking CRS status for pre-fill:", error);
                   }
@@ -99,6 +100,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   const matchValues = step.mapped_field.prefill_config.match_values || [];
                   const isMatch = matchValues.includes(String(fieldValue));
                   initialAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
+                  console.log(`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
                 }
               } 
               // Standard pre-fill logic
@@ -130,10 +132,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
     console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
     
-    // Execute post-completion actions for this step
+    // Execute post-completion actions for this step (only those with "after_step" timing)
     if (currentStep.post_completion_actions && currentStep.post_completion_actions.length > 0) {
-      console.log(`\n[POST-COMPLETION ACTIONS] Executing ${currentStep.post_completion_actions.length} action(s) for step: ${currentStep.step_title}`);
-      await executePostCompletionActions(currentStep.post_completion_actions);
+      const afterStepActions = currentStep.post_completion_actions.filter(
+        action => (action.execution_timing || "after_step") === "after_step"
+      );
+      if (afterStepActions.length > 0) {
+        console.log(`\n[POST-COMPLETION ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for step: ${currentStep.step_title}`);
+        await executePostCompletionActions(afterStepActions);
+      }
     }
     
     // Add current step to history
@@ -656,17 +663,33 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
-        console.log(`[POST-COMPLETION ACTION] Updating ${targetEntityType}.${fieldToUpdate} = ${valueToUpdate}`);
+        console.log(`[POST-COMPLETION ACTION] Updating ${targetEntityType}.${fieldToUpdate} = "${valueToUpdate}"`);
+        console.log(`[POST-COMPLETION ACTION] Update data:`, updateData);
 
         if (targetEntityType === "Account") {
           await base44.entities.Account.update(targetEntityId, updateData);
+          console.log(`[POST-COMPLETION ACTION] Successfully updated Account.${fieldToUpdate}`);
+          
+          // CRITICAL: Refresh the mapped entity data after update
+          const updatedAccounts = await base44.entities.Account.filter({ id: targetEntityId });
+          if (updatedAccounts[0]) {
+            setMappedEntityData(updatedAccounts[0]);
+            console.log(`[POST-COMPLETION ACTION] Refreshed account data:`, updatedAccounts[0]);
+          }
         } else if (targetEntityType === "Entity") {
           await base44.entities.Entity.update(targetEntityId, updateData);
+          console.log(`[POST-COMPLETION ACTION] Successfully updated Entity.${fieldToUpdate}`);
+          
+          // CRITICAL: Refresh the mapped entity data after update
+          const updatedEntities = await base44.entities.Entity.filter({ id: targetEntityId });
+          if (updatedEntities[0]) {
+            setMappedEntityData(updatedEntities[0]);
+            console.log(`[POST-COMPLETION ACTION] Refreshed entity data:`, updatedEntities[0]);
+          }
         }
-
-        console.log(`[POST-COMPLETION ACTION] Successfully updated ${targetEntityType} field: ${fieldToUpdate}`);
       } catch (error) {
         console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
+        console.error(`[POST-COMPLETION ACTION] Error details:`, error.message);
         // Continue with other actions even if one fails
       }
     }
