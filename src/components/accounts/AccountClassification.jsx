@@ -532,7 +532,102 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = false;
       }
 
-      console.log(`Condition ${idx + 1} result:`, conditionMet);
+      console.log(`  >>> Condition Result: ${conditionMet}`);
+      return conditionMet;
+    };
+
+    // NEW: Check for condition_groups (advanced multi-group conditional logic)
+    if (logic?.condition_groups && logic.condition_groups.length > 0) {
+      console.log('\n--- EVALUATING CONDITION GROUPS ---');
+      console.log(`Total groups: ${logic.condition_groups.length}`);
+      console.log('Overall operator:', logic.overall_logic_operator);
+      console.log('Overall true step:', logic.overall_true_step);
+      console.log('Overall false step:', logic.overall_false_step);
+      
+      const groupResults = [];
+
+      for (let i = 0; i < logic.condition_groups.length; i++) {
+        const group = logic.condition_groups[i];
+        console.log(`\n  GROUP ${i + 1}: ${group.group_name}`);
+        console.log(`  Group operator: ${group.group_operator}`);
+        console.log(`  Conditions in group: ${group.conditions?.length || 0}`);
+
+        if (!group.conditions || group.conditions.length === 0) {
+          console.log(`  WARNING: Group has no conditions, treating as FALSE`);
+          groupResults.push({ group, result: false });
+          continue;
+        }
+
+        let groupResult = group.group_operator === 'AND' ? true : false;
+
+        for (let j = 0; j < group.conditions.length; j++) {
+          const condition = group.conditions[j];
+          const conditionMet = evaluateSingleCondition(condition);
+          
+          if (group.group_operator === 'AND') {
+            groupResult = groupResult && conditionMet;
+            if (!groupResult) break; // Short-circuit
+          } else {
+            groupResult = groupResult || conditionMet;
+            if (groupResult) break; // Short-circuit
+          }
+        }
+
+        console.log(`  >>> Group ${i + 1} result: ${groupResult}`);
+        groupResults.push({ group, result: groupResult });
+      }
+
+      // Return the step ID based on overall logic
+      if (logic.overall_logic_operator) {
+        console.log(`\n  Combining groups with ${logic.overall_logic_operator}:`);
+        let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
+
+        for (let i = 0; i < groupResults.length; i++) {
+          const { result } = groupResults[i];
+          if (logic.overall_logic_operator === 'AND') {
+            finalResult = finalResult && result;
+            if (!finalResult) break;
+          } else {
+            finalResult = finalResult || result;
+            if (finalResult) break;
+          }
+        }
+
+        console.log(`  >>> FINAL RESULT: ${finalResult}`);
+        console.log(`  >>> RETURNING: ${finalResult ? 'TRUE' : 'FALSE'} (will use overall_${finalResult ? 'true' : 'false'}_step)`);
+        console.log('========== END CONDITIONAL LOGIC ==========\n');
+        
+        // Return true/false to indicate which path to take (caller will use overall_true_step or overall_false_step)
+        return finalResult;
+      } else {
+        // No overall operator - use first group's result
+        const firstResult = groupResults[0]?.result || false;
+        console.log(`  No overall operator, using first group result: ${firstResult}`);
+        console.log('========== END CONDITIONAL LOGIC ==========\n');
+        return firstResult;
+      }
+    }
+
+    // LEGACY: Fallback to old simple conditions
+    console.log('\n--- EVALUATING LEGACY CONDITIONS ---');
+    if (!logic?.conditions || logic.conditions.length === 0) {
+      console.log('No conditions found, returning false');
+      return false;
+    }
+
+    // Check if there's a trigger condition
+    if (logic.trigger_field && logic.trigger_value) {
+      const triggerAnswer = currentAnswers[logic.trigger_field];
+      if (String(triggerAnswer) !== String(logic.trigger_value)) {
+        console.log('Trigger condition not met, returning false');
+        return false;
+      }
+    }
+
+    let result = true;
+
+    logic.conditions.forEach((condition, idx) => {
+      const conditionMet = evaluateSingleCondition(condition);
 
       if (idx === 0) {
         result = conditionMet;
@@ -549,6 +644,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     });
 
     console.log(`Final conditional logic result:`, result);
+    console.log('========== END CONDITIONAL LOGIC ==========\n');
     return result;
   };
 
