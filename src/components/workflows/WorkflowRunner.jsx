@@ -343,7 +343,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
           break;
         case 'is_crs':
-          console.log('is_crs operator - checking fieldAnswer:', fieldAnswer);
+          console.log('    [IS_CRS OPERATOR] - checking fieldAnswer:', fieldAnswer);
           if (fieldAnswer) {
             try {
               const crsCountries = await base44.entities.CrsCountryInfo.filter({
@@ -352,15 +352,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   { country_code: fieldAnswer }
                 ]
               });
-              console.log('CRS Countries found:', crsCountries);
+              console.log('    [IS_CRS] CRS Countries found:', crsCountries);
               met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
-              console.log('is_crs result - met:', met);
+              console.log('    [IS_CRS] Result - met:', met);
             } catch (error) {
-              console.error("Error checking CRS country status:", error);
+              console.error("    [IS_CRS] Error checking CRS country status:", error);
               met = false;
             }
           } else {
-            console.log('is_crs - no fieldAnswer, met = false');
+            console.log('    [IS_CRS] No fieldAnswer provided, met = false');
             met = false;
           }
           break;
