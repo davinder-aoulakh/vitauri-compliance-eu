@@ -220,7 +220,27 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         selection_count_else_step: step.conditional_logic.selection_count_else_step || null,
         option_values: Array.isArray(step.conditional_logic.option_values) && step.conditional_logic.option_values.length > 0 ? step.conditional_logic.option_values : null,
         option_values_next_step: step.conditional_logic.option_values_next_step || null,
-        option_values_else_step: step.conditional_logic.option_values_else_step || null
+        option_values_else_step: step.conditional_logic.option_values_else_step || null,
+        // NEW: Preserve condition_groups and overall logic fields
+        condition_groups: step.conditional_logic.condition_groups && step.conditional_logic.condition_groups.length > 0 
+          ? step.conditional_logic.condition_groups.map(group => ({
+              group_id: group.group_id || `group_${Date.now()}`,
+              group_name: group.group_name || "",
+              group_operator: group.group_operator || "AND",
+              conditions: (group.conditions || []).map(c => ({
+                condition_id: c.condition_id || `cond_${Date.now()}`,
+                field: c.field || "",
+                operator: c.operator || "=",
+                value: c.value || "",
+                value_type: c.value_type || "static"
+              })),
+              true_step: group.true_step || "",
+              false_step: group.false_step || ""
+            }))
+          : null,
+        overall_logic_operator: step.conditional_logic.overall_logic_operator || null,
+        overall_true_step: step.conditional_logic.overall_true_step || null,
+        overall_false_step: step.conditional_logic.overall_false_step || null
       } : { conditions: [], next_step: "", else_step: "", option_values: null };
       
       console.log(`[WorkflowDragDropBuilder] Processing step ${step.step_id}:`, {
