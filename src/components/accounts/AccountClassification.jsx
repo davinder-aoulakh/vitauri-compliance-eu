@@ -460,25 +460,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       let conditionMet = false;
 
-      // Helper to normalize country values for comparison (handle code vs name mismatch)
-      const normalizeCountryForComparison = (val) => {
-        if (!val) return '';
-        const valLower = String(val).toLowerCase();
-        // Check if this is a country code or name and get the normalized code
-        const countryInfo = crsCountryMap[valLower];
-        if (countryInfo?.code) {
-          return countryInfo.code.toLowerCase();
-        }
-        return valLower;
-      };
-
-      // Check if either field is a country field for normalization
-      const isCountryComparison = (
-        condition.field?.toLowerCase().includes('country') ||
-        condition.value?.toLowerCase().includes('country')
-      );
-
-      // Helper to normalize country values for comparison (handle code vs name mismatch)
       const normalizeCountryForComparison = (val) => {
         if (!val) return '';
         const valLower = String(val).toLowerCase();
