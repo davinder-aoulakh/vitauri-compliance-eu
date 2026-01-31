@@ -28,11 +28,14 @@ import {
   ChevronRight,
   HelpCircle,
   Zap,
-  Target
+  Target,
+  Sparkles,
+  Info
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
 import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
@@ -2063,7 +2066,11 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <Label className="text-xs">Target Field</Label>
             <Select
               value={editedStep.mapped_field?.field_name || ""}
-              onValueChange={(value) => handleMappedFieldChange("field_name", value)}
+              onValueChange={(value) => {
+                handleMappedFieldChange("field_name", value);
+                // Clear prefill_config when field changes
+                handleMappedFieldChange("prefill_config", null);
+              }}
               disabled={!editedStep.mapped_field?.entity_type}
             >
               <SelectTrigger className="h-8 text-xs mt-1">
@@ -2090,6 +2097,148 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <LinkIcon className="w-3 h-3" />
             This question will pre-fill from and update: {editedStep.mapped_field.entity_type}.{editedStep.mapped_field.field_name}
           </p>
+        )}
+
+        {/* Pre-fill Configuration for Yes/No Questions with Dropdown Fields */}
+        {editedStep.question_type === 'yes_no' && 
+         editedStep.mapped_field?.entity_type && 
+         editedStep.mapped_field?.field_name && (
+          <div className="mt-4 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg space-y-3">
+            <div>
+              <Label className="text-xs font-semibold text-emerald-800 mb-2 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Smart Pre-fill Rules
+              </Label>
+              <p className="text-xs text-slate-600 mb-3">
+                Automatically pre-fill this Yes/No question based on the mapped field's value
+              </p>
+
+              {(() => {
+                const selectedMappedField = filteredMappedFields.find(f => f.value === editedStep.mapped_field.field_name);
+                const isCountryField = selectedMappedField?.isCountry;
+                const dropdownOptions = getSuggestedValuesForField(
+                  editedStep.mapped_field.entity_type,
+                  editedStep.mapped_field.field_name,
+                  referencedData
+                );
+
+                if (isCountryField) {
+                  // Country field - show CRS option
+                  return (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Pre-fill Type</Label>
+                        <Select
+                          value={editedStep.mapped_field?.prefill_config?.prefill_type || ""}
+                          onValueChange={(value) => {
+                            handleMappedFieldChange("prefill_config", value ? {
+                              prefill_type: value,
+                              match_values: []
+                            } : null);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue placeholder="Select pre-fill rule..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={null}>No Pre-fill Rule</SelectItem>
+                            <SelectItem value="country_crs">YES if CRS Country, NO otherwise 🌍</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {editedStep.mapped_field?.prefill_config?.prefill_type === "country_crs" && (
+                        <Alert className="bg-blue-50 border-blue-200">
+                          <Info className="w-4 h-4 text-blue-600" />
+                          <AlertDescription className="text-xs text-blue-900">
+                            When this workflow runs, the question will automatically be pre-filled with:
+                            <ul className="list-disc ml-4 mt-1">
+                              <li><strong>YES</strong> if the country is a CRS reporting country</li>
+                              <li><strong>NO</strong> if the country is not a CRS reporting country</li>
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  );
+                } else if (dropdownOptions && dropdownOptions.length > 0) {
+                  // Regular dropdown field - show enum_match option
+                  return (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Pre-fill Type</Label>
+                        <Select
+                          value={editedStep.mapped_field?.prefill_config?.prefill_type || ""}
+                          onValueChange={(value) => {
+                            handleMappedFieldChange("prefill_config", value ? {
+                              prefill_type: value,
+                              match_values: []
+                            } : null);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue placeholder="Select pre-fill rule..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={null}>No Pre-fill Rule</SelectItem>
+                            <SelectItem value="enum_match">YES if field value matches specific options</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {editedStep.mapped_field?.prefill_config?.prefill_type === "enum_match" && (
+                        <div>
+                          <Label className="text-xs mb-2 block">
+                            Pre-fill as <strong>YES</strong> when field equals:
+                          </Label>
+                          <p className="text-xs text-slate-500 mb-2">
+                            Select one or more values. If the mapped field matches any of these, pre-fill YES, otherwise NO.
+                          </p>
+                          <div className="space-y-2 max-h-48 overflow-y-auto p-3 bg-white rounded border">
+                            {dropdownOptions.map((opt, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`prefill-opt-${idx}`}
+                                  checked={editedStep.mapped_field?.prefill_config?.match_values?.includes(opt.value) || false}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = editedStep.mapped_field?.prefill_config?.match_values || [];
+                                    const newValues = checked 
+                                      ? [...currentValues, opt.value]
+                                      : currentValues.filter(v => v !== opt.value);
+                                    handleMappedFieldChange("prefill_config", {
+                                      ...editedStep.mapped_field.prefill_config,
+                                      match_values: newValues
+                                    });
+                                  }}
+                                />
+                                <Label htmlFor={`prefill-opt-${idx}`} className="text-xs cursor-pointer">
+                                  {opt.label}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                          {editedStep.mapped_field?.prefill_config?.match_values?.length > 0 && (
+                            <Alert className="bg-blue-50 border-blue-200 mt-3">
+                              <Info className="w-4 h-4 text-blue-600" />
+                              <AlertDescription className="text-xs text-blue-900">
+                                Pre-fill rule: Answer as <strong>YES</strong> if field value is <strong>{editedStep.mapped_field.prefill_config.match_values.join(', ')}</strong>, otherwise <strong>NO</strong>
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  // No dropdown options - not eligible for prefill rules
+                  return (
+                    <p className="text-xs text-slate-500 italic">
+                      Pre-fill rules are only available for dropdown/enum fields
+                    </p>
+                  );
+                }
+              })()}
+            </div>
+          </div>
         )}
       </div>
 

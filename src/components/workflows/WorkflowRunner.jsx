@@ -68,15 +68,41 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         setMappedEntityId(id);
         
         const initialAnswers = {};
-        workflow.steps.forEach(step => {
+        
+        for (const step of workflow.steps) {
           if (step.mapped_field && step.mapped_field.entity_type === entityType && step.mapped_field.field_name) {
             const fieldName = step.mapped_field.field_name;
             let fieldValue = entityData[fieldName];
 
             // Only pre-fill if the field value is not blank
             if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
-              // Special handling for boolean fields from entity to 'YES'/'NO' for workflow
-              if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
+              // NEW: Check for prefill_config for Yes/No questions
+              if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
+                const prefillType = step.mapped_field.prefill_config.prefill_type;
+                
+                if (prefillType === 'country_crs') {
+                  // Check if country is CRS
+                  try {
+                    const crsCountries = await base44.entities.CrsCountryInfo.filter({
+                      $or: [
+                        { country_name: fieldValue },
+                        { country_code: fieldValue }
+                      ]
+                    });
+                    const isCrsCountry = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
+                    initialAnswers[step.step_id] = isCrsCountry ? 'YES' : 'NO';
+                  } catch (error) {
+                    console.error("Error checking CRS status for pre-fill:", error);
+                  }
+                } else if (prefillType === 'enum_match') {
+                  // Check if value matches any of the match_values
+                  const matchValues = step.mapped_field.prefill_config.match_values || [];
+                  const isMatch = matchValues.includes(String(fieldValue));
+                  initialAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
+                }
+              } 
+              // Standard pre-fill logic
+              else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
                 initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
               } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
                 initialAnswers[step.step_id] = fieldValue;
@@ -87,7 +113,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               }
             }
           }
-        });
+        }
+        
         setAnswers(prev => ({ ...prev, ...initialAnswers }));
       }
     };
