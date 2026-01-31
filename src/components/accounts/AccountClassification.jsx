@@ -361,22 +361,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           const fieldName = step.mapped_field.field_name;
           let fieldValue = account[fieldName];
 
-          // Special handling for yes_no questions mapped to country fields
-          if (step.question_type === 'yes_no' && 
-              (fieldName === 'current_address.country' || 
-               fieldName === 'account_holder_address.country')) {
-            // Extract country from nested address object
-            const addressField = fieldName.split('.')[0];
-            const countryValue = account[addressField]?.country;
-            
-            if (countryValue) {
-              // Check if it's a CRS country
-              const countryLookup = crsCountryMap[String(countryValue).toLowerCase()];
-              preFillAnswers[step.step_id] = countryLookup?.isCrs === true ? 'YES' : 'NO';
-            }
-            return; // Skip normal processing
-          }
-
           // Only pre-fill if the field value is not blank
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             // Type conversions based on question type
@@ -398,35 +382,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }
           }
         }
-        
-        // Handle Entity mapped fields with CRS country check
-        if (step.mapped_field?.entity_type === "Entity" && step.mapped_field?.field_name && linkedEntity) {
-          const fieldName = step.mapped_field.field_name;
-          let fieldValue = linkedEntity[fieldName];
-
-          // Special handling for yes_no questions mapped to entity country fields
-          if (step.question_type === 'yes_no' && fieldName === 'country_of_incorporation') {
-            if (fieldValue) {
-              const countryLookup = crsCountryMap[String(fieldValue).toLowerCase()];
-              preFillAnswers[step.step_id] = countryLookup?.isCrs === true ? 'YES' : 'NO';
-            }
-            return; // Skip normal processing
-          }
-
-          // Only pre-fill if the field value is not blank
-          if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
-            if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
-              preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-            } else {
-              preFillAnswers[step.step_id] = String(fieldValue);
-            }
-          }
-        }
       });
 
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
-  }, [account, workflow, linkedEntity, crsCountryMap]);
+  }, [account, workflow]);
 
   const loadUser = async () => {
     try {
