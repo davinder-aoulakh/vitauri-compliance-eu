@@ -269,16 +269,22 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
     // Helper function to evaluate a single condition
     const evaluateCondition = async (condition) => {
-      console.log('--- Evaluating condition ---');
-      console.log('Condition:', JSON.stringify(condition, null, 2));
+      console.log('    --- Evaluating Single Condition ---');
+      console.log('    Condition Object:', JSON.stringify(condition, null, 2));
+      console.log(`    Field: ${condition.field}, Operator: ${condition.operator}, Value: ${condition.value}, Value Type: ${condition.value_type}`);
       
       const fieldAnswer = getFieldValue(condition.field);
-      console.log('Field Answer:', fieldAnswer);
+      console.log(`    Field Answer for "${condition.field}":`, fieldAnswer);
+      console.log(`    Field Answer Type:`, typeof fieldAnswer);
       
       // Get comparison value - either static or from another field
       let comparisonValue = condition.value;
       if (condition.value_type === 'field_reference') {
+        console.log(`    Value Type is field_reference, looking up: ${condition.value}`);
         comparisonValue = getFieldValue(condition.value);
+        console.log(`    Resolved field reference value:`, comparisonValue);
+      } else {
+        console.log(`    Value Type is static, using value: ${comparisonValue}`);
       }
       
       let met = false;
