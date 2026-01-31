@@ -95,7 +95,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     loadMappedEntityData();
   }, [workflow, accountId, entityId]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const answer = answers[currentStep.step_id];
     
     // Add current step to history
@@ -153,7 +153,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     
     // Check conditional logic
     if (currentStep.conditional_logic) {
-      const nextStepId = evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
+      const nextStepId = await evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
         if (nextIndex !== -1) {
@@ -201,7 +201,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
   };
 
-  const evaluateConditionalLogic = (logic, currentAnswer, allAnswers) => {
+  const evaluateConditionalLogic = async (logic, currentAnswer, allAnswers) => {
     if (!logic?.conditions || logic.conditions.length === 0) return logic.else_step;
 
     // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
@@ -295,10 +295,42 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
           break;
         case 'is_crs':
-          met = !!fieldAnswer;
+          // Check if the country is a CRS country by looking it up
+          if (fieldAnswer) {
+            try {
+              const crsCountries = await base44.entities.CrsCountryInfo.filter({
+                $or: [
+                  { country_name: fieldAnswer },
+                  { country_code: fieldAnswer }
+                ]
+              });
+              met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
+            } catch (error) {
+              console.error("Error checking CRS country status:", error);
+              met = false;
+            }
+          } else {
+            met = false;
+          }
           break;
         case 'is_not_crs':
-          met = !fieldAnswer;
+          // Check if the country is NOT a CRS country
+          if (fieldAnswer) {
+            try {
+              const crsCountries = await base44.entities.CrsCountryInfo.filter({
+                $or: [
+                  { country_name: fieldAnswer },
+                  { country_code: fieldAnswer }
+                ]
+              });
+              met = crsCountries.length === 0 || crsCountries[0].is_crs_country === false;
+            } catch (error) {
+              console.error("Error checking CRS country status:", error);
+              met = true; // If error, assume not CRS
+            }
+          } else {
+            met = true; // No country specified means not CRS
+          }
           break;
         default:
           met = false;
