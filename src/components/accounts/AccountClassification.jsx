@@ -398,15 +398,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const evaluateConditionalLogic = (logic, currentAnswers) => {
-    if (!logic.conditions || logic.conditions.length === 0) return false;
-
-    // Check if there's a trigger condition
-    if (logic.trigger_field && logic.trigger_value) {
-      const triggerAnswer = currentAnswers[logic.trigger_field];
-      if (String(triggerAnswer) !== String(logic.trigger_value)) {
-        return false;
-      }
-    }
+    console.log('\n========== EVALUATING CONDITIONAL LOGIC (AccountClassification) ==========');
+    console.log('Full Logic Object:', JSON.stringify(logic, null, 2));
+    console.log('Has condition_groups:', !!logic?.condition_groups?.length);
+    console.log('Number of condition_groups:', logic?.condition_groups?.length || 0);
 
     const getFieldValue = (fieldPath, entityData = null) => {
       if (fieldPath.includes('.')) {
@@ -453,24 +448,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return null;
     };
 
-    let result = true;
-
-    logic.conditions.forEach((condition, idx) => {
+    const evaluateSingleCondition = (condition) => {
       let fieldValue = getFieldValue(condition.field, linkedEntity);
       let comparisonValue = condition.value;
       if (condition.value_type === 'field_reference') {
         comparisonValue = getFieldValue(condition.value, linkedEntity);
       }
 
-      // Debug logging for condition evaluation
-      console.log(`Evaluating condition ${idx + 1}:`, {
-        field: condition.field,
-        fieldValue,
-        operator: condition.operator,
-        value_type: condition.value_type,
-        comparisonValue,
-        linkedEntity: linkedEntity ? { country_of_incorporation: linkedEntity.country_of_incorporation } : null
-      });
+      console.log(`  Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}"`);
+      console.log(`  Field value:`, fieldValue, `Comparison value:`, comparisonValue);
 
       let conditionMet = false;
 
