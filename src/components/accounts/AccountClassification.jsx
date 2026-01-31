@@ -806,10 +806,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Check conditional logic if no selection count branching matched
-    // IMPORTANT: Only evaluate if trigger condition is met (or no trigger is defined)
-    if (!nextNodeId && currentNode.conditional_logic?.conditions?.length > 0) {
+    // Check conditional logic (including NEW condition_groups support)
+    if (!nextNodeId && (currentNode.conditional_logic?.condition_groups?.length > 0 || currentNode.conditional_logic?.conditions?.length > 0)) {
+      console.log('\n🔍 Checking conditional logic for step:', currentNodeId);
       const logic = currentNode.conditional_logic;
+      console.log('Conditional logic config:', JSON.stringify(logic, null, 2));
       
       // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
       let shouldEvaluateAdvancedLogic = true;
@@ -817,15 +818,37 @@ export default function AccountClassification({ account, onComplete, onCancel })
         // Trigger is defined - only evaluate if the current answer matches the trigger
         const currentAnswer = newAnswers[currentNodeId];
         shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
+        console.log(`Trigger check: field="${logic.trigger_field}", expected="${logic.trigger_value}", actual="${currentAnswer}", should evaluate: ${shouldEvaluateAdvancedLogic}`);
       }
       
       if (shouldEvaluateAdvancedLogic) {
-        const conditionMet = evaluateConditionalLogic(logic, newAnswers);
-        if (conditionMet) {
-          nextNodeId = logic.next_step;
-        } else {
-          nextNodeId = logic.else_step;
+        // NEW: Handle condition_groups
+        if (logic.condition_groups?.length > 0) {
+          console.log('✨ Using NEW condition_groups logic');
+          const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+          console.log(`Condition groups result: ${conditionMet}`);
+          
+          // Use overall_true_step and overall_false_step for condition groups
+          if (conditionMet) {
+            nextNodeId = logic.overall_true_step;
+            console.log(`✅ TRUE path - going to: ${nextNodeId}`);
+          } else {
+            nextNodeId = logic.overall_false_step;
+            console.log(`❌ FALSE path - going to: ${nextNodeId}`);
+          }
+        } 
+        // LEGACY: Handle old simple conditions
+        else if (logic.conditions?.length > 0) {
+          console.log('📋 Using LEGACY simple conditions logic');
+          const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+          if (conditionMet) {
+            nextNodeId = logic.next_step;
+          } else {
+            nextNodeId = logic.else_step;
+          }
         }
+      } else {
+        console.log('⏭️ Trigger not met, skipping conditional logic');
       }
       // If trigger doesn't match, fall through to check option's next_step
     }
