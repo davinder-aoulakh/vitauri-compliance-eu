@@ -98,6 +98,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleNext = async () => {
     const answer = answers[currentStep.step_id];
     
+    console.log(`\n========== HANDLE NEXT from Step ${currentStepIndex + 1}: ${currentStep.step_title} ==========`);
+    console.log(`Current answer:`, answer);
+    console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
+    console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
+    
     // Add current step to history
     setHistory(prev => [...prev, currentStep.step_id]);
     
@@ -106,14 +111,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         currentStep.conditional_logic?.option_values && 
         currentStep.conditional_logic.option_values.length > 0 && 
         Array.isArray(answer)) {
+      console.log('[MULTI-CHOICE OPTION-BASED BRANCHING]');
       const matchFound = answer.some(selectedOpt => currentStep.conditional_logic.option_values.includes(selectedOpt));
       const nextStepId = matchFound 
         ? currentStep.conditional_logic.option_values_next_step 
         : currentStep.conditional_logic.option_values_else_step;
       
+      console.log(`Match found: ${matchFound}, Next step: ${nextStepId}`);
+      
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
         if (nextIndex !== -1) {
+          console.log(`Navigating to step index ${nextIndex + 1}`);
           setCurrentStepIndex(nextIndex);
           return;
         }
@@ -124,6 +133,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     if (currentStep.question_type === 'multiple_choice' && 
         currentStep.conditional_logic?.selection_count_operator && 
         Array.isArray(answer)) {
+      console.log('[MULTI-CHOICE COUNT-BASED BRANCHING]');
       const selectionCount = answer.length;
       const targetCount = currentStep.conditional_logic.selection_count_value || 0;
       const operator = currentStep.conditional_logic.selection_count_operator;
@@ -138,37 +148,53 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         case '<=': conditionMet = selectionCount <= targetCount; break;
       }
       
+      console.log(`Selection count: ${selectionCount}, operator: ${operator}, target: ${targetCount}, met: ${conditionMet}`);
+      
       const nextStepId = conditionMet 
         ? currentStep.conditional_logic.selection_count_next_step 
         : currentStep.conditional_logic.selection_count_else_step;
       
+      console.log(`Next step: ${nextStepId}`);
+      
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
         if (nextIndex !== -1) {
+          console.log(`Navigating to step index ${nextIndex + 1}`);
           setCurrentStepIndex(nextIndex);
           return;
         }
       }
     }
     
-    // Check conditional logic
+    // Check conditional logic (including condition groups)
     if (currentStep.conditional_logic) {
+      console.log('[EVALUATING CONDITIONAL LOGIC]');
+      console.log('Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
       const nextStepId = await evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
+      console.log(`Conditional logic returned next step: ${nextStepId}`);
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
         if (nextIndex !== -1) {
+          console.log(`Navigating to step index ${nextIndex + 1}: ${workflow.steps[nextIndex].step_title}`);
           setCurrentStepIndex(nextIndex);
           return;
+        } else {
+          console.log(`WARNING: Next step ID "${nextStepId}" not found in workflow steps!`);
         }
+      } else {
+        console.log('Conditional logic returned null/empty next step');
       }
     }
 
     // Check options for next step
     if (currentStep.question_type === 'yes_no' || currentStep.question_type === 'single_choice') {
+      console.log('[CHECKING OPTION-BASED NEXT STEP]');
       const selectedOption = currentStep.options?.find(opt => opt.value === answer);
+      console.log(`Selected option:`, selectedOption);
       if (selectedOption?.next_step) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === selectedOption.next_step);
         if (nextIndex !== -1) {
+          console.log(`Navigating to step index ${nextIndex + 1} via option next_step`);
           setCurrentStepIndex(nextIndex);
           return;
         }
@@ -177,19 +203,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
     // Default next step
     if (currentStep.default_next_step) {
+      console.log(`[DEFAULT NEXT STEP]: ${currentStep.default_next_step}`);
       const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.default_next_step);
       if (nextIndex !== -1) {
+        console.log(`Navigating to step index ${nextIndex + 1} via default_next_step`);
         setCurrentStepIndex(nextIndex);
         return;
       }
     }
 
     // Just go to next in sequence
+    console.log('[SEQUENTIAL NAVIGATION]');
     if (currentStepIndex < workflow.steps.length - 1) {
+      console.log(`Going to next step in sequence: ${currentStepIndex + 2}`);
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
+      console.log('Last step reached, completing workflow');
       handleComplete();
     }
+    console.log(`========== END HANDLE NEXT ==========\n`);
   };
 
   const handleBack = () => {
