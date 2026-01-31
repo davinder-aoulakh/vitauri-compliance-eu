@@ -426,7 +426,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
-  }, [account, workflow]);
+  }, [account, workflow, linkedEntity, crsCountryMap]);
 
   const loadUser = async () => {
     try {
