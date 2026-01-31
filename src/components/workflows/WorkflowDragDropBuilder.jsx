@@ -35,6 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
+import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
