@@ -206,11 +206,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log('Logic:', JSON.stringify(logic, null, 2));
     console.log('All Answers:', JSON.stringify(allAnswers, null, 2));
     
-    if (!logic?.conditions || logic.conditions.length === 0) {
-      console.log('No conditions found, returning else_step:', logic.else_step);
-      return logic.else_step;
-    }
-
     // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return undefined;
@@ -236,8 +231,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       return value;
     };
 
-    let conditionsMet = true;
-    for (const condition of logic.conditions) {
+    // Helper function to evaluate a single condition
+    const evaluateCondition = async (condition) => {
       console.log('--- Evaluating condition ---');
       console.log('Condition:', JSON.stringify(condition, null, 2));
       
@@ -258,7 +253,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       switch (condition.operator) {
         case '=':
           if (isArrayAnswer) {
-            // For array answers, check if any selected option matches
             met = fieldAnswer.includes(comparisonValue);
           } else {
             met = fieldAnswer === comparisonValue;
@@ -266,7 +260,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           break;
         case '!=':
           if (isArrayAnswer) {
-            // For array answers, check if none of the selected options match
             met = !fieldAnswer.includes(comparisonValue);
           } else {
             met = fieldAnswer !== comparisonValue;
@@ -286,7 +279,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           break;
         case 'contains':
           if (isArrayAnswer) {
-            // For array answers, check if any selected option contains the value
             met = fieldAnswer.some(opt => String(opt).includes(String(comparisonValue)));
           } else {
             met = String(fieldAnswer || '').includes(String(comparisonValue));
@@ -294,7 +286,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           break;
         case 'in':
           if (isArrayAnswer) {
-            // For array answers, check if ANY selected option is in the comparison list
             const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
             met = fieldAnswer.some(opt => comparisonList.includes(String(opt)));
           } else {
@@ -303,7 +294,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           break;
         case 'not_in':
           if (isArrayAnswer) {
-            // For array answers, check if NONE of the selected options are in the comparison list
             const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
             met = !fieldAnswer.some(opt => comparisonList.includes(String(opt)));
           } else {
@@ -311,7 +301,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
           break;
         case 'is_crs':
-          // Check if the country is a CRS country by looking it up
           console.log('is_crs operator - checking fieldAnswer:', fieldAnswer);
           if (fieldAnswer) {
             try {
@@ -334,7 +323,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
           break;
         case 'is_not_crs':
-          // Check if the country is NOT a CRS country
           if (fieldAnswer) {
             try {
               const crsCountries = await base44.entities.CrsCountryInfo.filter({
@@ -346,10 +334,10 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               met = crsCountries.length === 0 || crsCountries[0].is_crs_country === false;
             } catch (error) {
               console.error("Error checking CRS country status:", error);
-              met = true; // If error, assume not CRS
+              met = true;
             }
           } else {
-            met = true; // No country specified means not CRS
+            met = true;
           }
           break;
         default:
@@ -357,7 +345,75 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
 
       console.log('Condition met:', met);
-      console.log('Logic operator:', condition.logic_operator);
+      return met;
+    };
+
+    // NEW: Check for condition_groups (advanced multi-group conditional logic)
+    if (logic?.condition_groups && logic.condition_groups.length > 0) {
+      console.log('=== EVALUATING CONDITION GROUPS ===');
+      const groupResults = [];
+
+      for (const group of logic.condition_groups) {
+        console.log(`--- Evaluating Group: ${group.group_name || group.group_id} ---`);
+        console.log(`Group Operator: ${group.group_operator}`);
+
+        let groupResult = group.group_operator === 'AND' ? true : false;
+
+        for (const condition of group.conditions) {
+          const conditionMet = await evaluateCondition(condition);
+          
+          if (group.group_operator === 'AND') {
+            groupResult = groupResult && conditionMet;
+            if (!groupResult) break; // Short-circuit AND
+          } else { // OR
+            groupResult = groupResult || conditionMet;
+            if (groupResult) break; // Short-circuit OR
+          }
+        }
+
+        console.log(`Group ${group.group_name || group.group_id} result:`, groupResult);
+        groupResults.push({ group, result: groupResult });
+      }
+
+      // Determine final step based on group results and overall operator
+      if (logic.overall_logic_operator) {
+        console.log(`Overall Logic Operator: ${logic.overall_logic_operator}`);
+        let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
+
+        for (const { result } of groupResults) {
+          if (logic.overall_logic_operator === 'AND') {
+            finalResult = finalResult && result;
+            if (!finalResult) break;
+          } else { // OR
+            finalResult = finalResult || result;
+            if (finalResult) break;
+          }
+        }
+
+        console.log('Final Overall Result:', finalResult);
+        const nextStep = finalResult ? logic.overall_true_step : logic.overall_false_step;
+        console.log('Returning next step:', nextStep);
+        console.log('=== END CONDITION GROUPS EVALUATION ===\n');
+        return nextStep;
+      } else {
+        // No overall operator - use first group's true/false steps
+        const firstGroup = groupResults[0];
+        const nextStep = firstGroup.result ? firstGroup.group.true_step : firstGroup.group.false_step;
+        console.log('No overall operator, using first group result:', nextStep);
+        console.log('=== END CONDITION GROUPS EVALUATION ===\n');
+        return nextStep;
+      }
+    }
+
+    // LEGACY: Fallback to old single conditions array
+    if (!logic?.conditions || logic.conditions.length === 0) {
+      console.log('No conditions found, returning else_step:', logic.else_step);
+      return logic.else_step;
+    }
+
+    let conditionsMet = true;
+    for (const condition of logic.conditions) {
+      const met = await evaluateCondition(condition);
       
       if (condition.logic_operator === 'AND' && !met) {
         console.log('AND condition failed, conditionsMet = false');
