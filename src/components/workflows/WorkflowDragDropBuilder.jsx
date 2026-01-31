@@ -1014,10 +1014,22 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
         return field.type === 'object' && (field.value === 'current_address' || field.value === 'account_holder_address');
       }
 
-      // NEW: Allow country fields (string with isCountry: true) to map to yes_no questions
-      // This enables CRS country checks for Yes/No questions
-      if (editedStep.question_type === 'yes_no' && field.isCountry) {
-        return true;
+      // NEW: Allow dropdown/enum fields to map to yes_no questions
+      // This enables smart pre-filling based on dropdown value matching
+      if (editedStep.question_type === 'yes_no') {
+        // Allow country fields
+        if (field.isCountry) {
+          return true;
+        }
+        // Allow fields that have dropdown options (from ReferencedData or schema enum)
+        const hasDropdownOptions = getSuggestedValuesForField(
+          editedStep.mapped_field.entity_type,
+          field.value,
+          referencedData
+        );
+        if (hasDropdownOptions && hasDropdownOptions.length > 0) {
+          return true;
+        }
       }
 
       // Match field types
@@ -1026,7 +1038,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       }
       return false;
     });
-  }, [editedStep.mapped_field?.entity_type, editedStep.question_type, accountFields, entityFields]);
+  }, [editedStep.mapped_field?.entity_type, editedStep.question_type, accountFields, entityFields, referencedData]);
 
   const handleSave = () => {
     console.log(`[StepEditor] Saving step ${editedStep.step_id}:`, {
