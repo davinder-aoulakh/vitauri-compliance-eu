@@ -625,8 +625,24 @@ const getFieldsForEntity = (entityType) => {
   return entityType === "Entity" ? ENTITY_FIELDS_SCHEMA : ACCOUNT_FIELDS_SCHEMA;
 };
 
-// Helper function to get suggested values for a field
-const getSuggestedValuesForField = (entityType, fieldName) => {
+// Helper function to get suggested values for a field - now using ReferencedData
+const getSuggestedValuesForField = (entityType, fieldName, referencedDataList = []) => {
+  // First, check ReferencedData for this field
+  const referencedOptions = referencedDataList.filter(rd => 
+    rd.entity_name === entityType && rd.field_name === fieldName
+  );
+  
+  if (referencedOptions.length > 0) {
+    // Sort by order and return
+    return referencedOptions
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(rd => ({
+        value: rd.value,
+        label: rd.label
+      }));
+  }
+
+  // Fallback to hardcoded schema if no ReferencedData found
   const schema = getFieldsForEntity(entityType);
   const field = schema[fieldName];
   if (field?.enum) {
@@ -675,6 +691,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
 
   // Load Account and Entity schemas directly
   const [isLoadingFields, setIsLoadingFields] = React.useState(false);
+
+  // Fetch ReferencedData for dynamic field options
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data-workflow-builder'],
+    queryFn: () => base44.entities.ReferencedData.filter({ is_published: true }),
+    staleTime: 60000
+  });
 
   // Account schema fields
   const accountFields = React.useMemo(() => {
@@ -1883,7 +1906,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                 label: val.label
               }));
               const suggestedValues = action.value_source === "static_value" 
-                ? getSuggestedValuesForField(action.target_entity_type, action.field_to_update)
+                ? getSuggestedValuesForField(action.target_entity_type, action.field_to_update, referencedData)
                 : null;
 
               return (
