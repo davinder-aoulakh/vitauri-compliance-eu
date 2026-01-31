@@ -455,8 +455,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
         comparisonValue = getFieldValue(condition.value, linkedEntity);
       }
 
-      console.log(`  Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}"`);
-      console.log(`  Field value:`, fieldValue, `Comparison value:`, comparisonValue);
+      console.log(`  🔍 Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}", value_type="${condition.value_type}"`);
+      console.log(`  📊 Field value (type: ${typeof fieldValue}):`, fieldValue);
+      console.log(`  📊 Comparison value (type: ${typeof comparisonValue}):`, comparisonValue);
+      console.log(`  📋 Field value stringified:`, String(fieldValue));
+      console.log(`  📋 Comparison value stringified:`, String(comparisonValue));
 
       let conditionMet = false;
 
