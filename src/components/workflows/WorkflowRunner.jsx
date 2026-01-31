@@ -202,7 +202,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const evaluateConditionalLogic = async (logic, currentAnswer, allAnswers) => {
-    if (!logic?.conditions || logic.conditions.length === 0) return logic.else_step;
+    console.log('=== EVALUATING CONDITIONAL LOGIC ===');
+    console.log('Logic:', JSON.stringify(logic, null, 2));
+    console.log('All Answers:', JSON.stringify(allAnswers, null, 2));
+    
+    if (!logic?.conditions || logic.conditions.length === 0) {
+      console.log('No conditions found, returning else_step:', logic.else_step);
+      return logic.else_step;
+    }
 
     // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
     const getFieldValue = (fieldPath) => {
@@ -215,18 +222,27 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         
         // If step answer is an object (multi-field or address input), get the sub-field
         if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
-          return stepAnswer[subField];
+          const value = stepAnswer[subField];
+          console.log(`getFieldValue("${fieldPath}") - stepAnswer[${subField}]:`, value);
+          return value;
         }
+        console.log(`getFieldValue("${fieldPath}") - stepAnswer not an object or undefined:`, stepAnswer);
         return undefined;
       }
       
       // Simple field - direct lookup
-      return allAnswers[fieldPath];
+      const value = allAnswers[fieldPath];
+      console.log(`getFieldValue("${fieldPath}") - direct lookup:`, value);
+      return value;
     };
 
     let conditionsMet = true;
     for (const condition of logic.conditions) {
+      console.log('--- Evaluating condition ---');
+      console.log('Condition:', JSON.stringify(condition, null, 2));
+      
       const fieldAnswer = getFieldValue(condition.field);
+      console.log('Field Answer:', fieldAnswer);
       
       // Get comparison value - either static or from another field
       let comparisonValue = condition.value;
@@ -296,6 +312,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           break;
         case 'is_crs':
           // Check if the country is a CRS country by looking it up
+          console.log('is_crs operator - checking fieldAnswer:', fieldAnswer);
           if (fieldAnswer) {
             try {
               const crsCountries = await base44.entities.CrsCountryInfo.filter({
@@ -304,12 +321,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   { country_code: fieldAnswer }
                 ]
               });
+              console.log('CRS Countries found:', crsCountries);
               met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
+              console.log('is_crs result - met:', met);
             } catch (error) {
               console.error("Error checking CRS country status:", error);
               met = false;
             }
           } else {
+            console.log('is_crs - no fieldAnswer, met = false');
             met = false;
           }
           break;
@@ -336,16 +356,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           met = false;
       }
 
+      console.log('Condition met:', met);
+      console.log('Logic operator:', condition.logic_operator);
+      
       if (condition.logic_operator === 'AND' && !met) {
+        console.log('AND condition failed, conditionsMet = false');
         conditionsMet = false;
         break;
       }
       if (condition.logic_operator === 'OR' && met) {
+        console.log('OR condition met, conditionsMet = true');
         conditionsMet = true;
         break;
       }
     }
 
+    console.log('Final conditionsMet:', conditionsMet);
+    console.log('Returning:', conditionsMet ? logic.next_step : logic.else_step);
+    console.log('=== END CONDITIONAL LOGIC EVALUATION ===\n');
+    
     return conditionsMet ? logic.next_step : logic.else_step;
   };
 
