@@ -825,20 +825,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
       
       if (shouldEvaluateAdvancedLogic) {
-        // NEW: Handle condition_groups
+        // NEW: Handle condition_groups (returns step ID directly)
         if (logic.condition_groups?.length > 0) {
-          console.log('✨ Using NEW condition_groups logic');
-          const conditionMet = evaluateConditionalLogic(logic, newAnswers);
-          console.log(`Condition groups result: ${conditionMet}`);
-          
-          // Use overall_true_step and overall_false_step for condition groups
-          if (conditionMet) {
-            nextNodeId = logic.overall_true_step;
-            console.log(`✅ TRUE path - going to: ${nextNodeId}`);
-          } else {
-            nextNodeId = logic.overall_false_step;
-            console.log(`❌ FALSE path - going to: ${nextNodeId}`);
-          }
+          console.log('✨ Using NEW condition_groups logic (first match wins)');
+          nextNodeId = evaluateConditionalLogic(logic, newAnswers);
+          console.log(`✅ Condition groups returned next step: ${nextNodeId}`);
         } 
         // LEGACY: Handle old simple conditions
         else if (logic.conditions?.length > 0) {
