@@ -382,6 +382,64 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }
           }
         }
+
+        // NEW: Handle Entity field mappings (e.g., country_of_incorporation)
+        if (step.mapped_field?.entity_type === "Entity" && step.mapped_field?.field_name && linkedEntity) {
+          const fieldName = step.mapped_field.field_name;
+          let fieldValue = linkedEntity[fieldName];
+
+          // Only pre-fill if the field value is not blank
+          if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
+            // Type conversions based on question type
+            if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
+              preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+            } else if (step.question_type === 'date_input') {
+              preFillAnswers[step.step_id] = String(fieldValue);
+            } else if (step.question_type === 'number_input') {
+              preFillAnswers[step.step_id] = String(fieldValue);
+            } else {
+              preFillAnswers[step.step_id] = String(fieldValue);
+            }
+          }
+        }
+
+        // NEW: CRS Country Check for Yes/No Questions mapped to country fields
+        if (step.question_type === 'yes_no' && step.mapped_field?.field_name) {
+          const fieldName = step.mapped_field.field_name;
+          let countryValue = null;
+
+          // Check if it's a country field from Account
+          if (step.mapped_field.entity_type === "Account") {
+            if (fieldName === 'current_address.country') {
+              countryValue = account?.current_address?.country;
+            } else if (fieldName === 'account_holder_address.country') {
+              countryValue = account?.account_holder_address?.country;
+            } else if (fieldName === 'country_of_residence') {
+              countryValue = account?.country_of_residence;
+            } else if (fieldName === 'place_of_birth') {
+              countryValue = account?.place_of_birth;
+            }
+          }
+          // Check if it's a country field from Entity
+          else if (step.mapped_field.entity_type === "Entity" && linkedEntity) {
+            if (fieldName === 'country_of_incorporation') {
+              countryValue = linkedEntity?.country_of_incorporation;
+            } else if (fieldName === 'address.country') {
+              countryValue = linkedEntity?.address?.country;
+            }
+          }
+
+          // If we found a country value, check if it's CRS
+          if (countryValue) {
+            const normalizedCountry = String(countryValue).toLowerCase();
+            const countryInfo = crsCountryMap[normalizedCountry];
+
+            if (countryInfo) {
+              // Pre-fill YES if CRS country, NO if not CRS country
+              preFillAnswers[step.step_id] = countryInfo.isCrs ? 'YES' : 'NO';
+            }
+          }
+        }
       });
 
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
