@@ -779,12 +779,11 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     const fields = [];
     const currentStepIndex = allSteps.findIndex(s => s.step_id === editedStep.step_id);
 
-    // 1. Add answers from all workflow steps (including current step for self-referencing address/multi-field)
+    // 1. Add answers from all workflow steps (including current step)
     allSteps.forEach((s, idx) => {
-      // Skip steps that come after the current step (except for address_input and multi_field_input)
-      if (idx > currentStepIndex && s.question_type !== 'address_input' && s.question_type !== 'multi_field_input') return;
-      // For the current step itself, only include if it's an address_input or multi_field_input (for self-referencing)
-      if (idx === currentStepIndex && s.question_type !== 'address_input' && s.question_type !== 'multi_field_input') return;
+      // Skip steps that come after the current step
+      if (idx > currentStepIndex) return;
+      
       // Add step ID itself as a field (for simple question types)
       fields.push({
         value: s.step_id,
