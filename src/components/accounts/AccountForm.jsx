@@ -483,6 +483,22 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </Select>
             </div>
 
+            <div>
+              <Label htmlFor="account_holder_type">Account Holder Type *</Label>
+              <Select
+                value={formData.account_holder_type}
+                onValueChange={(value) => handleChange("account_holder_type", value)}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="entity">Entity</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {formData.account_holder_type === "entity" && (
               <div>
                 <Label htmlFor="account_holder_entity_type" className="text-slate-700">
@@ -511,22 +527,6 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 </p>
               </div>
             )}
-
-            <div>
-              <Label htmlFor="account_holder_type">Account Holder Type *</Label>
-              <Select
-                value={formData.account_holder_type}
-                onValueChange={(value) => handleChange("account_holder_type", value)}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">Individual</SelectItem>
-                  <SelectItem value="entity">Entity</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             {formData.account_holder_type === "entity" && (
               <div>
