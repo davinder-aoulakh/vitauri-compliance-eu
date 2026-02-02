@@ -1374,6 +1374,44 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </DialogContent>
       </Dialog>
 
+      {/* Workflow Introduction Section */}
+      {workflow.display_workflow_introduction && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <Info className="w-4 h-4 text-blue-600" />
+          <AlertDescription>
+            <div className="space-y-2">
+              {workflow.workflow_introduction_text && (
+                <p className="text-sm text-blue-900 font-medium">
+                  {workflow.workflow_introduction_text}
+                </p>
+              )}
+              {workflow.workflow_introduction_fields && workflow.workflow_introduction_fields.length > 0 && mappedEntityData && (
+                <div className="space-y-1 mt-2">
+                  {workflow.workflow_introduction_fields.map((field, idx) => {
+                    let fieldValue = mappedEntityData[field.field_name];
+                    
+                    // Format the value based on the formatter
+                    if (field.value_formatter === 'boolean_alive_deceased' && typeof fieldValue === 'boolean') {
+                      fieldValue = fieldValue ? 'Alive' : 'Deceased';
+                    } else if (field.value_formatter === 'pre_existing_new' && typeof fieldValue === 'boolean') {
+                      fieldValue = fieldValue ? 'Pre-existing (before 2018)' : 'New (after 2018)';
+                    } else if (field.value_formatter === 'capitalize' && typeof fieldValue === 'string') {
+                      fieldValue = fieldValue.charAt(0).toUpperCase() + fieldValue.slice(1);
+                    }
+                    
+                    return (
+                      <p key={idx} className="text-sm text-blue-800">
+                        <strong>{field.display_label}:</strong> {fieldValue || 'N/A'}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Progress Bar */}
       <div className="space-y-2">
         <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
