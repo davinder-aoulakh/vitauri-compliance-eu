@@ -359,15 +359,27 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-sm">Dynamic Fields to Display</Label>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIntroFields([...introFields, { field_name: "", display_label: "", value_formatter: "default" }])}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Field
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIntroFields([...introFields, { field_type: "simple_field", field_name: "", display_label: "", value_formatter: "default" }])}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Field
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIntroFields([...introFields, { field_type: "computed_condition", display_label: "", computation_field_1: "", computation_field_2: "", computation_operator: "add", comparison_operator: "greater_than", threshold_value: 0, true_text: "", false_text: "" }])}
+                        className="bg-purple-50 text-purple-700 border-purple-300"
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Add Computed Condition
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-slate-600 mb-3">
                     Select fields from Account/Entity to show in the introduction (e.g., Account Type, Holder Status)
@@ -379,100 +391,304 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                     </p>
                   ) : (
                     <div className="space-y-3">
-                      {introFields.map((field, idx) => (
-                        <div key={idx} className="p-3 bg-white border rounded-lg space-y-2">
-                          <div className="flex items-center justify-between mb-2">
-                            <Badge variant="outline" className="text-xs">
-                              Field {idx + 1}
-                            </Badge>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setIntroFields(introFields.filter((_, i) => i !== idx))}
-                              className="h-6 w-6 text-red-600"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <Label className="text-xs">Field Name</Label>
-                              <Select
-                                value={field.field_name}
-                                onValueChange={(value) => {
-                                  const newFields = [...introFields];
-                                  // Auto-populate display label based on field selection
-                                  const allFields = [...ACCOUNT_FIELDS_SCHEMA, ...ENTITY_FIELDS_SCHEMA];
-                                  const selectedField = allFields.find(f => f.value === value);
-                                  newFields[idx] = { 
-                                    ...newFields[idx], 
-                                    field_name: value,
-                                    display_label: newFields[idx].display_label || selectedField?.label || ""
-                                  };
-                                  setIntroFields(newFields);
-                                }}
+                      {introFields.map((field, idx) => {
+                        const isComputedCondition = field.field_type === "computed_condition";
+                        
+                        return (
+                          <div key={idx} className={`p-3 border rounded-lg space-y-3 ${isComputedCondition ? 'bg-purple-50 border-purple-300' : 'bg-white border-slate-200'}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={`text-xs ${isComputedCondition ? 'bg-purple-100 text-purple-800' : ''}`}>
+                                  {isComputedCondition ? 'Computed' : 'Field'} {idx + 1}
+                                </Badge>
+                                <Select
+                                  value={field.field_type || "simple_field"}
+                                  onValueChange={(value) => {
+                                    const newFields = [...introFields];
+                                    if (value === "computed_condition") {
+                                      newFields[idx] = {
+                                        field_type: "computed_condition",
+                                        display_label: field.display_label || "",
+                                        computation_field_1: "",
+                                        computation_field_2: "",
+                                        computation_operator: "add",
+                                        comparison_operator: "greater_than",
+                                        threshold_value: 0,
+                                        true_text: "",
+                                        false_text: ""
+                                      };
+                                    } else {
+                                      newFields[idx] = {
+                                        field_type: "simple_field",
+                                        field_name: "",
+                                        display_label: field.display_label || "",
+                                        value_formatter: "default"
+                                      };
+                                    }
+                                    setIntroFields(newFields);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs w-36">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="simple_field">Simple Field</SelectItem>
+                                    <SelectItem value="computed_condition">Computed Condition</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setIntroFields(introFields.filter((_, i) => i !== idx))}
+                                className="h-6 w-6 text-red-600"
                               >
-                                <SelectTrigger className="h-8 text-xs mt-1">
-                                  <SelectValue placeholder="Select field..." />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[250px]">
-                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">
-                                    Account Fields
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+
+                            {isComputedCondition ? (
+                              /* Computed Condition Configuration */
+                              <div className="space-y-3">
+                                <div>
+                                  <Label className="text-xs">Label (Optional)</Label>
+                                  <Input
+                                    value={field.display_label}
+                                    onChange={(e) => {
+                                      const newFields = [...introFields];
+                                      newFields[idx] = { ...newFields[idx], display_label: e.target.value };
+                                      setIntroFields(newFields);
+                                    }}
+                                    placeholder="e.g., Reporting Threshold Check"
+                                    className="h-8 text-xs mt-1"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-5 gap-2 items-end">
+                                  <div className="col-span-2">
+                                    <Label className="text-xs">Field 1</Label>
+                                    <Select
+                                      value={field.computation_field_1}
+                                      onValueChange={(value) => {
+                                        const newFields = [...introFields];
+                                        newFields[idx] = { ...newFields[idx], computation_field_1: value };
+                                        setIntroFields(newFields);
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs mt-1">
+                                        <SelectValue placeholder="Select..." />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-[200px]">
+                                        <div className="px-2 py-1 text-xs font-semibold text-slate-500">Account</div>
+                                        {ACCOUNT_FIELDS_SCHEMA.filter(f => f.type === "number").map(f => (
+                                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                        <div className="px-2 py-1 text-xs font-semibold text-slate-500 border-t mt-1">Entity</div>
+                                        {ENTITY_FIELDS_SCHEMA.filter(f => f.type === "number").map(f => (
+                                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
-                                  {ACCOUNT_FIELDS_SCHEMA.map(f => (
-                                    <SelectItem key={f.value} value={f.value}>
-                                      {f.label}
-                                    </SelectItem>
-                                  ))}
-                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">
-                                    Entity Fields
+                                  <div>
+                                    <Select
+                                      value={field.computation_operator || "add"}
+                                      onValueChange={(value) => {
+                                        const newFields = [...introFields];
+                                        newFields[idx] = { ...newFields[idx], computation_operator: value };
+                                        setIntroFields(newFields);
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="add">+</SelectItem>
+                                        <SelectItem value="subtract">−</SelectItem>
+                                        <SelectItem value="multiply">×</SelectItem>
+                                        <SelectItem value="divide">÷</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
-                                  {ENTITY_FIELDS_SCHEMA.map(f => (
-                                    <SelectItem key={f.value} value={f.value}>
-                                      {f.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Display Label</Label>
-                              <Input
-                                value={field.display_label}
-                                onChange={(e) => {
-                                  const newFields = [...introFields];
-                                  newFields[idx] = { ...newFields[idx], display_label: e.target.value };
-                                  setIntroFields(newFields);
-                                }}
-                                placeholder="e.g., Account Type"
-                                className="h-8 text-xs mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Format</Label>
-                              <Select
-                                value={field.value_formatter || "default"}
-                                onValueChange={(value) => {
-                                  const newFields = [...introFields];
-                                  newFields[idx] = { ...newFields[idx], value_formatter: value };
-                                  setIntroFields(newFields);
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs mt-1">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="default">Default</SelectItem>
-                                  <SelectItem value="boolean_alive_deceased">Alive/Deceased</SelectItem>
-                                  <SelectItem value="pre_existing_new">Pre-existing/New</SelectItem>
-                                  <SelectItem value="capitalize">Capitalize</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                                  <div className="col-span-2">
+                                    <Label className="text-xs">Field 2</Label>
+                                    <Select
+                                      value={field.computation_field_2}
+                                      onValueChange={(value) => {
+                                        const newFields = [...introFields];
+                                        newFields[idx] = { ...newFields[idx], computation_field_2: value };
+                                        setIntroFields(newFields);
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs mt-1">
+                                        <SelectValue placeholder="Select..." />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-[200px]">
+                                        <div className="px-2 py-1 text-xs font-semibold text-slate-500">Account</div>
+                                        {ACCOUNT_FIELDS_SCHEMA.filter(f => f.type === "number").map(f => (
+                                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                        <div className="px-2 py-1 text-xs font-semibold text-slate-500 border-t mt-1">Entity</div>
+                                        {ENTITY_FIELDS_SCHEMA.filter(f => f.type === "number").map(f => (
+                                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <Label className="text-xs">Comparison</Label>
+                                    <Select
+                                      value={field.comparison_operator || "greater_than"}
+                                      onValueChange={(value) => {
+                                        const newFields = [...introFields];
+                                        newFields[idx] = { ...newFields[idx], comparison_operator: value };
+                                        setIntroFields(newFields);
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="greater_than">&gt;</SelectItem>
+                                        <SelectItem value="less_than">&lt;</SelectItem>
+                                        <SelectItem value="equals">=</SelectItem>
+                                        <SelectItem value="greater_than_or_equal">≥</SelectItem>
+                                        <SelectItem value="less_than_or_equal">≤</SelectItem>
+                                        <SelectItem value="not_equals">≠</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <Label className="text-xs">Threshold Value</Label>
+                                    <Input
+                                      type="number"
+                                      value={field.threshold_value || 0}
+                                      onChange={(e) => {
+                                        const newFields = [...introFields];
+                                        newFields[idx] = { ...newFields[idx], threshold_value: Number(e.target.value) };
+                                        setIntroFields(newFields);
+                                      }}
+                                      placeholder="e.g., 250000"
+                                      className="h-8 text-xs mt-1"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <Label className="text-xs text-green-700">Text when TRUE</Label>
+                                  <Textarea
+                                    value={field.true_text || ""}
+                                    onChange={(e) => {
+                                      const newFields = [...introFields];
+                                      newFields[idx] = { ...newFields[idx], true_text: e.target.value };
+                                      setIntroFields(newFields);
+                                    }}
+                                    placeholder="e.g., Account value exceeds reporting threshold"
+                                    rows={2}
+                                    className="text-xs mt-1"
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label className="text-xs text-red-700">Text when FALSE</Label>
+                                  <Textarea
+                                    value={field.false_text || ""}
+                                    onChange={(e) => {
+                                      const newFields = [...introFields];
+                                      newFields[idx] = { ...newFields[idx], false_text: e.target.value };
+                                      setIntroFields(newFields);
+                                    }}
+                                    placeholder="e.g., Account value is below reporting threshold"
+                                    rows={2}
+                                    className="text-xs mt-1"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              /* Simple Field Configuration */
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <Label className="text-xs">Field Name</Label>
+                                  <Select
+                                    value={field.field_name}
+                                    onValueChange={(value) => {
+                                      const newFields = [...introFields];
+                                      const allFields = [...ACCOUNT_FIELDS_SCHEMA, ...ENTITY_FIELDS_SCHEMA];
+                                      const selectedField = allFields.find(f => f.value === value);
+                                      newFields[idx] = { 
+                                        ...newFields[idx], 
+                                        field_name: value,
+                                        display_label: newFields[idx].display_label || selectedField?.label || ""
+                                      };
+                                      setIntroFields(newFields);
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs mt-1">
+                                      <SelectValue placeholder="Select field..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[250px]">
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">
+                                        Account Fields
+                                      </div>
+                                      {ACCOUNT_FIELDS_SCHEMA.map(f => (
+                                        <SelectItem key={f.value} value={f.value}>
+                                          {f.label}
+                                        </SelectItem>
+                                      ))}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">
+                                        Entity Fields
+                                      </div>
+                                      {ENTITY_FIELDS_SCHEMA.map(f => (
+                                        <SelectItem key={f.value} value={f.value}>
+                                          {f.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Display Label</Label>
+                                  <Input
+                                    value={field.display_label}
+                                    onChange={(e) => {
+                                      const newFields = [...introFields];
+                                      newFields[idx] = { ...newFields[idx], display_label: e.target.value };
+                                      setIntroFields(newFields);
+                                    }}
+                                    placeholder="e.g., Account Type"
+                                    className="h-8 text-xs mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Format</Label>
+                                  <Select
+                                    value={field.value_formatter || "default"}
+                                    onValueChange={(value) => {
+                                      const newFields = [...introFields];
+                                      newFields[idx] = { ...newFields[idx], value_formatter: value };
+                                      setIntroFields(newFields);
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="default">Default</SelectItem>
+                                      <SelectItem value="boolean_alive_deceased">Alive/Deceased</SelectItem>
+                                      <SelectItem value="pre_existing_new">Pre-existing/New</SelectItem>
+                                      <SelectItem value="capitalize">Capitalize</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
