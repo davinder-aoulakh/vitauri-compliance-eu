@@ -30,17 +30,18 @@ import CountrySelect from "../shared/CountrySelect";
 export default function ControllingPersonInputRenderer({ 
   account, 
   onControllingPersonsAdded,
+  onPersonsChange,
   minPersons = 1,
-  initialPersons
+  initialPersons,
+  savedPersons
 }) {
   const [persons, setPersons] = useState([createEmptyPerson()]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [alreadySaved, setAlreadySaved] = useState(false);
 
   const queryClient = useQueryClient();
 
-  // Initialize with saved data if provided
+  // Initialize with saved or draft data
   useEffect(() => {
     if (initialPersons && initialPersons.length > 0) {
       setPersons(initialPersons.map(p => ({
@@ -59,9 +60,15 @@ export default function ControllingPersonInputRenderer({
         },
         tax_residencies: p.tax_residencies || [{ country: "", tin: "" }]
       })));
-      setAlreadySaved(true);
     }
-  }, [initialPersons]);
+  }, []);
+
+  // Update parent whenever persons change
+  useEffect(() => {
+    if (onPersonsChange) {
+      onPersonsChange(persons);
+    }
+  }, [persons, onPersonsChange]);
 
   function createEmptyPerson() {
     return {
@@ -169,10 +176,10 @@ export default function ControllingPersonInputRenderer({
   };
 
   const handleSaveAll = async () => {
-    if (alreadySaved) {
-      // Already saved, just call the callback with existing data
+    if (savedPersons && savedPersons.length > 0) {
+      // Already saved, just call the callback
       if (onControllingPersonsAdded) {
-        onControllingPersonsAdded(persons);
+        onControllingPersonsAdded(savedPersons);
       }
       return;
     }
@@ -183,7 +190,7 @@ export default function ControllingPersonInputRenderer({
 
     setSaving(true);
     try {
-      const savedPersons = [];
+      const savedPers = [];
       
       for (const p of persons) {
         // Determine if reportable based on tax residencies
@@ -203,15 +210,14 @@ export default function ControllingPersonInputRenderer({
         };
         
         const created = await base44.entities.ControllingPerson.create(personData);
-        savedPersons.push(created);
+        savedPers.push(created);
       }
 
-      setAlreadySaved(true);
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
-      toast.success(`${savedPersons.length} controlling person(s) saved successfully!`);
+      toast.success(`${savedPers.length} controlling person(s) saved successfully!`);
       
       if (onControllingPersonsAdded) {
-        onControllingPersonsAdded(savedPersons);
+        onControllingPersonsAdded(savedPers);
       }
     } catch (error) {
       console.error("Error saving controlling persons:", error);
@@ -222,6 +228,7 @@ export default function ControllingPersonInputRenderer({
   };
 
   const isValid = persons.every(p => p.first_name?.trim() && p.last_name?.trim() && p.address?.country);
+  const alreadySaved = savedPersons && savedPersons.length > 0;
 
   return (
     <div className="space-y-4">
@@ -229,7 +236,7 @@ export default function ControllingPersonInputRenderer({
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="w-4 h-4 text-green-600" />
           <AlertDescription className="text-sm text-green-900">
-            <strong>Saved:</strong> {persons.length} controlling person(s) have been saved successfully.
+            <strong>Saved:</strong> {savedPersons.length} controlling person(s) have been saved successfully.
           </AlertDescription>
         </Alert>
       )}
@@ -492,11 +499,11 @@ export default function ControllingPersonInputRenderer({
       <Button
         type="button"
         onClick={handleSaveAll}
-        disabled={!isValid || saving}
-        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+        disabled={!isValid || saving || alreadySaved}
+        className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
       >
         <Save className="w-4 h-4 mr-2" />
-        {saving ? "Saving..." : `Save ${persons.length} Controlling Person(s) & Continue`}
+        {saving ? "Saving..." : alreadySaved ? `Saved ${savedPersons.length} Controlling Person(s) ✓` : `Save ${persons.length} Controlling Person(s) & Continue`}
       </Button>
     </div>
   );

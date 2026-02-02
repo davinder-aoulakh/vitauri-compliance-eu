@@ -23,12 +23,13 @@ export default function BeneficiaryInputRenderer({
   account, 
   tenant, 
   onBeneficiariesAdded,
+  onBeneficiariesChange,
   minBeneficiaries = 1,
-  initialBeneficiaries
+  initialBeneficiaries,
+  savedBeneficiaries
 }) {
   const [beneficiaries, setBeneficiaries] = useState([createEmptyBeneficiary()]);
   const [errors, setErrors] = useState({});
-  const [alreadySaved, setAlreadySaved] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -39,7 +40,7 @@ export default function BeneficiaryInputRenderer({
     enabled: !!account?.id
   });
 
-  // Initialize with saved data if provided
+  // Initialize with saved or draft data
   useEffect(() => {
     if (initialBeneficiaries && initialBeneficiaries.length > 0) {
       setBeneficiaries(initialBeneficiaries.map(b => ({
@@ -56,9 +57,15 @@ export default function BeneficiaryInputRenderer({
           country: ""
         }
       })));
-      setAlreadySaved(true);
     }
-  }, [initialBeneficiaries]);
+  }, []);
+
+  // Update parent whenever beneficiaries change
+  useEffect(() => {
+    if (onBeneficiariesChange) {
+      onBeneficiariesChange(beneficiaries);
+    }
+  }, [beneficiaries, onBeneficiariesChange]);
 
   function createEmptyBeneficiary() {
     return {
@@ -136,10 +143,10 @@ export default function BeneficiaryInputRenderer({
   };
 
   const handleSaveAll = async () => {
-    if (alreadySaved) {
-      // Already saved, just call the callback with existing data
+    if (savedBeneficiaries && savedBeneficiaries.length > 0) {
+      // Already saved, just call the callback
       if (onBeneficiariesAdded) {
-        onBeneficiariesAdded(beneficiaries);
+        onBeneficiariesAdded(savedBeneficiaries);
       }
       return;
     }
@@ -149,7 +156,7 @@ export default function BeneficiaryInputRenderer({
     }
 
     try {
-      const savedBeneficiaries = [];
+      const savedBenefs = [];
       
       for (const b of beneficiaries) {
         // Check if a beneficiary with the same name already exists for this account
@@ -161,7 +168,7 @@ export default function BeneficiaryInputRenderer({
         
         if (existingMatch) {
           // Skip creating duplicate, use existing one
-          savedBeneficiaries.push(existingMatch);
+          savedBenefs.push(existingMatch);
           continue;
         }
 
@@ -177,15 +184,14 @@ export default function BeneficiaryInputRenderer({
         };
         
         const created = await base44.entities.Beneficiary.create(beneficiaryData);
-        savedBeneficiaries.push(created);
+        savedBenefs.push(created);
       }
 
-      setAlreadySaved(true);
       queryClient.invalidateQueries(['beneficiaries', account?.id]);
-      toast.success(`${savedBeneficiaries.length} beneficiary(ies) saved successfully!`);
+      toast.success(`${savedBenefs.length} beneficiary(ies) saved successfully!`);
       
       if (onBeneficiariesAdded) {
-        onBeneficiariesAdded(savedBeneficiaries);
+        onBeneficiariesAdded(savedBenefs);
       }
     } catch (error) {
       console.error("Error saving beneficiaries:", error);
@@ -194,6 +200,7 @@ export default function BeneficiaryInputRenderer({
   };
 
   const isValid = beneficiaries.every(b => b.first_name?.trim() && b.last_name?.trim() && b.address?.country);
+  const alreadySaved = savedBeneficiaries && savedBeneficiaries.length > 0;
 
   return (
     <div className="space-y-4">
@@ -201,7 +208,7 @@ export default function BeneficiaryInputRenderer({
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="w-4 h-4 text-green-600" />
           <AlertDescription className="text-sm text-green-900">
-            <strong>Saved:</strong> {beneficiaries.length} beneficiary(ies) have been saved successfully.
+            <strong>Saved:</strong> {savedBeneficiaries.length} beneficiary(ies) have been saved successfully.
           </AlertDescription>
         </Alert>
       )}
@@ -377,11 +384,11 @@ export default function BeneficiaryInputRenderer({
       <Button
         type="button"
         onClick={handleSaveAll}
-        disabled={!isValid}
-        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+        disabled={!isValid || alreadySaved}
+        className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
       >
         <Save className="w-4 h-4 mr-2" />
-        Save {beneficiaries.length} Beneficiary(ies) & Continue
+        {alreadySaved ? `Saved ${savedBeneficiaries.length} Beneficiary(ies) ✓` : `Save ${beneficiaries.length} Beneficiary(ies) & Continue`}
       </Button>
     </div>
   );

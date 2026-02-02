@@ -1211,9 +1211,22 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           <BeneficiaryInputRenderer
             account={mappedEntityData}
             tenant={{ id: mappedEntityData?.tenant_id }}
-            initialBeneficiaries={answer?.beneficiaries}
+            initialBeneficiaries={answer?.draftBeneficiaries}
+            savedBeneficiaries={answer?.savedBeneficiaries}
+            onBeneficiariesChange={(beneficiaries) => {
+              // Update draft data immediately as user types
+              handleAnswer(currentStep.step_id, { 
+                ...answer,
+                draftBeneficiaries: beneficiaries 
+              });
+            }}
             onBeneficiariesAdded={(savedBeneficiaries) => {
-              handleAnswer(currentStep.step_id, { beneficiaries: savedBeneficiaries });
+              // Update saved data when user clicks save
+              handleAnswer(currentStep.step_id, { 
+                ...answer,
+                savedBeneficiaries: savedBeneficiaries,
+                draftBeneficiaries: savedBeneficiaries
+              });
             }}
           />
         );
@@ -1222,9 +1235,22 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         return (
           <ControllingPersonInputRenderer
             account={mappedEntityData}
-            initialPersons={answer?.persons}
+            initialPersons={answer?.draftPersons}
+            savedPersons={answer?.savedPersons}
+            onPersonsChange={(persons) => {
+              // Update draft data immediately as user types
+              handleAnswer(currentStep.step_id, { 
+                ...answer,
+                draftPersons: persons 
+              });
+            }}
             onControllingPersonsAdded={(savedPersons) => {
-              handleAnswer(currentStep.step_id, { persons: savedPersons });
+              // Update saved data when user clicks save
+              handleAnswer(currentStep.step_id, { 
+                ...answer,
+                savedPersons: savedPersons,
+                draftPersons: savedPersons
+              });
             }}
           />
         );
@@ -1268,11 +1294,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
     // Special validation for beneficiary_input and controlling_person_input
     if (currentStep.question_type === 'beneficiary_input') {
-      return answer?.beneficiaries && answer.beneficiaries.length > 0;
+      return answer?.savedBeneficiaries && answer.savedBeneficiaries.length > 0;
     }
 
     if (currentStep.question_type === 'controlling_person_input') {
-      return answer?.persons && answer.persons.length > 0;
+      return answer?.savedPersons && answer.savedPersons.length > 0;
     }
     
     return answer !== undefined && answer !== null && answer !== '';
