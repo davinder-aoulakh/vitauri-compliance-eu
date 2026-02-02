@@ -483,6 +483,35 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </Select>
             </div>
 
+            {formData.account_holder_type === "entity" && (
+              <div>
+                <Label htmlFor="account_holder_entity_type" className="text-slate-700">
+                  Account Holder Entity Type
+                </Label>
+                <Select
+                  value={formData.account_holder_entity_type}
+                  onValueChange={(value) => handleChange("account_holder_entity_type", value)}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select entity type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="corporation">Corporation</SelectItem>
+                    <SelectItem value="trust">Trust</SelectItem>
+                    <SelectItem value="partnership">Partnership</SelectItem>
+                    <SelectItem value="fund">Fund</SelectItem>
+                    <SelectItem value="llc">LLC</SelectItem>
+                    <SelectItem value="foundation">Foundation</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 mt-1">
+                  Type of entity holding this account
+                </p>
+              </div>
+            )}
+
             <div>
               <Label htmlFor="account_holder_type">Account Holder Type *</Label>
               <Select

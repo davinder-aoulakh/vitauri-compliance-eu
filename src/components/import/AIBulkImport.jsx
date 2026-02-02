@@ -55,7 +55,7 @@ export default function AIBulkImport({
     
     if (importType === "Account") {
       headers = [
-        "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Type", 
+        "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Entity Type", "Account Holder Type", 
         "Account Holder Name (Entity Only)", "First Name (Individual Only)", "Last Name (Individual Only)",
         "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive", "Deceased During Period", "Account Closed During Period",
         "Death Certificate Requested", "Death Certificate Requested Date", "Death Certificate Received", "Death Certificate Received Date",
@@ -69,7 +69,7 @@ export default function AIBulkImport({
         "Reporting Year", "US Person Indicator", "Self Certification Obtained", "Self Certification Date",
         "Account Status", "Tax Residency 1 Country", "Tax Residency 1 TIN", "Tax Residency 2 Country", "Tax Residency 2 TIN"
       ];
-      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,individual,,John,Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
+      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,,individual,,John,Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
     } else {
       headers = [
         "Entity Name", "Entity Type", "Country of Incorporation", "Tax ID", "GIIN",

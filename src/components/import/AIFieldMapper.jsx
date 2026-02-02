@@ -17,6 +17,7 @@ const ACCOUNT_FIELDS = [
   { name: "account_number", label: "Account Number", required: true },
   { name: "account_creation_date", label: "Account Opening Date", required: false },
   { name: "account_type", label: "Account Type", required: false },
+  { name: "account_holder_entity_type", label: "Account Holder Entity Type", required: false },
   { name: "account_holder_type", label: "Account Holder Type", required: true },
   { name: "account_holder_name", label: "Account Holder Name", required: true },
   { name: "date_of_birth", label: "Date of Birth", required: false },
