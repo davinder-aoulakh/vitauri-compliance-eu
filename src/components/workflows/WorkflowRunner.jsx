@@ -20,6 +20,8 @@ import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, G
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
+import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
+import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
 
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -1204,6 +1206,29 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </div>
         );
 
+      case 'beneficiary_input':
+        return (
+          <BeneficiaryInputRenderer
+            account={mappedEntityData}
+            tenant={{ id: mappedEntityData?.tenant_id }}
+            initialBeneficiaries={answer?.beneficiaries}
+            onBeneficiariesAdded={(savedBeneficiaries) => {
+              handleAnswer(currentStep.step_id, { beneficiaries: savedBeneficiaries });
+            }}
+          />
+        );
+
+      case 'controlling_person_input':
+        return (
+          <ControllingPersonInputRenderer
+            account={mappedEntityData}
+            initialPersons={answer?.persons}
+            onControllingPersonsAdded={(savedPersons) => {
+              handleAnswer(currentStep.step_id, { persons: savedPersons });
+            }}
+          />
+        );
+
       case 'info':
         return null;
 
@@ -1239,6 +1264,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     if (currentStep.question_type === 'address_input') {
       if (!answer || typeof answer !== 'object') return false;
       return !!(answer.street && answer.city && answer.state && answer.postal_code && answer.country);
+    }
+
+    // Special validation for beneficiary_input and controlling_person_input
+    if (currentStep.question_type === 'beneficiary_input') {
+      return answer?.beneficiaries && answer.beneficiaries.length > 0;
+    }
+
+    if (currentStep.question_type === 'controlling_person_input') {
+      return answer?.persons && answer.persons.length > 0;
     }
     
     return answer !== undefined && answer !== null && answer !== '';

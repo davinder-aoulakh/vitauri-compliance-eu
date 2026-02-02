@@ -24,18 +24,44 @@ import {
   Save,
   Globe
 } from "lucide-react";
+import { toast } from "sonner";
 import CountrySelect from "../shared/CountrySelect";
 
 export default function ControllingPersonInputRenderer({ 
   account, 
   onControllingPersonsAdded,
-  minPersons = 1 
+  minPersons = 1,
+  initialPersons
 }) {
   const [persons, setPersons] = useState([createEmptyPerson()]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [alreadySaved, setAlreadySaved] = useState(false);
 
   const queryClient = useQueryClient();
+
+  // Initialize with saved data if provided
+  useEffect(() => {
+    if (initialPersons && initialPersons.length > 0) {
+      setPersons(initialPersons.map(p => ({
+        id: p.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        first_name: p.first_name || "",
+        last_name: p.last_name || "",
+        date_of_birth: p.date_of_birth || "",
+        control_type: p.control_type || "legal_person_ownership",
+        ownership_percentage: p.ownership_percentage || 0,
+        address: p.address || {
+          street: "",
+          city: "",
+          state: "",
+          postal_code: "",
+          country: ""
+        },
+        tax_residencies: p.tax_residencies || [{ country: "", tin: "" }]
+      })));
+      setAlreadySaved(true);
+    }
+  }, [initialPersons]);
 
   function createEmptyPerson() {
     return {
@@ -143,6 +169,14 @@ export default function ControllingPersonInputRenderer({
   };
 
   const handleSaveAll = async () => {
+    if (alreadySaved) {
+      // Already saved, just call the callback with existing data
+      if (onControllingPersonsAdded) {
+        onControllingPersonsAdded(persons);
+      }
+      return;
+    }
+
     if (!validatePersons()) {
       return;
     }
@@ -172,14 +206,16 @@ export default function ControllingPersonInputRenderer({
         savedPersons.push(created);
       }
 
+      setAlreadySaved(true);
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
+      toast.success(`${savedPersons.length} controlling person(s) saved successfully!`);
       
       if (onControllingPersonsAdded) {
         onControllingPersonsAdded(savedPersons);
       }
     } catch (error) {
       console.error("Error saving controlling persons:", error);
-      alert("Failed to save controlling persons. Please try again.");
+      toast.error("Failed to save controlling persons. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -189,6 +225,15 @@ export default function ControllingPersonInputRenderer({
 
   return (
     <div className="space-y-4">
+      {alreadySaved && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="w-4 h-4 text-green-600" />
+          <AlertDescription className="text-sm text-green-900">
+            <strong>Saved:</strong> {persons.length} controlling person(s) have been saved successfully.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Alert className="bg-purple-50 border-purple-200">
         <Users className="w-4 h-4 text-purple-600" />
         <AlertDescription className="text-sm text-purple-900">

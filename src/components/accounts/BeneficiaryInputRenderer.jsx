@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,15 @@ import {
   Users,
   Save
 } from "lucide-react";
+import { toast } from "sonner";
 import CountrySelect from "../shared/CountrySelect";
 
 export default function BeneficiaryInputRenderer({ 
   account, 
   tenant, 
   onBeneficiariesAdded,
-  minBeneficiaries = 1 
+  minBeneficiaries = 1,
+  initialBeneficiaries
 }) {
   const [beneficiaries, setBeneficiaries] = useState([createEmptyBeneficiary()]);
   const [errors, setErrors] = useState({});
@@ -36,6 +38,27 @@ export default function BeneficiaryInputRenderer({
     queryFn: () => base44.entities.Beneficiary.filter({ account_id: account?.id }),
     enabled: !!account?.id
   });
+
+  // Initialize with saved data if provided
+  useEffect(() => {
+    if (initialBeneficiaries && initialBeneficiaries.length > 0) {
+      setBeneficiaries(initialBeneficiaries.map(b => ({
+        id: b.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        first_name: b.first_name || "",
+        last_name: b.last_name || "",
+        date_of_birth: b.date_of_birth || "",
+        place_of_birth: b.place_of_birth || "",
+        address: b.address || {
+          street: "",
+          city: "",
+          state: "",
+          postal_code: "",
+          country: ""
+        }
+      })));
+      setAlreadySaved(true);
+    }
+  }, [initialBeneficiaries]);
 
   function createEmptyBeneficiary() {
     return {
@@ -116,7 +139,7 @@ export default function BeneficiaryInputRenderer({
     if (alreadySaved) {
       // Already saved, just call the callback with existing data
       if (onBeneficiariesAdded) {
-        onBeneficiariesAdded(existingBeneficiaries);
+        onBeneficiariesAdded(beneficiaries);
       }
       return;
     }
@@ -159,13 +182,14 @@ export default function BeneficiaryInputRenderer({
 
       setAlreadySaved(true);
       queryClient.invalidateQueries(['beneficiaries', account?.id]);
+      toast.success(`${savedBeneficiaries.length} beneficiary(ies) saved successfully!`);
       
       if (onBeneficiariesAdded) {
         onBeneficiariesAdded(savedBeneficiaries);
       }
     } catch (error) {
       console.error("Error saving beneficiaries:", error);
-      alert("Failed to save beneficiaries. Please try again.");
+      toast.error("Failed to save beneficiaries. Please try again.");
     }
   };
 
@@ -173,6 +197,15 @@ export default function BeneficiaryInputRenderer({
 
   return (
     <div className="space-y-4">
+      {alreadySaved && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="w-4 h-4 text-green-600" />
+          <AlertDescription className="text-sm text-green-900">
+            <strong>Saved:</strong> {beneficiaries.length} beneficiary(ies) have been saved successfully.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Alert className="bg-purple-50 border-purple-200">
         <Users className="w-4 h-4 text-purple-600" />
         <AlertDescription className="text-sm text-purple-900">
