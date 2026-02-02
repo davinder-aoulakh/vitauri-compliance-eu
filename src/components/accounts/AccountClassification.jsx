@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -49,8 +50,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     postal_code: "",
     country: ""
   });
-  const [beneficiariesAdded, setBeneficiariesAdded] = useState(false);
-  const [controllingPersonsAdded, setControllingPersonsAdded] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
   const [previewDocument, setPreviewDocument] = useState(null);
@@ -344,6 +343,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     
     const currentNode = stepMap[currentNodeId];
     const existingAnswer = answers[currentNodeId];
+    
+    console.log(`[AccountClassification] Current step changed to: ${currentNode?.step_title}`);
+    console.log(`[AccountClassification] Existing answer for this step:`, existingAnswer);
     
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       const { _address_config, ...savedAddress } = existingAnswer;
@@ -932,17 +934,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
         _address_config: currentNode.address_config || { target_field: "current_address", track_changes: true }
       };
     } else if (currentNode.question_type === "beneficiary_input") {
-      if (!beneficiariesAdded) {
-        alert("Please add at least one beneficiary");
+      // Data is already in answers from the callback
+      const beneficiaryData = newAnswers[currentNodeId];
+      if (!beneficiaryData?.savedBeneficiaries || beneficiaryData.savedBeneficiaries.length === 0) {
+        alert("Please add and save at least one beneficiary");
         return;
       }
-      newAnswers[currentNodeId] = selectedValue;
     } else if (currentNode.question_type === "controlling_person_input") {
-      if (!controllingPersonsAdded) {
-        alert("Please add at least one controlling person");
+      // Data is already in answers from the callback
+      const controllingPersonData = newAnswers[currentNodeId];
+      if (!controllingPersonData?.savedPersons || controllingPersonData.savedPersons.length === 0) {
+        alert("Please add and save at least one controlling person");
         return;
       }
-      newAnswers[currentNodeId] = selectedValue;
     }
 
     setAnswers(newAnswers);
@@ -1086,6 +1090,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     
     // Restore values if navigating to a step that already has an answer
     const existingAnswer = newAnswers[nextNodeId];
+    console.log(`[AccountClassification] Navigating to step ${stepMap[nextNodeId]?.step_title}, existing answer:`, existingAnswer);
+    
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       // Restore address values
       const { _address_config, ...savedAddress } = existingAnswer;
@@ -1093,7 +1099,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setSelectedValue("");
       setDateValue("");
     } else if (existingAnswer && typeof existingAnswer === 'object' && !existingAnswer.file_url) {
-      // Restore multi-field values
+      // Restore multi-field values or leave as is for beneficiary/controlling person inputs
       setMultiFieldValues(existingAnswer);
       setSelectedValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
@@ -1114,6 +1120,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const handleBack = () => {
+    console.log('[AccountClassification] handleBack called');
+    
     if (showSummary) {
       setShowSummary(false);
       return;
@@ -1134,6 +1142,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     
     // Restore previous step's values
     const previousAnswer = answers[previousNodeId];
+    console.log(`[AccountClassification] Going back to step ${stepMap[previousNodeId]?.step_title}, answer:`, previousAnswer);
+    
     if (previousAnswer && typeof previousAnswer === 'object' && previousAnswer._address_config) {
       // Restore address values
       const { _address_config, ...savedAddress } = previousAnswer;
@@ -1644,9 +1654,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return null;
       })();
 
-      const isImage = uploadedDocument?.file_name?.match(/\.(jpg|jpeg|png)$/i);
-      const isPDF = uploadedDocument?.file_name?.match(/\.pdf$/i);
-
       return (
         <div className="space-y-4">
           {/* Show uploaded self-certification document */}
@@ -1770,25 +1777,67 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.question_type === "beneficiary_input") {
+      const existingAnswer = answers[currentNodeId];
+      console.log(`[AccountClassification] Rendering beneficiary_input, existing answer:`, existingAnswer);
+      
       return (
         <BeneficiaryInputRenderer
           account={latestAccountData || account}
           tenant={null}
+          initialBeneficiaries={existingAnswer?.draftBeneficiaries}
+          savedBeneficiaries={existingAnswer?.savedBeneficiaries}
+          onBeneficiariesChange={(beneficiaries) => {
+            console.log('[AccountClassification] onBeneficiariesChange called:', beneficiaries);
+            setAnswers(prev => ({
+              ...prev,
+              [currentNodeId]: {
+                ...prev[currentNodeId],
+                draftBeneficiaries: beneficiaries
+              }
+            }));
+          }}
           onBeneficiariesAdded={(savedBeneficiaries) => {
-            setBeneficiariesAdded(true);
-            setSelectedValue({ beneficiaries_count: savedBeneficiaries.length, beneficiaries: savedBeneficiaries });
+            console.log('[AccountClassification] onBeneficiariesAdded called:', savedBeneficiaries);
+            setAnswers(prev => ({
+              ...prev,
+              [currentNodeId]: {
+                savedBeneficiaries: savedBeneficiaries,
+                draftBeneficiaries: savedBeneficiaries
+              }
+            }));
           }}
         />
       );
     }
 
     if (currentNode.question_type === "controlling_person_input") {
+      const existingAnswer = answers[currentNodeId];
+      console.log(`[AccountClassification] Rendering controlling_person_input, existing answer:`, existingAnswer);
+      
       return (
         <ControllingPersonInputRenderer
           account={latestAccountData || account}
+          initialPersons={existingAnswer?.draftPersons}
+          savedPersons={existingAnswer?.savedPersons}
+          onPersonsChange={(persons) => {
+            console.log('[AccountClassification] onPersonsChange called:', persons);
+            setAnswers(prev => ({
+              ...prev,
+              [currentNodeId]: {
+                ...prev[currentNodeId],
+                draftPersons: persons
+              }
+            }));
+          }}
           onControllingPersonsAdded={(savedPersons) => {
-            setControllingPersonsAdded(true);
-            setSelectedValue({ controlling_persons_count: savedPersons.length, controlling_persons: savedPersons });
+            console.log('[AccountClassification] onControllingPersonsAdded called:', savedPersons);
+            setAnswers(prev => ({
+              ...prev,
+              [currentNodeId]: {
+                savedPersons: savedPersons,
+                draftPersons: savedPersons
+              }
+            }));
           }}
         />
       );
@@ -1956,10 +2005,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   // Handle special object types with user-friendly display
                   if (answer.file_name) {
                     answerLabel = answer.file_name;
-                  } else if (answer.controlling_persons_count !== undefined) {
-                    answerLabel = `${answer.controlling_persons_count} controlling person(s) added`;
-                  } else if (answer.beneficiaries_count !== undefined) {
-                    answerLabel = `${answer.beneficiaries_count} beneficiary(ies) added`;
+                  } else if (answer.controlling_persons_count !== undefined || answer.savedPersons) {
+                    // Check for either legacy or new format
+                    answerLabel = `${answer.savedPersons?.length || answer.controlling_persons_count || 0} controlling person(s) added`;
+                  } else if (answer.beneficiaries_count !== undefined || answer.savedBeneficiaries) {
+                    // Check for either legacy or new format
+                    answerLabel = `${answer.savedBeneficiaries?.length || answer.beneficiaries_count || 0} beneficiary(ies) added`;
                   } else if (answer._address_config) {
                     const { _address_config, ...addr } = answer;
                     const parts = [addr.street, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean);
@@ -2261,12 +2312,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
                       const { _address_config, ...addr } = value;
                       const parts = [addr.street, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean);
                       displayValue = parts.join(', ') || 'Address entered';
-                    } else if (value.beneficiaries_count) {
+                    } else if (value.savedBeneficiaries) {
                       // Beneficiary input
-                      displayValue = `${value.beneficiaries_count} beneficiary(ies) added`;
-                    } else if (value.controlling_persons_count) {
+                      displayValue = `${value.savedBeneficiaries.length} beneficiary(ies) added`;
+                    } else if (value.savedPersons) {
                       // Controlling person input
-                      displayValue = `${value.controlling_persons_count} controlling person(s) added`;
+                      displayValue = `${value.savedPersons.length} controlling person(s) added`;
                     } else {
                       // Multi-field or other object - show field values
                       const fieldValues = Object.entries(value)
@@ -2333,8 +2384,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
             !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0) &&
             !(currentNode.question_type === "address_input" && addressValues.street && addressValues.city && 
               addressValues.state && addressValues.postal_code && addressValues.country) &&
-            !(currentNode.question_type === "beneficiary_input" && beneficiariesAdded) &&
-            !(currentNode.question_type === "controlling_person_input" && controllingPersonsAdded)
+            !(currentNode.question_type === "beneficiary_input" && answers[currentNodeId]?.savedBeneficiaries?.length > 0) &&
+            !(currentNode.question_type === "controlling_person_input" && answers[currentNodeId]?.savedPersons?.length > 0)
             }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
