@@ -35,16 +35,21 @@ export default function ControllingPersonInputRenderer({
   initialPersons,
   savedPersons
 }) {
-  const [persons, setPersons] = useState([createEmptyPerson()]);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
+  console.log('[ControllingPersonInputRenderer] Component rendered');
+  console.log('[ControllingPersonInputRenderer] Props:', { 
+    accountId: account?.id, 
+    hasOnPersonsChange: !!onPersonsChange,
+    hasInitialPersons: !!initialPersons,
+    initialPersonsLength: initialPersons?.length,
+    hasSavedPersons: !!savedPersons,
+    savedPersonsLength: savedPersons?.length
+  });
 
-  const queryClient = useQueryClient();
-
-  // Initialize with saved or draft data
-  useEffect(() => {
+  const [persons, setPersons] = useState(() => {
+    console.log('[ControllingPersonInputRenderer] Initializing persons state');
     if (initialPersons && initialPersons.length > 0) {
-      setPersons(initialPersons.map(p => ({
+      console.log('[ControllingPersonInputRenderer] Using initialPersons:', initialPersons);
+      return initialPersons.map(p => ({
         id: p.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         first_name: p.first_name || "",
         last_name: p.last_name || "",
@@ -59,16 +64,16 @@ export default function ControllingPersonInputRenderer({
           country: ""
         },
         tax_residencies: p.tax_residencies || [{ country: "", tin: "" }]
-      })));
+      }));
     }
-  }, []);
+    console.log('[ControllingPersonInputRenderer] No initialPersons, creating empty person');
+    return [createEmptyPerson()];
+  });
+  
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  // Update parent whenever persons change
-  useEffect(() => {
-    if (onPersonsChange) {
-      onPersonsChange(persons);
-    }
-  }, [persons, onPersonsChange]);
+  const queryClient = useQueryClient();
 
   function createEmptyPerson() {
     return {
@@ -90,18 +95,30 @@ export default function ControllingPersonInputRenderer({
   }
 
   const handleAddPerson = () => {
-    setPersons([...persons, createEmptyPerson()]);
+    console.log('[ControllingPersonInputRenderer] Adding new person');
+    const newPersons = [...persons, createEmptyPerson()];
+    setPersons(newPersons);
+    if (onPersonsChange) {
+      console.log('[ControllingPersonInputRenderer] Calling onPersonsChange after add');
+      onPersonsChange(newPersons);
+    }
   };
 
   const handleRemovePerson = (index) => {
     if (persons.length <= minPersons) {
       return;
     }
+    console.log('[ControllingPersonInputRenderer] Removing person at index:', index);
     const newPersons = persons.filter((_, i) => i !== index);
     setPersons(newPersons);
+    if (onPersonsChange) {
+      console.log('[ControllingPersonInputRenderer] Calling onPersonsChange after remove');
+      onPersonsChange(newPersons);
+    }
   };
 
   const handlePersonChange = (index, field, value) => {
+    console.log(`[ControllingPersonInputRenderer] Person ${index} field "${field}" changed to:`, value);
     const newPersons = [...persons];
     if (field.startsWith("address.")) {
       const addressField = field.replace("address.", "");
@@ -120,6 +137,12 @@ export default function ControllingPersonInputRenderer({
     }
     setPersons(newPersons);
     
+    // Notify parent of changes
+    if (onPersonsChange) {
+      console.log('[ControllingPersonInputRenderer] Calling onPersonsChange after field change');
+      onPersonsChange(newPersons);
+    }
+    
     // Clear error for this field
     if (errors[`${index}.${field}`]) {
       const newErrors = { ...errors };
@@ -129,6 +152,7 @@ export default function ControllingPersonInputRenderer({
   };
 
   const handleTaxResidencyChange = (personIndex, residencyIndex, field, value) => {
+    console.log(`[ControllingPersonInputRenderer] Tax residency ${residencyIndex} for person ${personIndex}, field "${field}" changed to:`, value);
     const newPersons = [...persons];
     const newResidencies = [...(newPersons[personIndex].tax_residencies || [])];
     newResidencies[residencyIndex] = {
@@ -137,23 +161,41 @@ export default function ControllingPersonInputRenderer({
     };
     newPersons[personIndex].tax_residencies = newResidencies;
     setPersons(newPersons);
+    
+    // Notify parent of changes
+    if (onPersonsChange) {
+      console.log('[ControllingPersonInputRenderer] Calling onPersonsChange after tax residency change');
+      onPersonsChange(newPersons);
+    }
   };
 
   const handleAddTaxResidency = (personIndex) => {
+    console.log('[ControllingPersonInputRenderer] Adding tax residency for person:', personIndex);
     const newPersons = [...persons];
     newPersons[personIndex].tax_residencies = [
       ...(newPersons[personIndex].tax_residencies || []),
       { country: "", tin: "" }
     ];
     setPersons(newPersons);
+    
+    if (onPersonsChange) {
+      console.log('[ControllingPersonInputRenderer] Calling onPersonsChange after add tax residency');
+      onPersonsChange(newPersons);
+    }
   };
 
   const handleRemoveTaxResidency = (personIndex, residencyIndex) => {
+    console.log('[ControllingPersonInputRenderer] Removing tax residency:', { personIndex, residencyIndex });
     const newPersons = [...persons];
     newPersons[personIndex].tax_residencies = newPersons[personIndex].tax_residencies.filter(
       (_, i) => i !== residencyIndex
     );
     setPersons(newPersons);
+    
+    if (onPersonsChange) {
+      console.log('[ControllingPersonInputRenderer] Calling onPersonsChange after remove tax residency');
+      onPersonsChange(newPersons);
+    }
   };
 
   const validatePersons = () => {
@@ -172,12 +214,20 @@ export default function ControllingPersonInputRenderer({
     });
 
     setErrors(newErrors);
+    console.log('[ControllingPersonInputRenderer] Validation result:', { 
+      isValid: Object.keys(newErrors).length === 0, 
+      errors: newErrors 
+    });
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSaveAll = async () => {
+    console.log('[ControllingPersonInputRenderer] handleSaveAll called');
+    console.log('[ControllingPersonInputRenderer] savedPersons:', savedPersons);
+    console.log('[ControllingPersonInputRenderer] persons to save:', persons);
+
     if (savedPersons && savedPersons.length > 0) {
-      // Already saved, just call the callback
+      console.log('[ControllingPersonInputRenderer] Already saved, calling callback with existing data');
       if (onControllingPersonsAdded) {
         onControllingPersonsAdded(savedPersons);
       }
@@ -185,14 +235,19 @@ export default function ControllingPersonInputRenderer({
     }
 
     if (!validatePersons()) {
+      console.log('[ControllingPersonInputRenderer] Validation failed, aborting save');
       return;
     }
 
     setSaving(true);
+    console.log('[ControllingPersonInputRenderer] Starting save process...');
+    
     try {
       const savedPers = [];
       
       for (const p of persons) {
+        console.log('[ControllingPersonInputRenderer] Saving person:', p);
+        
         // Determine if reportable based on tax residencies
         const hasValidTaxResidency = p.tax_residencies?.some(tr => tr.country);
         
@@ -209,26 +264,41 @@ export default function ControllingPersonInputRenderer({
           is_reportable: hasValidTaxResidency
         };
         
+        console.log('[ControllingPersonInputRenderer] Creating person with data:', personData);
         const created = await base44.entities.ControllingPerson.create(personData);
+        console.log('[ControllingPersonInputRenderer] Person created:', created);
         savedPers.push(created);
       }
 
+      console.log('[ControllingPersonInputRenderer] All persons saved:', savedPers);
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
+      
+      console.log('[ControllingPersonInputRenderer] Showing success toast');
       toast.success(`${savedPers.length} controlling person(s) saved successfully!`);
       
       if (onControllingPersonsAdded) {
+        console.log('[ControllingPersonInputRenderer] Calling onControllingPersonsAdded callback');
         onControllingPersonsAdded(savedPers);
       }
     } catch (error) {
-      console.error("Error saving controlling persons:", error);
+      console.error("[ControllingPersonInputRenderer] Error saving controlling persons:", error);
       toast.error("Failed to save controlling persons. Please try again.");
     } finally {
       setSaving(false);
+      console.log('[ControllingPersonInputRenderer] Save process completed');
     }
   };
 
   const isValid = persons.every(p => p.first_name?.trim() && p.last_name?.trim() && p.address?.country);
   const alreadySaved = savedPersons && savedPersons.length > 0;
+
+  console.log('[ControllingPersonInputRenderer] Render state:', { 
+    personsCount: persons.length, 
+    isValid, 
+    alreadySaved,
+    saving,
+    firstPersonData: persons[0]
+  });
 
   return (
     <div className="space-y-4">

@@ -28,22 +28,21 @@ export default function BeneficiaryInputRenderer({
   initialBeneficiaries,
   savedBeneficiaries
 }) {
-  const [beneficiaries, setBeneficiaries] = useState([createEmptyBeneficiary()]);
-  const [errors, setErrors] = useState({});
-
-  const queryClient = useQueryClient();
-
-  // Check for existing beneficiaries to avoid duplicates
-  const { data: existingBeneficiaries = [] } = useQuery({
-    queryKey: ['beneficiaries', account?.id],
-    queryFn: () => base44.entities.Beneficiary.filter({ account_id: account?.id }),
-    enabled: !!account?.id
+  console.log('[BeneficiaryInputRenderer] Component rendered');
+  console.log('[BeneficiaryInputRenderer] Props:', { 
+    accountId: account?.id,
+    hasOnBeneficiariesChange: !!onBeneficiariesChange,
+    hasInitialBeneficiaries: !!initialBeneficiaries,
+    initialBeneficiariesLength: initialBeneficiaries?.length,
+    hasSavedBeneficiaries: !!savedBeneficiaries,
+    savedBeneficiariesLength: savedBeneficiaries?.length
   });
 
-  // Initialize with saved or draft data
-  useEffect(() => {
+  const [beneficiaries, setBeneficiaries] = useState(() => {
+    console.log('[BeneficiaryInputRenderer] Initializing beneficiaries state');
     if (initialBeneficiaries && initialBeneficiaries.length > 0) {
-      setBeneficiaries(initialBeneficiaries.map(b => ({
+      console.log('[BeneficiaryInputRenderer] Using initialBeneficiaries:', initialBeneficiaries);
+      return initialBeneficiaries.map(b => ({
         id: b.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         first_name: b.first_name || "",
         last_name: b.last_name || "",
@@ -56,16 +55,22 @@ export default function BeneficiaryInputRenderer({
           postal_code: "",
           country: ""
         }
-      })));
+      }));
     }
-  }, []);
+    console.log('[BeneficiaryInputRenderer] No initialBeneficiaries, creating empty beneficiary');
+    return [createEmptyBeneficiary()];
+  });
+  
+  const [errors, setErrors] = useState({});
 
-  // Update parent whenever beneficiaries change
-  useEffect(() => {
-    if (onBeneficiariesChange) {
-      onBeneficiariesChange(beneficiaries);
-    }
-  }, [beneficiaries, onBeneficiariesChange]);
+  const queryClient = useQueryClient();
+
+  // Check for existing beneficiaries to avoid duplicates
+  const { data: existingBeneficiaries = [] } = useQuery({
+    queryKey: ['beneficiaries', account?.id],
+    queryFn: () => base44.entities.Beneficiary.filter({ account_id: account?.id }),
+    enabled: !!account?.id
+  });
 
   function createEmptyBeneficiary() {
     return {
@@ -85,18 +90,30 @@ export default function BeneficiaryInputRenderer({
   }
 
   const handleAddBeneficiary = () => {
-    setBeneficiaries([...beneficiaries, createEmptyBeneficiary()]);
+    console.log('[BeneficiaryInputRenderer] Adding new beneficiary');
+    const newBeneficiaries = [...beneficiaries, createEmptyBeneficiary()];
+    setBeneficiaries(newBeneficiaries);
+    if (onBeneficiariesChange) {
+      console.log('[BeneficiaryInputRenderer] Calling onBeneficiariesChange after add');
+      onBeneficiariesChange(newBeneficiaries);
+    }
   };
 
   const handleRemoveBeneficiary = (index) => {
     if (beneficiaries.length <= minBeneficiaries) {
       return;
     }
+    console.log('[BeneficiaryInputRenderer] Removing beneficiary at index:', index);
     const newBeneficiaries = beneficiaries.filter((_, i) => i !== index);
     setBeneficiaries(newBeneficiaries);
+    if (onBeneficiariesChange) {
+      console.log('[BeneficiaryInputRenderer] Calling onBeneficiariesChange after remove');
+      onBeneficiariesChange(newBeneficiaries);
+    }
   };
 
   const handleBeneficiaryChange = (index, field, value) => {
+    console.log(`[BeneficiaryInputRenderer] Beneficiary ${index} field "${field}" changed to:`, value);
     const newBeneficiaries = [...beneficiaries];
     if (field.startsWith("address.")) {
       const addressField = field.replace("address.", "");
@@ -114,6 +131,12 @@ export default function BeneficiaryInputRenderer({
       };
     }
     setBeneficiaries(newBeneficiaries);
+    
+    // Notify parent of changes
+    if (onBeneficiariesChange) {
+      console.log('[BeneficiaryInputRenderer] Calling onBeneficiariesChange after field change');
+      onBeneficiariesChange(newBeneficiaries);
+    }
     
     // Clear error for this field
     if (errors[`${index}.${field}`]) {
@@ -139,12 +162,20 @@ export default function BeneficiaryInputRenderer({
     });
 
     setErrors(newErrors);
+    console.log('[BeneficiaryInputRenderer] Validation result:', { 
+      isValid: Object.keys(newErrors).length === 0, 
+      errors: newErrors 
+    });
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSaveAll = async () => {
+    console.log('[BeneficiaryInputRenderer] handleSaveAll called');
+    console.log('[BeneficiaryInputRenderer] savedBeneficiaries:', savedBeneficiaries);
+    console.log('[BeneficiaryInputRenderer] beneficiaries to save:', beneficiaries);
+
     if (savedBeneficiaries && savedBeneficiaries.length > 0) {
-      // Already saved, just call the callback
+      console.log('[BeneficiaryInputRenderer] Already saved, calling callback with existing data');
       if (onBeneficiariesAdded) {
         onBeneficiariesAdded(savedBeneficiaries);
       }
@@ -152,13 +183,18 @@ export default function BeneficiaryInputRenderer({
     }
 
     if (!validateBeneficiaries()) {
+      console.log('[BeneficiaryInputRenderer] Validation failed, aborting save');
       return;
     }
 
+    console.log('[BeneficiaryInputRenderer] Starting save process...');
+    
     try {
       const savedBenefs = [];
       
       for (const b of beneficiaries) {
+        console.log('[BeneficiaryInputRenderer] Saving beneficiary:', b);
+        
         // Check if a beneficiary with the same name already exists for this account
         const existingMatch = existingBeneficiaries.find(
           existing => 
@@ -167,7 +203,7 @@ export default function BeneficiaryInputRenderer({
         );
         
         if (existingMatch) {
-          // Skip creating duplicate, use existing one
+          console.log('[BeneficiaryInputRenderer] Found existing match, using:', existingMatch);
           savedBenefs.push(existingMatch);
           continue;
         }
@@ -183,24 +219,39 @@ export default function BeneficiaryInputRenderer({
           reportability_status: "pending_review"
         };
         
+        console.log('[BeneficiaryInputRenderer] Creating beneficiary with data:', beneficiaryData);
         const created = await base44.entities.Beneficiary.create(beneficiaryData);
+        console.log('[BeneficiaryInputRenderer] Beneficiary created:', created);
         savedBenefs.push(created);
       }
 
+      console.log('[BeneficiaryInputRenderer] All beneficiaries saved:', savedBenefs);
       queryClient.invalidateQueries(['beneficiaries', account?.id]);
+      
+      console.log('[BeneficiaryInputRenderer] Showing success toast');
       toast.success(`${savedBenefs.length} beneficiary(ies) saved successfully!`);
       
       if (onBeneficiariesAdded) {
+        console.log('[BeneficiaryInputRenderer] Calling onBeneficiariesAdded callback');
         onBeneficiariesAdded(savedBenefs);
       }
     } catch (error) {
-      console.error("Error saving beneficiaries:", error);
+      console.error("[BeneficiaryInputRenderer] Error saving beneficiaries:", error);
       toast.error("Failed to save beneficiaries. Please try again.");
     }
+    
+    console.log('[BeneficiaryInputRenderer] Save process completed');
   };
 
   const isValid = beneficiaries.every(b => b.first_name?.trim() && b.last_name?.trim() && b.address?.country);
   const alreadySaved = savedBeneficiaries && savedBeneficiaries.length > 0;
+
+  console.log('[BeneficiaryInputRenderer] Render state:', { 
+    beneficiariesCount: beneficiaries.length, 
+    isValid, 
+    alreadySaved,
+    firstBeneficiaryData: beneficiaries[0]
+  });
 
   return (
     <div className="space-y-4">
