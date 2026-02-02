@@ -398,16 +398,43 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                           <div className="grid grid-cols-3 gap-2">
                             <div>
                               <Label className="text-xs">Field Name</Label>
-                              <Input
+                              <Select
                                 value={field.field_name}
-                                onChange={(e) => {
+                                onValueChange={(value) => {
                                   const newFields = [...introFields];
-                                  newFields[idx] = { ...newFields[idx], field_name: e.target.value };
+                                  // Auto-populate display label based on field selection
+                                  const allFields = [...ACCOUNT_FIELDS_SCHEMA, ...ENTITY_FIELDS_SCHEMA];
+                                  const selectedField = allFields.find(f => f.value === value);
+                                  newFields[idx] = { 
+                                    ...newFields[idx], 
+                                    field_name: value,
+                                    display_label: newFields[idx].display_label || selectedField?.label || ""
+                                  };
                                   setIntroFields(newFields);
                                 }}
-                                placeholder="e.g., account_type"
-                                className="h-8 text-xs mt-1"
-                              />
+                              >
+                                <SelectTrigger className="h-8 text-xs mt-1">
+                                  <SelectValue placeholder="Select field..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[250px]">
+                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">
+                                    Account Fields
+                                  </div>
+                                  {ACCOUNT_FIELDS_SCHEMA.map(f => (
+                                    <SelectItem key={f.value} value={f.value}>
+                                      {f.label}
+                                    </SelectItem>
+                                  ))}
+                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1">
+                                    Entity Fields
+                                  </div>
+                                  {ENTITY_FIELDS_SCHEMA.map(f => (
+                                    <SelectItem key={f.value} value={f.value}>
+                                      {f.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div>
                               <Label className="text-xs">Display Label</Label>
@@ -680,82 +707,85 @@ const getQuestionFieldType = (questionType) => {
   }
 };
 
-// Define Entity and Account field schemas with their possible values
-const ENTITY_FIELDS_SCHEMA = {
-  rfi_status: {
-    label: "RFI Status",
-    type: "enum",
-    enum: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"]
-  },
-  fi_type: {
-    label: "FI Type",
-    type: "enum",
-    enum: ["custodial_institution", "depository_institution", "investment_entity", "specified_insurance_company", "not_applicable"]
-  },
-  entity_type: {
-    label: "Entity Type",
-    type: "enum",
-    enum: ["corporation", "trust", "partnership", "fund", "branch", "other"]
-  },
-  status: {
-    label: "Status",
-    type: "enum",
-    enum: ["active", "inactive"]
-  },
-  entity_name: { label: "Entity Name", type: "string" },
-  country_of_incorporation: { label: "Country of Incorporation", type: "string" },
-  tax_id: { label: "Tax ID", type: "string" },
-  giin: { label: "GIIN", type: "string" },
-  non_reporting_reason: { label: "Non-Reporting Reason", type: "string" },
-  classification_completed_date: { label: "Classification Completed Date", type: "date" }
-};
 
-const ACCOUNT_FIELDS_SCHEMA = {
-  reportability_status: {
-    label: "Reportability Status",
-    type: "enum",
-    enum: ["pending_review", "reportable", "non_reportable", "excluded"]
-  },
-  account_type: {
-    label: "Account Type",
-    type: "enum",
-    enum: ["depository", "custodial", "equity_debt_interest", "cash_value_insurance", "annuity"]
-  },
-  account_holder_type: {
-    label: "Account Holder Type",
-    type: "enum",
-    enum: ["individual", "entity"]
-  },
-  entity_classification: {
-    label: "Entity Classification",
-    type: "enum",
-    enum: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"]
-  },
-  status: {
-    label: "Status",
-    type: "enum",
-    enum: ["active", "closed", "dormant"]
-  },
-  account_number: { label: "Account Number", type: "string" },
-  account_holder_name: { label: "Account Holder Name", type: "string" },
-  date_of_birth: { label: "Date of Birth", type: "date" },
-  place_of_birth: { label: "Place of Birth", type: "string" },
-  country_of_residence: { label: "Country of Residence", type: "string" },
-  reporting_year: { label: "Reporting Year", type: "string" },
-  reportability_reason: { label: "Reportability Reason", type: "string" },
-  year_end_cash_value: { label: "Year End Cash Value", type: "number" },
-  gross_payments: { label: "Gross Payments", type: "number" },
-  is_pre_existing: { label: "Is Pre-existing", type: "boolean" },
-  account_holder_is_alive: { label: "Account Holder Is Alive", type: "boolean" },
-  account_closed_during_period: { label: "Account Closed During Period", type: "boolean" },
-  self_certification_obtained: { label: "Self-Certification Obtained", type: "boolean" },
-  self_certification_date: { label: "Self-Certification Date", type: "date" },
-  needs_reclassification: { label: "Needs Reclassification", type: "boolean" }
-};
+
+const ACCOUNT_FIELDS_SCHEMA = [
+  { value: "account_number", label: "Account Number", type: "string" },
+  { value: "account_creation_date", label: "Account Creation Date", type: "date" },
+  { value: "account_type", label: "Account Type", type: "enum" },
+  { value: "account_holder_entity_type", label: "Account Holder Entity Type", type: "string" },
+  { value: "account_holder_type", label: "Account Holder Type", type: "enum" },
+  { value: "account_holder_name", label: "Account Holder Name", type: "string" },
+  { value: "first_name", label: "First Name", type: "string" },
+  { value: "last_name", label: "Last Name", type: "string" },
+  { value: "date_of_birth", label: "Date of Birth", type: "date" },
+  { value: "place_of_birth", label: "Place of Birth", type: "string" },
+  { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean" },
+  { value: "account_holder_is_alive", label: "Account Holder Is Alive", type: "boolean" },
+  { value: "account_holder_deceased_during_period", label: "Account Holder Deceased During Period", type: "boolean" },
+  { value: "death_certificate_requested", label: "Death Certificate Requested", type: "boolean" },
+  { value: "death_certificate_received", label: "Death Certificate Received", type: "boolean" },
+  { value: "will_or_inheritance_requested", label: "Will or Inheritance Requested", type: "boolean" },
+  { value: "will_or_inheritance_received", label: "Will or Inheritance Received", type: "boolean" },
+  { value: "legacy_of_deceased_settled", label: "Legacy of Deceased Settled", type: "boolean" },
+  { value: "entity_managed_by_fiduciary_trust", label: "Entity Managed by Fiduciary Trust", type: "boolean" },
+  { value: "entity_managed_by_asset_manager", label: "Entity Managed by Asset Manager", type: "boolean" },
+  { value: "gross_income_from_financial_assets", label: "Gross Income From Financial Assets", type: "boolean" },
+  { value: "account_closed_during_period", label: "Account Closed During Period", type: "boolean" },
+  { value: "current_address.street", label: "Current Address - Street", type: "string" },
+  { value: "current_address.city", label: "Current Address - City", type: "string" },
+  { value: "current_address.state", label: "Current Address - State", type: "string" },
+  { value: "current_address.postal_code", label: "Current Address - Postal Code", type: "string" },
+  { value: "current_address.country", label: "Current Address - Country", type: "string" },
+  { value: "account_holder_address.street", label: "Account Holder Address - Street", type: "string" },
+  { value: "account_holder_address.city", label: "Account Holder Address - City", type: "string" },
+  { value: "account_holder_address.state", label: "Account Holder Address - State", type: "string" },
+  { value: "account_holder_address.postal_code", label: "Account Holder Address - Postal Code", type: "string" },
+  { value: "account_holder_address.country", label: "Account Holder Address - Country", type: "string" },
+  { value: "country_of_residence", label: "Country of Residence", type: "string" },
+  { value: "current_email", label: "Current Email", type: "string" },
+  { value: "current_phone", label: "Current Phone", type: "string" },
+  { value: "entity_classification", label: "Entity Classification", type: "enum" },
+  { value: "year_end_cash_value", label: "Year End Cash Value", type: "number" },
+  { value: "year_end_cash_value_currency", label: "Year End Cash Value Currency", type: "string" },
+  { value: "gross_payments", label: "Gross Payments", type: "number" },
+  { value: "gross_payments_currency", label: "Gross Payments Currency", type: "string" },
+  { value: "reporting_year", label: "Reporting Year", type: "string" },
+  { value: "reportability_status", label: "Reportability Status", type: "enum" },
+  { value: "reportability_reason", label: "Reportability Reason", type: "string" },
+  { value: "us_person_indic", label: "US Person Indicia", type: "boolean" },
+  { value: "self_certification_obtained", label: "Self-Certification Obtained", type: "boolean" },
+  { value: "self_certification_date", label: "Self-Certification Date", type: "date" },
+  { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean" },
+  { value: "status", label: "Account Status", type: "enum" }
+];
+
+const ENTITY_FIELDS_SCHEMA = [
+  { value: "entity_name", label: "Entity Name", type: "string" },
+  { value: "entity_type", label: "Entity Type", type: "enum" },
+  { value: "country_of_incorporation", label: "Country of Incorporation", type: "string" },
+  { value: "tax_id", label: "Tax ID", type: "string" },
+  { value: "giin", label: "GIIN", type: "string" },
+  { value: "rfi_status", label: "RFI Status", type: "enum" },
+  { value: "fi_type", label: "FI Type", type: "enum" },
+  { value: "non_reporting_reason", label: "Non-Reporting Reason", type: "string" },
+  { value: "classification_completed_date", label: "Classification Completed Date", type: "date" },
+  { value: "address.street", label: "Address - Street", type: "string" },
+  { value: "address.city", label: "Address - City", type: "string" },
+  { value: "address.state", label: "Address - State", type: "string" },
+  { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
+  { value: "address.country", label: "Address - Country", type: "string" },
+  { value: "status", label: "Entity Status", type: "enum" }
+];
 
 // Helper function to get fields for a target entity type
 const getFieldsForEntity = (entityType) => {
-  return entityType === "Entity" ? ENTITY_FIELDS_SCHEMA : ACCOUNT_FIELDS_SCHEMA;
+  const schema = entityType === "Entity" ? ENTITY_FIELDS_SCHEMA : ACCOUNT_FIELDS_SCHEMA;
+  // Convert array format back to object format for backwards compatibility
+  return schema.reduce((acc, field) => {
+    acc[field.value] = { label: field.label, type: field.type };
+    return acc;
+  }, {});
 };
 
 // Helper function to get suggested values for a field - now using ReferencedData
