@@ -32,6 +32,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     account_number: account?.account_number || "",
     account_creation_date: account?.account_creation_date || "",
     account_type: account?.account_type || "depository",
+    account_holder_entity_type: account?.account_holder_entity_type || "",
     account_holder_type: account?.account_holder_type || "individual",
     account_holder_name: account?.account_holder_name || "",
     first_name: account?.first_name || "",
