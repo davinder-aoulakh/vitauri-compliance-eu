@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, GitBranch } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 import { format } from "date-fns";
@@ -300,19 +300,25 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="w-4 h-4" />
+                        <div className="flex items-center justify-end gap-2">
+                          {workflows.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleClassify(person)}
+                              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                            >
+                              <PlayCircle className="w-4 h-4 mr-1" />
+                              Classify
                             </Button>
-                          </DropdownMenuTrigger>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {workflows.length > 0 && (
-                              <DropdownMenuItem onClick={() => handleClassify(person)}>
-                                <GitBranch className="w-4 h-4 mr-2" />
-                                Classify
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuItem onClick={() => handleEdit(person)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
