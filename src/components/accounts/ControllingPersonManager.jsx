@@ -26,7 +26,7 @@ import {
   Clock,
   Users,
   Globe,
-  GitBranch
+  PlayCircle
 } from "lucide-react";
 import CountrySelect from "../shared/CountrySelect";
 import WorkflowRunner from "../workflows/WorkflowRunner";
@@ -253,15 +253,16 @@ export default function ControllingPersonManager({ account, tenant }) {
                       <Button
                         type="button"
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           handleClassify(person);
                         }}
-                        className="text-indigo-600 hover:text-indigo-700"
+                        className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                       >
-                        <GitBranch className="w-4 h-4" />
+                        <PlayCircle className="w-4 h-4 mr-1" />
+                        Classify
                       </Button>
                     )}
                     <Button
