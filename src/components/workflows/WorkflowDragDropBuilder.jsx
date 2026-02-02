@@ -85,6 +85,9 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [workflowName, setWorkflowName] = useState(workflow?.workflow_name || "");
   const [workflowType, setWorkflowType] = useState(workflow?.workflow_type || "custom");
+  const [displayIntro, setDisplayIntro] = useState(workflow?.display_workflow_introduction || false);
+  const [introText, setIntroText] = useState(workflow?.workflow_introduction_text || "");
+  const [introFields, setIntroFields] = useState(workflow?.workflow_introduction_fields || []);
   const [outcomeRules, setOutcomeRules] = useState(() => {
     // Initialize from workflow prop, ensuring all fields have defaults
     console.log("Initializing outcomeRules from workflow:", workflow?.outcome_rules);
@@ -276,6 +279,9 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
       ...workflow,
       workflow_name: workflowName,
       workflow_type: workflowType,
+      display_workflow_introduction: displayIntro,
+      workflow_introduction_text: introText,
+      workflow_introduction_fields: introFields,
       steps: processedSteps,
       outcome_rules: outcomeRules,
       last_modified_by: "current_user"
@@ -321,6 +327,130 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Workflow Introduction Configuration */}
+          <div className="mt-6 pt-6 border-t space-y-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="display_intro"
+                checked={displayIntro}
+                onCheckedChange={setDisplayIntro}
+              />
+              <Label htmlFor="display_intro" className="text-sm font-semibold cursor-pointer">
+                Show Workflow Introduction
+              </Label>
+            </div>
+
+            {displayIntro && (
+              <div className="space-y-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <div>
+                  <Label htmlFor="intro_text">Introduction Text</Label>
+                  <Textarea
+                    id="intro_text"
+                    value={introText}
+                    onChange={(e) => setIntroText(e.target.value)}
+                    placeholder="e.g., This workflow follows CRS due diligence procedures for individual accounts."
+                    rows={2}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Dynamic Fields to Display</Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIntroFields([...introFields, { field_name: "", display_label: "", value_formatter: "default" }])}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Field
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-600 mb-3">
+                    Select fields from Account/Entity to show in the introduction (e.g., Account Type, Holder Status)
+                  </p>
+
+                  {introFields.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic p-3 bg-white rounded border">
+                      No fields configured. Add fields to display dynamic information.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {introFields.map((field, idx) => (
+                        <div key={idx} className="p-3 bg-white border rounded-lg space-y-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              Field {idx + 1}
+                            </Badge>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setIntroFields(introFields.filter((_, i) => i !== idx))}
+                              className="h-6 w-6 text-red-600"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-xs">Field Name</Label>
+                              <Input
+                                value={field.field_name}
+                                onChange={(e) => {
+                                  const newFields = [...introFields];
+                                  newFields[idx] = { ...newFields[idx], field_name: e.target.value };
+                                  setIntroFields(newFields);
+                                }}
+                                placeholder="e.g., account_type"
+                                className="h-8 text-xs mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Display Label</Label>
+                              <Input
+                                value={field.display_label}
+                                onChange={(e) => {
+                                  const newFields = [...introFields];
+                                  newFields[idx] = { ...newFields[idx], display_label: e.target.value };
+                                  setIntroFields(newFields);
+                                }}
+                                placeholder="e.g., Account Type"
+                                className="h-8 text-xs mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Format</Label>
+                              <Select
+                                value={field.value_formatter || "default"}
+                                onValueChange={(value) => {
+                                  const newFields = [...introFields];
+                                  newFields[idx] = { ...newFields[idx], value_formatter: value };
+                                  setIntroFields(newFields);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs mt-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Default</SelectItem>
+                                  <SelectItem value="boolean_alive_deceased">Alive/Deceased</SelectItem>
+                                  <SelectItem value="pre_existing_new">Pre-existing/New</SelectItem>
+                                  <SelectItem value="capitalize">Capitalize</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
