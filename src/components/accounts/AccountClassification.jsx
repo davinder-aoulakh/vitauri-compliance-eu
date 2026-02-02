@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -2191,33 +2190,135 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
       </div>
 
-      <Alert className={isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}>
-        {isEntityWorkflow ? (
-          <>
-            <Users className="w-4 h-4 text-purple-600" />
-            <AlertDescription className="text-sm text-purple-900">
-              <strong>Entity Account:</strong> This workflow determines if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
-            </AlertDescription>
-          </>
-        ) : (
-          <>
-            <Info className="w-4 h-4 text-blue-600" />
-            <AlertDescription className="text-sm text-blue-900">
-              <strong>Individual Account:</strong> This workflow follows CRS due diligence procedures for individual accounts.
-              {account.is_pre_existing !== undefined && (
-                <span className="block mt-1">
-                  Account Type: <strong>{account.is_pre_existing ? "Pre-existing (before 2018)" : "New (2018+)"}</strong>
-                </span>
+      {/* Workflow Introduction Section */}
+      {workflow.display_workflow_introduction && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <Info className="w-4 h-4 text-blue-600" />
+          <AlertDescription>
+            <div className="space-y-2">
+              {workflow.workflow_introduction_text && (
+                <p className="text-sm text-blue-900 font-medium">
+                  {workflow.workflow_introduction_text}
+                </p>
               )}
-              {account.account_holder_is_alive !== undefined && (
-                <span className="block mt-1">
-                  Holder Status: <strong>{account.account_holder_is_alive ? "Alive" : "Deceased"}</strong>
-                </span>
+              {workflow.workflow_introduction_fields && workflow.workflow_introduction_fields.length > 0 && (latestAccountData || account) && (
+                <div className="space-y-1 mt-2">
+                  {workflow.workflow_introduction_fields.map((field, idx) => {
+                    const accountData = latestAccountData || account;
+                    const isComputedCondition = field.field_type === "computed_condition";
+
+                    if (isComputedCondition) {
+                      // Computed condition logic
+                      const value1 = Number(accountData[field.computation_field_1]) || 0;
+                      const value2 = Number(accountData[field.computation_field_2]) || 0;
+                      
+                      let computedResult = 0;
+                      switch (field.computation_operator) {
+                        case "add":
+                          computedResult = value1 + value2;
+                          break;
+                        case "subtract":
+                          computedResult = value1 - value2;
+                          break;
+                        case "multiply":
+                          computedResult = value1 * value2;
+                          break;
+                        case "divide":
+                          computedResult = value2 !== 0 ? value1 / value2 : 0;
+                          break;
+                        default:
+                          computedResult = value1 + value2;
+                      }
+
+                      const threshold = Number(field.threshold_value) || 0;
+                      let conditionMet = false;
+                      switch (field.comparison_operator) {
+                        case "greater_than":
+                          conditionMet = computedResult > threshold;
+                          break;
+                        case "less_than":
+                          conditionMet = computedResult < threshold;
+                          break;
+                        case "equals":
+                          conditionMet = computedResult === threshold;
+                          break;
+                        case "greater_than_or_equal":
+                          conditionMet = computedResult >= threshold;
+                          break;
+                        case "less_than_or_equal":
+                          conditionMet = computedResult <= threshold;
+                          break;
+                        case "not_equals":
+                          conditionMet = computedResult !== threshold;
+                          break;
+                        default:
+                          conditionMet = computedResult > threshold;
+                      }
+
+                      const displayText = conditionMet ? field.true_text : field.false_text;
+                      
+                      return (
+                        <div key={idx} className="text-sm text-blue-800">
+                          {field.display_label && <strong>{field.display_label}: </strong>}
+                          {displayText || 'N/A'}
+                        </div>
+                      );
+                    } else {
+                      // Simple field display
+                      let fieldValue = accountData[field.field_name];
+                      
+                      // Format the value based on the formatter
+                      if (field.value_formatter === 'boolean_alive_deceased' && typeof fieldValue === 'boolean') {
+                        fieldValue = fieldValue ? 'Alive' : 'Deceased';
+                      } else if (field.value_formatter === 'pre_existing_new' && typeof fieldValue === 'boolean') {
+                        fieldValue = fieldValue ? 'Pre-existing (before 2018)' : 'New (after 2018)';
+                      } else if (field.value_formatter === 'capitalize' && typeof fieldValue === 'string') {
+                        fieldValue = fieldValue.charAt(0).toUpperCase() + fieldValue.slice(1);
+                      }
+                      
+                      return (
+                        <p key={idx} className="text-sm text-blue-800">
+                          <strong>{field.display_label}:</strong> {fieldValue || 'N/A'}
+                        </p>
+                      );
+                    }
+                  })}
+                </div>
               )}
-            </AlertDescription>
-          </>
-        )}
-      </Alert>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!workflow.display_workflow_introduction && (
+        <Alert className={isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}>
+          {isEntityWorkflow ? (
+            <>
+              <Users className="w-4 h-4 text-purple-600" />
+              <AlertDescription className="text-sm text-purple-900">
+                <strong>Entity Account:</strong> This workflow determines if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
+              </AlertDescription>
+            </>
+          ) : (
+            <>
+              <Info className="w-4 h-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-900">
+                <strong>Individual Account:</strong> This workflow follows CRS due diligence procedures for individual accounts.
+                {account.is_pre_existing !== undefined && (
+                  <span className="block mt-1">
+                    Account Type: <strong>{account.is_pre_existing ? "Pre-existing (before 2018)" : "New (2018+)"}</strong>
+                  </span>
+                )}
+                {account.account_holder_is_alive !== undefined && (
+                  <span className="block mt-1">
+                    Holder Status: <strong>{account.account_holder_is_alive ? "Alive" : "Deceased"}</strong>
+                  </span>
+                )}
+              </AlertDescription>
+            </>
+          )}
+        </Alert>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         {history.map((stepId, idx) => {
