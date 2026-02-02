@@ -59,6 +59,8 @@ export default function DynamicFormRenderer({
   const [formData, setFormData] = useState(initialData || {});
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
+  const [entityNameError, setEntityNameError] = useState("");
+  const [isValidatingEntityName, setIsValidatingEntityName] = useState(false);
 
   // Fetch published form configuration
   const { data: formConfigs = [], isLoading: configLoading } = useQuery({
@@ -180,8 +182,46 @@ export default function DynamicFormRenderer({
     return errors;
   };
 
-  const handleSubmit = (e) => {
+  // Validate entity name uniqueness for Entity forms
+  const validateEntityName = async (entityName, tenantId) => {
+    if (!entityName || !tenantId || entityType !== 'Entity') return true;
+    
+    setIsValidatingEntityName(true);
+    setEntityNameError("");
+    
+    try {
+      const existingEntities = await base44.entities.Entity.filter({
+        tenant_id: tenantId,
+        entity_name: entityName
+      });
+      
+      // If editing, exclude the current entity from the check
+      const duplicates = initialData?.id 
+        ? existingEntities.filter(e => e.id !== initialData.id)
+        : existingEntities;
+      
+      if (duplicates.length > 0) {
+        setEntityNameError(`An entity with the name "${entityName}" already exists. Please use a unique entity name.`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error validating entity name:", error);
+      return true; // Don't block on error
+    } finally {
+      setIsValidatingEntityName(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate entity name uniqueness for Entity forms
+    if (entityType === 'Entity') {
+      const isValid = await validateEntityName(formData.entity_name, formData.tenant_id);
+      if (!isValid) return;
+    }
     
     // Validate all visible and required fields
     const errors = {};
@@ -302,6 +342,8 @@ export default function DynamicFormRenderer({
     switch (field.field_type) {
       case "text":
       case "email":
+        // Special handling for entity_name field on Entity forms
+        const isEntityNameField = entityType === 'Entity' && field.field_name === 'entity_name';
         return (
           <div key={field.field_name}>
             <Label htmlFor={field.field_name}>
@@ -311,18 +353,31 @@ export default function DynamicFormRenderer({
               id={field.field_name}
               type={field.field_type}
               value={value}
-              onChange={(e) => handleChange(field.field_name, e.target.value)}
+              onChange={(e) => {
+                handleChange(field.field_name, e.target.value);
+                if (isEntityNameField) {
+                  setEntityNameError(""); // Clear error on change
+                }
+              }}
+              onBlur={() => {
+                if (isEntityNameField && value && formData.tenant_id) {
+                  validateEntityName(value, formData.tenant_id);
+                }
+              }}
               placeholder={field.placeholder}
               required={isRequired}
               minLength={field.validation?.minLength}
               maxLength={field.validation?.maxLength}
               pattern={field.validation?.pattern}
-              className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}
+              className={`mt-1.5 ${fieldErrors || (isEntityNameField && entityNameError) ? 'border-red-500' : ''}`}
             />
+            {isEntityNameField && entityNameError && (
+              <p className="text-xs text-red-600 mt-1">{entityNameError}</p>
+            )}
             {fieldErrors && (
               <p className="text-xs text-red-600 mt-1">{fieldErrors.join(', ')}</p>
             )}
-            {!fieldErrors && field.help_text && (
+            {!fieldErrors && !entityNameError && field.help_text && (
               <p className="text-xs text-slate-500 mt-1">{field.help_text}</p>
             )}
           </div>
@@ -582,8 +637,16 @@ export default function DynamicFormRenderer({
           <XCircle className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4 mr-2" />
+        <Button 
+          type="submit" 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          disabled={isValidatingEntityName || !!entityNameError}
+        >
+          {isValidatingEntityName ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
           {initialData?.id ? "Update" : "Create"} {entityType}
         </Button>
       </div>
