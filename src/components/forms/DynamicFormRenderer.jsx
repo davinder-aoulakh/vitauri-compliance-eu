@@ -149,7 +149,9 @@ export default function DynamicFormRenderer({
 
     // Check required
     const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
-    if (isRequired && !value) {
+    // For numbers, 0 is a valid value, so check for null/undefined/empty string specifically
+    const isEmpty = value === null || value === undefined || value === '';
+    if (isRequired && isEmpty) {
       errors.push(`${field.display_label} is required`);
     }
 
