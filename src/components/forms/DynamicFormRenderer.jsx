@@ -244,6 +244,15 @@ export default function DynamicFormRenderer({
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       
+      // Log errors for debugging
+      console.error("Validation errors:", errors);
+      
+      // Build detailed error message with field names
+      const errorFieldNames = Object.keys(errors).map(fieldName => {
+        const field = config.fields_config.find(f => f.field_name === fieldName);
+        return field?.display_label || fieldName;
+      });
+      
       // Switch to the first tab with errors if using sections
       if (firstErrorSection) {
         // Find and click the tab trigger for the section with errors
@@ -253,10 +262,13 @@ export default function DynamicFormRenderer({
         }
       }
       
-      // Show validation error toast
+      // Show validation error with field names
       const errorCount = Object.keys(errors).length;
       const fieldLabel = errorCount === 1 ? 'field' : 'fields';
-      alert(`Please fill in all required fields. ${errorCount} ${fieldLabel} need${errorCount === 1 ? 's' : ''} your attention.`);
+      const errorMessage = errorCount === 1 
+        ? `Please fill in the required field: ${errorFieldNames[0]}`
+        : `Please fill in all required fields:\n${errorFieldNames.join('\n')}`;
+      alert(errorMessage);
       return;
     }
 
