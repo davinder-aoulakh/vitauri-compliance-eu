@@ -218,25 +218,45 @@ export default function DynamicFormRenderer({
     e.preventDefault();
     
     // Validate entity name uniqueness for Entity forms
-    if (entityType === 'Entity') {
+    if (entityType === 'Entity' && formData.entity_name) {
       const isValid = await validateEntityName(formData.entity_name, formData.tenant_id);
       if (!isValid) return;
     }
     
     // Validate all visible and required fields
     const errors = {};
+    let firstErrorSection = null;
+    
     config.fields_config.forEach(field => {
       const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
       if (isVisible) {
         const fieldErrors = validateField(field, getNestedValue(formData, field.field_name));
         if (fieldErrors.length > 0) {
           errors[field.field_name] = fieldErrors;
+          // Track the first section with errors
+          if (!firstErrorSection && field.section) {
+            firstErrorSection = field.section;
+          }
         }
       }
     });
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      
+      // Switch to the first tab with errors if using sections
+      if (firstErrorSection) {
+        // Find and click the tab trigger for the section with errors
+        const tabTrigger = document.querySelector(`button[value="${firstErrorSection}"]`);
+        if (tabTrigger) {
+          tabTrigger.click();
+        }
+      }
+      
+      // Show validation error toast
+      const errorCount = Object.keys(errors).length;
+      const fieldLabel = errorCount === 1 ? 'field' : 'fields';
+      alert(`Please fill in all required fields. ${errorCount} ${fieldLabel} need${errorCount === 1 ? 's' : ''} your attention.`);
       return;
     }
 
