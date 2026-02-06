@@ -54,6 +54,7 @@ import ComplianceAssistant from './pages/ComplianceAssistant';
 import CustomValidationRules from './pages/CustomValidationRules';
 import Dashboard from './pages/Dashboard';
 import DashboardBuilder from './pages/DashboardBuilder';
+import DashboardTemplates from './pages/DashboardTemplates';
 import Entities from './pages/Entities';
 import FormBuilder from './pages/FormBuilder';
 import Home from './pages/Home';
@@ -66,7 +67,6 @@ import SuperAdmin from './pages/SuperAdmin';
 import TenantManagement from './pages/TenantManagement';
 import UserManagement from './pages/UserManagement';
 import WorkflowBuilder from './pages/WorkflowBuilder';
-import DashboardTemplates from './pages/DashboardTemplates';
 import __Layout from './Layout.jsx';
 
 
@@ -78,6 +78,7 @@ export const PAGES = {
     "CustomValidationRules": CustomValidationRules,
     "Dashboard": Dashboard,
     "DashboardBuilder": DashboardBuilder,
+    "DashboardTemplates": DashboardTemplates,
     "Entities": Entities,
     "FormBuilder": FormBuilder,
     "Home": Home,
@@ -90,7 +91,6 @@ export const PAGES = {
     "TenantManagement": TenantManagement,
     "UserManagement": UserManagement,
     "WorkflowBuilder": WorkflowBuilder,
-    "DashboardTemplates": DashboardTemplates,
 }
 
 export const pagesConfig = {
