@@ -230,8 +230,15 @@ export default function DynamicFormRenderer({
     config.fields_config.forEach(field => {
       const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
       if (isVisible) {
-        const fieldErrors = validateField(field, getNestedValue(formData, field.field_name));
+        const fieldValue = getNestedValue(formData, field.field_name);
+        const fieldErrors = validateField(field, fieldValue);
         if (fieldErrors.length > 0) {
+          console.error(`Validation failed for field "${field.display_label}" (${field.field_name}):`, {
+            value: fieldValue,
+            valueType: typeof fieldValue,
+            isRequired: field.is_required || evaluateCondition(field.conditional_required, formData),
+            errors: fieldErrors
+          });
           errors[field.field_name] = fieldErrors;
           // Track the first section with errors
           if (!firstErrorSection && field.section) {
