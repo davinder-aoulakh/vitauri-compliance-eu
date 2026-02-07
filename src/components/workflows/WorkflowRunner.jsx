@@ -440,6 +440,24 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       console.log('Overall Logic Operator:', logic.overall_logic_operator);
       console.log('Overall True Step:', logic.overall_true_step);
       console.log('Overall False Step:', logic.overall_false_step);
+      console.log('🔍 TRIGGER CHECK - trigger_field:', logic.trigger_field);
+      console.log('🔍 TRIGGER CHECK - trigger_value:', logic.trigger_value);
+      console.log('🔍 TRIGGER CHECK - currentAnswer:', currentAnswer);
+      
+      // Check if trigger conditions are met
+      if (logic.trigger_field && logic.trigger_value) {
+        const triggerStepAnswer = allAnswers[logic.trigger_field];
+        console.log(`🔍 TRIGGER STEP ANSWER for "${logic.trigger_field}":`, triggerStepAnswer);
+        
+        if (triggerStepAnswer !== logic.trigger_value) {
+          console.log(`⚠️ TRIGGER NOT MET: Expected "${logic.trigger_value}", got "${triggerStepAnswer}"`);
+          console.log(`⚠️ Skipping advanced conditional logic - trigger not satisfied`);
+          console.log('========== END CONDITION GROUPS EVALUATION (TRIGGER NOT MET) ==========\n');
+          return null; // Don't evaluate condition groups if trigger not met
+        } else {
+          console.log(`✅ TRIGGER MET: "${triggerStepAnswer}" === "${logic.trigger_value}"`);
+        }
+      }
       
       const groupResults = [];
 
