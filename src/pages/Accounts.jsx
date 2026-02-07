@@ -494,7 +494,7 @@ export default function AccountsPage() {
                 className="gap-2"
               >
                 <Sparkles className="w-4 h-4" />
-                AI Import
+                Bulk Import
               </Button>
             )}
             <Button 
