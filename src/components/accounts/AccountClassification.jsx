@@ -924,8 +924,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const multiFields = currentNode.multi_fields || [];
 
       multiFields.forEach(field => {
-        console.log(`  Checking field "${field.field_id}" (${field.display_label}): required=${field.is_required}, value=`, multiFieldValues[field.field_id]);
-        if (field.is_required && !multiFieldValues[field.field_id]) {
+        // Check if field is conditionally required
+        let isFieldRequired = field.is_required;
+        
+        if (field.conditional_required) {
+          const condReq = field.conditional_required;
+          const dependsOnValue = multiFieldValues[condReq.depends_on_field];
+          
+          console.log(`  Field "${field.field_id}" has conditional_required: depends_on="${condReq.depends_on_field}", required_value="${condReq.required_value}", current_value=`, dependsOnValue);
+          
+          // Only required if the condition matches
+          isFieldRequired = String(dependsOnValue) === String(condReq.required_value);
+          console.log(`  Conditional required evaluation: ${isFieldRequired}`);
+        }
+        
+        console.log(`  Checking field "${field.field_id}" (${field.display_label}): required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
+        
+        if (isFieldRequired && !multiFieldValues[field.field_id]) {
           errors[field.field_id] = `${field.display_label} is required`;
           console.log(`    ❌ Required field missing!`);
         } else {
