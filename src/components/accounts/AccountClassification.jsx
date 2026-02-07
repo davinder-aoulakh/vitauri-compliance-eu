@@ -924,6 +924,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const multiFields = currentNode.multi_fields || [];
 
       multiFields.forEach(field => {
+        // Check if field is conditionally visible - if not visible, skip validation entirely
+        let isFieldVisible = true;
+        if (field.conditional_visibility) {
+          const condVis = field.conditional_visibility;
+          const dependsOnValue = multiFieldValues[condVis.depends_on_field];
+          isFieldVisible = String(dependsOnValue) === String(condVis.required_value);
+          console.log(`  Field "${field.field_id}" conditional_visibility: depends_on="${condVis.depends_on_field}", required_value="${condVis.required_value}", current_value="${dependsOnValue}", visible=${isFieldVisible}`);
+        }
+        
+        // Skip validation for hidden fields
+        if (!isFieldVisible) {
+          console.log(`  Field "${field.field_id}" is hidden by conditional_visibility, skipping validation ⏭️`);
+          return;
+        }
+        
         // Check if field is conditionally required
         let isFieldRequired = field.is_required;
         
@@ -938,7 +953,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           console.log(`  Conditional required evaluation: ${isFieldRequired}`);
         }
         
-        console.log(`  Checking field "${field.field_id}" (${field.display_label}): required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
+        console.log(`  Checking field "${field.field_id}" (${field.display_label}): visible=${isFieldVisible}, required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
         
         if (isFieldRequired && !multiFieldValues[field.field_id]) {
           errors[field.field_id] = `${field.display_label} is required`;
