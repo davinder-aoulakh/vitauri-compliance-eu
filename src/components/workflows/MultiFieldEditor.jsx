@@ -114,6 +114,12 @@ export default function MultiFieldEditor({ fields = [], onChange }) {
     return fieldType?.icon || Type;
   };
 
+  const getSelectOptions = (field) => {
+    // This is a simplified version - in the real renderer it fetches from API
+    // Here we just return static options for the builder UI
+    return field.options || [];
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -224,6 +230,141 @@ export default function MultiFieldEditor({ fields = [], onChange }) {
                           </Label>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Conditional Visibility Configuration */}
+                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 space-y-3">
+                      <Label className="text-xs font-semibold text-purple-700">
+                        Conditional Visibility (Optional)
+                      </Label>
+                      <p className="text-xs text-slate-600">
+                        Show this field only when another field has a specific value
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs text-slate-600">Show when field:</Label>
+                          <Select
+                            value={field.conditional_visibility?.depends_on_field || ""}
+                            onValueChange={(value) => {
+                              const updated = [...fields];
+                              updated[index] = {
+                                ...updated[index],
+                                conditional_visibility: value ? {
+                                  depends_on_field: value,
+                                  required_value: field.conditional_visibility?.required_value || ""
+                                } : null
+                              };
+                              onChange(updated);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs mt-1">
+                              <SelectValue placeholder="None (always show)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={null}>None (Always Show)</SelectItem>
+                              {fields.slice(0, index).map((f) => (
+                                <SelectItem key={f.field_id} value={f.field_id}>
+                                  {f.display_label || f.field_id}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-600">Equals value:</Label>
+                          {(() => {
+                            const dependsOnField = fields.find(f => f.field_id === field.conditional_visibility?.depends_on_field);
+                            if (!dependsOnField) {
+                              return (
+                                <Input
+                                  disabled
+                                  placeholder="Select field first"
+                                  className="h-8 text-xs mt-1 bg-slate-50"
+                                />
+                              );
+                            }
+                            if (dependsOnField.field_type === "boolean") {
+                              return (
+                                <Select
+                                  value={field.conditional_visibility?.required_value || ""}
+                                  onValueChange={(value) => {
+                                    const updated = [...fields];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      conditional_visibility: {
+                                        ...updated[index].conditional_visibility,
+                                        required_value: value
+                                      }
+                                    };
+                                    onChange(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-1">
+                                    <SelectValue placeholder="Select value..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="yes">Yes</SelectItem>
+                                    <SelectItem value="no">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              );
+                            } else if (dependsOnField.field_type === "select") {
+                              const dependsOnOptions = getSelectOptions(dependsOnField);
+                              return (
+                                <Select
+                                  value={field.conditional_visibility?.required_value || ""}
+                                  onValueChange={(value) => {
+                                    const updated = [...fields];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      conditional_visibility: {
+                                        ...updated[index].conditional_visibility,
+                                        required_value: value
+                                      }
+                                    };
+                                    onChange(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-1">
+                                    <SelectValue placeholder="Select value..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {dependsOnOptions.map(opt => (
+                                      <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              );
+                            } else {
+                              return (
+                                <Input
+                                  value={field.conditional_visibility?.required_value || ""}
+                                  onChange={(e) => {
+                                    const updated = [...fields];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      conditional_visibility: {
+                                        ...updated[index].conditional_visibility,
+                                        required_value: e.target.value
+                                      }
+                                    };
+                                    onChange(updated);
+                                  }}
+                                  placeholder="Enter value"
+                                  className="h-8 text-xs mt-1"
+                                />
+                              );
+                            }
+                          })()}
+                        </div>
+                      </div>
+                      {field.conditional_visibility?.depends_on_field && (
+                        <p className="text-xs text-purple-600 mt-2 flex items-center gap-1">
+                          👁️ This field will only show when "{fields.find(f => f.field_id === field.conditional_visibility.depends_on_field)?.display_label}" equals "{field.conditional_visibility.required_value}"
+                        </p>
+                      )}
                     </div>
 
                     {/* Conditional: Referenced Data Key for Select fields */}
