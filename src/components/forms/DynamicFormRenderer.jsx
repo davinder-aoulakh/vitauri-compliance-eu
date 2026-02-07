@@ -305,7 +305,16 @@ export default function DynamicFormRenderer({
 
   const handleChange = (fieldName, value) => {
     // Support nested field names like "address.street"
-    setFormData(prev => setNestedValue(prev, fieldName, value));
+    setFormData(prev => {
+      const updated = setNestedValue(prev, fieldName, value);
+      
+      // Auto-populate address.country from country_of_residence for Entity forms only
+      if (entityType === 'Entity' && fieldName === 'country_of_residence' && value) {
+        return setNestedValue(updated, 'address.country', value);
+      }
+      
+      return updated;
+    });
     // Clear validation error for this field
     if (validationErrors[fieldName]) {
       setValidationErrors(prev => {
