@@ -868,7 +868,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     // Check for selection count branching on multiple_choice
-    if (step.question_type === "multiple_choice" && step.conditional_logic?.use_selection_count) {
+    if (step.question_type === "multiple_choice" && step.conditional_logic?.selection_count_operator) {
       if (step.conditional_logic.selection_count_next_step || step.conditional_logic.selection_count_else_step) {
         return false;
       }
@@ -1043,7 +1043,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     // Check selection count branching for multiple_choice
-    if (!nextNodeId && currentNode.question_type === "multiple_choice" && currentNode.conditional_logic?.use_selection_count) {
+    if (!nextNodeId && currentNode.question_type === "multiple_choice" && currentNode.conditional_logic?.selection_count_operator) {
       const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
       const selectionCount = selectedOptions.length;
       const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
