@@ -571,14 +571,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               <>
                 <div>
                   <Label htmlFor="date_of_birth" className="text-slate-700">
-                    Date of Birth <span className="text-red-600">*</span>
+                    Date of Birth
                   </Label>
                   <Input
                     id="date_of_birth"
                     type="date"
                     value={formData.date_of_birth}
                     onChange={(e) => handleChange("date_of_birth", e.target.value)}
-                    className={`mt-1.5 ${submitted && !formData.date_of_birth ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    className="mt-1.5"
                   />
                 </div>
 
