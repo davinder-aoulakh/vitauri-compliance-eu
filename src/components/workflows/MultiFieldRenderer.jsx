@@ -194,9 +194,12 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
     const requiredValue = field.conditional_visibility.required_value;
     const dependsOnValue = values[dependsOnField];
     
-    // For boolean fields, compare "yes"/"no" strings
+    // For boolean fields, compare "yes"/"no" strings (case insensitive)
     if (requiredValue === "yes" || requiredValue === "no") {
-      return dependsOnValue === requiredValue;
+      const normalizedValue = typeof dependsOnValue === 'boolean' 
+        ? (dependsOnValue ? "yes" : "no")
+        : (dependsOnValue === "YES" || dependsOnValue === true ? "yes" : "no");
+      return normalizedValue === requiredValue.toLowerCase();
     }
     
     // For other fields, direct comparison
