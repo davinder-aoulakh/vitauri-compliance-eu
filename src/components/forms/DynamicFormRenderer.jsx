@@ -433,10 +433,11 @@ export default function DynamicFormRenderer({
             <Input
               id={field.field_name}
               type="number"
-              value={value}
+              value={value === 0 ? "0" : value || ""}
               onChange={(e) => {
                 const val = e.target.value;
-                handleChange(field.field_name, val === "" ? "" : parseFloat(val));
+                const numVal = val === "" ? null : Number(val);
+                handleChange(field.field_name, numVal);
               }}
               placeholder={field.placeholder}
               required={isRequired}
