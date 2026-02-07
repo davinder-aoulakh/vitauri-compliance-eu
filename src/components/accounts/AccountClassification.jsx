@@ -1081,27 +1081,55 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     // Check selection count branching for multiple_choice
-    if (!nextNodeId && currentNode.question_type === "multiple_choice" && currentNode.conditional_logic?.selection_count_operator) {
-      const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
-      const selectionCount = selectedOptions.length;
-      const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
-      const countValue = currentNode.conditional_logic.selection_count_value || 0;
+    if (!nextNodeId && currentNode.question_type === "multiple_choice") {
+      if (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step) {
+        console.log('🔢 [COUNT-BASED BRANCHING] Detected selection count configuration');
+        const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
+        const selectionCount = selectedOptions.length;
+        const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
+        const countValue = currentNode.conditional_logic.selection_count_value || 0;
 
-      let countConditionMet = false;
-      switch (countOperator) {
-        case "=": countConditionMet = selectionCount === countValue; break;
-        case "!=": countConditionMet = selectionCount !== countValue; break;
-        case ">": countConditionMet = selectionCount > countValue; break;
-        case "<": countConditionMet = selectionCount < countValue; break;
-        case ">=": countConditionMet = selectionCount >= countValue; break;
-        case "<=": countConditionMet = selectionCount <= countValue; break;
-        default: countConditionMet = false;
-      }
+        console.log(`   Selection count: ${selectionCount}, operator: ${countOperator}, target: ${countValue}`);
 
-      if (countConditionMet) {
-        nextNodeId = currentNode.conditional_logic.selection_count_next_step;
-      } else {
-        nextNodeId = currentNode.conditional_logic.selection_count_else_step;
+        let countConditionMet = false;
+        switch (countOperator) {
+          case "=":
+          case "equals":
+            countConditionMet = selectionCount === countValue;
+            break;
+          case "!=":
+          case "not_equals":
+            countConditionMet = selectionCount !== countValue;
+            break;
+          case ">":
+          case "greater_than":
+            countConditionMet = selectionCount > countValue;
+            break;
+          case "<":
+          case "less_than":
+            countConditionMet = selectionCount < countValue;
+            break;
+          case ">=":
+          case "greater_than_or_equal":
+            countConditionMet = selectionCount >= countValue;
+            break;
+          case "<=":
+          case "less_than_or_equal":
+            countConditionMet = selectionCount <= countValue;
+            break;
+          default:
+            countConditionMet = false;
+        }
+
+        console.log(`   Condition met: ${countConditionMet}`);
+
+        if (countConditionMet) {
+          nextNodeId = currentNode.conditional_logic.selection_count_next_step;
+          console.log(`   → Going to TRUE path: ${nextNodeId}`);
+        } else {
+          nextNodeId = currentNode.conditional_logic.selection_count_else_step;
+          console.log(`   → Going to FALSE path: ${nextNodeId}`);
+        }
       }
     }
 
