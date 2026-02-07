@@ -148,16 +148,24 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
 
       case "boolean":
         return (
-          <div className="flex items-center gap-3 p-3 border rounded-lg">
-            <Checkbox
-              checked={value === true || value === "true"}
-              onCheckedChange={(checked) => handleFieldChange(field.field_id, checked)}
-              id={`checkbox-${field.field_id}`}
-            />
-            <Label htmlFor={`checkbox-${field.field_id}`} className="cursor-pointer">
-              {field.placeholder || "Yes"}
-            </Label>
-          </div>
+          <RadioGroup
+            value={value === true || value === "YES" || value === "true" ? "YES" : value === false || value === "NO" || value === "false" ? "NO" : ""}
+            onValueChange={(val) => handleFieldChange(field.field_id, val === "YES")}
+            className="flex gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="YES" id={`${field.field_id}-yes`} />
+              <Label htmlFor={`${field.field_id}-yes`} className="font-normal cursor-pointer">
+                Yes
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="NO" id={`${field.field_id}-no`} />
+              <Label htmlFor={`${field.field_id}-no`} className="font-normal cursor-pointer">
+                No
+              </Label>
+            </div>
+          </RadioGroup>
         );
 
       case "select":
