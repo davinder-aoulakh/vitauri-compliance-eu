@@ -874,6 +874,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
+    // Check for condition groups (advanced conditional logic)
+    if (step.conditional_logic?.condition_groups?.length > 0) {
+      return false;
+    }
+
     // Check for conditional logic with next steps
     if (step.conditional_logic?.conditions?.length > 0) {
       if (step.conditional_logic.next_step || step.conditional_logic.else_step) {
