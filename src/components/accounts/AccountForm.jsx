@@ -234,14 +234,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         alert("Last Name is required for individual accounts");
         return;
       }
-      if (!formData.date_of_birth) {
-        alert("Date of Birth is required for individual accounts");
-        return;
-      }
-      if (!formData.place_of_birth?.trim()) {
-        alert("Place of Birth is required for individual accounts");
-        return;
-      }
+
     }
     
     // Validate mandatory fields for entity accounts
