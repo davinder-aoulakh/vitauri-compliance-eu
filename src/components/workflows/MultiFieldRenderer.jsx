@@ -120,26 +120,12 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
 
       case "date":
         return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={`w-full justify-start text-left font-normal ${
-                  !value ? "text-muted-foreground" : ""
-                } ${error ? "border-red-500" : ""}`}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {value ? format(new Date(value), "PPP") : field.placeholder || "Select date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={value ? new Date(value) : undefined}
-                onSelect={(date) => handleFieldChange(field.field_id, date?.toISOString())}
-              />
-            </PopoverContent>
-          </Popover>
+          <Input
+            type="date"
+            value={value || ""}
+            onChange={(e) => handleFieldChange(field.field_id, e.target.value)}
+            className={error ? "border-red-500" : ""}
+          />
         );
 
       case "boolean":
