@@ -255,6 +255,8 @@ export default function DynamicFormRenderer({
             valueType: typeof fieldValue,
             isRequired: isRequired,
             errors: fieldErrors,
+            errorMessages: fieldErrors.join(', '),
+            fieldValidation: field.validation,
             formData: formData
           });
           errors[field.field_name] = fieldErrors;
