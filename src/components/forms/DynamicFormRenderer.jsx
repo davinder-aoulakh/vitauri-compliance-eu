@@ -308,8 +308,8 @@ export default function DynamicFormRenderer({
     setFormData(prev => {
       const updated = setNestedValue(prev, fieldName, value);
       
-      // Auto-populate address.country from country_of_residence for Entity forms only
-      if (entityType === 'Entity' && fieldName === 'country_of_residence' && value) {
+      // Auto-populate address.country from country_of_incorporation for Entity forms only
+      if (entityType === 'Entity' && fieldName === 'country_of_incorporation' && value) {
         return setNestedValue(updated, 'address.country', value);
       }
       
