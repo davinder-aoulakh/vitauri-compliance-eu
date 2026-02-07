@@ -916,22 +916,35 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
     } else if (currentNode.question_type === "multi_field_input") {
+      console.log('\n📝 MULTI-FIELD INPUT VALIDATION:');
+      console.log('  Multi-field values:', multiFieldValues);
+      console.log('  Multi-field definitions:', currentNode.multi_fields);
+      
       const errors = {};
       const multiFields = currentNode.multi_fields || [];
 
       multiFields.forEach(field => {
+        console.log(`  Checking field "${field.field_id}" (${field.display_label}): required=${field.is_required}, value=`, multiFieldValues[field.field_id]);
         if (field.is_required && !multiFieldValues[field.field_id]) {
           errors[field.field_id] = `${field.display_label} is required`;
+          console.log(`    ❌ Required field missing!`);
+        } else {
+          console.log(`    ✅ Field OK`);
         }
       });
 
+      console.log('  Validation errors:', errors);
+
       if (Object.keys(errors).length > 0) {
+        console.log('  ❌ Validation failed, setting errors and returning');
         setMultiFieldErrors(errors);
         return;
       }
 
+      console.log('  ✅ Validation passed');
       setMultiFieldErrors({});
       newAnswers[currentNodeId] = multiFieldValues;
+      console.log('  Saved multi-field values to answers:', multiFieldValues);
     } else if (currentNode.question_type === "address_input") {
       // Validate all required address fields
       if (!addressValues.street || !addressValues.city || !addressValues.state || 
