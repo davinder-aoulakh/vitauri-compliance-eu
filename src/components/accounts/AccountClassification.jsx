@@ -585,10 +585,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const evaluateConditionalLogic = (logic, currentAnswers) => {
-    console.log('\n========== EVALUATING CONDITIONAL LOGIC (AccountClassification) ==========');
-    console.log('Full Logic Object:', JSON.stringify(logic, null, 2));
-    console.log('Has condition_groups:', !!logic?.condition_groups?.length);
-    console.log('Number of condition_groups:', logic?.condition_groups?.length || 0);
+    console.log('\n🟢🟢🟢 ========== EVALUATING CONDITIONAL LOGIC (AccountClassification) ========== 🟢🟢🟢');
+    console.log('📜 Full Logic Object:', JSON.stringify(logic, null, 2));
+    console.log('🔢 Has condition_groups:', !!logic?.condition_groups?.length);
+    console.log('🔢 Number of condition_groups:', logic?.condition_groups?.length || 0);
+    console.log('📊 Current Answers Being Evaluated:', JSON.stringify(currentAnswers, null, 2));
 
     const getFieldValue = (fieldPath, entityData = null) => {
       if (fieldPath.includes('.')) {
@@ -734,11 +735,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     // NEW: Check for condition_groups (advanced multi-group conditional logic)
     if (logic?.condition_groups && logic.condition_groups.length > 0) {
-      console.log('\n--- EVALUATING CONDITION GROUPS ---');
-      console.log(`Total groups: ${logic.condition_groups.length}`);
-      console.log('Overall operator:', logic.overall_logic_operator);
-      console.log('Overall true step:', logic.overall_true_step);
-      console.log('Overall false step:', logic.overall_false_step);
+      console.log('\n🟣🟣🟣 EVALUATING CONDITION GROUPS 🟣🟣🟣');
+      console.log(`📊 Total groups: ${logic.condition_groups.length}`);
+      console.log(`🔗 Overall operator: ${logic.overall_logic_operator}`);
+      console.log(`✅ Overall TRUE step: ${logic.overall_true_step}`);
+      console.log(`❌ Overall FALSE step: ${logic.overall_false_step}`);
       
       const groupResults = [];
 
@@ -887,8 +888,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const handleNext = async () => {
+    console.log('\n\n🔵🔵🔵 ========== ACCOUNT CLASSIFICATION - HANDLE NEXT ========== 🔵🔵🔵');
+    console.log(`📍 Current Node ID: ${currentNodeId}`);
     const currentNode = stepMap[currentNodeId];
-    if (!currentNode) return;
+    if (!currentNode) {
+      console.error('❌ Current node not found!');
+      return;
+    }
+    
+    console.log(`📋 Step Title: ${currentNode.step_title}`);
+    console.log(`❓ Question Type: ${currentNode.question_type}`);
+    console.log(`📊 Selected Value:`, selectedValue);
+    console.log(`📦 All Answers (before update):`, answers);
 
     const newAnswers = { ...answers };
 
@@ -949,6 +960,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     setAnswers(newAnswers);
+    console.log(`✅ Answers updated:`, newAnswers);
     
     // Execute post-completion actions for this step (only those with "after_step" timing)
     if (currentNode.post_completion_actions && currentNode.post_completion_actions.length > 0) {
@@ -966,8 +978,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
       ? history 
       : [...history, currentNodeId];
     setHistory(newHistory);
+    console.log(`📚 History updated:`, newHistory);
 
     // Determine next step - CONDITIONAL LOGIC FIRST (highest priority)
+    console.log('\n🔀 ========== DETERMINING NEXT STEP ========== 🔀');
     let nextNodeId = null;
 
     // Check option-based branching for multiple_choice first (NEW - highest priority)
@@ -1012,66 +1026,112 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     // Check conditional logic (including NEW condition_groups support)
     if (!nextNodeId && (currentNode.conditional_logic?.condition_groups?.length > 0 || currentNode.conditional_logic?.conditions?.length > 0)) {
-      console.log('\n🔍 Checking conditional logic for step:', currentNodeId);
+      console.log('\n🔍🔍🔍 CHECKING CONDITIONAL LOGIC for step:', currentNodeId);
       const logic = currentNode.conditional_logic;
-      console.log('Conditional logic config:', JSON.stringify(logic, null, 2));
+      console.log('📜 Full Conditional Logic Config:', JSON.stringify(logic, null, 2));
+      console.log('🎯 Has condition_groups:', !!logic.condition_groups?.length);
+      console.log('🎯 Number of condition_groups:', logic.condition_groups?.length || 0);
+      console.log('🎯 Has legacy conditions:', !!logic.conditions?.length);
+      console.log('🎯 Trigger Field:', logic.trigger_field);
+      console.log('🎯 Trigger Value:', logic.trigger_value);
       
       // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
       let shouldEvaluateAdvancedLogic = true;
       if (logic.trigger_field && logic.trigger_value) {
+        console.log('\n⚡ TRIGGER EVALUATION:');
         // Trigger is defined - only evaluate if the current answer matches the trigger
         const currentAnswer = newAnswers[currentNodeId];
+        const triggerAnswer = newAnswers[logic.trigger_field];
         shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
-        console.log(`Trigger check: field="${logic.trigger_field}", expected="${logic.trigger_value}", actual="${currentAnswer}", should evaluate: ${shouldEvaluateAdvancedLogic}`);
+        
+        console.log(`  🔑 Trigger Field: "${logic.trigger_field}"`);
+        console.log(`  🎯 Expected Trigger Value: "${logic.trigger_value}"`);
+        console.log(`  💬 Current Step Answer: "${currentAnswer}"`);
+        console.log(`  💬 Trigger Field Answer: "${triggerAnswer}"`);
+        console.log(`  ✅ Should Evaluate Advanced Logic: ${shouldEvaluateAdvancedLogic}`);
+        
+        if (!shouldEvaluateAdvancedLogic) {
+          console.log(`  ⚠️ TRIGGER NOT MET - skipping advanced conditional logic`);
+        }
+      } else {
+        console.log('ℹ️ No trigger defined - will evaluate conditional logic');
       }
       
       if (shouldEvaluateAdvancedLogic) {
         // NEW: Handle condition_groups (returns step ID directly)
         if (logic.condition_groups?.length > 0) {
-          console.log('✨ Using NEW condition_groups logic (first match wins)');
+          console.log('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
           nextNodeId = evaluateConditionalLogic(logic, newAnswers);
-          console.log(`✅ Condition groups returned next step: ${nextNodeId}`);
+          console.log(`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
+          
+          if (nextNodeId) {
+            const nextStep = stepMap[nextNodeId];
+            console.log(`  📌 Next Step Title: "${nextStep?.step_title || 'NOT FOUND'}"`);
+            if (!nextStep) {
+              console.error(`  ❌❌❌ CRITICAL: Next step "${nextNodeId}" NOT FOUND in stepMap!`);
+            }
+          } else {
+            console.warn(`  ⚠️ Condition groups returned null/undefined next step`);
+          }
         } 
         // LEGACY: Handle old simple conditions
         else if (logic.conditions?.length > 0) {
-          console.log('📋 Using LEGACY simple conditions logic');
+          console.log('\n📋 Using LEGACY simple conditions logic');
           const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+          console.log(`  Condition Met: ${conditionMet}`);
           if (conditionMet) {
             nextNodeId = logic.next_step;
+            console.log(`  ➡️ Going to next_step: ${nextNodeId}`);
           } else {
             nextNodeId = logic.else_step;
+            console.log(`  ➡️ Going to else_step: ${nextNodeId}`);
           }
         }
       } else {
-        console.log('⏭️ Trigger not met, skipping conditional logic');
+        console.log('⏭️⏭️⏭️ Trigger not met, skipping conditional logic entirely');
       }
       // If trigger doesn't match, fall through to check option's next_step
     }
 
     // If no next step from conditional logic, check selected option
+    console.log('\n🔸 Fallback Navigation Checks:');
     if (!nextNodeId && selectedValue && currentNode.options && currentNode.options.length > 0) {
+      console.log('  📋 Checking option-based next_step...');
       const selectedOption = currentNode.options.find(opt => 
         opt.value === selectedValue || opt.label === selectedValue
       );
+      console.log(`  Selected Option:`, selectedOption);
       if (selectedOption?.next_step) {
         nextNodeId = selectedOption.next_step;
+        console.log(`  ✅ Found next_step from option: ${nextNodeId}`);
+      } else {
+        console.log(`  ⚠️ Selected option has no next_step`);
       }
     }
     
     // If still no next step, check default_next_step
     if (!nextNodeId && currentNode.default_next_step) {
+      console.log(`  📋 Using default_next_step: ${currentNode.default_next_step}`);
       nextNodeId = currentNode.default_next_step;
     }
 
+    console.log(`\n🎯 FINAL NEXT NODE ID: "${nextNodeId}"`);
+
     // Validate next step exists
     if (nextNodeId && !stepMap[nextNodeId]) {
+      console.error(`❌❌❌ CRITICAL ERROR: Next step "${nextNodeId}" not found in workflow stepMap!`);
+      console.log('Available step IDs in workflow:', Object.keys(stepMap));
       console.warn(`Next step "${nextNodeId}" not found in workflow, showing summary`);
       nextNodeId = null;
+    } else if (nextNodeId) {
+      const nextStep = stepMap[nextNodeId];
+      console.log(`✅ Next step validated - Title: "${nextStep.step_title}"`);
     }
 
     // For controlling_person_input and beneficiary_input, check default_next_step if no nextNodeId yet
     if (!nextNodeId && (currentNode.question_type === "controlling_person_input" || currentNode.question_type === "beneficiary_input")) {
       if (currentNode.default_next_step && stepMap[currentNode.default_next_step]) {
+        console.log(`  Using default_next_step for ${currentNode.question_type}: ${currentNode.default_next_step}`);
         nextNodeId = currentNode.default_next_step;
       }
     }
@@ -1079,13 +1139,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Build unique completed path (no duplicates)
     const uniquePath = [...new Set([...newHistory, currentNodeId])];
 
+    console.log(`\n🏁 FINAL DECISION:`);
+    console.log(`  Next Node ID: ${nextNodeId}`);
+    console.log(`  Is Action Node: ${isActionNode(currentNode)}`);
+    
     if (!nextNodeId || isActionNode(currentNode)) {
+      console.log(`  🏁 Ending workflow - showing summary`);
+      console.log(`  Completed Path:`, uniquePath);
       setCompletedPath(uniquePath);
       setShowSummary(true);
+      console.log('🔵🔵🔵 ========== END HANDLE NEXT (SUMMARY) ========== 🔵🔵🔵\n\n');
       return;
     }
 
+    console.log(`  ➡️ Navigating to next step: ${nextNodeId} (${stepMap[nextNodeId]?.step_title})`);
     setCurrentNodeId(nextNodeId);
+    console.log('🔵🔵🔵 ========== END HANDLE NEXT (NAVIGATION) ========== 🔵🔵🔵\n\n');
     
     // Restore values if navigating to a step that already has an answer
     const existingAnswer = newAnswers[nextNodeId];
