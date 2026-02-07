@@ -235,13 +235,27 @@ export default function DynamicFormRenderer({
       const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
       if (isVisible) {
         const fieldValue = getNestedValue(formData, field.field_name);
+        const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
+        
+        // Special debug logging for number fields
+        if (field.field_type === 'number') {
+          console.log(`Number field check: "${field.display_label}"`, {
+            fieldName: field.field_name,
+            value: fieldValue,
+            valueType: typeof fieldValue,
+            isRequired: isRequired,
+            rawFormData: formData[field.field_name]
+          });
+        }
+        
         const fieldErrors = validateField(field, fieldValue);
         if (fieldErrors.length > 0) {
           console.error(`Validation failed for field "${field.display_label}" (${field.field_name}):`, {
             value: fieldValue,
             valueType: typeof fieldValue,
-            isRequired: field.is_required || evaluateCondition(field.conditional_required, formData),
-            errors: fieldErrors
+            isRequired: isRequired,
+            errors: fieldErrors,
+            formData: formData
           });
           errors[field.field_name] = fieldErrors;
           // Track the first section with errors
