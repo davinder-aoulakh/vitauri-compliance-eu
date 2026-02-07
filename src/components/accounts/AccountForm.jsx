@@ -685,6 +685,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.street || ""}
                   onChange={(e) => handleAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.account_holder_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -698,6 +699,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.city || ""}
                   onChange={(e) => handleAddressChange("city", e.target.value)}
                   placeholder="City"
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.account_holder_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -711,6 +713,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.state || ""}
                   onChange={(e) => handleAddressChange("state", e.target.value)}
                   placeholder="State/Province"
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.account_holder_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -724,6 +727,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   value={formData.account_holder_address?.postal_code || ""}
                   onChange={(e) => handleAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.account_holder_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -772,6 +776,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   onChange={(e) => handleCurrentAddressChange("street", e.target.value)}
                   placeholder="123 Main Street"
                   disabled={isCurrentAddressSameAsOriginal}
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.current_address?.street ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -786,6 +791,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   onChange={(e) => handleCurrentAddressChange("city", e.target.value)}
                   placeholder="City"
                   disabled={isCurrentAddressSameAsOriginal}
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.current_address?.city ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -800,6 +806,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   onChange={(e) => handleCurrentAddressChange("state", e.target.value)}
                   placeholder="State/Province"
                   disabled={isCurrentAddressSameAsOriginal}
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.current_address?.state ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
@@ -814,6 +821,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   onChange={(e) => handleCurrentAddressChange("postal_code", e.target.value)}
                   placeholder="Postal Code"
                   disabled={isCurrentAddressSameAsOriginal}
+                  autoComplete="off"
                   className={`mt-1.5 ${submitted && !formData.current_address?.postal_code ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
