@@ -13,11 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 export default function MultiFieldRenderer({ fields = [], values = {}, onChange, errors = {} }) {
   const [referencedDataCache, setReferencedDataCache] = useState({});
