@@ -186,9 +186,28 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
     }
   };
 
+  // Check if a field should be visible based on conditional visibility rules
+  const isFieldVisible = (field) => {
+    if (!field.conditional_visibility) return true;
+    
+    const dependsOnField = field.conditional_visibility.depends_on_field;
+    const requiredValue = field.conditional_visibility.required_value;
+    const dependsOnValue = values[dependsOnField];
+    
+    // For boolean fields, compare "yes"/"no" strings
+    if (requiredValue === "yes" || requiredValue === "no") {
+      return dependsOnValue === requiredValue;
+    }
+    
+    // For other fields, direct comparison
+    return dependsOnValue === requiredValue;
+  };
+
   return (
     <div className="space-y-4">
       {fields.map((field) => {
+        const isVisible = isFieldVisible(field);
+        if (!isVisible) return null;
         const error = errors[field.field_id];
         
         return (
