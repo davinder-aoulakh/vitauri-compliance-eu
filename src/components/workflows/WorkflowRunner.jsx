@@ -134,6 +134,75 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
     console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
     
+    // Handle address_input with TIN - update both address and tax_residencies
+    if (currentStep.question_type === 'address_input' && answer && accountId) {
+      try {
+        const addressConfig = currentStep.address_config || {};
+        const targetField = addressConfig.target_field || 'current_address';
+        
+        // Update the address field
+        const addressUpdate = {
+          [targetField]: {
+            street: answer.street,
+            city: answer.city,
+            state: answer.state,
+            postal_code: answer.postal_code,
+            country: answer.country
+          }
+        };
+        
+        await base44.entities.Account.update(accountId, addressUpdate);
+        console.log(`[ADDRESS INPUT] Updated ${targetField} on account`);
+        
+        // If TIN is provided, update tax_residencies
+        if (answer.tin && answer.country) {
+          const currentAccount = await base44.entities.Account.filter({ id: accountId });
+          const existingTaxResidencies = currentAccount[0]?.tax_residencies || [];
+          
+          // Check if this country already exists in tax residencies
+          const existingIndex = existingTaxResidencies.findIndex(
+            tr => tr.country?.toLowerCase() === answer.country.toLowerCase()
+          );
+          
+          let updatedTaxResidencies;
+          if (existingIndex !== -1) {
+            // Update existing tax residency
+            updatedTaxResidencies = [...existingTaxResidencies];
+            updatedTaxResidencies[existingIndex] = {
+              ...updatedTaxResidencies[existingIndex],
+              country: answer.country,
+              tin: answer.tin
+            };
+          } else {
+            // Add new tax residency
+            updatedTaxResidencies = [
+              ...existingTaxResidencies,
+              {
+                country: answer.country,
+                tin: answer.tin,
+                tin_unavailable_reason: null
+              }
+            ];
+          }
+          
+          await base44.entities.Account.update(accountId, {
+            tax_residencies: updatedTaxResidencies
+          });
+          
+          console.log(`[ADDRESS INPUT] Updated tax_residencies with TIN for ${answer.country}`);
+        }
+        
+        // Refresh mapped entity data
+        const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
+        if (updatedAccounts[0]) {
+          setMappedEntityData(updatedAccounts[0]);
+        }
+      } catch (error) {
+        console.error('[ADDRESS INPUT] Error updating address and tax residencies:', error);
+        alert('Failed to update address and tax residency: ' + error.message);
+      }
+    }
+    
     // Execute post-completion actions for this step (only those with "after_step" timing)
     if (currentStep.post_completion_actions && currentStep.post_completion_actions.length > 0) {
       const afterStepActions = currentStep.post_completion_actions.filter(
@@ -1086,7 +1155,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           city: "",
           state: "",
           postal_code: "",
-          country: ""
+          country: "",
+          tin: ""
         };
 
         const handleAddressChange = (field, value) => {
@@ -1220,6 +1290,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   className="mt-1.5"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium text-slate-700">
+                Tax Identification Number (TIN)
+              </Label>
+              <Input
+                value={addressData.tin || ""}
+                onChange={(e) => handleAddressChange("tin", e.target.value)}
+                placeholder="Enter TIN"
+                className="mt-1.5"
+              />
             </div>
           </div>
         );
