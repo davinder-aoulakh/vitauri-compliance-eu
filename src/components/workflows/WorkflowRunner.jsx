@@ -249,7 +249,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     
     // Check selection count branching for multiple choice
     if (currentStep.question_type === 'multiple_choice' && 
-        currentStep.conditional_logic?.use_selection_count && 
         currentStep.conditional_logic?.selection_count_operator && 
         Array.isArray(answer)) {
       console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING]');
