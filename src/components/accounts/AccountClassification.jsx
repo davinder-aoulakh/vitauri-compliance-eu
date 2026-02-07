@@ -850,46 +850,81 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const isActionNode = (step) => {
     if (!step) return false;
 
+    console.log(`\n🔍 [isActionNode] Checking step: "${step.step_title}"`);
+    console.log(`   Question Type: ${step.question_type}`);
+    console.log(`   Has conditional_logic:`, !!step.conditional_logic);
+    console.log(`   Full conditional_logic:`, JSON.stringify(step.conditional_logic, null, 2));
+
     // Input types that can have default_next_step - if they have one, they're not action nodes
     const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input", "beneficiary_input", "controlling_person_input"];
     if (inputTypes.includes(step.question_type)) {
+      console.log(`   ✓ Is input type: ${step.question_type}`);
       // If it has a next step configured, it's not an action/end node
-      if (step.default_next_step) return false;
+      if (step.default_next_step) {
+        console.log(`   ✓ Has default_next_step: ${step.default_next_step} → NOT action node`);
+        return false;
+      }
       // text_input without next step is typically a result/end
-      if (step.question_type === "text_input") return true;
+      if (step.question_type === "text_input") {
+        console.log(`   ✓ Is text_input without default_next_step → IS action node`);
+        return true;
+      }
+      console.log(`   ✓ Is input type without default_next_step → NOT action node`);
       return false;
     }
 
     // Check for option-based branching on multiple_choice (NEW)
     if (step.question_type === "multiple_choice" && step.conditional_logic?.option_values?.length > 0) {
+      console.log(`   ✓ Multiple choice with option_values branching`);
+      console.log(`     option_values:`, step.conditional_logic.option_values);
+      console.log(`     option_values_next_step:`, step.conditional_logic.option_values_next_step);
+      console.log(`     option_values_else_step:`, step.conditional_logic.option_values_else_step);
       if (step.conditional_logic.option_values_next_step || step.conditional_logic.option_values_else_step) {
+        console.log(`   → Has option-based branching paths → NOT action node`);
         return false;
       }
     }
 
     // Check for selection count branching on multiple_choice
     if (step.question_type === "multiple_choice" && step.conditional_logic?.selection_count_operator) {
+      console.log(`   ✓ Multiple choice with selection count branching`);
+      console.log(`     selection_count_operator:`, step.conditional_logic.selection_count_operator);
+      console.log(`     selection_count_value:`, step.conditional_logic.selection_count_value);
+      console.log(`     selection_count_next_step:`, step.conditional_logic.selection_count_next_step);
+      console.log(`     selection_count_else_step:`, step.conditional_logic.selection_count_else_step);
       if (step.conditional_logic.selection_count_next_step || step.conditional_logic.selection_count_else_step) {
+        console.log(`   → Has selection count branching paths → NOT action node`);
         return false;
+      } else {
+        console.log(`   ⚠️ Has selection_count_operator but NO next/else steps defined!`);
       }
     }
 
     // Check for condition groups (advanced conditional logic)
     if (step.conditional_logic?.condition_groups?.length > 0) {
+      console.log(`   ✓ Has condition_groups (${step.conditional_logic.condition_groups.length} groups) → NOT action node`);
       return false;
     }
 
     // Check for conditional logic with next steps
     if (step.conditional_logic?.conditions?.length > 0) {
+      console.log(`   ✓ Has legacy conditions (${step.conditional_logic.conditions.length} conditions)`);
       if (step.conditional_logic.next_step || step.conditional_logic.else_step) {
+        console.log(`   → Has conditional logic paths → NOT action node`);
         return false;
       }
     }
 
+    console.log(`   Checking options: ${step.options?.length || 0} options`);
     if (!step.options || step.options.length === 0) {
+      console.log(`   → No options → IS action node`);
       return true;
     }
-    return !step.options.some(opt => opt.next_step);
+    
+    const hasOptionNextSteps = step.options.some(opt => opt.next_step);
+    console.log(`   Options have next_step:`, hasOptionNextSteps);
+    console.log(`   → Final result: ${!hasOptionNextSteps ? 'IS action node' : 'NOT action node'}`);
+    return !hasOptionNextSteps;
   };
 
   const handleNext = async () => {
