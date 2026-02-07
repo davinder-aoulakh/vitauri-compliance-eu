@@ -886,17 +886,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     // Check for selection count branching on multiple_choice
-    if (step.question_type === "multiple_choice" && step.conditional_logic?.selection_count_operator) {
-      console.log(`   ✓ Multiple choice with selection count branching`);
-      console.log(`     selection_count_operator:`, step.conditional_logic.selection_count_operator);
-      console.log(`     selection_count_value:`, step.conditional_logic.selection_count_value);
-      console.log(`     selection_count_next_step:`, step.conditional_logic.selection_count_next_step);
-      console.log(`     selection_count_else_step:`, step.conditional_logic.selection_count_else_step);
-      if (step.conditional_logic.selection_count_next_step || step.conditional_logic.selection_count_else_step) {
+    if (step.question_type === "multiple_choice") {
+      console.log(`   ✓ Checking multiple choice selection count branching`);
+      console.log(`     selection_count_operator:`, step.conditional_logic?.selection_count_operator);
+      console.log(`     selection_count_value:`, step.conditional_logic?.selection_count_value);
+      console.log(`     selection_count_next_step:`, step.conditional_logic?.selection_count_next_step);
+      console.log(`     selection_count_else_step:`, step.conditional_logic?.selection_count_else_step);
+      if (step.conditional_logic?.selection_count_next_step || step.conditional_logic?.selection_count_else_step) {
         console.log(`   → Has selection count branching paths → NOT action node`);
         return false;
-      } else {
-        console.log(`   ⚠️ Has selection_count_operator but NO next/else steps defined!`);
       }
     }
 
