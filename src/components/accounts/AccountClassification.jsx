@@ -417,24 +417,35 @@ export default function AccountClassification({ account, onComplete, onCancel })
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
               console.log(`[PREFILL - ENTITY] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
             } else if (step.question_type === 'single_choice') {
-              // Pre-fill dropdown with entity field value
+              // Pre-fill dropdown - try matching by VALUE first, then by LABEL (case-insensitive)
               const stringValue = String(fieldValue);
-              preFillAnswers[step.step_id] = stringValue;
               
               console.log(`[PREFILL - ENTITY] Single choice dropdown:`);
               console.log(`  Value to pre-fill: "${stringValue}"`);
               console.log(`  Checking against dropdown options:`);
+              
+              // First try exact value match
+              let matchingOption = step.options?.find(opt => opt.value === stringValue);
+              
+              // If no value match, try case-insensitive label match
+              if (!matchingOption) {
+                matchingOption = step.options?.find(opt => 
+                  opt.label?.toLowerCase() === stringValue.toLowerCase()
+                );
+              }
+              
               step.options?.forEach(opt => {
-                const matches = opt.value === stringValue;
-                console.log(`    Option: value="${opt.value}", label="${opt.label}", matches=${matches}`);
+                const valueMatches = opt.value === stringValue;
+                const labelMatches = opt.label?.toLowerCase() === stringValue.toLowerCase();
+                console.log(`    Option: value="${opt.value}", label="${opt.label}", valueMatch=${valueMatches}, labelMatch=${labelMatches}`);
               });
               
-              const matchingOption = step.options?.find(opt => opt.value === stringValue);
               if (matchingOption) {
-                console.log(`  ✅ MATCH FOUND: Option "${matchingOption.label}" (value: ${matchingOption.value})`);
+                preFillAnswers[step.step_id] = matchingOption.value;
+                console.log(`  ✅ MATCH FOUND: Using option "${matchingOption.label}" (value: ${matchingOption.value})`);
               } else {
-                console.log(`  ⚠️ NO MATCH FOUND! Entity value "${stringValue}" does not match any dropdown option values`);
-                console.log(`  Available option values:`, step.options?.map(o => o.value));
+                console.log(`  ⚠️ NO MATCH FOUND! Entity value "${stringValue}" does not match any dropdown option values or labels`);
+                console.log(`  Available options:`, step.options?.map(o => `${o.value}="${o.label}"`));
               }
             } else if (step.question_type === 'date_input') {
               preFillAnswers[step.step_id] = String(fieldValue);
