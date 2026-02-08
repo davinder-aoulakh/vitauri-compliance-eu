@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
@@ -43,7 +44,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     setAnswers(prev => ({ ...prev, [stepId]: answer }));
   };
 
-  // Effect to load mapped entity data and pre-fill answers
   useEffect(() => {
     const loadMappedEntityData = async () => {
       if (!workflow || (!accountId && !entityId)) return;
@@ -76,14 +76,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             const fieldName = step.mapped_field.field_name;
             let fieldValue = entityData[fieldName];
 
-            // Only pre-fill if the field value is not blank
             if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
-              // NEW: Check for prefill_config for Yes/No questions
               if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
                 const prefillType = step.mapped_field.prefill_config.prefill_type;
                 
                 if (prefillType === 'country_crs') {
-                  // Check if country is CRS
                   try {
                     const crsCountries = await base44.entities.CrsCountryInfo.filter({
                       $or: [
@@ -98,14 +95,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                     console.error("Error checking CRS status for pre-fill:", error);
                   }
                 } else if (prefillType === 'enum_match') {
-                  // Check if value matches any of the match_values
                   const matchValues = step.mapped_field.prefill_config.match_values || [];
                   const isMatch = matchValues.includes(String(fieldValue));
                   initialAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
                   console.log(`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
                 }
               } 
-              // Standard pre-fill logic
               else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
                 initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
               } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
@@ -134,13 +129,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
     console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
     
-    // Handle address_input with TIN - update both address and tax_residencies
     if (currentStep.question_type === 'address_input' && answer && accountId) {
       try {
         const addressConfig = currentStep.address_config || {};
         const targetField = addressConfig.target_field || 'current_address';
         
-        // Update the address field
         const addressUpdate = {
           [targetField]: {
             street: answer.street,
@@ -154,19 +147,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         await base44.entities.Account.update(accountId, addressUpdate);
         console.log(`[ADDRESS INPUT] Updated ${targetField} on account`);
         
-        // If TIN is provided, update tax_residencies
         if (answer.tin && answer.country) {
           const currentAccount = await base44.entities.Account.filter({ id: accountId });
           const existingTaxResidencies = currentAccount[0]?.tax_residencies || [];
           
-          // Check if this country already exists in tax residencies
           const existingIndex = existingTaxResidencies.findIndex(
             tr => tr.country?.toLowerCase() === answer.country.toLowerCase()
           );
           
           let updatedTaxResidencies;
           if (existingIndex !== -1) {
-            // Update existing tax residency
             updatedTaxResidencies = [...existingTaxResidencies];
             updatedTaxResidencies[existingIndex] = {
               ...updatedTaxResidencies[existingIndex],
@@ -174,7 +164,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               tin: answer.tin
             };
           } else {
-            // Add new tax residency
             updatedTaxResidencies = [
               ...existingTaxResidencies,
               {
@@ -192,7 +181,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`[ADDRESS INPUT] Updated tax_residencies with TIN for ${answer.country}`);
         }
         
-        // Refresh mapped entity data
         const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
         if (updatedAccounts[0]) {
           setMappedEntityData(updatedAccounts[0]);
@@ -203,7 +191,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    // Execute post-completion actions for this step (only those with "after_step" timing)
     if (currentStep.post_completion_actions && currentStep.post_completion_actions.length > 0) {
       const afterStepActions = currentStep.post_completion_actions.filter(
         action => (action.execution_timing || "after_step") === "after_step"
@@ -214,10 +201,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    // Add current step to history
     setHistory(prev => [...prev, currentStep.step_id]);
     
-    // Check option-based branching for multiple choice (BEFORE conditional logic)
     if (currentStep.question_type === 'multiple_choice' && 
         currentStep.conditional_logic?.option_values && 
         currentStep.conditional_logic.option_values.length > 0 && 
@@ -247,7 +232,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    // Check selection count branching for multiple choice
     if (currentStep.question_type === 'multiple_choice' && 
         currentStep.conditional_logic?.selection_count_operator && 
         Array.isArray(answer)) {
@@ -323,7 +307,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       console.log('   Is array answer:', Array.isArray(answer));
     }
     
-    // Check conditional logic (including condition groups)
     if (currentStep.conditional_logic) {
       console.log('[EVALUATING CONDITIONAL LOGIC]');
       console.log('Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
@@ -343,7 +326,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
 
-    // Check options for next step
     if (currentStep.question_type === 'yes_no' || currentStep.question_type === 'single_choice') {
       console.log('[CHECKING OPTION-BASED NEXT STEP]');
       const selectedOption = currentStep.options?.find(opt => opt.value === answer);
@@ -358,7 +340,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
 
-    // Default next step
     if (currentStep.default_next_step) {
       console.log(`[DEFAULT NEXT STEP]: ${currentStep.default_next_step}`);
       const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.default_next_step);
@@ -369,7 +350,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
 
-    // Just go to next in sequence
     console.log('[SEQUENTIAL NAVIGATION]');
     if (currentStepIndex < workflow.steps.length - 1) {
       console.log(`Going to next step in sequence: ${currentStepIndex + 2}`);
@@ -399,16 +379,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log('Has condition_groups:', !!logic?.condition_groups?.length);
     console.log('Number of condition_groups:', logic?.condition_groups?.length || 0);
     
-    // Helper function to get value from potentially nested field path (e.g., "step_ID.sub_field")
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return undefined;
       
-      // Check if it's a dotted path (multi-field or address input sub-field)
       if (fieldPath.includes('.')) {
         const [stepId, subField] = fieldPath.split('.');
         const stepAnswer = allAnswers[stepId];
         
-        // If step answer is an object (multi-field or address input), get the sub-field
         if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
           const value = stepAnswer[subField];
           console.log(`getFieldValue("${fieldPath}") - stepAnswer[${subField}]:`, value);
@@ -418,13 +395,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         return undefined;
       }
       
-      // Simple field - direct lookup
       const value = allAnswers[fieldPath];
       console.log(`getFieldValue("${fieldPath}") - direct lookup:`, value);
       return value;
     };
 
-    // Helper function to evaluate a single condition
     const evaluateCondition = async (condition) => {
       console.log('    --- Evaluating Single Condition ---');
       console.log('    Condition Object:', JSON.stringify(condition, null, 2));
@@ -434,7 +409,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       console.log(`    Field Answer for "${condition.field}":`, fieldAnswer);
       console.log(`    Field Answer Type:`, typeof fieldAnswer);
       
-      // Get comparison value - either static or from another field
       let comparisonValue = condition.value;
       if (condition.value_type === 'field_reference') {
         console.log(`    Value Type is field_reference, looking up: ${condition.value}`);
@@ -446,7 +420,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       
       let met = false;
 
-      // Handle array answers (multi-choice questions)
       const isArrayAnswer = Array.isArray(fieldAnswer);
       
       switch (condition.operator) {
@@ -548,7 +521,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       return met;
     };
 
-    // NEW: Check for condition_groups (advanced multi-group conditional logic)
     if (logic?.condition_groups && logic.condition_groups.length > 0) {
       console.log('\n========== EVALUATING CONDITION GROUPS ==========');
       console.log(`Total condition_groups: ${logic.condition_groups.length}`);
@@ -559,7 +531,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       console.log('🔍 TRIGGER CHECK - trigger_value:', logic.trigger_value);
       console.log('🔍 TRIGGER CHECK - currentAnswer:', currentAnswer);
       
-      // Check if trigger conditions are met
       if (logic.trigger_field && logic.trigger_value) {
         const triggerStepAnswer = allAnswers[logic.trigger_field];
         console.log(`🔍 TRIGGER STEP ANSWER for "${logic.trigger_field}":`, triggerStepAnswer);
@@ -568,7 +539,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`⚠️ TRIGGER NOT MET: Expected "${logic.trigger_value}", got "${triggerStepAnswer}"`);
           console.log(`⚠️ Skipping advanced conditional logic - trigger not satisfied`);
           console.log('========== END CONDITION GROUPS EVALUATION (TRIGGER NOT MET) ==========\n');
-          return null; // Don't evaluate condition groups if trigger not met
+          return null;
         } else {
           console.log(`✅ TRIGGER MET: "${triggerStepAnswer}" === "${logic.trigger_value}"`);
         }
@@ -611,7 +582,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               console.log(`  - Short-circuit AND (group failed)`);
               break;
             }
-          } else { // OR
+          } else {
             groupResult = groupResult || conditionMet;
             console.log(`  - Running OR: groupResult = ${groupResult}`);
             if (groupResult) {
@@ -630,7 +601,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`Group ${idx + 1} (${group.group_name}): ${result}`);
       });
 
-      // Determine final step based on group results and overall operator
       if (logic.overall_logic_operator) {
         console.log(`\n--- COMBINING GROUPS with ${logic.overall_logic_operator} ---`);
         let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
@@ -644,7 +614,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               console.log('Short-circuit AND - stopping evaluation');
               break;
             }
-          } else { // OR
+          } else {
             finalResult = finalResult || result;
             console.log(`After group ${i + 1}: finalResult = ${finalResult} (OR logic)`);
             if (finalResult) {
@@ -678,7 +648,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
 
-    // LEGACY: Fallback to old single conditions array
     console.log('\n--- EVALUATING LEGACY SIMPLE CONDITIONS ---');
     if (!logic?.conditions || logic.conditions.length === 0) {
       console.log('No simple conditions found, returning else_step:', logic.else_step);
@@ -713,7 +682,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return resultStep;
   };
 
-  // Execute post-completion actions for a step
   const executePostCompletionActions = async (actions) => {
     if (!actions || actions.length === 0) return;
 
@@ -721,7 +689,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       try {
         console.log(`[POST-COMPLETION ACTION] Executing action:`, action);
         
-        // Determine the target entity
         let targetEntityId = null;
         let targetEntityType = action.target_entity_type;
 
@@ -739,7 +706,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           continue;
         }
 
-        // Determine the value to update
         let valueToUpdate = null;
         
         if (action.value_source === "static_value") {
@@ -748,16 +714,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           const sourceStepId = action.value;
           valueToUpdate = answers[sourceStepId];
           
-          // Convert Yes/No to boolean if needed
           if (valueToUpdate === 'YES') valueToUpdate = true;
           if (valueToUpdate === 'NO') valueToUpdate = false;
         } else if (action.value_source === "from_workflow_outcome") {
-          // Get the final outcome/result from the workflow
           const resultStep = workflow.steps.find(s => s.question_type === 'result');
           valueToUpdate = resultStep?.result_description || action.value;
         }
 
-        // Check if there's a condition
         if (action.condition) {
           const conditionField = action.condition.field;
           const conditionOperator = action.condition.operator;
@@ -794,7 +757,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
         }
 
-        // Perform the update
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
@@ -805,7 +767,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           await base44.entities.Account.update(targetEntityId, updateData);
           console.log(`[POST-COMPLETION ACTION] Successfully updated Account.${fieldToUpdate}`);
           
-          // CRITICAL: Refresh the mapped entity data after update
           const updatedAccounts = await base44.entities.Account.filter({ id: targetEntityId });
           if (updatedAccounts[0]) {
             setMappedEntityData(updatedAccounts[0]);
@@ -815,7 +776,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           await base44.entities.Entity.update(targetEntityId, updateData);
           console.log(`[POST-COMPLETION ACTION] Successfully updated Entity.${fieldToUpdate}`);
           
-          // CRITICAL: Refresh the mapped entity data after update
           const updatedEntities = await base44.entities.Entity.filter({ id: targetEntityId });
           if (updatedEntities[0]) {
             setMappedEntityData(updatedEntities[0]);
@@ -825,7 +785,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       } catch (error) {
         console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
         console.error(`[POST-COMPLETION ACTION] Error details:`, error.message);
-        // Continue with other actions even if one fails
       }
     }
   };
@@ -833,7 +792,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleComplete = async () => {
     setLoading(true);
     
-    // Execute post-completion actions with "after_workflow" timing from all steps
     console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
     for (const step of workflow.steps) {
       if (step.post_completion_actions && step.post_completion_actions.length > 0) {
@@ -847,7 +805,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    // Build completion data
     const completionData = Object.entries(answers).map(([stepId, answer]) => {
       const step = workflow.steps.find(s => s.step_id === stepId);
       return {
@@ -859,7 +816,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       };
     });
 
-    // Update mapped entity fields
     const updates = {};
     for (const [stepId, answer] of Object.entries(answers)) {
       const step = workflow.steps.find(s => s.step_id === stepId);
@@ -867,13 +823,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         const fieldName = step.mapped_field.field_name;
         let valueToUpdate = answer;
 
-        // Type conversions based on question type
         if (step.question_type === 'yes_no') {
           valueToUpdate = (answer === 'YES');
         } else if (step.question_type === 'number_input') {
           valueToUpdate = Number(answer);
         } else if (step.question_type === 'date_input' && answer) {
           valueToUpdate = answer.includes('T') ? answer.split('T')[0] : answer;
+        } else if (step.question_type === 'file_upload') {
+          // For file_upload, we might want to store just the file URLs or a specific identifier
+          // For now, storing the whole answer object from file_upload, or handling files specifically
+          // This assumes the backend handles the new file_upload answer structure correctly
+          valueToUpdate = answer.files || []; // Store only the files array if it exists, else empty
         }
 
         updates[fieldName] = valueToUpdate;
@@ -1036,12 +996,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         );
 
       case 'date_input':
-        // Ensure date value is in YYYY-MM-DD format for HTML5 date input
-        // Handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ" formats
         let dateValue = '';
         if (answer) {
           if (typeof answer === 'string') {
-            // Extract just the date part (YYYY-MM-DD) from ISO strings or keep as-is
             dateValue = answer.includes('T') ? answer.split('T')[0] : answer;
           }
         }
@@ -1056,7 +1013,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         );
 
       case 'file_upload':
-        const uploadedFiles = answer || [];
+        const fileConfig = currentStep.file_upload_config || {};
+        const requireDateReceived = fileConfig.require_date_received || false;
+        
+        // Answer structure: { files: [], date_received: "" }
+        const fileAnswer = answer || { files: [], date_received: "" };
+        const uploadedFiles = fileAnswer.files || [];
+        const dateReceived = fileAnswer.date_received || "";
         const isUploading = uploadingFiles[currentStep.step_id];
         const isDragging = dragActive[currentStep.step_id];
 
@@ -1077,8 +1040,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             });
 
             const newFiles = await Promise.all(uploadPromises);
-            const currentFiles = Array.isArray(answer) ? answer : [];
-            handleAnswer(currentStep.step_id, [...currentFiles, ...newFiles]);
+            const currentFiles = Array.isArray(fileAnswer.files) ? fileAnswer.files : [];
+            handleAnswer(currentStep.step_id, { 
+              ...fileAnswer,
+              files: [...currentFiles, ...newFiles]
+            });
           } catch (error) {
             console.error("File upload error:", error);
             alert("Failed to upload file(s). Please try again.");
@@ -1108,9 +1074,19 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         };
 
         const removeFile = (index) => {
-          const currentFiles = Array.isArray(answer) ? answer : [];
+          const currentFiles = Array.isArray(fileAnswer.files) ? fileAnswer.files : [];
           const newFiles = currentFiles.filter((_, i) => i !== index);
-          handleAnswer(currentStep.step_id, newFiles);
+          handleAnswer(currentStep.step_id, {
+            ...fileAnswer,
+            files: newFiles
+          });
+        };
+
+        const handleDateReceivedChange = (date) => {
+          handleAnswer(currentStep.step_id, {
+            ...fileAnswer,
+            date_received: date
+          });
         };
 
         return (
@@ -1192,6 +1168,23 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 ))}
               </div>
             )}
+
+            {requireDateReceived && (
+              <div className="mt-4">
+                <Label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Date Received
+                  <span className="text-red-600">*</span>
+                </Label>
+                <Input
+                  type="date"
+                  value={dateReceived}
+                  onChange={(e) => handleDateReceivedChange(e.target.value)}
+                  className="mt-1.5"
+                  placeholder="Select date received"
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -1212,12 +1205,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           });
         };
 
-        // Find uploaded document from previous file_upload step
         const uploadedDocument = (() => {
           for (const [stepId, answerValue] of Object.entries(answers)) {
             const step = workflow.steps.find(s => s.step_id === stepId);
-            if (step?.question_type === 'file_upload' && Array.isArray(answerValue) && answerValue.length > 0) {
-              return answerValue[0]; // Get the first uploaded file
+            if (step?.question_type === 'file_upload') {
+              const files = answerValue?.files || answerValue; // Handle both new and old format
+              if (Array.isArray(files) && files.length > 0) {
+                return files[0]; // Get the first uploaded file
+              }
             }
           }
           return null;
@@ -1360,14 +1355,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             initialBeneficiaries={answer?.draftBeneficiaries}
             savedBeneficiaries={answer?.savedBeneficiaries}
             onBeneficiariesChange={(beneficiaries) => {
-              // Update draft data immediately as user types
               handleAnswer(currentStep.step_id, { 
                 ...answer,
                 draftBeneficiaries: beneficiaries 
               });
             }}
             onBeneficiariesAdded={(savedBeneficiaries) => {
-              // Update saved data when user clicks save
               handleAnswer(currentStep.step_id, { 
                 ...answer,
                 savedBeneficiaries: savedBeneficiaries,
@@ -1384,14 +1377,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             initialPersons={answer?.draftPersons}
             savedPersons={answer?.savedPersons}
             onPersonsChange={(persons) => {
-              // Update draft data immediately as user types
               handleAnswer(currentStep.step_id, { 
                 ...answer,
                 draftPersons: persons 
               });
             }}
             onControllingPersonsAdded={(savedPersons) => {
-              // Update saved data when user clicks save
               handleAnswer(currentStep.step_id, { 
                 ...answer,
                 savedPersons: savedPersons,
@@ -1432,13 +1423,32 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
     const answer = answers[currentStep.step_id];
     
-    // Special validation for address_input - all fields are required
     if (currentStep.question_type === 'address_input') {
       if (!answer || typeof answer !== 'object') return false;
       return !!(answer.street && answer.city && answer.state && answer.postal_code && answer.country);
     }
 
-    // Special validation for beneficiary_input and controlling_person_input
+    // Special validation for file_upload with date_received
+    if (currentStep.question_type === 'file_upload') {
+      const fileConfig = currentStep.file_upload_config || {};
+      const requireDateReceived = fileConfig.require_date_received || false;
+      
+      if (!answer) return false;
+      
+      // Handle both old format (array) and new format (object with files + date_received)
+      const files = answer.files || answer;
+      const hasFiles = Array.isArray(files) && files.length > 0;
+      
+      if (!hasFiles) return false;
+      
+      // If date is required, check it exists and is not empty
+      if (requireDateReceived) {
+        return !!(answer.date_received && answer.date_received.trim());
+      }
+      
+      return true;
+    }
+
     if (currentStep.question_type === 'beneficiary_input') {
       return answer?.savedBeneficiaries && answer.savedBeneficiaries.length > 0;
     }
@@ -1454,7 +1464,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   return (
     <div className="space-y-6">
-      {/* Header with Flowchart and AI buttons */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">
@@ -1492,7 +1501,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </div>
       </div>
 
-      {/* Flowchart Dialog */}
       <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
@@ -1502,7 +1510,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </DialogContent>
       </Dialog>
 
-      {/* AI Helper Dialog */}
       <Dialog open={showAIHelper} onOpenChange={setShowAIHelper}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
@@ -1520,7 +1527,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </DialogContent>
       </Dialog>
 
-      {/* Workflow Introduction Section */}
       {workflow.display_workflow_introduction && (
         <Alert className="bg-blue-50 border-blue-200">
           <Info className="w-4 h-4 text-blue-600" />
@@ -1534,11 +1540,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               {workflow.workflow_introduction_fields && workflow.workflow_introduction_fields.length > 0 && mappedEntityData && (
                 <div className="space-y-1 mt-2">
                   {workflow.workflow_introduction_fields.map((field, idx) => {
-                    // Check field type
                     const isComputedCondition = field.field_type === "computed_condition";
 
                     if (isComputedCondition) {
-                      // Computed condition logic
                       const value1 = Number(mappedEntityData[field.computation_field_1]) || 0;
                       const value2 = Number(mappedEntityData[field.computation_field_2]) || 0;
                       
@@ -1594,10 +1598,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                         </div>
                       );
                     } else {
-                      // Simple field display
                       let fieldValue = mappedEntityData[field.field_name];
                       
-                      // Format the value based on the formatter
                       if (field.value_formatter === 'boolean_alive_deceased' && typeof fieldValue === 'boolean') {
                         fieldValue = fieldValue ? 'Alive' : 'Deceased';
                       } else if (field.value_formatter === 'pre_existing_new' && typeof fieldValue === 'boolean') {
@@ -1620,7 +1622,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </Alert>
       )}
 
-      {/* Progress Bar */}
       <div className="space-y-2">
         <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
           <div 
@@ -1635,7 +1636,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </div>
       </div>
 
-      {/* Step Breadcrumb */}
       <div className="flex items-center gap-2 flex-wrap">
         {history.map((stepId, idx) => {
           const step = workflow.steps.find(s => s.step_id === stepId);
@@ -1666,7 +1666,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </div>
       </div>
 
-      {/* Question Card */}
       <Card className="border-2 border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30 shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-5">
@@ -1705,7 +1704,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </CardContent>
       </Card>
 
-      {/* Previous Answers Compact View */}
       {Object.keys(answers).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
@@ -1723,7 +1721,19 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   if (Array.isArray(value)) {
                     displayValue = value.join(', ');
                   } else if (typeof value === 'object' && value !== null) {
-                    displayValue = 'Data entered';
+                    // For file_upload, show number of files and date received if available
+                    if (step.question_type === 'file_upload') {
+                      const filesCount = value.files?.length || 0;
+                      const dateReceivedText = value.date_received ? ` (Received: ${value.date_received})` : '';
+                      displayValue = `${filesCount} file(s) uploaded${dateReceivedText}`;
+                    } else if (key === currentStep.step_id && currentStep.question_type === 'address_input') {
+                      // For current step address input, show basic address
+                      displayValue = `${value.street || ''}, ${value.city || ''}, ${value.country || ''}`;
+                    } else if (key === currentStep.step_id && (currentStep.question_type === 'beneficiary_input' || currentStep.question_type === 'controlling_person_input')) {
+                      displayValue = 'Data entered'; // Or a more specific summary if desired
+                    } else {
+                      displayValue = 'Data entered';
+                    }
                   } else {
                     displayValue = step.options?.find(o => o.value === value)?.label || String(value || '');
                   }
@@ -1745,7 +1755,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </Card>
       )}
 
-      {/* Navigation */}
       <div className="flex justify-between gap-3 pt-4 border-t">
         <Button
           type="button"
