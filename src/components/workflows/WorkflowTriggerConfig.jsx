@@ -32,6 +32,14 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     queryFn: () => base44.entities.ReferencedData.list()
   });
 
+  // Helper function to get options from referenced data
+  const getReferencedOptions = (entityName, fieldName) => {
+    return referencedData
+      .filter(rd => rd.entity_name === entityName && rd.field_name === fieldName && rd.is_published)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(rd => rd.value);
+  };
+
   // Available fields for Account and Entity with type information
   const accountFields = [
     // Basic Account Info
@@ -53,14 +61,6 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     { value: 'entity_managed_by_asset_manager', label: 'Entity Professionally Managed by Asset Manager?', type: 'boolean', options: ['true', 'false'] },
     { value: 'gross_income_from_financial_assets', label: 'Gross Income >50% from (Re)-Investing/Trading in Financial Assets?', type: 'boolean', options: ['true', 'false'] }
   ];
-
-  // Helper function to get options from referenced data
-  const getReferencedOptions = (entityName, fieldName) => {
-    return referencedData
-      .filter(rd => rd.entity_name === entityName && rd.field_name === fieldName && rd.is_published)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(rd => rd.value);
-  };
 
   const entityFields = [
     { value: 'entity_type', label: 'Entity Type', type: 'enum', options: getReferencedOptions('Entity', 'entity_type') },
