@@ -14,6 +14,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, Info, Zap } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 
 export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
   const [config, setConfig] = useState(triggerConditions || {
@@ -22,6 +24,12 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     conditions: [],
     computed_conditions: [],
     priority: 0
+  });
+
+  // Fetch referenced data for dynamic dropdowns
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data'],
+    queryFn: () => base44.entities.ReferencedData.list()
   });
 
   // Available fields for Account and Entity with type information
