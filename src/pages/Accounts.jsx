@@ -65,6 +65,8 @@ import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluat
 import AIDataValidator from "../components/ai/AIDataValidator";
 import AIJurisdictionAdvisor from "../components/ai/AIJurisdictionAdvisor";
 import BulkUpdateForm from "../components/accounts/BulkUpdateForm";
+import GuidedTour from "../components/tours/GuidedTour";
+import { getTourByPage } from "../components/tours/tourDefinitions";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -91,7 +93,9 @@ export default function AccountsPage() {
   const [selectedAccountIds, setSelectedAccountIds] = useState([]);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
+  const tourConfig = getTourByPage("Accounts");
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -449,6 +453,13 @@ export default function AccountsPage() {
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
 
+  const handleStartTour = () => {
+    const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
+    const filtered = completedTours.filter(t => t !== tourConfig.key);
+    localStorage.setItem("completedTours", JSON.stringify(filtered));
+    setShowTour(true);
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -488,6 +499,14 @@ export default function AccountsPage() {
                 </Button>
               </>
             )}
+            <Button 
+              variant="outline"
+              onClick={handleStartTour}
+              className="gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              Page Tour
+            </Button>
             {(tenant?.enabled_features?.ai_bulk_import !== false) && (
               <Button 
                 onClick={() => setShowBulkImport(true)}
@@ -1085,6 +1104,15 @@ export default function AccountsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {showTour && tourConfig && (
+        <GuidedTour
+          steps={tourConfig.steps}
+          tourKey={tourConfig.key}
+          onComplete={() => setShowTour(false)}
+          onSkip={() => setShowTour(false)}
+        />
+      )}
     </div>
   );
 }

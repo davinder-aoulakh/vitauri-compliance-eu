@@ -55,6 +55,9 @@ import ClassificationHistory from "../components/entities/ClassificationHistory"
 import EntityDetails from "../components/entities/EntityDetails";
 import AIBulkImport from "../components/import/AIBulkImport";
 import AIClassificationAssistant from "../components/ai/AIClassificationAssistant";
+import GuidedTour from "../components/tours/GuidedTour";
+import { getTourByPage } from "../components/tours/tourDefinitions";
+import { PlayCircle } from "lucide-react";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
@@ -71,7 +74,9 @@ export default function EntitiesPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get('status') || "all";
   });
+  const [showTour, setShowTour] = useState(false);
 
+  const tourConfig = getTourByPage("Entities");
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -225,6 +230,13 @@ export default function EntitiesPage() {
 
   const primaryColor = tenant?.branding?.primary_color || "#464feb";
 
+  const handleStartTour = () => {
+    const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
+    const filtered = completedTours.filter(t => t !== tourConfig.key);
+    localStorage.setItem("completedTours", JSON.stringify(filtered));
+    setShowTour(true);
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -245,6 +257,14 @@ export default function EntitiesPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleStartTour}
+              className="gap-2"
+            >
+              <PlayCircle className="w-4 h-4" />
+              Page Tour
+            </Button>
             {(tenant?.enabled_features?.ai_bulk_import !== false) && (
               <Button 
                 onClick={() => setShowBulkImport(true)}
@@ -580,6 +600,15 @@ export default function EntitiesPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {showTour && tourConfig && (
+        <GuidedTour
+          steps={tourConfig.steps}
+          tourKey={tourConfig.key}
+          onComplete={() => setShowTour(false)}
+          onSkip={() => setShowTour(false)}
+        />
+      )}
     </div>
   );
 }

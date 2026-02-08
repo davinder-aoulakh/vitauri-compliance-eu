@@ -43,6 +43,7 @@ import ReportVersionHistory from "../components/reports/ReportVersionHistory";
 import ReportExportDialog from "../components/reports/ReportExportDialog";
 import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
+import { PlayCircle } from "lucide-react";
 
 export default function ReportsPage() {
   const [user, setUser] = useState(null);
@@ -235,7 +236,8 @@ export default function ReportsPage() {
             onClick={handleStartTour}
             className="gap-2"
           >
-            Start Tour
+            <PlayCircle className="w-4 h-4" />
+            Page Tour
           </Button>
           <Button 
             onClick={() => setShowWizard(true)}
