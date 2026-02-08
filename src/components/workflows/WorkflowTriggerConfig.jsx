@@ -54,7 +54,8 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     { value: 'status', label: 'Status', type: 'enum', options: ['active', 'inactive'] }
   ];
 
-  const availableFields = config.trigger_event?.includes('account') ? accountFields : entityFields;
+  // Combine both account and entity fields for entity_rfi_classification workflow
+  const availableFields = config.trigger_event?.includes('account') ? accountFields : [...entityFields, ...accountFields];
 
   const handleAddCondition = () => {
     setConfig({
