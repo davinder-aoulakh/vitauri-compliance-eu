@@ -22,7 +22,8 @@ import {
   Brain,
   Globe,
   RefreshCw,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -767,6 +768,12 @@ export default function AccountsPage() {
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <p className="font-semibold text-slate-900">{account.account_holder_name}</p>
+                                      {account.self_certification_overdue && (
+                                        <Badge className="bg-red-100 text-red-800 border-red-300 text-xs">
+                                          <AlertCircle className="w-3 h-3 mr-1" />
+                                          Cert Overdue
+                                        </Badge>
+                                      )}
                                       {hasDocument && (
                                         <FileCheck className="w-4 h-4 text-green-600" title="Self-certification document uploaded" />
                                       )}
