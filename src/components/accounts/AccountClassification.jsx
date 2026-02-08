@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -1298,6 +1297,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
+    // Check if workflow contains a "Request New Self Certification" step with a date
+    let selfCertRequestDate = null;
+    for (const [stepId, answerValue] of Object.entries(cleanedAnswers)) {
+      const step = stepMap[stepId];
+      if (step?.step_title?.toLowerCase().includes("request new self certification") && 
+          step?.question_type === "date_input" && 
+          answerValue) {
+        selfCertRequestDate = answerValue;
+        break;
+      }
+    }
+
     console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
     for (const stepId of completedPath) {
       const step = stepMap[stepId];
@@ -1398,6 +1409,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       };
       classificationData.documents = [...existingDocuments, newDocument];
       classificationData.self_certification_obtained = true;
+      
+      // Clear overdue flags when new self-certification is received
+      classificationData.self_certification_request_date = null;
+      classificationData.self_certification_overdue = false;
+    }
+
+    // Set request date if workflow asked for it
+    if (selfCertRequestDate) {
+      classificationData.self_certification_request_date = selfCertRequestDate;
+      classificationData.self_certification_overdue = false;
     }
 
     const addressAnswer = Object.values(cleanedAnswers).find(ans =>
