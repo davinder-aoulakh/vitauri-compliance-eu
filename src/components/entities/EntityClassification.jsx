@@ -334,22 +334,32 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {
-      const fieldValue = answers[condition.field];
+      // Try to get field value - condition.field might be step_id or step_title
+      let fieldValue = answers[condition.field];
+      
+      // If not found by direct lookup, try to find by matching step title
+      if (fieldValue === undefined) {
+        const matchingStep = workflow.steps.find(s => s.step_title === condition.field || s.step_id === condition.field);
+        if (matchingStep) {
+          fieldValue = answers[matchingStep.step_id];
+        }
+      }
+      
       let conditionMet = false;
 
       // Evaluate condition based on operator
       switch (condition.operator) {
         case "=":
-          conditionMet = fieldValue == condition.value;
+          conditionMet = String(fieldValue) === String(condition.value);
           break;
         case "!=":
-          conditionMet = fieldValue != condition.value;
+          conditionMet = String(fieldValue) !== String(condition.value);
           break;
         case "in":
-          conditionMet = condition.value.split(",").map(v => v.trim()).includes(fieldValue);
+          conditionMet = condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
           break;
         case "not_in":
-          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(fieldValue);
+          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
           break;
         case "contains":
           conditionMet = String(fieldValue).includes(condition.value);
