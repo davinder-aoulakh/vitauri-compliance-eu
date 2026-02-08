@@ -1477,6 +1477,40 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               </Select>
               </div>
 
+      {/* File Upload Configuration */}
+      {editedStep.question_type === "file_upload" && (
+        <div className="p-4 border-2 border-indigo-100 rounded-lg bg-indigo-50/30">
+          <div className="flex items-start gap-2 text-xs text-slate-600 bg-white p-3 rounded border border-indigo-200 mb-4">
+            <HelpCircle className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>File Upload:</strong> Users can upload files during this step. 
+              Optionally require them to provide a "Date Received" for the document.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={editedStep.file_upload_config?.require_date_received || false}
+                onCheckedChange={(checked) => setEditedStep({
+                  ...editedStep,
+                  file_upload_config: { 
+                    ...editedStep.file_upload_config, 
+                    require_date_received: checked 
+                  }
+                })}
+                id="require-date-received"
+              />
+              <Label htmlFor="require-date-received" className="text-sm cursor-pointer">
+                Require "Date Received" field
+              </Label>
+            </div>
+            <p className="text-xs text-slate-500 ml-6">
+              When enabled, users must provide the date when the document was received before proceeding.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Address Input Configuration */}
       {editedStep.question_type === "address_input" && (
         <div className="p-4 border-2 border-teal-100 rounded-lg bg-teal-50/30">
