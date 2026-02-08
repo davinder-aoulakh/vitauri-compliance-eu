@@ -115,6 +115,15 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     }
   }, [workflow, entity, crsCountries]);
 
+  // Set selectedValue when currentNodeId changes (handles pre-filled answers)
+  useEffect(() => {
+    if (currentNodeId && answers[currentNodeId]) {
+      setSelectedValue(answers[currentNodeId]);
+    } else {
+      setSelectedValue("");
+    }
+  }, [currentNodeId, answers]);
+
   const loadUser = async () => {
     try {
       const currentUser = await base44.auth.me();
@@ -497,14 +506,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       
       // Check if this step has a pre-filled answer
       const preFilledAnswer = answers[currentNodeId];
-      const hasPreFill = preFilledAnswer && !selectedValue;
-      
-      // Set initial selected value from pre-filled answer
-      useEffect(() => {
-        if (hasPreFill) {
-          setSelectedValue(preFilledAnswer);
-        }
-      }, [currentNodeId]);
+      const hasPreFill = !!preFilledAnswer;
       
       return (
         <div className="space-y-3">
