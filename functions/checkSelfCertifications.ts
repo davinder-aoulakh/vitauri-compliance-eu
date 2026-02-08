@@ -3,14 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    // This function should only be invoked by admin or scheduled automation
-    if (user && user.user_role !== 'admin' && user.user_role !== 'super_admin' && user.user_role !== 'tenant_admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
-
-    // Use service role for admin-level operations
+    
+    // For scheduled automations, there's no authenticated user
+    // Use service role directly for all operations
     const accounts = await base44.asServiceRole.entities.Account.list();
     
     const overdueAccounts = [];
