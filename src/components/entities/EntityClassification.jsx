@@ -55,6 +55,12 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     fetchStatus();
   }, [showSummary, entity?.id]);
 
+  // Query CRS country data for pre-fill logic
+  const { data: crsCountries = [] } = useQuery({
+    queryKey: ['crs-countries'],
+    queryFn: () => base44.entities.CrsCountryInfo.list()
+  });
+
   useEffect(() => {
     if (workflows.length > 0 && !workflow) {
       // Get the latest version
@@ -70,6 +76,44 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       }
     }
   }, [workflows, workflow]);
+
+  // Pre-fill answers based on mapped fields
+  useEffect(() => {
+    if (!workflow || !entity) return;
+    
+    const preFillAnswers = {};
+    
+    workflow.steps.forEach(step => {
+      const mappedField = step.mapped_field;
+      if (!mappedField || !mappedField.field_name || !mappedField.prefill_config) return;
+      
+      // Only pre-fill yes_no questions
+      if (step.question_type !== 'yes_no') return;
+      
+      // Get the value from the entity
+      const entityValue = entity[mappedField.field_name];
+      if (!entityValue) return;
+      
+      const prefillConfig = mappedField.prefill_config;
+      
+      // Handle country_crs pre-fill type
+      if (prefillConfig.prefill_type === 'country_crs') {
+        const crsCountry = crsCountries.find(c => c.country_name === entityValue || c.country_code === entityValue);
+        if (crsCountry) {
+          preFillAnswers[step.step_id] = crsCountry.is_crs_country ? 'YES' : 'NO';
+        }
+      }
+      // Handle enum_match pre-fill type
+      else if (prefillConfig.prefill_type === 'enum_match' && prefillConfig.match_values) {
+        const matchesYes = prefillConfig.match_values.includes(entityValue);
+        preFillAnswers[step.step_id] = matchesYes ? 'YES' : 'NO';
+      }
+    });
+    
+    if (Object.keys(preFillAnswers).length > 0) {
+      setAnswers(prev => ({ ...prev, ...preFillAnswers }));
+    }
+  }, [workflow, entity, crsCountries]);
 
   const loadUser = async () => {
     try {
@@ -215,7 +259,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
 
     // Move to next node
     setCurrentNodeId(nextNodeId);
-    setSelectedValue("");
+    
+    // Check if next node has a pre-filled answer
+    const nextNodePreFill = newAnswers[nextNodeId];
+    setSelectedValue(nextNodePreFill || "");
   };
 
   const executePostCompletionActions = async (step, allAnswers) => {
@@ -448,8 +495,27 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         { value: "NO", label: "No" }
       ];
       
+      // Check if this step has a pre-filled answer
+      const preFilledAnswer = answers[currentNodeId];
+      const hasPreFill = preFilledAnswer && !selectedValue;
+      
+      // Set initial selected value from pre-filled answer
+      useEffect(() => {
+        if (hasPreFill) {
+          setSelectedValue(preFilledAnswer);
+        }
+      }, [currentNodeId]);
+      
       return (
         <div className="space-y-3">
+          {hasPreFill && (
+            <Alert className="bg-blue-50 border-blue-200">
+              <Info className="w-4 h-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-900">
+                This answer has been pre-filled based on the entity's data. You can change it if needed.
+              </AlertDescription>
+            </Alert>
+          )}
           <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
             {options.map((option) => (
               <div 
