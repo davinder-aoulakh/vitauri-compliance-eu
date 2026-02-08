@@ -402,7 +402,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
         if (step.mapped_field?.entity_type === "Entity" && step.mapped_field?.field_name && linkedEntity) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = linkedEntity[fieldName];
-          console.log(`[PREFILL - ENTITY] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}", question_type="${step.question_type}"`);
+          
+          console.log(`\n========== [PREFILL - ENTITY] DETAILED DEBUG ==========`);
+          console.log(`Step Title: "${step.step_title}"`);
+          console.log(`Step ID: "${step.step_id}"`);
+          console.log(`Question Type: "${step.question_type}"`);
+          console.log(`Mapped Field Name: "${fieldName}"`);
+          console.log(`Entity Field Value (raw): "${fieldValue}" (type: ${typeof fieldValue})`);
+          console.log(`Entity full data:`, linkedEntity);
+          console.log(`Available dropdown options:`, step.options);
 
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
@@ -410,8 +418,24 @@ export default function AccountClassification({ account, onComplete, onCancel })
               console.log(`[PREFILL - ENTITY] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
             } else if (step.question_type === 'single_choice') {
               // Pre-fill dropdown with entity field value
-              preFillAnswers[step.step_id] = String(fieldValue);
-              console.log(`[PREFILL - ENTITY] Single choice pre-filled with: ${fieldValue}`);
+              const stringValue = String(fieldValue);
+              preFillAnswers[step.step_id] = stringValue;
+              
+              console.log(`[PREFILL - ENTITY] Single choice dropdown:`);
+              console.log(`  Value to pre-fill: "${stringValue}"`);
+              console.log(`  Checking against dropdown options:`);
+              step.options?.forEach(opt => {
+                const matches = opt.value === stringValue;
+                console.log(`    Option: value="${opt.value}", label="${opt.label}", matches=${matches}`);
+              });
+              
+              const matchingOption = step.options?.find(opt => opt.value === stringValue);
+              if (matchingOption) {
+                console.log(`  ✅ MATCH FOUND: Option "${matchingOption.label}" (value: ${matchingOption.value})`);
+              } else {
+                console.log(`  ⚠️ NO MATCH FOUND! Entity value "${stringValue}" does not match any dropdown option values`);
+                console.log(`  Available option values:`, step.options?.map(o => o.value));
+              }
             } else if (step.question_type === 'date_input') {
               preFillAnswers[step.step_id] = String(fieldValue);
             } else if (step.question_type === 'number_input') {
@@ -419,7 +443,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
             } else {
               preFillAnswers[step.step_id] = String(fieldValue);
             }
+          } else {
+            console.log(`  ⚠️ Field value is empty/null/undefined - NOT pre-filling`);
           }
+          console.log(`========== END DETAILED DEBUG ==========\n`);
         }
 
         if (step.question_type === 'yes_no' && step.mapped_field?.field_name) {
