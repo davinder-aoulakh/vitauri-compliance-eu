@@ -6,7 +6,12 @@ import {
   Settings,
   Download,
   CheckCircle,
-  Zap
+  Zap,
+  Users,
+  Shield,
+  GitBranch,
+  Eye,
+  Sparkles
 } from "lucide-react";
 
 export const dashboardTour = [
@@ -123,12 +128,87 @@ export const entitiesTour = [
   }
 ];
 
+// Comprehensive Application Overview Tour
+export const appOverviewTour = [
+  {
+    title: "Welcome to CRS Compliance Platform",
+    description: "Let's take a comprehensive tour of the entire application and its capabilities.",
+    icon: Sparkles,
+    content: "This platform helps you manage CRS/FATCA compliance end-to-end: from entity classification to report submission. Let's explore the key areas.",
+    navigateTo: null
+  },
+  {
+    title: "Dashboard - Your Control Center",
+    description: "Real-time compliance overview with customizable widgets.",
+    icon: LayoutDashboard,
+    content: "Your dashboard shows key metrics, pending tasks, upcoming deadlines, and jurisdiction overview. Customize it to match your workflow.",
+    navigateTo: "Dashboard"
+  },
+  {
+    title: "Entity Management",
+    description: "Manage legal entities and determine RFI classification.",
+    icon: Building2,
+    content: "Add entities, run RFI determination workflows, and track classification history. Entities are the organizations that hold financial accounts.",
+    navigateTo: "Entities"
+  },
+  {
+    title: "Account Management",
+    description: "Track and classify financial accounts for reportability.",
+    icon: Wallet,
+    content: "Add accounts, determine reportability status, manage controlling persons for Passive NFEs, and track compliance issues.",
+    navigateTo: "Accounts"
+  },
+  {
+    title: "CRS Reports",
+    description: "Generate, validate, and submit CRS XML reports.",
+    icon: FileText,
+    content: "Create reports for different jurisdictions, validate XML against schemas, export in multiple formats, and track submission status.",
+    navigateTo: "Reports"
+  },
+  {
+    title: "AI Compliance Assistant",
+    description: "Get intelligent help with compliance questions.",
+    icon: Shield,
+    content: "Ask questions about CRS/FATCA rules, get classification guidance, validate data quality, and receive jurisdiction-specific advice.",
+    navigateTo: "ComplianceAssistant"
+  },
+  {
+    title: "Activity Log",
+    description: "Complete audit trail of all platform actions.",
+    icon: Eye,
+    content: "Track all changes, classifications, report generations, and user actions with detailed audit logs for compliance evidence.",
+    navigateTo: "Activity"
+  },
+  {
+    title: "Administration - For Admins",
+    description: "Manage users, customize dashboards, and configure validation rules.",
+    icon: Settings,
+    content: "Invite team members, build custom dashboards, create validation rules, and manage platform settings (admin only).",
+    navigateTo: null
+  },
+  {
+    title: "Guided Workflows",
+    description: "Step-by-step questionnaires for accurate classification.",
+    icon: GitBranch,
+    content: "The platform uses intelligent workflows to guide you through complex classification decisions, ensuring accuracy and consistency.",
+    navigateTo: null
+  },
+  {
+    title: "You're All Set!",
+    description: "Start exploring the platform at your own pace.",
+    icon: CheckCircle,
+    content: "You can restart this tour anytime from the Dashboard. Need help? Use the AI Assistant or check page-specific tours on each section.",
+    navigateTo: null
+  }
+];
+
 export const getTourByPage = (pageName) => {
   const tours = {
     Dashboard: { steps: dashboardTour, key: "dashboard-tour" },
     Reports: { steps: reportsTour, key: "reports-tour" },
     Accounts: { steps: accountsTour, key: "accounts-tour" },
-    Entities: { steps: entitiesTour, key: "entities-tour" }
+    Entities: { steps: entitiesTour, key: "entities-tour" },
+    AppOverview: { steps: appOverviewTour, key: "app-overview-tour" }
   };
   return tours[pageName] || null;
 };

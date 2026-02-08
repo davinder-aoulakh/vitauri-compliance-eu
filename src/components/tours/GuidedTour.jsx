@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, Check, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function GuidedTour({ steps, onComplete, onSkip, tourKey }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if tour has been completed before
@@ -18,6 +21,11 @@ export default function GuidedTour({ steps, onComplete, onSkip, tourKey }) {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
+      const nextStep = steps[currentStep + 1];
+      // Navigate to next page if specified
+      if (nextStep.navigateTo) {
+        navigate(createPageUrl(nextStep.navigateTo));
+      }
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -96,6 +104,14 @@ export default function GuidedTour({ steps, onComplete, onSkip, tourKey }) {
                   ) : (
                     step.content
                   )}
+                </div>
+              )}
+
+              {/* Navigation indicator for multi-page tours */}
+              {step.navigateTo && (
+                <div className="flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg">
+                  <MapPin className="w-3 h-3" />
+                  <span>Next step will navigate to: <strong>{step.navigateTo}</strong></span>
                 </div>
               )}
 
