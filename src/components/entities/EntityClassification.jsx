@@ -303,7 +303,17 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       let valueToSet = action.value;
       if (action.value_source === "from_step_answer") {
         // Get answer from specified step
-        valueToSet = allAnswers[action.value];
+        const answerValue = allAnswers[action.value];
+        
+        // Find the step to get the label for single/multiple choice questions
+        const sourceStep = workflow.steps.find(s => s.step_id === action.value);
+        if (sourceStep && sourceStep.options && (sourceStep.question_type === "single_choice" || sourceStep.question_type === "yes_no")) {
+          // Find the option that matches the answer value
+          const selectedOption = sourceStep.options.find(opt => opt.value === answerValue);
+          valueToSet = selectedOption ? selectedOption.label : answerValue;
+        } else {
+          valueToSet = answerValue;
+        }
       } else if (action.value_source === "static_value") {
         valueToSet = action.value;
       }
