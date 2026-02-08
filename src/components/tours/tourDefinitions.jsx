@@ -142,7 +142,7 @@ export const appOverviewTour = [
     description: "Real-time compliance overview with customizable widgets.",
     icon: LayoutDashboard,
     content: "Your dashboard shows key metrics, pending tasks, upcoming deadlines, and jurisdiction overview. Customize it to match your workflow.",
-    navigateTo: "Dashboard"
+    navigateTo: null
   },
   {
     title: "Entity Management",
