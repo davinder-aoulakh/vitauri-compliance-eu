@@ -21,12 +21,14 @@ export default function GuidedTour({ steps, onComplete, onSkip, tourKey }) {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      const nextStep = steps[currentStep + 1];
-      // Navigate to next page if specified
-      if (nextStep.navigateTo) {
-        navigate(createPageUrl(nextStep.navigateTo));
-      }
       setCurrentStep(currentStep + 1);
+      const nextStep = steps[currentStep + 1];
+      // Navigate to next page if specified after updating step
+      if (nextStep.navigateTo) {
+        setTimeout(() => {
+          navigate(createPageUrl(nextStep.navigateTo));
+        }, 300);
+      }
     } else {
       handleComplete();
     }
