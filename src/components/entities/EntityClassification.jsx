@@ -426,9 +426,11 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         result = conditionMet;
         console.log(`🎯 [LOGIC] First condition, result = ${result}`);
       } else {
+        // Use the logic operator from the PREVIOUS condition (it defines how to combine with the next)
+        const prevCondition = logic.conditions[idx - 1];
         const prevResult = result;
-        console.log(`🔗 [LOGIC] Logic operator for this condition: "${condition.logic_operator}"`);
-        if (condition.logic_operator === "OR") {
+        console.log(`🔗 [LOGIC] Logic operator from previous condition: "${prevCondition.logic_operator}"`);
+        if (prevCondition.logic_operator === "OR") {
           result = result || conditionMet;
           console.log(`🔗 [LOGIC] OR: ${prevResult} || ${conditionMet} = ${result}`);
         } else {
