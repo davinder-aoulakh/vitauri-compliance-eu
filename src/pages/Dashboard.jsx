@@ -554,19 +554,20 @@ export default function Dashboard() {
             </CardContent>
           </Card>
           )}
-          </div>
+        </div>
 
-          {showTour && tourConfig && (
+        {showTour && tourConfig && (
           <GuidedTour
-          steps={tourConfig.steps}
-          tourKey={tourConfig.key}
-          onComplete={() => setShowTour(false)}
-          onSkip={() => setShowTour(false)}
+            steps={tourConfig.steps}
+            tourKey={tourConfig.key}
+            onComplete={() => setShowTour(false)}
+            onSkip={() => setShowTour(false)}
           />
-          )}
-          </div>
-          );
-          }
+        )}
+      </div>
+    </div>
+  );
+}
 
 function MetricCard({ title, value, subtitle, icon: Icon, color, trend, showProgress, progress }) {
   return (
