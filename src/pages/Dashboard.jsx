@@ -17,13 +17,15 @@ import {
   Wrench,
   LayoutDashboard,
   Settings,
-  PlayCircle
+  PlayCircle,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WidgetPreview from "@/components/dashboard/WidgetPreview";
 import GuidedTour from "@/components/tours/GuidedTour";
 import { getTourByPage } from "@/components/tours/tourDefinitions";
@@ -32,6 +34,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [tenant, setTenant] = useState(null);
   const [showTour, setShowTour] = useState(false);
+  const [selectedEntityId, setSelectedEntityId] = useState(null);
 
   const tourConfig = getTourByPage("Dashboard");
 
@@ -63,18 +66,24 @@ export default function Dashboard() {
   });
 
   const { data: accounts = [] } = useQuery({
-    queryKey: ['accounts', user?.tenant_id],
-    queryFn: () => user?.tenant_id 
-      ? base44.entities.Account.filter({ tenant_id: user.tenant_id })
-      : [],
+    queryKey: ['accounts', user?.tenant_id, selectedEntityId],
+    queryFn: () => {
+      if (!user?.tenant_id) return [];
+      const filter = { tenant_id: user.tenant_id };
+      if (selectedEntityId) filter.entity_id = selectedEntityId;
+      return base44.entities.Account.filter(filter);
+    },
     enabled: !!user?.tenant_id
   });
 
   const { data: reports = [] } = useQuery({
-    queryKey: ['reports', user?.tenant_id],
-    queryFn: () => user?.tenant_id 
-      ? base44.entities.CRSReport.filter({ tenant_id: user.tenant_id })
-      : [],
+    queryKey: ['reports', user?.tenant_id, selectedEntityId],
+    queryFn: () => {
+      if (!user?.tenant_id) return [];
+      const filter = { tenant_id: user.tenant_id };
+      if (selectedEntityId) filter.entity_id = selectedEntityId;
+      return base44.entities.CRSReport.filter(filter);
+    },
     enabled: !!user?.tenant_id
   });
 
@@ -181,7 +190,7 @@ export default function Dashboard() {
         <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
                 Welcome back, {(user?.display_name || user?.full_name)?.split(' ')[0] || "User"}
               </h1>
@@ -189,6 +198,41 @@ export default function Dashboard() {
                 {customDashboard.description || `Here's your CRS compliance overview for ${tenant?.name || "your organization"}`}
               </p>
             </div>
+            
+            {/* Entity Filter */}
+            <div className="flex items-center gap-3">
+              <div className="w-64">
+                <Select value={selectedEntityId || "all"} onValueChange={(value) => setSelectedEntityId(value === "all" ? null : value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All RFI Entities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        All RFI Entities
+                      </div>
+                    </SelectItem>
+                    {entities.map((entity) => (
+                      <SelectItem key={entity.id} value={entity.id}>
+                        {entity.entity_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedEntityId && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setSelectedEntityId(null)}
+                  className="h-9 w-9"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleStartTour} className="gap-2">
                 <PlayCircle className="w-4 h-4" />
@@ -248,7 +292,7 @@ export default function Dashboard() {
       <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
               Welcome back, {(user?.display_name || user?.full_name)?.split(' ')[0] || "User"}
             </h1>
@@ -256,6 +300,41 @@ export default function Dashboard() {
               Here's your CRS compliance overview for {tenant?.name || "your organization"}
             </p>
           </div>
+
+          {/* Entity Filter */}
+          <div className="flex items-center gap-3">
+            <div className="w-64">
+              <Select value={selectedEntityId || "all"} onValueChange={(value) => setSelectedEntityId(value === "all" ? null : value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All RFI Entities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      All RFI Entities
+                    </div>
+                  </SelectItem>
+                  {entities.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>
+                      {entity.entity_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedEntityId && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setSelectedEntityId(null)}
+                className="h-9 w-9"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
           <div className="flex gap-3">
             <Button variant="outline" onClick={handleStartTour} className="gap-2">
               <PlayCircle className="w-4 h-4" />
