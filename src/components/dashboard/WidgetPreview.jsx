@@ -47,7 +47,7 @@ import { createPageUrl } from "@/utils";
 
 const COLORS = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-export default function WidgetPreview({ widget, tenantId }) {
+export default function WidgetPreview({ widget, tenantId, selectedEntityId }) {
   const config = widget.config || {};
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -79,8 +79,12 @@ export default function WidgetPreview({ widget, tenantId }) {
 
   // Fetch data based on widget type
   const { data: accounts = [], isFetching: accountsFetching } = useQuery({
-    queryKey: ['widget-accounts', tenantId],
-    queryFn: () => base44.entities.Account.filter({ tenant_id: tenantId }),
+    queryKey: ['widget-accounts', tenantId, selectedEntityId],
+    queryFn: () => {
+      const filter = { tenant_id: tenantId };
+      if (selectedEntityId) filter.entity_id = selectedEntityId;
+      return base44.entities.Account.filter(filter);
+    },
     enabled: !!tenantId && ['stats_card', 'account_list', 'reportability_breakdown', 'chart_pie', 'chart_bar', 'pending_tasks', 'chart_line'].includes(widget.widget_type),
     staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
@@ -100,8 +104,12 @@ export default function WidgetPreview({ widget, tenantId }) {
   });
 
   const { data: reports = [], isFetching: reportsFetching } = useQuery({
-    queryKey: ['widget-reports', tenantId],
-    queryFn: () => base44.entities.CRSReport.filter({ tenant_id: tenantId }),
+    queryKey: ['widget-reports', tenantId, selectedEntityId],
+    queryFn: () => {
+      const filter = { tenant_id: tenantId };
+      if (selectedEntityId) filter.entity_id = selectedEntityId;
+      return base44.entities.CRSReport.filter(filter);
+    },
     enabled: !!tenantId && (widget.widget_type === 'stats_card' && widget.config?.metric === 'total_crs_reports'),
     staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
