@@ -459,7 +459,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       console.log('[PREFILL] Final pre-fill answers:', preFillAnswers);
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
-  }, [account, workflow, latestAccountData, crsCountryMap]);
+  }, [account, workflow, latestAccountData, crsCountryMap, linkedEntity]);
 
   const loadUser = async () => {
     try {
