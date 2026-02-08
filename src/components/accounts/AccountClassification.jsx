@@ -402,10 +402,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
         if (step.mapped_field?.entity_type === "Entity" && step.mapped_field?.field_name && linkedEntity) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = linkedEntity[fieldName];
+          console.log(`[PREFILL - ENTITY] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}", question_type="${step.question_type}"`);
 
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+              console.log(`[PREFILL - ENTITY] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
+            } else if (step.question_type === 'single_choice') {
+              // Pre-fill dropdown with entity field value
+              preFillAnswers[step.step_id] = String(fieldValue);
+              console.log(`[PREFILL - ENTITY] Single choice pre-filled with: ${fieldValue}`);
             } else if (step.question_type === 'date_input') {
               preFillAnswers[step.step_id] = String(fieldValue);
             } else if (step.question_type === 'number_input') {
