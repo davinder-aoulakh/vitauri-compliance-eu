@@ -18,7 +18,8 @@ import {
   LayoutDashboard,
   Settings,
   PlayCircle,
-  X
+  X,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,9 @@ export default function Dashboard() {
   const [showTour, setShowTour] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState(null);
 
-  const tourConfig = getTourByPage("Dashboard");
+  const tourConfig = showTour === "app-overview" 
+    ? getTourByPage("AppOverview") 
+    : getTourByPage("Dashboard");
 
   useEffect(() => {
     loadUserData();
@@ -338,7 +341,16 @@ export default function Dashboard() {
           <div className="flex gap-3">
             <Button variant="outline" onClick={handleStartTour} className="gap-2">
               <PlayCircle className="w-4 h-4" />
-              Start Tour
+              Page Tour
+            </Button>
+            <Button variant="outline" onClick={() => {
+              const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
+              const filtered = completedTours.filter(t => t !== "app-overview-tour");
+              localStorage.setItem("completedTours", JSON.stringify(filtered));
+              setShowTour("app-overview");
+            }} className="gap-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50">
+              <Sparkles className="w-4 h-4" />
+              App Overview
             </Button>
             {(user?.user_role === 'tenant_admin' || user?.user_role === 'super_admin') && (
               <Link to={createPageUrl("DashboardBuilder")}>
