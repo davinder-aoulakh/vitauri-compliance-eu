@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload, GitBranch, Brain, Sparkles } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Circle, Upload, GitBranch, Brain, Sparkles, Calendar } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +29,7 @@ import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [answers, setAnswers] = useState({});  // Start fresh - don't load previous answers
+  const [answers, setAnswers] = useState({});
   const [selectedValue, setSelectedValue] = useState("");
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
@@ -52,8 +53,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [dragActive, setDragActive] = useState(false);
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
   const [previewDocument, setPreviewDocument] = useState(null);
+  const [dateReceivedValue, setDateReceivedValue] = useState("");
 
-  // Fetch the latest account data to ensure we have up-to-date documents
   const { data: freshAccountData, refetch: refetchAccount } = useQuery({
     queryKey: ['account-fresh', account?.id],
     queryFn: async () => {
@@ -62,21 +63,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return accounts[0] || null;
     },
     enabled: !!account?.id,
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 0,
   });
 
-  // Use fresh data if available, otherwise fall back to prop
   useEffect(() => {
     if (freshAccountData) {
       setLatestAccountData(freshAccountData);
     }
   }, [freshAccountData]);
 
-  // Listen for account updates and refetch
   useEffect(() => {
     const handleAccountUpdate = (event) => {
       console.log('[ACCOUNT UPDATE EVENT] Received:', event.detail);
-      // Refetch the account data to get latest values
       refetchAccount();
     };
 
@@ -84,31 +82,27 @@ export default function AccountClassification({ account, onComplete, onCancel })
     return () => window.removeEventListener('account-updated', handleAccountUpdate);
   }, [refetchAccount]);
 
-  // Fetch published account classification workflows
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ['account-workflows'],
-    queryFn: () => base44.entities.Workflow.filter({ 
+    queryFn: () => base44.entities.Workflow.filter({
       workflow_type: 'account_reportability',
       status: 'published'
     }),
     enabled: !!account
   });
 
-  // Fetch CRS countries for condition evaluation - now includes both name and code lookup
   const { data: crsCountryMap = {} } = useQuery({
     queryKey: ['crs-country-map-for-evaluation'],
     queryFn: async () => {
       const countries = await base44.entities.CrsCountryInfo.list();
       const map = {};
       countries.forEach(c => {
-        // Map by country name (lowercase)
         if (c.country_name) {
           map[c.country_name.toLowerCase()] = {
             code: c.country_code?.toUpperCase(),
             isCrs: c.is_crs_country
           };
         }
-        // Map by country code (lowercase)
         if (c.country_code) {
           map[c.country_code.toLowerCase()] = {
             code: c.country_code?.toUpperCase(),
@@ -121,8 +115,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     staleTime: Infinity,
     enabled: !!account
   });
-  
-  // Fetch the linked entity for field reference comparisons
+
   const { data: linkedEntity } = useQuery({
     queryKey: ['linked-entity', account?.entity_id],
     queryFn: async () => {
@@ -134,19 +127,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
     staleTime: 60000
   });
 
-  // Evaluate if a workflow's trigger conditions match the account data
   const evaluateTriggerConditions = (triggerConfig, accountData) => {
     if (!triggerConfig?.enabled) return false;
-    
+
     const conditions = triggerConfig.conditions || [];
     const computedConditions = triggerConfig.computed_conditions || [];
-    
-    // If no conditions at all, return true (enabled but no filters)
+
     if (conditions.length === 0 && computedConditions.length === 0) return true;
 
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
-      
+
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
         let value = accountData;
@@ -156,13 +147,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
         return value;
       }
-      
+
       return accountData?.[fieldPath];
     };
 
     let result = true;
 
-    // Evaluate regular conditions
     for (let idx = 0; idx < conditions.length; idx++) {
       const condition = conditions[idx];
       const fieldValue = getFieldValue(condition.field);
@@ -219,27 +209,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Evaluate computed conditions (e.g., year_end_cash_value + gross_payments > 1000000)
     for (let idx = 0; idx < computedConditions.length; idx++) {
       const compCondition = computedConditions[idx];
       let compResult = false;
-      
+
       try {
         const expression = compCondition.expression;
-        
-        // Replace field names with their numeric values
         const fieldRegex = /\b([a-z_]+[a-z0-9_]*)\b/gi;
         let computedExpression = expression.replace(fieldRegex, (match) => {
-          // Skip operators and keywords
           if (['AND', 'OR', 'true', 'false', 'null'].includes(match)) return match;
           const value = getFieldValue(match);
           return isNaN(parseFloat(value)) ? 0 : parseFloat(value);
         });
-        
-        // Safely evaluate the arithmetic expression
+
         const computedValue = new Function(`return ${computedExpression}`)();
         const compareValue = parseFloat(compCondition.value);
-        
+
         switch (compCondition.operator) {
           case "greater_than":
           case ">":
@@ -269,7 +254,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         compResult = false;
       }
 
-      // Combine with previous result
       if (conditions.length === 0 && idx === 0) {
         result = compResult;
       } else {
@@ -313,14 +297,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
       } else {
         const isIndividual = account?.account_holder_type === "individual";
         const fallbackWorkflows = workflows.filter(w => {
-          const nameMatch = isIndividual 
+          const nameMatch = isIndividual
             ? w.workflow_name?.toLowerCase().includes("individual")
             : w.workflow_name?.toLowerCase().includes("entity");
           return nameMatch;
         });
-        
+
         if (fallbackWorkflows.length > 0) {
-          const sortedFallback = fallbackWorkflows.sort((a, b) => 
+          const sortedFallback = fallbackWorkflows.sort((a, b) =>
             parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
           );
           selectedWorkflow = sortedFallback[0];
@@ -336,16 +320,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   }, [workflows, workflow, account]);
 
-  // Effect to sync selectedValue when currentNodeId changes (for pre-filled answers)
   useEffect(() => {
     if (!currentNodeId) return;
-    
+
     const currentNode = stepMap[currentNodeId];
     const existingAnswer = answers[currentNodeId];
-    
+
     console.log(`[AccountClassification] Current step changed to: ${currentNode?.step_title}`);
     console.log(`[AccountClassification] Existing answer for this step:`, existingAnswer);
-    
+
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       const { _address_config, ...savedAddress } = existingAnswer;
       setAddressValues(savedAddress);
@@ -353,6 +336,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     } else if (existingAnswer && typeof existingAnswer === 'object' && !existingAnswer.file_url) {
       setMultiFieldValues(existingAnswer);
       setSelectedValue("");
+    } else if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer.file_url) {
+      setSelectedValue(existingAnswer);
+      setDateReceivedValue(existingAnswer.date_received || "");
     } else if (existingAnswer) {
       setSelectedValue(existingAnswer);
       setDateValue(existingAnswer);
@@ -363,7 +349,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (account && !answers._account_data_loaded && workflow) {
       const currentAccount = latestAccountData || account;
       console.log('[PREFILL] Using account data:', currentAccount);
-      
+
       const preFillAnswers = {
         _account_data_loaded: true,
         _is_pre_existing: currentAccount.is_pre_existing,
@@ -371,21 +357,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
         _account_holder_type: currentAccount.account_holder_type
       };
 
-      // Pre-fill mapped fields from account data
       workflow.steps.forEach(step => {
         if (step.mapped_field?.entity_type === "Account" && step.mapped_field?.field_name) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = currentAccount[fieldName];
           console.log(`[PREFILL] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}"`);
 
-          // Only pre-fill if the field value is not blank
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
-            // NEW: Check for prefill_config for Yes/No questions
             if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
               const prefillType = step.mapped_field.prefill_config.prefill_type;
-              
+
               if (prefillType === 'country_crs') {
-                // Check if country is CRS
                 const normalizedCountry = String(fieldValue).toLowerCase();
                 const countryInfo = crsCountryMap[normalizedCountry];
                 if (countryInfo) {
@@ -393,14 +375,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   console.log(`[PREFILL] country_crs: ${fieldValue} -> ${countryInfo.isCrs ? 'YES' : 'NO'}`);
                 }
               } else if (prefillType === 'enum_match') {
-                // Check if value matches any of the match_values
                 const matchValues = step.mapped_field.prefill_config.match_values || [];
                 const isMatch = matchValues.includes(String(fieldValue));
                 preFillAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
                 console.log(`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
               }
             }
-            // Type conversions based on question type
             else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
             } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
@@ -420,14 +400,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
           }
         }
 
-        // NEW: Handle Entity field mappings (e.g., country_of_incorporation)
         if (step.mapped_field?.entity_type === "Entity" && step.mapped_field?.field_name && linkedEntity) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = linkedEntity[fieldName];
 
-          // Only pre-fill if the field value is not blank
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
-            // Type conversions based on question type
             if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
             } else if (step.question_type === 'date_input') {
@@ -440,12 +417,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
           }
         }
 
-        // NEW: CRS Country Check for Yes/No Questions mapped to country fields
         if (step.question_type === 'yes_no' && step.mapped_field?.field_name) {
           const fieldName = step.mapped_field.field_name;
           let countryValue = null;
 
-          // Check if it's a country field from Account
           if (step.mapped_field.entity_type === "Account") {
             if (fieldName === 'current_address.country') {
               countryValue = account?.current_address?.country;
@@ -457,7 +432,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
               countryValue = account?.place_of_birth;
             }
           }
-          // Check if it's a country field from Entity
           else if (step.mapped_field.entity_type === "Entity" && linkedEntity) {
             if (fieldName === 'country_of_incorporation') {
               countryValue = linkedEntity?.country_of_incorporation;
@@ -466,13 +440,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }
           }
 
-          // If we found a country value, check if it's CRS
           if (countryValue) {
             const normalizedCountry = String(countryValue).toLowerCase();
             const countryInfo = crsCountryMap[normalizedCountry];
 
             if (countryInfo) {
-              // Pre-fill YES if CRS country, NO if not CRS country
               preFillAnswers[step.step_id] = countryInfo.isCrs ? 'YES' : 'NO';
             }
           }
@@ -493,46 +465,40 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  // Execute post-completion actions for a step
   const executePostCompletionActions = async (actions, currentAnswers) => {
     if (!actions || actions.length === 0) return;
 
     for (const action of actions) {
       try {
         console.log(`[POST-COMPLETION ACTION] Executing action:`, action);
-        
-        // Only support Account target for now
+
         if (action.target_entity_type !== "Account" || !account?.id) {
           console.warn(`[POST-COMPLETION ACTION] Unsupported target or no account ID:`, action.target_entity_type);
           continue;
         }
 
-        // Determine the value to update
         let valueToUpdate = null;
-        
+
         if (action.value_source === "static_value") {
           valueToUpdate = action.value;
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
           valueToUpdate = currentAnswers[sourceStepId];
-          
-          // Convert Yes/No to boolean if needed
+
           if (valueToUpdate === 'YES') valueToUpdate = true;
           if (valueToUpdate === 'NO') valueToUpdate = false;
         } else if (action.value_source === "from_workflow_outcome") {
-          // Not available mid-workflow, only at end
           console.warn(`[POST-COMPLETION ACTION] from_workflow_outcome not available mid-workflow`);
           continue;
         }
 
-        // Check if there's a condition
         if (action.condition) {
           const conditionField = action.condition.field;
           const conditionOperator = action.condition.operator;
           const conditionValue = action.condition.value;
-          
+
           const fieldValue = currentAnswers[conditionField];
-          
+
           let conditionMet = false;
           switch (conditionOperator) {
             case '=':
@@ -553,16 +519,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
             default:
               conditionMet = false;
           }
-          
+
           console.log(`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
-          
+
           if (!conditionMet) {
             console.log(`[POST-COMPLETION ACTION] Condition not met, skipping action`);
             continue;
           }
         }
 
-        // Perform the update
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
@@ -572,14 +537,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
         await base44.entities.Account.update(account.id, updateData);
 
         console.log(`[POST-COMPLETION ACTION] Successfully updated Account field: ${fieldToUpdate}`);
-        
-        // Force a refresh of the account data in the UI to reflect the update
-        // This will trigger the pre-fill logic to re-run with the new field value
+
         window.dispatchEvent(new CustomEvent('account-updated', { detail: { accountId: account.id, field: fieldToUpdate, value: valueToUpdate } }));
       } catch (error) {
         console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
         console.error(`[POST-COMPLETION ACTION] Error details:`, error.message);
-        // Continue with other actions even if one fails
       }
     }
   };
@@ -601,7 +563,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
           return account?.[parts[0]]?.[parts[1]];
         }
-        // Check entity data for fields like entity.country_of_incorporation
         if (entityData && parts[0] === 'entity') {
           return entityData[parts[1]];
         }
@@ -627,8 +588,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (account?.[fieldPath] !== undefined) {
         return account[fieldPath];
       }
-      
-      // Check entity data for direct field access (e.g., country_of_incorporation)
+
       if (entityData?.[fieldPath] !== undefined) {
         return entityData[fieldPath];
       }
@@ -643,7 +603,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         comparisonValue = getFieldValue(condition.value, linkedEntity);
       }
 
-      // Normalize YES/NO to true/false for boolean comparisons
       const normalizeBoolean = (val) => {
         if (val === 'YES') return 'true';
         if (val === 'NO') return 'false';
@@ -654,7 +613,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       const originalFieldValue = fieldValue;
       const originalComparisonValue = comparisonValue;
-      
+
       fieldValue = normalizeBoolean(fieldValue);
       comparisonValue = normalizeBoolean(comparisonValue);
 
@@ -733,14 +692,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return conditionMet;
     };
 
-    // NEW: Check for condition_groups (advanced multi-group conditional logic)
     if (logic?.condition_groups && logic.condition_groups.length > 0) {
       console.log('\n🟣🟣🟣 EVALUATING CONDITION GROUPS 🟣🟣🟣');
       console.log(`📊 Total groups: ${logic.condition_groups.length}`);
       console.log(`🔗 Overall operator: ${logic.overall_logic_operator}`);
       console.log(`✅ Overall TRUE step: ${logic.overall_true_step}`);
       console.log(`❌ Overall FALSE step: ${logic.overall_false_step}`);
-      
+
       const groupResults = [];
 
       for (let i = 0; i < logic.condition_groups.length; i++) {
@@ -760,13 +718,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
         for (let j = 0; j < group.conditions.length; j++) {
           const condition = group.conditions[j];
           const conditionMet = evaluateSingleCondition(condition);
-          
+
           if (group.group_operator === 'AND') {
             groupResult = groupResult && conditionMet;
-            if (!groupResult) break; // Short-circuit
+            if (!groupResult) break;
           } else {
             groupResult = groupResult || conditionMet;
-            if (groupResult) break; // Short-circuit
+            if (groupResult) break;
           }
         }
 
@@ -774,39 +732,34 @@ export default function AccountClassification({ account, onComplete, onCancel })
         groupResults.push({ group, result: groupResult });
       }
 
-      // NEW BEHAVIOR: First match wins - return the step ID directly
       console.log(`\n--- FIRST MATCH WINS LOGIC ---`);
       for (let i = 0; i < groupResults.length; i++) {
         const { group, result } = groupResults[i];
         console.log(`  Checking Group ${i + 1} (${group.group_name}): ${result ? 'TRUE ✅' : 'FALSE ❌'}`);
-        
+
         if (result === true) {
           console.log(`  🎯 FIRST MATCH FOUND! Using Group ${i + 1}'s TRUE path`);
           console.log(`  >>> RETURNING STEP: ${group.true_step}`);
           console.log('========== END CONDITIONAL LOGIC ==========\n');
-          return group.true_step; // Return the step ID directly
+          return group.true_step;
         }
       }
-      
-      // No groups matched - use fallback
+
       console.log(`  ⚠️ NO GROUPS MATCHED`);
-      // Use the last group's false_step, or overall_false_step, or first group's false_step
-      const fallbackStep = logic.overall_false_step || 
-                           groupResults[groupResults.length - 1]?.group.false_step || 
+      const fallbackStep = logic.overall_false_step ||
+                           groupResults[groupResults.length - 1]?.group.false_step ||
                            groupResults[0]?.group.false_step;
       console.log(`  >>> RETURNING FALLBACK STEP: ${fallbackStep}`);
       console.log('========== END CONDITIONAL LOGIC ==========\n');
-      return fallbackStep; // Return the step ID directly
+      return fallbackStep;
     }
 
-    // LEGACY: Fallback to old simple conditions
     console.log('\n--- EVALUATING LEGACY CONDITIONS ---');
     if (!logic?.conditions || logic.conditions.length === 0) {
       console.log('No conditions found, returning false');
       return false;
     }
 
-    // Check if there's a trigger condition
     if (logic.trigger_field && logic.trigger_value) {
       const triggerAnswer = currentAnswers[logic.trigger_field];
       if (String(triggerAnswer) !== String(logic.trigger_value)) {
@@ -823,7 +776,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (idx === 0) {
         result = conditionMet;
       } else {
-        // Use the previous condition's logic_operator to combine
         const prevLogicOp = logic.conditions[idx - 1]?.logic_operator || "AND";
         console.log(`Combining with previous result using ${prevLogicOp}: ${result} ${prevLogicOp} ${conditionMet}`);
         if (prevLogicOp === "AND") {
@@ -839,7 +791,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     return result;
   };
 
-  // Build step map - must be before any conditional returns that use it
   const stepMap = {};
   if (workflow?.steps) {
     workflow.steps.forEach(step => {
@@ -855,16 +806,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
     console.log(`   Has conditional_logic:`, !!step.conditional_logic);
     console.log(`   Full conditional_logic:`, JSON.stringify(step.conditional_logic, null, 2));
 
-    // Input types that can have default_next_step - if they have one, they're not action nodes
     const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input", "beneficiary_input", "controlling_person_input"];
     if (inputTypes.includes(step.question_type)) {
       console.log(`   ✓ Is input type: ${step.question_type}`);
-      // If it has a next step configured, it's not an action/end node
       if (step.default_next_step) {
         console.log(`   ✓ Has default_next_step: ${step.default_next_step} → NOT action node`);
         return false;
       }
-      // text_input without next step is typically a result/end
       if (step.question_type === "text_input") {
         console.log(`   ✓ Is text_input without default_next_step → IS action node`);
         return true;
@@ -873,7 +821,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return false;
     }
 
-    // Check for option-based branching on multiple_choice (NEW)
     if (step.question_type === "multiple_choice" && step.conditional_logic?.option_values?.length > 0) {
       console.log(`   ✓ Multiple choice with option_values branching`);
       console.log(`     option_values:`, step.conditional_logic.option_values);
@@ -885,7 +832,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Check for selection count branching on multiple_choice
     if (step.question_type === "multiple_choice") {
       console.log(`   ✓ Checking multiple choice selection count branching`);
       console.log(`     selection_count_operator:`, step.conditional_logic?.selection_count_operator);
@@ -898,13 +844,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Check for condition groups (advanced conditional logic)
     if (step.conditional_logic?.condition_groups?.length > 0) {
       console.log(`   ✓ Has condition_groups (${step.conditional_logic.condition_groups.length} groups) → NOT action node`);
       return false;
     }
 
-    // Check for conditional logic with next steps
     if (step.conditional_logic?.conditions?.length > 0) {
       console.log(`   ✓ Has legacy conditions (${step.conditional_logic.conditions.length} conditions)`);
       if (step.conditional_logic.next_step || step.conditional_logic.else_step) {
@@ -918,7 +862,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       console.log(`   → No options → IS action node`);
       return true;
     }
-    
+
     const hasOptionNextSteps = step.options.some(opt => opt.next_step);
     console.log(`   Options have next_step:`, hasOptionNextSteps);
     console.log(`   → Final result: ${!hasOptionNextSteps ? 'IS action node' : 'NOT action node'}`);
@@ -933,7 +877,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       console.error('❌ Current node not found!');
       return;
     }
-    
+
     console.log(`📋 Step Title: ${currentNode.step_title}`);
     console.log(`❓ Question Type: ${currentNode.question_type}`);
     console.log(`📊 Selected Value:`, selectedValue);
@@ -941,28 +885,40 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     const newAnswers = { ...answers };
 
-    if (currentNode.question_type === "single_choice" || 
+    if (currentNode.question_type === "single_choice" ||
         currentNode.question_type === "yes_no" ||
         currentNode.question_type === "multiple_choice") {
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
-    } else if (currentNode.question_type === "date_input" || 
+    } else if (currentNode.question_type === "date_input" ||
                currentNode.question_type === "number_input") {
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
     } else if (currentNode.question_type === "file_upload") {
-      if (!selectedValue) return;
-      newAnswers[currentNodeId] = selectedValue;
+      const fileConfig = currentNode.file_upload_config || {};
+      const requireDateReceived = fileConfig.require_date_received || false;
+
+      if (!selectedValue?.file_url) {
+        alert("Please upload a file.");
+        return;
+      }
+      if (requireDateReceived && !dateReceivedValue) {
+        alert("Please enter the date the document was received.");
+        return;
+      }
+      newAnswers[currentNodeId] = {
+        ...selectedValue,
+        date_received: dateReceivedValue
+      };
     } else if (currentNode.question_type === "multi_field_input") {
       console.log('\n📝 MULTI-FIELD INPUT VALIDATION:');
       console.log('  Multi-field values:', multiFieldValues);
       console.log('  Multi-field definitions:', currentNode.multi_fields);
-      
+
       const errors = {};
       const multiFields = currentNode.multi_fields || [];
 
       multiFields.forEach(field => {
-        // Check if field is conditionally visible - if not visible, skip validation entirely
         let isFieldVisible = true;
         if (field.conditional_visibility) {
           const condVis = field.conditional_visibility;
@@ -970,29 +926,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
           isFieldVisible = String(dependsOnValue) === String(condVis.required_value);
           console.log(`  Field "${field.field_id}" conditional_visibility: depends_on="${condVis.depends_on_field}", required_value="${condVis.required_value}", current_value="${dependsOnValue}", visible=${isFieldVisible}`);
         }
-        
-        // Skip validation for hidden fields
+
         if (!isFieldVisible) {
           console.log(`  Field "${field.field_id}" is hidden by conditional_visibility, skipping validation ⏭️`);
           return;
         }
-        
-        // Check if field is conditionally required
+
         let isFieldRequired = field.is_required;
-        
+
         if (field.conditional_required) {
           const condReq = field.conditional_required;
           const dependsOnValue = multiFieldValues[condReq.depends_on_field];
-          
+
           console.log(`  Field "${field.field_id}" has conditional_required: depends_on="${condReq.depends_on_field}", required_value="${condReq.required_value}", current_value=`, dependsOnValue);
-          
-          // Only required if the condition matches
+
           isFieldRequired = String(dependsOnValue) === String(condReq.required_value);
           console.log(`  Conditional required evaluation: ${isFieldRequired}`);
         }
-        
+
         console.log(`  Checking field "${field.field_id}" (${field.display_label}): visible=${isFieldVisible}, required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
-        
+
         if (isFieldRequired && !multiFieldValues[field.field_id]) {
           errors[field.field_id] = `${field.display_label} is required`;
           console.log(`    ❌ Required field missing!`);
@@ -1014,8 +967,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       newAnswers[currentNodeId] = multiFieldValues;
       console.log('  Saved multi-field values to answers:', multiFieldValues);
     } else if (currentNode.question_type === "address_input") {
-      // Validate all required address fields
-      if (!addressValues.street || !addressValues.city || !addressValues.state || 
+      if (!addressValues.street || !addressValues.city || !addressValues.state ||
           !addressValues.postal_code || !addressValues.country) {
         alert("All address fields are required");
         return;
@@ -1025,14 +977,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
         _address_config: currentNode.address_config || { target_field: "current_address", track_changes: true }
       };
     } else if (currentNode.question_type === "beneficiary_input") {
-      // Data is already in answers from the callback
       const beneficiaryData = newAnswers[currentNodeId];
       if (!beneficiaryData?.savedBeneficiaries || beneficiaryData.savedBeneficiaries.length === 0) {
         alert("Please add and save at least one beneficiary");
         return;
       }
     } else if (currentNode.question_type === "controlling_person_input") {
-      // Data is already in answers from the callback
       const controllingPersonData = newAnswers[currentNodeId];
       if (!controllingPersonData?.savedPersons || controllingPersonData.savedPersons.length === 0) {
         alert("Please add and save at least one controlling person");
@@ -1042,8 +992,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     setAnswers(newAnswers);
     console.log(`✅ Answers updated:`, newAnswers);
-    
-    // Execute post-completion actions for this step (only those with "after_step" timing)
+
     if (currentNode.post_completion_actions && currentNode.post_completion_actions.length > 0) {
       const afterStepActions = currentNode.post_completion_actions.filter(
         action => (action.execution_timing || "after_step") === "after_step"
@@ -1053,26 +1002,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
         await executePostCompletionActions(afterStepActions, newAnswers);
       }
     }
-    
-    // Only add to history if not already present (prevent duplicates)
-    const newHistory = history.includes(currentNodeId) 
-      ? history 
+
+    const newHistory = history.includes(currentNodeId)
+      ? history
       : [...history, currentNodeId];
     setHistory(newHistory);
     console.log(`📚 History updated:`, newHistory);
 
-    // Determine next step - CONDITIONAL LOGIC FIRST (highest priority)
     console.log('\n🔀 ========== DETERMINING NEXT STEP ========== 🔀');
     let nextNodeId = null;
 
-    // Check option-based branching for multiple_choice first (NEW - highest priority)
-    if (currentNode.question_type === "multiple_choice" && 
+    if (currentNode.question_type === "multiple_choice" &&
         currentNode.conditional_logic?.option_values?.length > 0) {
       const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
-      const matchFound = selectedOptions.some(selectedOpt => 
+      const matchFound = selectedOptions.some(selectedOpt =>
         currentNode.conditional_logic.option_values.includes(selectedOpt)
       );
-      
+
       if (matchFound) {
         nextNodeId = currentNode.conditional_logic.option_values_next_step;
       } else {
@@ -1080,7 +1026,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Check selection count branching for multiple_choice
     if (!nextNodeId && currentNode.question_type === "multiple_choice") {
       if (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step) {
         console.log('🔢 [COUNT-BASED BRANCHING] Detected selection count configuration');
@@ -1133,7 +1078,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Check conditional logic (including NEW condition_groups support)
     if (!nextNodeId && (currentNode.conditional_logic?.condition_groups?.length > 0 || currentNode.conditional_logic?.conditions?.length > 0)) {
       console.log('\n🔍🔍🔍 CHECKING CONDITIONAL LOGIC for step:', currentNodeId);
       const logic = currentNode.conditional_logic;
@@ -1143,36 +1087,33 @@ export default function AccountClassification({ account, onComplete, onCancel })
       console.log('🎯 Has legacy conditions:', !!logic.conditions?.length);
       console.log('🎯 Trigger Field:', logic.trigger_field);
       console.log('🎯 Trigger Value:', logic.trigger_value);
-      
-      // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
+
       let shouldEvaluateAdvancedLogic = true;
       if (logic.trigger_field && logic.trigger_value) {
         console.log('\n⚡ TRIGGER EVALUATION:');
-        // Trigger is defined - only evaluate if the current answer matches the trigger
         const currentAnswer = newAnswers[currentNodeId];
         const triggerAnswer = newAnswers[logic.trigger_field];
         shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
-        
+
         console.log(`  🔑 Trigger Field: "${logic.trigger_field}"`);
         console.log(`  🎯 Expected Trigger Value: "${logic.trigger_value}"`);
         console.log(`  💬 Current Step Answer: "${currentAnswer}"`);
         console.log(`  💬 Trigger Field Answer: "${triggerAnswer}"`);
         console.log(`  ✅ Should Evaluate Advanced Logic: ${shouldEvaluateAdvancedLogic}`);
-        
+
         if (!shouldEvaluateAdvancedLogic) {
           console.log(`  ⚠️ TRIGGER NOT MET - skipping advanced conditional logic`);
         }
       } else {
         console.log('ℹ️ No trigger defined - will evaluate conditional logic');
       }
-      
+
       if (shouldEvaluateAdvancedLogic) {
-        // NEW: Handle condition_groups (returns step ID directly)
         if (logic.condition_groups?.length > 0) {
           console.log('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
           nextNodeId = evaluateConditionalLogic(logic, newAnswers);
           console.log(`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
-          
+
           if (nextNodeId) {
             const nextStep = stepMap[nextNodeId];
             console.log(`  📌 Next Step Title: "${nextStep?.step_title || 'NOT FOUND'}"`);
@@ -1182,8 +1123,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           } else {
             console.warn(`  ⚠️ Condition groups returned null/undefined next step`);
           }
-        } 
-        // LEGACY: Handle old simple conditions
+        }
         else if (logic.conditions?.length > 0) {
           console.log('\n📋 Using LEGACY simple conditions logic');
           const conditionMet = evaluateConditionalLogic(logic, newAnswers);
@@ -1199,14 +1139,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
       } else {
         console.log('⏭️⏭️⏭️ Trigger not met, skipping conditional logic entirely');
       }
-      // If trigger doesn't match, fall through to check option's next_step
     }
 
-    // If no next step from conditional logic, check selected option
     console.log('\n🔸 Fallback Navigation Checks:');
     if (!nextNodeId && selectedValue && currentNode.options && currentNode.options.length > 0) {
       console.log('  📋 Checking option-based next_step...');
-      const selectedOption = currentNode.options.find(opt => 
+      const selectedOption = currentNode.options.find(opt =>
         opt.value === selectedValue || opt.label === selectedValue
       );
       console.log(`  Selected Option:`, selectedOption);
@@ -1217,8 +1155,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         console.log(`  ⚠️ Selected option has no next_step`);
       }
     }
-    
-    // If still no next step, check default_next_step
+
     if (!nextNodeId && currentNode.default_next_step) {
       console.log(`  📋 Using default_next_step: ${currentNode.default_next_step}`);
       nextNodeId = currentNode.default_next_step;
@@ -1226,7 +1163,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     console.log(`\n🎯 FINAL NEXT NODE ID: "${nextNodeId}"`);
 
-    // Validate next step exists
     if (nextNodeId && !stepMap[nextNodeId]) {
       console.error(`❌❌❌ CRITICAL ERROR: Next step "${nextNodeId}" not found in workflow stepMap!`);
       console.log('Available step IDs in workflow:', Object.keys(stepMap));
@@ -1237,7 +1173,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       console.log(`✅ Next step validated - Title: "${nextStep.step_title}"`);
     }
 
-    // For controlling_person_input and beneficiary_input, check default_next_step if no nextNodeId yet
     if (!nextNodeId && (currentNode.question_type === "controlling_person_input" || currentNode.question_type === "beneficiary_input")) {
       if (currentNode.default_next_step && stepMap[currentNode.default_next_step]) {
         console.log(`  Using default_next_step for ${currentNode.question_type}: ${currentNode.default_next_step}`);
@@ -1245,13 +1180,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Build unique completed path (no duplicates)
     const uniquePath = [...new Set([...newHistory, currentNodeId])];
 
     console.log(`\n🏁 FINAL DECISION:`);
     console.log(`  Next Node ID: ${nextNodeId}`);
     console.log(`  Is Action Node: ${isActionNode(currentNode)}`);
-    
+
     if (!nextNodeId || isActionNode(currentNode)) {
       console.log(`  🏁 Ending workflow - showing summary`);
       console.log(`  Completed Path:`, uniquePath);
@@ -1264,41 +1198,47 @@ export default function AccountClassification({ account, onComplete, onCancel })
     console.log(`  ➡️ Navigating to next step: ${nextNodeId} (${stepMap[nextNodeId]?.step_title})`);
     setCurrentNodeId(nextNodeId);
     console.log('🔵🔵🔵 ========== END HANDLE NEXT (NAVIGATION) ========== 🔵🔵🔵\n\n');
-    
-    // Restore values if navigating to a step that already has an answer
+
     const existingAnswer = newAnswers[nextNodeId];
     console.log(`[AccountClassification] Navigating to step ${stepMap[nextNodeId]?.step_title}, existing answer:`, existingAnswer);
-    
+
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
-      // Restore address values
       const { _address_config, ...savedAddress } = existingAnswer;
       setAddressValues(savedAddress);
       setSelectedValue("");
       setDateValue("");
+      setDateReceivedValue("");
+    } else if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer.file_url) {
+      setSelectedValue(existingAnswer);
+      setDateReceivedValue(existingAnswer.date_received || "");
+      setDateValue("");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setMultiFieldValues({});
     } else if (existingAnswer && typeof existingAnswer === 'object' && !existingAnswer.file_url) {
-      // Restore multi-field values or leave as is for beneficiary/controlling person inputs
       setMultiFieldValues(existingAnswer);
       setSelectedValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setDateValue("");
+      setDateReceivedValue("");
     } else if (existingAnswer) {
       setSelectedValue(existingAnswer || "");
       setDateValue(existingAnswer || "");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setMultiFieldValues({});
+      setDateReceivedValue("");
     } else {
-      // No existing answer - reset all values
       setSelectedValue("");
       setDateValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setMultiFieldValues({});
+      setDateReceivedValue("");
     }
     setMultiFieldErrors({});
   };
 
   const handleBack = () => {
     console.log('[AccountClassification] handleBack called');
-    
+
     if (showSummary) {
       setShowSummary(false);
       return;
@@ -1316,29 +1256,35 @@ export default function AccountClassification({ account, onComplete, onCancel })
     setAnswers(newAnswers);
     setHistory(history.slice(0, -1));
     setCurrentNodeId(previousNodeId);
-    
-    // Restore previous step's values
+
     const previousAnswer = answers[previousNodeId];
     console.log(`[AccountClassification] Going back to step ${stepMap[previousNodeId]?.step_title}, answer:`, previousAnswer);
-    
+
     if (previousAnswer && typeof previousAnswer === 'object' && previousAnswer._address_config) {
-      // Restore address values
       const { _address_config, ...savedAddress } = previousAnswer;
       setAddressValues(savedAddress);
       setSelectedValue("");
       setMultiFieldValues({});
       setDateValue("");
+      setDateReceivedValue("");
+    } else if (previousAnswer && typeof previousAnswer === 'object' && previousAnswer.file_url) {
+      setSelectedValue(previousAnswer);
+      setDateReceivedValue(previousAnswer.date_received || "");
+      setDateValue("");
+      setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
+      setMultiFieldValues({});
     } else if (previousAnswer && typeof previousAnswer === 'object' && !previousAnswer.file_url) {
-      // Restore multi-field values
       setMultiFieldValues(previousAnswer);
       setSelectedValue("");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setDateValue("");
+      setDateReceivedValue("");
     } else {
       setSelectedValue(previousAnswer || "");
       setDateValue(previousAnswer || "");
       setAddressValues({ street: "", city: "", state: "", postal_code: "", country: "" });
       setMultiFieldValues({});
+      setDateReceivedValue("");
     }
   };
 
@@ -1352,7 +1298,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
-    // Execute "after_workflow" post-completion actions from all steps
     console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
     for (const stepId of completedPath) {
       const step = stepMap[stepId];
@@ -1370,12 +1315,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let reportabilityStatus = "pending_review";
     let reason = finalNode?.help_text || finalNode?.step_title || "Classification completed";
 
-    if (finalNode?.step_title?.toLowerCase().includes("reportable") || 
+    if (finalNode?.step_title?.toLowerCase().includes("reportable") ||
         finalNode?.help_text?.toLowerCase().includes("reportable")) {
-      if (finalNode.step_title?.toLowerCase().includes("non-reportable") || 
+      if (finalNode.step_title?.toLowerCase().includes("non-reportable") ||
           finalNode.help_text?.toLowerCase().includes("non-reportable")) {
         reportabilityStatus = "non_reportable";
-      } else if (finalNode.step_title?.toLowerCase().includes("pending") || 
+      } else if (finalNode.step_title?.toLowerCase().includes("pending") ||
                  finalNode.help_text?.toLowerCase().includes("pending")) {
         reportabilityStatus = "pending_review";
       } else {
@@ -1383,7 +1328,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    const fileUploadAnswer = Object.values(cleanedAnswers).find(ans => 
+    const fileUploadAnswer = Object.values(cleanedAnswers).find(ans =>
       ans && typeof ans === 'object' && ans.file_url
     );
 
@@ -1394,21 +1339,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
       self_certification_obtained: finalNode?.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
 
-    // Note: "after_workflow" post-completion actions are now executed above before building classificationData
-    // This allows them to update the account in real-time
-    
-    // Legacy support: Still apply post-completion actions to classificationData for backward compatibility
     const allCompletedSteps = [...completedPath];
     for (const stepId of allCompletedSteps) {
       const step = stepMap[stepId];
       if (step?.post_completion_actions?.length > 0) {
         for (const action of step.post_completion_actions) {
-          // Only apply to classificationData if it's an "after_step" action (already executed)
-          // or if it doesn't have execution_timing set (legacy behavior)
           if (action.target_entity_type === "Account" && (!action.execution_timing || action.execution_timing === "after_step")) {
             let newValue = action.value;
-            
-            // Determine the value based on source
+
             if (action.value_source === "from_step_answer") {
               newValue = cleanedAnswers[action.value] || action.value;
             } else if (action.value_source === "from_workflow_outcome") {
@@ -1416,9 +1354,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 newValue = reportabilityStatus;
               }
             }
-            // static_value uses action.value directly
-            
-            // Apply the update to classificationData
+
             if (action.field_to_update && newValue) {
               classificationData[action.field_to_update] = newValue;
             }
@@ -1426,13 +1362,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
       }
     }
-    
-    // Also check the final node for post-completion actions
+
     if (finalNode?.post_completion_actions?.length > 0) {
       for (const action of finalNode.post_completion_actions) {
         if (action.target_entity_type === "Account" && (!action.execution_timing || action.execution_timing === "after_step")) {
           let newValue = action.value;
-          
+
           if (action.value_source === "from_step_answer") {
             newValue = cleanedAnswers[action.value] || action.value;
           } else if (action.value_source === "from_workflow_outcome") {
@@ -1440,7 +1375,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               newValue = reportabilityStatus;
             }
           }
-          
+
           if (action.field_to_update && newValue) {
             classificationData[action.field_to_update] = newValue;
           }
@@ -1448,8 +1383,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // Append new document to the documents array instead of overwriting
-    // Use the latest account data to ensure we have up-to-date documents
     if (fileUploadAnswer) {
       const currentAccount = latestAccountData || account;
       const existingDocuments = currentAccount.documents || [];
@@ -1461,14 +1394,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
         upload_date: fileUploadAnswer.upload_date || new Date().toISOString(),
         uploaded_by_email: user?.email || "Unknown",
         uploaded_by_name: user?.full_name || "Unknown User",
-        notes: "Uploaded via classification workflow"
+        notes: fileUploadAnswer.date_received ? `Uploaded via classification workflow - Date Received: ${fileUploadAnswer.date_received}` : "Uploaded via classification workflow"
       };
       classificationData.documents = [...existingDocuments, newDocument];
       classificationData.self_certification_obtained = true;
     }
 
-    // Handle address input - update account address and create audit log
-    const addressAnswer = Object.values(cleanedAnswers).find(ans => 
+    const addressAnswer = Object.values(cleanedAnswers).find(ans =>
       ans && typeof ans === 'object' && ans._address_config
     );
 
@@ -1478,10 +1410,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const currentAccount = latestAccountData || account;
       const previousAddress = currentAccount[targetField] || {};
 
-      // Update the address field
       classificationData[targetField] = newAddress;
 
-      // Create audit log entry if tracking is enabled
       if (_address_config.track_changes !== false) {
         try {
           await base44.entities.AuditLog.create({
@@ -1536,18 +1466,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
         { value: "YES", label: "Yes" },
         { value: "NO", label: "No" }
       ];
-      
+
       return (
         <div className="space-y-3">
           <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
             {options.map((option) => (
-              <div 
+              <div
                 key={option.value}
                 className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
                 onClick={() => setSelectedValue(option.value)}
               >
                 <RadioGroupItem value={option.value} id={option.value} />
-                <Label 
+                <Label
                   htmlFor={option.value}
                   className="flex-1 cursor-pointer font-medium text-slate-900"
                 >
@@ -1583,7 +1513,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.question_type === "multiple_choice") {
-      // Parse selected values - stored as comma-separated string
       const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
 
       const handleCheckboxChange = (optionValue, checked) => {
@@ -1599,7 +1528,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return (
         <div className="space-y-3">
           {currentNode.options?.map((option) => (
-            <div 
+            <div
               key={option.value}
               className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
                 selectedOptions.includes(option.value)
@@ -1608,12 +1537,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
               }`}
               onClick={() => handleCheckboxChange(option.value, !selectedOptions.includes(option.value))}
             >
-              <Checkbox 
+              <Checkbox
                 checked={selectedOptions.includes(option.value)}
                 onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
                 id={`option-${option.value}`}
               />
-              <Label 
+              <Label
                 htmlFor={`option-${option.value}`}
                 className="flex-1 cursor-pointer font-medium text-slate-900"
               >
@@ -1645,9 +1574,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.question_type === "date_input") {
-      // Extract just the date part (YYYY-MM-DD) from ISO strings
       const displayDate = dateValue ? (dateValue.includes('T') ? dateValue.split('T')[0] : dateValue) : '';
-      
+
       return (
         <div className="space-y-3">
           <Input
@@ -1678,6 +1606,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (currentNode.question_type === "file_upload") {
+      const fileConfig = currentNode.file_upload_config || {};
+      const requireDateReceived = fileConfig.require_date_received || false;
+
       const handleFileUpload = async (file) => {
         if (!file) return;
 
@@ -1689,7 +1620,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
             file_url,
             file_name: file.name,
             upload_date: new Date().toISOString(),
-            uploaded_by: user?.email
+            uploaded_by: user?.email,
+            date_received: dateReceivedValue || ""
           };
 
           setSelectedValue(uploadMetadata);
@@ -1715,15 +1647,25 @@ export default function AccountClassification({ account, onComplete, onCancel })
         e.preventDefault();
         e.stopPropagation();
         setDragActive(false);
-        
+
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           handleFileUpload(e.dataTransfer.files[0]);
         }
       };
 
+      const handleDateReceivedChange = (date) => {
+        setDateReceivedValue(date);
+        if (selectedValue && typeof selectedValue === 'object' && selectedValue.file_url) {
+          setSelectedValue({
+            ...selectedValue,
+            date_received: date
+          });
+        }
+      };
+
       return (
-        <div className="space-y-3">
-          <div 
+        <div className="space-y-4">
+          <div
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
               dragActive
                 ? 'border-indigo-500 bg-indigo-50'
@@ -1742,7 +1684,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               accept=".pdf,.jpg,.jpeg,.png"
               disabled={uploadingFile}
             />
-            
+
             {uploadingFile ? (
               <div className="space-y-2">
                 <Loader2 className="w-12 h-12 mx-auto text-indigo-600 animate-spin" />
@@ -1755,7 +1697,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   {selectedValue.file_name}
                 </p>
                 <p className="text-xs text-green-700">Uploaded successfully</p>
-                
+
                 <div className="flex gap-3 justify-center">
                   <Button
                     type="button"
@@ -1798,6 +1740,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
               </>
             )}
           </div>
+
+          {requireDateReceived && (
+            <div className="mt-4">
+              <Label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Date Received
+                <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={dateReceivedValue}
+                onChange={(e) => handleDateReceivedChange(e.target.value)}
+                className="mt-1.5"
+                placeholder="Select date received"
+              />
+            </div>
+          )}
         </div>
       );
     }
@@ -1820,7 +1779,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const currentAccount = latestAccountData || account;
       const existingAddress = currentAccount[targetField] || {};
 
-      // Find uploaded document from previous file_upload step
       const uploadedDocument = (() => {
         for (const [stepId, answerValue] of Object.entries(answers)) {
           const step = workflow.steps.find(s => s.step_id === stepId);
@@ -1833,7 +1791,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       return (
         <div className="space-y-4">
-          {/* Show uploaded self-certification document */}
           {uploadedDocument && (
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4">
@@ -1843,6 +1800,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     <div>
                       <p className="text-sm font-semibold text-blue-900">Self-Certification Document</p>
                       <p className="text-xs text-blue-700">{uploadedDocument.file_name}</p>
+                      {uploadedDocument.date_received && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          <Calendar className="w-3 h-3 inline mr-1" />
+                          Received: {uploadedDocument.date_received}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <Button
@@ -1862,7 +1825,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
             </Card>
           )}
 
-          {/* Show existing address if available */}
           {(existingAddress.street || existingAddress.city || existingAddress.country) && (
             <Alert className="bg-slate-50 border-slate-200">
               <Info className="w-4 h-4 text-slate-600" />
@@ -1956,7 +1918,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (currentNode.question_type === "beneficiary_input") {
       const existingAnswer = answers[currentNodeId];
       console.log(`[AccountClassification] Rendering beneficiary_input, existing answer:`, existingAnswer);
-      
+
       return (
         <BeneficiaryInputRenderer
           account={latestAccountData || account}
@@ -1990,7 +1952,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (currentNode.question_type === "controlling_person_input") {
       const existingAnswer = answers[currentNodeId];
       console.log(`[AccountClassification] Rendering controlling_person_input, existing answer:`, existingAnswer);
-      
+
       return (
         <ControllingPersonInputRenderer
           account={latestAccountData || account}
@@ -2021,9 +1983,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     return null;
-    };
+  };
 
-  // Early returns - MUST be after all hooks and function definitions
   if (!account) {
     return (
       <div className="p-12 text-center">
@@ -2068,7 +2029,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   }
 
   const currentNode = showSummary ? null : stepMap[currentNodeId];
-  
+
   if (!currentNode && !showSummary) {
     return (
       <div className="p-12 text-center">
@@ -2086,10 +2047,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const totalSteps = completedPath.length || history.length + 1;
   const progress = Math.round((currentStepIndex / totalSteps) * 100);
 
-  // Summary Screen
   if (showSummary) {
     const finalNode = stepMap[completedPath[completedPath.length - 1]];
-    const isReportable = finalNode?.step_title?.toLowerCase().includes("reportable") && 
+    const isReportable = finalNode?.step_title?.toLowerCase().includes("reportable") &&
                          !finalNode?.step_title?.toLowerCase().includes("non-reportable");
 
     return (
@@ -2124,8 +2084,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
         )}
 
         <Card className={`border-2 ${
-          isReportable 
-            ? 'bg-amber-50 border-amber-200' 
+          isReportable
+            ? 'bg-amber-50 border-amber-200'
             : 'bg-green-50 border-green-200'
         }`}>
           <CardHeader className="border-b border-slate-200">
@@ -2139,8 +2099,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-700">Status:</span>
                 <Badge className={`text-sm ${
-                  isReportable 
-                    ? 'bg-amber-600 text-white' 
+                  isReportable
+                    ? 'bg-amber-600 text-white'
                     : 'bg-green-600 text-white'
                 }`}>
                   {isReportable ? 'Reportable' : 'Non-Reportable'}
@@ -2170,30 +2130,27 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 const answer = answers[stepId];
                 if (!step || !answer) return null;
 
-                // Handle multiple choice (comma-separated values)
                 let answerLabel;
                 if (typeof answer === 'string' && answer.includes(',') && step.question_type === 'multiple_choice') {
                   const selectedValues = answer.split(',').filter(Boolean);
-                  const labels = selectedValues.map(v => 
+                  const labels = selectedValues.map(v =>
                     step.options?.find(o => o.value === v)?.label || v
                   );
                   answerLabel = labels.join(', ');
                 } else if (typeof answer === 'object' && answer !== null) {
-                  // Handle special object types with user-friendly display
                   if (answer.file_name) {
-                    answerLabel = answer.file_name;
+                    answerLabel = answer.date_received
+                      ? `${answer.file_name} (Received: ${answer.date_received})`
+                      : answer.file_name;
                   } else if (answer.controlling_persons_count !== undefined || answer.savedPersons) {
-                    // Check for either legacy or new format
                     answerLabel = `${answer.savedPersons?.length || answer.controlling_persons_count || 0} controlling person(s) added`;
                   } else if (answer.beneficiaries_count !== undefined || answer.savedBeneficiaries) {
-                    // Check for either legacy or new format
                     answerLabel = `${answer.savedBeneficiaries?.length || answer.beneficiaries_count || 0} beneficiary(ies) added`;
                   } else if (answer._address_config) {
                     const { _address_config, ...addr } = answer;
                     const parts = [addr.street, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean);
                     answerLabel = parts.join(', ') || 'Address entered';
                   } else {
-                    // Multi-field or other object - show field values
                     const fieldValues = Object.entries(answer)
                       .filter(([k]) => !k.startsWith('_'))
                       .map(([k, v]) => v)
@@ -2228,16 +2185,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </Card>
 
         <div className="flex justify-between gap-3 pt-4 border-t">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleBack}
             size="lg"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Review Answers
           </Button>
-          <Button 
+          <Button
             onClick={completeClassification}
             size="lg"
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
@@ -2250,7 +2207,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     );
   }
 
-  // Main workflow screen
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -2317,7 +2273,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </DialogContent>
       </Dialog>
 
-      {/* Document Preview Dialog */}
       <Dialog open={showDocumentPreview} onOpenChange={setShowDocumentPreview}>
         <DialogContent className="max-w-5xl max-h-[90vh]">
           <DialogHeader>
@@ -2334,13 +2289,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
           </DialogHeader>
           <div className="w-full h-[70vh]">
             {previewDocument?.file_name?.match(/\.(jpg|jpeg|png)$/i) ? (
-              <img 
-                src={previewDocument.file_url} 
-                alt="Document preview" 
+              <img
+                src={previewDocument.file_url}
+                alt="Document preview"
                 className="w-full h-full object-contain bg-slate-100"
               />
             ) : previewDocument?.file_name?.match(/\.pdf$/i) ? (
-              <iframe 
+              <iframe
                 src={previewDocument.file_url}
                 className="w-full h-full border-0"
                 title="PDF preview"
@@ -2356,7 +2311,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       <div className="space-y-2">
         <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-          <div 
+          <div
             className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
@@ -2368,7 +2323,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
       </div>
 
-      {/* Workflow Introduction Section */}
       {workflow.display_workflow_introduction && (
         <Alert className="bg-blue-50 border-blue-200">
           <Info className="w-4 h-4 text-blue-600" />
@@ -2386,10 +2340,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     const isComputedCondition = field.field_type === "computed_condition";
 
                     if (isComputedCondition) {
-                      // Computed condition logic
                       const value1 = Number(accountData[field.computation_field_1]) || 0;
                       const value2 = Number(accountData[field.computation_field_2]) || 0;
-                      
+
                       let computedResult = 0;
                       switch (field.computation_operator) {
                         case "add":
@@ -2434,7 +2387,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                       }
 
                       const displayText = conditionMet ? field.true_text : field.false_text;
-                      
+
                       return (
                         <div key={idx} className="text-sm text-blue-800">
                           {field.display_label && <strong>{field.display_label}: </strong>}
@@ -2442,10 +2395,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
                         </div>
                       );
                     } else {
-                      // Simple field display
                       let fieldValue = accountData[field.field_name];
-                      
-                      // Format the value based on the formatter
+
                       if (field.value_formatter === 'boolean_alive_deceased' && typeof fieldValue === 'boolean') {
                         fieldValue = fieldValue ? 'Alive' : 'Deceased';
                       } else if (field.value_formatter === 'pre_existing_new' && typeof fieldValue === 'boolean') {
@@ -2453,7 +2404,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                       } else if (field.value_formatter === 'capitalize' && typeof fieldValue === 'string') {
                         fieldValue = fieldValue.charAt(0).toUpperCase() + fieldValue.slice(1);
                       }
-                      
+
                       return (
                         <p key={idx} className="text-sm text-blue-800">
                           <strong>{field.display_label}:</strong> {fieldValue || 'N/A'}
@@ -2501,7 +2452,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       <div className="flex items-center gap-2 flex-wrap">
         {history.map((stepId, idx) => {
           const step = stepMap[stepId];
-          
+
           return (
             <React.Fragment key={stepId}>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-green-50 border-green-200">
@@ -2566,7 +2517,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </CardContent>
       </Card>
 
-      {/* View Previous Answers - Always show if there are answered questions */}
       {Object.keys(answers).filter(k => !k.startsWith('_')).length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
@@ -2579,26 +2529,28 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 {Object.entries(answers).filter(([key]) => !key.startsWith('_')).map(([key, value]) => {
                   const step = stepMap[key];
                   if (!step) return null;
-                  
-                  // Format display value based on type
+
                   let displayValue = '';
-                  if (typeof value === 'object' && value !== null) {
+                  if (typeof value === 'string' && value.includes(',') && step.question_type === 'multiple_choice') {
+                    const selectedValues = value.split(',').filter(Boolean);
+                    const labels = selectedValues.map(v =>
+                      step.options?.find(o => o.value === v)?.label || v
+                    );
+                    displayValue = labels.join(', ');
+                  } else if (typeof value === 'object' && value !== null) {
                     if (value.file_name) {
-                      // File upload
-                      displayValue = value.file_name;
+                      displayValue = value.date_received
+                        ? `${value.file_name} (Received: ${value.date_received})`
+                        : value.file_name;
                     } else if (value._address_config) {
-                      // Address input - format nicely
                       const { _address_config, ...addr } = value;
                       const parts = [addr.street, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean);
                       displayValue = parts.join(', ') || 'Address entered';
                     } else if (value.savedBeneficiaries) {
-                      // Beneficiary input
                       displayValue = `${value.savedBeneficiaries.length} beneficiary(ies) added`;
                     } else if (value.savedPersons) {
-                      // Controlling person input
                       displayValue = `${value.savedPersons.length} controlling person(s) added`;
                     } else {
-                      // Multi-field or other object - show field values
                       const fieldValues = Object.entries(value)
                         .filter(([k]) => !k.startsWith('_'))
                         .map(([k, v]) => v)
@@ -2606,19 +2558,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
                       displayValue = fieldValues.join(', ') || 'Data entered';
                     }
                   } else {
-                    // Check if it's a comma-separated multiple choice
-                    if (typeof value === 'string' && value.includes(',') && step.question_type === 'multiple_choice') {
-                      const selectedValues = value.split(',').filter(Boolean);
-                      const labels = selectedValues.map(v => 
-                        step.options?.find(o => o.value === v)?.label || v
-                      );
-                      displayValue = labels.join(', ');
-                    } else {
-                      // Single value - try to find label from options
-                      displayValue = step.options?.find(o => o.value === value)?.label || String(value || '');
-                    }
+                    displayValue = step.options?.find(o => o.value === value)?.label || String(value || '');
                   }
-                  
+
                   return (
                     <div key={key} className="flex items-start justify-between gap-4 text-sm py-2 border-b border-slate-200 last:border-0">
                       <span className="text-slate-600 text-xs flex-shrink-0 max-w-[40%]">
@@ -2636,7 +2578,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </Card>
       )}
 
-      {/* AI Workflow Helper */}
       <AIWorkflowHelper
         currentStep={currentNode}
         workflow={workflow}
@@ -2646,26 +2587,27 @@ export default function AccountClassification({ account, onComplete, onCancel })
       />
 
       <div className="flex justify-between gap-3 pt-4 border-t">
-        <Button 
-          type="button" 
-          variant="outline" 
+        <Button
+          type="button"
+          variant="outline"
           onClick={handleBack}
           size="lg"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
-        <Button 
+        <Button
           onClick={handleNext}
           disabled={
-            !isActionNode(currentNode) && 
-            !selectedValue && 
+            !isActionNode(currentNode) &&
+            !selectedValue &&
             !(currentNode.question_type === "multi_field_input" && Object.keys(multiFieldValues).length > 0) &&
-            !(currentNode.question_type === "address_input" && addressValues.street && addressValues.city && 
+            !(currentNode.question_type === "address_input" && addressValues.street && addressValues.city &&
               addressValues.state && addressValues.postal_code && addressValues.country) &&
             !(currentNode.question_type === "beneficiary_input" && answers[currentNodeId]?.savedBeneficiaries?.length > 0) &&
-            !(currentNode.question_type === "controlling_person_input" && answers[currentNodeId]?.savedPersons?.length > 0)
-            }
+            !(currentNode.question_type === "controlling_person_input" && answers[currentNodeId]?.savedPersons?.length > 0) &&
+            !(currentNode.question_type === "file_upload" && selectedValue?.file_url && (!currentNode.file_upload_config?.require_date_received || dateReceivedValue))
+          }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >
