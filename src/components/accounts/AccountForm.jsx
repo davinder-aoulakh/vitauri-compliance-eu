@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { XCircle, Save, Info, Loader2, Sparkles } from "lucide-react";
+import { XCircle, Save, Info, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
@@ -87,6 +87,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     self_certification_upload_date: account?.self_certification_upload_date || null,
     self_certification_obtained: account?.self_certification_obtained || false,
     self_certification_date: account?.self_certification_date || null,
+    self_certification_request_date: account?.self_certification_request_date || "",
+    self_certification_overdue: account?.self_certification_overdue || false,
     documents: account?.documents || []
   });
 
@@ -1272,6 +1274,47 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4 mt-4">
+          {/* Self-Certification Tracking */}
+          <div className="p-4 border-2 border-amber-100 rounded-lg bg-amber-50/30">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Self-Certification Tracking</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="self_certification_request_date">Request Date</Label>
+                <Input
+                  id="self_certification_request_date"
+                  type="date"
+                  value={formData.self_certification_request_date}
+                  onChange={(e) => handleChange("self_certification_request_date", e.target.value)}
+                  className="mt-1.5"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Date when new self-certification was requested
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label>Overdue Status</Label>
+                  {formData.self_certification_overdue && (
+                    <Badge className="bg-red-100 text-red-800 border-red-300 text-xs">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      90+ Days Overdue
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded">
+                  <p className="text-xs text-slate-600">
+                    {formData.self_certification_overdue 
+                      ? "This account is flagged as overdue (90+ days since request)"
+                      : formData.self_certification_request_date
+                        ? "Monitoring for 90-day threshold"
+                        : "No request date set"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Smart Document Parser */}
           {showSmartUpload ? (
             <div className="space-y-4">
