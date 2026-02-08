@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -75,6 +74,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           if (step.mapped_field && step.mapped_field.entity_type === entityType && step.mapped_field.field_name) {
             const fieldName = step.mapped_field.field_name;
             let fieldValue = entityData[fieldName];
+            console.log(`[PREFILL - WorkflowRunner] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}", question_type="${step.question_type}"`);
 
             if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
               if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
@@ -103,6 +103,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               } 
               else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
                 initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+                console.log(`[PREFILL] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
+              } else if (step.question_type === 'single_choice') {
+                // Pre-fill dropdown with entity field value
+                initialAnswers[step.step_id] = String(fieldValue);
+                console.log(`[PREFILL] Single choice pre-filled with: ${fieldValue}`);
               } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
                 initialAnswers[step.step_id] = fieldValue;
               } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {
