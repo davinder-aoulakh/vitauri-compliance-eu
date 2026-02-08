@@ -54,12 +54,20 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     { value: 'gross_income_from_financial_assets', label: 'Gross Income >50% from (Re)-Investing/Trading in Financial Assets?', type: 'boolean', options: ['true', 'false'] }
   ];
 
+  // Helper function to get options from referenced data
+  const getReferencedOptions = (entityName, fieldName) => {
+    return referencedData
+      .filter(rd => rd.entity_name === entityName && rd.field_name === fieldName && rd.is_published)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(rd => rd.value);
+  };
+
   const entityFields = [
-    { value: 'entity_type', label: 'Entity Type', type: 'enum', options: ['corporation', 'trust', 'partnership', 'fund', 'branch', 'other'] },
-    { value: 'rfi_status', label: 'RFI Status', type: 'enum', options: ['pending_classification', 'reporting_fi', 'non_reporting_fi', 'nfe_active', 'nfe_passive'] },
-    { value: 'fi_type', label: 'FI Type', type: 'enum', options: ['custodial_institution', 'depository_institution', 'investment_entity', 'specified_insurance_company', 'not_applicable'] },
+    { value: 'entity_type', label: 'Entity Type', type: 'enum', options: getReferencedOptions('Entity', 'entity_type') },
+    { value: 'rfi_status', label: 'RFI Status', type: 'enum', options: getReferencedOptions('Entity', 'rfi_status') },
+    { value: 'fi_type', label: 'FI Type', type: 'enum', options: getReferencedOptions('Entity', 'fi_type') },
     { value: 'country_of_incorporation', label: 'Country of Incorporation', type: 'string' },
-    { value: 'status', label: 'Status', type: 'enum', options: ['active', 'inactive'] }
+    { value: 'status', label: 'Status', type: 'enum', options: getReferencedOptions('Entity', 'status') }
   ];
 
   // Always show both account and entity fields - account triggers need both
