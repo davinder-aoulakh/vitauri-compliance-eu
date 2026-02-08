@@ -427,12 +427,14 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         console.log(`🎯 [LOGIC] First condition, result = ${result}`);
       } else {
         const prevResult = result;
-        if (condition.logic_operator === "AND") {
-          result = result && conditionMet;
-          console.log(`🔗 [LOGIC] AND: ${prevResult} && ${conditionMet} = ${result}`);
-        } else if (condition.logic_operator === "OR") {
+        console.log(`🔗 [LOGIC] Logic operator for this condition: "${condition.logic_operator}"`);
+        if (condition.logic_operator === "OR") {
           result = result || conditionMet;
           console.log(`🔗 [LOGIC] OR: ${prevResult} || ${conditionMet} = ${result}`);
+        } else {
+          // Default to AND if not specified or if explicitly AND
+          result = result && conditionMet;
+          console.log(`🔗 [LOGIC] AND: ${prevResult} && ${conditionMet} = ${result}`);
         }
       }
     });
