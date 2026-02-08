@@ -553,8 +553,7 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-          )}
-        </div>
+        )}
 
         {showTour && tourConfig && (
           <GuidedTour
