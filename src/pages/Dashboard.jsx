@@ -285,21 +285,21 @@ export default function Dashboard() {
             ))}
           </div>
 
-            {showTour && tourConfig && (
+          {showTour && tourConfig && (
             <GuidedTour
               steps={tourConfig.steps}
               tourKey={tourConfig.key}
               onComplete={() => setShowTour(false)}
               onSkip={() => setShowTour(false)}
             />
-            )}
-            </div>
-            </div>
-            );
-            }
+          )}
+        </div>
+      </div>
+    );
+  }
 
-            // Default dashboard
-            return (
+  // Default dashboard
+  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
         {/* Header */}
