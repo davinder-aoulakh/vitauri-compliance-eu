@@ -236,18 +236,31 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     // Check conditional logic first - but only if trigger condition matches (or no trigger defined)
     if (currentNode.conditional_logic?.conditions?.length > 0) {
       const logic = currentNode.conditional_logic;
+      console.log("🔍 [CONDITIONAL LOGIC] Evaluating conditional logic for step:", currentNodeId);
+      console.log("📋 [CONDITIONAL LOGIC] Logic config:", logic);
+      console.log("💾 [CONDITIONAL LOGIC] All answers:", newAnswers);
       
       // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
       let shouldEvaluateAdvancedLogic = true;
       if (logic.trigger_field && logic.trigger_value) {
         // Trigger is defined - only evaluate if the current answer matches the trigger
         const currentAnswer = newAnswers[currentNodeId];
+        console.log("🎯 [TRIGGER] Trigger field:", logic.trigger_field);
+        console.log("🎯 [TRIGGER] Trigger value expected:", logic.trigger_value);
+        console.log("🎯 [TRIGGER] Current answer:", currentAnswer);
         shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
+        console.log("🎯 [TRIGGER] Should evaluate advanced logic:", shouldEvaluateAdvancedLogic);
+      } else {
+        console.log("🎯 [TRIGGER] No trigger condition defined, evaluating logic directly");
       }
       
       if (shouldEvaluateAdvancedLogic) {
         const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+        console.log("✅ [RESULT] Condition met:", conditionMet);
+        console.log("➡️ [RESULT] Next step will be:", conditionMet ? logic.next_step : logic.else_step);
         nextNodeId = conditionMet ? logic.next_step : logic.else_step;
+      } else {
+        console.log("⏭️ [TRIGGER] Trigger not matched, falling through to option's next_step");
       }
       // If trigger doesn't match, fall through to check option's next_step
     } 
@@ -329,19 +342,35 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   };
 
   const evaluateConditionalLogic = (logic, answers) => {
-    if (!logic.conditions || logic.conditions.length === 0) return false;
+    console.log("🔧 [EVALUATE] Starting condition evaluation");
+    if (!logic.conditions || logic.conditions.length === 0) {
+      console.log("❌ [EVALUATE] No conditions found, returning false");
+      return false;
+    }
 
+    console.log(`🔢 [EVALUATE] Evaluating ${logic.conditions.length} condition(s)`);
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {
+      console.log(`\n--- Condition ${idx + 1} ---`);
+      console.log("📝 [CONDITION] Field:", condition.field);
+      console.log("🔍 [CONDITION] Operator:", condition.operator);
+      console.log("🎯 [CONDITION] Expected value:", condition.value);
+      
       // Try to get field value - condition.field might be step_id or step_title
       let fieldValue = answers[condition.field];
+      console.log("💾 [CONDITION] Direct lookup result:", fieldValue);
       
       // If not found by direct lookup, try to find by matching step title
       if (fieldValue === undefined) {
+        console.log("🔎 [CONDITION] Direct lookup failed, searching by step title...");
         const matchingStep = workflow.steps.find(s => s.step_title === condition.field || s.step_id === condition.field);
         if (matchingStep) {
+          console.log("✅ [CONDITION] Found matching step:", matchingStep.step_id, matchingStep.step_title);
           fieldValue = answers[matchingStep.step_id];
+          console.log("💾 [CONDITION] Value from matched step:", fieldValue);
+        } else {
+          console.log("❌ [CONDITION] No matching step found for field:", condition.field);
         }
       }
       
@@ -351,47 +380,64 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       switch (condition.operator) {
         case "=":
           conditionMet = String(fieldValue) === String(condition.value);
+          console.log(`🔍 [OPERATOR] Equals: '${fieldValue}' === '${condition.value}' = ${conditionMet}`);
           break;
         case "!=":
           conditionMet = String(fieldValue) !== String(condition.value);
+          console.log(`🔍 [OPERATOR] Not equals: '${fieldValue}' !== '${condition.value}' = ${conditionMet}`);
           break;
         case "in":
-          conditionMet = condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
+          const inValues = condition.value.split(",").map(v => v.trim());
+          conditionMet = inValues.includes(String(fieldValue));
+          console.log(`🔍 [OPERATOR] In: '${fieldValue}' in [${inValues.join(', ')}] = ${conditionMet}`);
           break;
         case "not_in":
-          conditionMet = !condition.value.split(",").map(v => v.trim()).includes(String(fieldValue));
+          const notInValues = condition.value.split(",").map(v => v.trim());
+          conditionMet = !notInValues.includes(String(fieldValue));
+          console.log(`🔍 [OPERATOR] Not in: '${fieldValue}' not in [${notInValues.join(', ')}] = ${conditionMet}`);
           break;
         case "contains":
           conditionMet = String(fieldValue).includes(condition.value);
+          console.log(`🔍 [OPERATOR] Contains: '${fieldValue}'.includes('${condition.value}') = ${conditionMet}`);
           break;
         case ">":
           conditionMet = parseFloat(fieldValue) > parseFloat(condition.value);
+          console.log(`🔍 [OPERATOR] Greater than: ${fieldValue} > ${condition.value} = ${conditionMet}`);
           break;
         case "<":
           conditionMet = parseFloat(fieldValue) < parseFloat(condition.value);
+          console.log(`🔍 [OPERATOR] Less than: ${fieldValue} < ${condition.value} = ${conditionMet}`);
           break;
         case ">=":
           conditionMet = parseFloat(fieldValue) >= parseFloat(condition.value);
+          console.log(`🔍 [OPERATOR] Greater or equal: ${fieldValue} >= ${condition.value} = ${conditionMet}`);
           break;
         case "<=":
           conditionMet = parseFloat(fieldValue) <= parseFloat(condition.value);
+          console.log(`🔍 [OPERATOR] Less or equal: ${fieldValue} <= ${condition.value} = ${conditionMet}`);
           break;
         default:
           conditionMet = false;
+          console.log(`❌ [OPERATOR] Unknown operator: ${condition.operator}`);
       }
 
       // Combine with previous result
       if (idx === 0) {
         result = conditionMet;
+        console.log(`🎯 [LOGIC] First condition, result = ${result}`);
       } else {
+        const prevResult = result;
         if (condition.logic_operator === "AND") {
           result = result && conditionMet;
+          console.log(`🔗 [LOGIC] AND: ${prevResult} && ${conditionMet} = ${result}`);
         } else if (condition.logic_operator === "OR") {
           result = result || conditionMet;
+          console.log(`🔗 [LOGIC] OR: ${prevResult} || ${conditionMet} = ${result}`);
         }
       }
     });
 
+    console.log(`\n✅ [FINAL] Final result: ${result}\n`);
     return result;
   };
 
