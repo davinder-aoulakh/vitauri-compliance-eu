@@ -126,16 +126,29 @@ export default function AccountClassification({ account, onComplete, onCancel })
     staleTime: 60000
   });
 
-  const evaluateTriggerConditions = (triggerConfig, accountData) => {
-    if (!triggerConfig?.enabled) return false;
+  const evaluateTriggerConditions = (triggerConfig, accountData, entityData = null) => {
+    console.log('\n🔍 [TRIGGER EVALUATION] Starting...');
+    console.log('  Trigger Config:', triggerConfig);
+    console.log('  Account Data:', accountData);
+    console.log('  Entity Data:', entityData);
+    
+    if (!triggerConfig?.enabled) {
+      console.log('  ❌ Trigger not enabled');
+      return false;
+    }
 
     const conditions = triggerConfig.conditions || [];
     const computedConditions = triggerConfig.computed_conditions || [];
 
-    if (conditions.length === 0 && computedConditions.length === 0) return true;
+    if (conditions.length === 0 && computedConditions.length === 0) {
+      console.log('  ✅ No conditions - auto-match');
+      return true;
+    }
 
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
+
+      console.log(`    🔎 Getting field value for: "${fieldPath}"`);
 
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
@@ -144,10 +157,24 @@ export default function AccountClassification({ account, onComplete, onCancel })
           value = value?.[part];
           if (value === undefined) return null;
         }
+        console.log(`      → Account nested field value: "${value}"`);
         return value;
       }
 
-      return accountData?.[fieldPath];
+      // Check account data first
+      if (accountData?.[fieldPath] !== undefined) {
+        console.log(`      → Account field value: "${accountData[fieldPath]}"`);
+        return accountData[fieldPath];
+      }
+
+      // Check entity data for entity-specific fields
+      if (entityData?.[fieldPath] !== undefined) {
+        console.log(`      → Entity field value: "${entityData[fieldPath]}"`);
+        return entityData[fieldPath];
+      }
+
+      console.log(`      → Field not found in account or entity`);
+      return null;
     };
 
     let result = true;
@@ -276,16 +303,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow && account) {
+      console.log('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
+      console.log('  Available workflows:', workflows.map(w => w.workflow_name));
+      console.log('  Account holder type:', account?.account_holder_type);
+      console.log('  Linked Entity:', linkedEntity);
+      
       const matchingWorkflows = workflows.filter(w => {
+        console.log(`\n  📋 Evaluating workflow: "${w.workflow_name}"`);
         if (w.trigger_conditions?.enabled) {
-          return evaluateTriggerConditions(w.trigger_conditions, account);
+          const matches = evaluateTriggerConditions(w.trigger_conditions, account, linkedEntity);
+          console.log(`    Result: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
+          return matches;
         }
+        console.log(`    ⏭️ No trigger conditions`);
         return false;
       });
 
       let selectedWorkflow = null;
 
       if (matchingWorkflows.length > 0) {
+        console.log(`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, matchingWorkflows.map(w => w.workflow_name));
         const sortedWorkflows = matchingWorkflows.sort((a, b) => {
           const priorityA = a.trigger_conditions?.priority || 0;
           const priorityB = b.trigger_conditions?.priority || 0;
@@ -293,7 +330,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
           return parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0");
         });
         selectedWorkflow = sortedWorkflows[0];
+        console.log(`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_name}" (priority: ${selectedWorkflow.trigger_conditions?.priority || 0})`);
       } else {
+        console.log(`\n  ⚠️ No workflows matched triggers - using fallback name matching`);
         const isIndividual = account?.account_holder_type === "individual";
         const fallbackWorkflows = workflows.filter(w => {
           const nameMatch = isIndividual
@@ -311,13 +350,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       if (selectedWorkflow) {
+        console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         setWorkflow(selectedWorkflow);
         if (selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
           setCurrentNodeId(selectedWorkflow.steps[0].step_id);
         }
+      } else {
+        console.log(`\n  ❌ No workflow selected`);
       }
     }
-  }, [workflows, workflow, account]);
+  }, [workflows, workflow, account, linkedEntity]);
 
   useEffect(() => {
     if (!currentNodeId) return;
