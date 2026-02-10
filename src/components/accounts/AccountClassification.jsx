@@ -550,6 +550,145 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
+  const getFieldValue = (fieldPath, entityData = null) => {
+    if (fieldPath.includes('.')) {
+      const parts = fieldPath.split('.');
+      const stepAnswer = answers[parts[0]];
+      if (stepAnswer && typeof stepAnswer === 'object') {
+        return stepAnswer[parts[1]];
+      }
+      if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
+        return account?.[parts[0]]?.[parts[1]];
+      }
+      if (entityData && parts[0] === 'entity') {
+        return entityData[parts[1]];
+      }
+      return null;
+    }
+
+    if (answers[fieldPath] !== undefined) {
+      return answers[fieldPath];
+    }
+
+    if (fieldPath === '_is_pre_existing' || fieldPath === 'is_pre_existing') {
+      return account?.is_pre_existing;
+    } else if (fieldPath === '_account_holder_is_alive' || fieldPath === 'account_holder_is_alive') {
+      return account?.account_holder_is_alive;
+    } else if (fieldPath === '_account_holder_type' || fieldPath === 'account_holder_type') {
+      return account?.account_holder_type;
+    } else if (fieldPath === 'country_of_residence') {
+      return account?.country_of_residence;
+    } else if (fieldPath === 'place_of_birth') {
+      return account?.place_of_birth;
+    }
+
+    if (account?.[fieldPath] !== undefined) {
+      return account[fieldPath];
+    }
+
+    if (entityData?.[fieldPath] !== undefined) {
+      return entityData[fieldPath];
+    }
+
+    return null;
+  };
+
+  const evaluateSingleCondition = (condition) => {
+    let fieldValue = getFieldValue(condition.field, linkedEntity);
+    let comparisonValue = condition.value;
+    if (condition.value_type === 'field_reference') {
+      comparisonValue = getFieldValue(condition.value, linkedEntity);
+    }
+
+    const normalizeBoolean = (val) => {
+      if (val === 'YES') return 'true';
+      if (val === 'NO') return 'false';
+      if (val === true) return 'true';
+      if (val === false) return 'false';
+      return val;
+    };
+
+    const originalFieldValue = fieldValue;
+    const originalComparisonValue = comparisonValue;
+
+    fieldValue = normalizeBoolean(fieldValue);
+    comparisonValue = normalizeBoolean(comparisonValue);
+
+    console.log(`  🔍 Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}", value_type="${condition.value_type}"`);
+    console.log(`  📊 Original field value:`, originalFieldValue, `→ Normalized:`, fieldValue);
+    console.log(`  📊 Original comparison value:`, originalComparisonValue, `→ Normalized:`, comparisonValue);
+
+    let conditionMet = false;
+
+    const normalizeCountryForComparison = (val) => {
+      if (!val) return '';
+      const valLower = String(val).toLowerCase();
+      const countryInfo = crsCountryMap[valLower];
+      if (countryInfo?.code) {
+        return countryInfo.code.toLowerCase();
+      }
+      return valLower;
+    };
+
+    const isCountryComparison = (
+      condition.field?.toLowerCase().includes('country') ||
+      condition.value?.toLowerCase().includes('country')
+    );
+
+    switch (condition.operator) {
+      case "=":
+        if (isCountryComparison) {
+          conditionMet = normalizeCountryForComparison(fieldValue) === normalizeCountryForComparison(comparisonValue);
+        } else {
+          conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
+        }
+        break;
+      case "!=":
+        if (isCountryComparison) {
+          conditionMet = normalizeCountryForComparison(fieldValue) !== normalizeCountryForComparison(comparisonValue);
+        } else {
+          conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
+        }
+        break;
+      case "in":
+        const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
+        conditionMet = inValues.includes(String(fieldValue || '').toLowerCase());
+        break;
+      case "not_in":
+        const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
+        conditionMet = !notInValues.includes(String(fieldValue || '').toLowerCase());
+        break;
+      case "contains":
+        conditionMet = String(fieldValue || '').toLowerCase().includes(String(comparisonValue || '').toLowerCase());
+        break;
+      case ">":
+        conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
+        break;
+      case "<":
+        conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
+        break;
+      case ">=":
+        conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
+        break;
+      case "<=":
+        conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
+        break;
+      case "is_crs":
+        const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
+        conditionMet = countryLookup?.isCrs === true;
+        break;
+      case "is_not_crs":
+        const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
+        conditionMet = countryLookupNot?.isCrs === false;
+        break;
+      default:
+        conditionMet = false;
+    }
+
+    console.log(`  >>> Condition Result: ${conditionMet}`);
+    return conditionMet;
+  };
+
   const executePostCompletionActions = async (actions, currentAnswers) => {
     if (!actions || actions.length === 0) return;
 
@@ -637,145 +776,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     console.log('🔢 Has condition_groups:', !!logic?.condition_groups?.length);
     console.log('🔢 Number of condition_groups:', logic?.condition_groups?.length || 0);
     console.log('📊 Current Answers Being Evaluated:', JSON.stringify(currentAnswers, null, 2));
-
-    const getFieldValue = (fieldPath, entityData = null) => {
-      if (fieldPath.includes('.')) {
-        const parts = fieldPath.split('.');
-        const stepAnswer = currentAnswers[parts[0]];
-        if (stepAnswer && typeof stepAnswer === 'object') {
-          return stepAnswer[parts[1]];
-        }
-        if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
-          return account?.[parts[0]]?.[parts[1]];
-        }
-        if (entityData && parts[0] === 'entity') {
-          return entityData[parts[1]];
-        }
-        return null;
-      }
-
-      if (currentAnswers[fieldPath] !== undefined) {
-        return currentAnswers[fieldPath];
-      }
-
-      if (fieldPath === '_is_pre_existing' || fieldPath === 'is_pre_existing') {
-        return account?.is_pre_existing;
-      } else if (fieldPath === '_account_holder_is_alive' || fieldPath === 'account_holder_is_alive') {
-        return account?.account_holder_is_alive;
-      } else if (fieldPath === '_account_holder_type' || fieldPath === 'account_holder_type') {
-        return account?.account_holder_type;
-      } else if (fieldPath === 'country_of_residence') {
-        return account?.country_of_residence;
-      } else if (fieldPath === 'place_of_birth') {
-        return account?.place_of_birth;
-      }
-
-      if (account?.[fieldPath] !== undefined) {
-        return account[fieldPath];
-      }
-
-      if (entityData?.[fieldPath] !== undefined) {
-        return entityData[fieldPath];
-      }
-
-      return null;
-    };
-
-    const evaluateSingleCondition = (condition) => {
-      let fieldValue = getFieldValue(condition.field, linkedEntity);
-      let comparisonValue = condition.value;
-      if (condition.value_type === 'field_reference') {
-        comparisonValue = getFieldValue(condition.value, linkedEntity);
-      }
-
-      const normalizeBoolean = (val) => {
-        if (val === 'YES') return 'true';
-        if (val === 'NO') return 'false';
-        if (val === true) return 'true';
-        if (val === false) return 'false';
-        return val;
-      };
-
-      const originalFieldValue = fieldValue;
-      const originalComparisonValue = comparisonValue;
-
-      fieldValue = normalizeBoolean(fieldValue);
-      comparisonValue = normalizeBoolean(comparisonValue);
-
-      console.log(`  🔍 Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}", value_type="${condition.value_type}"`);
-      console.log(`  📊 Original field value:`, originalFieldValue, `→ Normalized:`, fieldValue);
-      console.log(`  📊 Original comparison value:`, originalComparisonValue, `→ Normalized:`, comparisonValue);
-
-      let conditionMet = false;
-
-      const normalizeCountryForComparison = (val) => {
-        if (!val) return '';
-        const valLower = String(val).toLowerCase();
-        const countryInfo = crsCountryMap[valLower];
-        if (countryInfo?.code) {
-          return countryInfo.code.toLowerCase();
-        }
-        return valLower;
-      };
-
-      const isCountryComparison = (
-        condition.field?.toLowerCase().includes('country') ||
-        condition.value?.toLowerCase().includes('country')
-      );
-
-      switch (condition.operator) {
-        case "=":
-          if (isCountryComparison) {
-            conditionMet = normalizeCountryForComparison(fieldValue) === normalizeCountryForComparison(comparisonValue);
-          } else {
-            conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
-          }
-          break;
-        case "!=":
-          if (isCountryComparison) {
-            conditionMet = normalizeCountryForComparison(fieldValue) !== normalizeCountryForComparison(comparisonValue);
-          } else {
-            conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
-          }
-          break;
-        case "in":
-          const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-          conditionMet = inValues.includes(String(fieldValue || '').toLowerCase());
-          break;
-        case "not_in":
-          const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-          conditionMet = !notInValues.includes(String(fieldValue || '').toLowerCase());
-          break;
-        case "contains":
-          conditionMet = String(fieldValue || '').toLowerCase().includes(String(comparisonValue || '').toLowerCase());
-          break;
-        case ">":
-          conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
-          break;
-        case "<":
-          conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
-          break;
-        case ">=":
-          conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
-          break;
-        case "<=":
-          conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
-          break;
-        case "is_crs":
-          const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
-          conditionMet = countryLookup?.isCrs === true;
-          break;
-        case "is_not_crs":
-          const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
-          conditionMet = countryLookupNot?.isCrs === false;
-          break;
-        default:
-          conditionMet = false;
-      }
-
-      console.log(`  >>> Condition Result: ${conditionMet}`);
-      return conditionMet;
-    };
 
     if (logic?.condition_groups && logic.condition_groups.length > 0) {
       console.log('\n🟣🟣🟣 EVALUATING CONDITION GROUPS 🟣🟣🟣');
