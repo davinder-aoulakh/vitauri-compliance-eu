@@ -1975,6 +1975,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                       availableOptions={editedStep.options || []}
                       allSteps={allSteps}
                       currentStepId={editedStep.step_id}
+                      availableConditionFields={availableConditionFields}
                       onGroupsChange={(groups) => handleConditionalLogicChange("multi_choice_routing_groups", groups)}
                       onDefaultStepChange={(step) => handleConditionalLogicChange("multi_choice_default_step", step)}
                     />

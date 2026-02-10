@@ -258,6 +258,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             setCurrentStepIndex(nextIndex);
             return;
           }
+        } else if (group.false_step) {
+          console.log(`   ❌ Group NOT matched, routing to false_step: ${group.false_step}`);
+          const nextIndex = workflow.steps.findIndex(s => s.step_id === group.false_step);
+          if (nextIndex !== -1) {
+            setCurrentStepIndex(nextIndex);
+            return;
+          }
         }
       }
       

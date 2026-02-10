@@ -21,6 +21,7 @@ export default function MultiChoiceRoutingBuilder({
   availableOptions = [],
   allSteps = [],
   currentStepId = "",
+  availableConditionFields = [],
   onGroupsChange,
   onDefaultStepChange
 }) {
@@ -289,13 +290,33 @@ export default function MultiChoiceRoutingBuilder({
                           <div className="space-y-2">
                             <div className="grid grid-cols-3 gap-2">
                               <div>
-                                <Label className="text-xs">Field</Label>
-                                <Input
+                                <Label className="text-xs">Step ID / Field</Label>
+                                <Select
                                   value={condition.field || ""}
-                                  onChange={(e) => handleConditionChange(groupIndex, condIndex, "field", e.target.value)}
-                                  placeholder="field_name"
-                                  className="h-8 text-xs mt-1"
-                                />
+                                  onValueChange={(value) => handleConditionChange(groupIndex, condIndex, "field", value)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-1">
+                                    <SelectValue placeholder="Select field..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-[300px]">
+                                    {Object.entries(availableConditionFields.reduce((acc, field) => {
+                                      if (!acc[field.group]) acc[field.group] = [];
+                                      acc[field.group].push(field);
+                                      return acc;
+                                    }, {})).map(([group, fields]) => (
+                                      <React.Fragment key={group}>
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1 first:border-t-0 first:mt-0">
+                                          {group}
+                                        </div>
+                                        {fields.map(field => (
+                                          <SelectItem key={`field-${field.value}`} value={field.value}>
+                                            {field.label} {field.isCountry && '🌍'}
+                                          </SelectItem>
+                                        ))}
+                                      </React.Fragment>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div>
                                 <Label className="text-xs">Operator</Label>
@@ -336,13 +357,44 @@ export default function MultiChoiceRoutingBuilder({
                               </div>
                             </div>
                             <div>
-                              <Label className="text-xs">Value</Label>
-                              <Input
-                                value={condition.value || ""}
-                                onChange={(e) => handleConditionChange(groupIndex, condIndex, "value", e.target.value)}
-                                placeholder="value"
-                                className="h-8 text-xs mt-1"
-                              />
+                              <Label className="text-xs">
+                                {condition.value_type === 'field_reference' ? 'Reference Field' : 'Value'}
+                              </Label>
+                              {condition.value_type === 'field_reference' ? (
+                                <Select
+                                  value={condition.value || ""}
+                                  onValueChange={(value) => handleConditionChange(groupIndex, condIndex, "value", value)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-1">
+                                    <SelectValue placeholder="Select field to compare..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-[300px]">
+                                    {Object.entries(availableConditionFields.reduce((acc, field) => {
+                                      if (!acc[field.group]) acc[field.group] = [];
+                                      acc[field.group].push(field);
+                                      return acc;
+                                    }, {})).map(([group, fields]) => (
+                                      <React.Fragment key={`ref-${group}`}>
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-t mt-1 first:border-t-0 first:mt-0">
+                                          {group}
+                                        </div>
+                                        {fields.map(field => (
+                                          <SelectItem key={`ref-${field.value}`} value={field.value}>
+                                            {field.label} {field.isCountry && '🌍'}
+                                          </SelectItem>
+                                        ))}
+                                      </React.Fragment>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  value={condition.value || ""}
+                                  onChange={(e) => handleConditionChange(groupIndex, condIndex, "value", e.target.value)}
+                                  placeholder="value"
+                                  className="h-8 text-xs mt-1"
+                                />
+                              )}
                             </div>
                           </div>
                         )}
@@ -351,29 +403,55 @@ export default function MultiChoiceRoutingBuilder({
                   </div>
                 </div>
 
-                {/* Next Step for this Group */}
-                <div>
-                  <Label className="text-xs font-semibold text-green-700">
-                    If conditions match → Go to:
-                  </Label>
-                  <Select
-                    value={group.next_step}
-                    onValueChange={(value) => handleGroupChange(groupIndex, "next_step", value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs mt-1 border-green-300">
-                      <SelectValue placeholder="Select next step..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allSteps
-                        .filter(s => s.step_id !== currentStepId)
-                        .map(s => (
-                          <SelectItem key={s.step_id} value={s.step_id}>
-                            {s.step_title}
-                          </SelectItem>
-                        ))}
-                      <SelectItem value="complete">Complete Workflow</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {/* Next Steps for this Group */}
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                  <div>
+                    <Label className="text-xs font-semibold text-green-700">
+                      If conditions match → Go to:
+                    </Label>
+                    <Select
+                      value={group.next_step}
+                      onValueChange={(value) => handleGroupChange(groupIndex, "next_step", value)}
+                    >
+                      <SelectTrigger className="h-8 text-xs mt-1 border-green-300">
+                        <SelectValue placeholder="Select next step..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allSteps
+                          .filter(s => s.step_id !== currentStepId)
+                          .map(s => (
+                            <SelectItem key={s.step_id} value={s.step_id}>
+                              {s.step_title}
+                            </SelectItem>
+                          ))}
+                        <SelectItem value="complete">Complete Workflow</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-red-700">
+                      Otherwise (don't match) → Go to:
+                    </Label>
+                    <Select
+                      value={group.false_step || ""}
+                      onValueChange={(value) => handleGroupChange(groupIndex, "false_step", value)}
+                    >
+                      <SelectTrigger className="h-8 text-xs mt-1 border-red-300">
+                        <SelectValue placeholder="Continue to next group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>Continue to next group</SelectItem>
+                        {allSteps
+                          .filter(s => s.step_id !== currentStepId)
+                          .map(s => (
+                            <SelectItem key={s.step_id} value={s.step_id}>
+                              {s.step_title}
+                            </SelectItem>
+                          ))}
+                        <SelectItem value="complete">Complete Workflow</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardContent>
             </Card>
