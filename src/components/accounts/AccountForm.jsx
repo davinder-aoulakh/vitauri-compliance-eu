@@ -28,6 +28,7 @@ import AIFormAssistant from "../ai/AIFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
+  const [referencedData, setReferencedData] = useState([]);
   const [formData, setFormData] = useState({
     entity_id: account?.entity_id || "",
     account_number: account?.account_number || "",
@@ -104,7 +105,17 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     if (account) {
       setInitialData(JSON.parse(JSON.stringify(account)));
     }
+    loadReferencedData();
   }, [account]);
+
+  const loadReferencedData = async () => {
+    try {
+      const data = await base44.entities.ReferencedData.filter({ is_published: true });
+      setReferencedData(data);
+    } catch (error) {
+      console.error("Error loading referenced data:", error);
+    }
+  };
 
   // Auto-determine if account is pre-existing based on account creation date
   useEffect(() => {
@@ -508,14 +519,26 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     <SelectValue placeholder="Select entity type..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
-                    <SelectItem value="corporation">Corporation</SelectItem>
-                    <SelectItem value="trust">Trust</SelectItem>
-                    <SelectItem value="partnership">Partnership</SelectItem>
-                    <SelectItem value="fund">Fund</SelectItem>
-                    <SelectItem value="llc">LLC</SelectItem>
-                    <SelectItem value="foundation">Foundation</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {referencedData
+                      .filter(item => item.entity_name === 'Account' && item.field_name === 'account_holder_entity_type')
+                      .sort((a, b) => a.order - b.order)
+                      .map(item => (
+                        <SelectItem key={item.id} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))
+                    }
+                    {referencedData.filter(item => item.entity_name === 'Account' && item.field_name === 'account_holder_entity_type').length === 0 && (
+                      <>
+                        <SelectItem value="corporation">Corporation</SelectItem>
+                        <SelectItem value="trust">Trust</SelectItem>
+                        <SelectItem value="partnership">Partnership</SelectItem>
+                        <SelectItem value="fund">Fund</SelectItem>
+                        <SelectItem value="llc">LLC</SelectItem>
+                        <SelectItem value="foundation">Foundation</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-slate-500 mt-1">
