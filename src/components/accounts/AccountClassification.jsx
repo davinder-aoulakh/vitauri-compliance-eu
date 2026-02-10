@@ -929,6 +929,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
+    if (step.conditional_logic?.multi_choice_routing_groups?.length > 0) {
+      console.log(`   ✓ Has multi_choice_routing_groups (${step.conditional_logic.multi_choice_routing_groups.length} groups) → NOT action node`);
+      return false;
+    }
+
     if (step.conditional_logic?.condition_groups?.length > 0) {
       console.log(`   ✓ Has condition_groups (${step.conditional_logic.condition_groups.length} groups) → NOT action node`);
       return false;
