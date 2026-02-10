@@ -1273,6 +1273,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Beneficiaries Section - Only for Deceased Account Holders */}
           {formData.account_holder_type === "individual" && !formData.account_holder_is_alive && account?.id && (
             <div className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50/30 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-700">Beneficiaries</h3>
+                <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                  {formData.beneficiaries_count || 0} Beneficiary(ies)
+                </Badge>
+              </div>
               <BeneficiaryManager 
                 account={account} 
                 tenant={tenant}
@@ -1283,6 +1289,12 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           {/* Controlling Persons Section - Only for Entity Account Holders */}
           {formData.account_holder_type === "entity" && account?.id && (
             <div className="p-4 border-2 border-indigo-200 rounded-lg bg-indigo-50/30 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-700">Controlling Persons</h3>
+                <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
+                  {formData.controlling_persons_count || 0} Controlling Person(s)
+                </Badge>
+              </div>
               <ControllingPersonManager 
                 account={account} 
                 tenant={tenant}
