@@ -286,7 +286,11 @@ export default function MultiChoiceRoutingBuilder({
                         )}
 
                         {/* Condition Configuration - Field Comparison */}
-                        {condition.condition_type === "field_comparison" && (
+                        {condition.condition_type === "field_comparison" && (() => {
+                          const selectedField = availableConditionFields.find(f => f.value === condition.field);
+                          const isCountryField = selectedField?.isCountry;
+                          
+                          return (
                           <div className="space-y-2">
                             <div className="grid grid-cols-3 gap-2">
                               <div>
@@ -337,6 +341,12 @@ export default function MultiChoiceRoutingBuilder({
                                     <SelectItem value="contains">Contains</SelectItem>
                                     <SelectItem value="in">In</SelectItem>
                                     <SelectItem value="not_in">Not In</SelectItem>
+                                    {isCountryField && (
+                                      <>
+                                        <SelectItem value="is_crs">Is CRS Country 🌍</SelectItem>
+                                        <SelectItem value="is_not_crs">Is Not CRS Country 🌍</SelectItem>
+                                      </>
+                                    )}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -391,13 +401,15 @@ export default function MultiChoiceRoutingBuilder({
                                 <Input
                                   value={condition.value || ""}
                                   onChange={(e) => handleConditionChange(groupIndex, condIndex, "value", e.target.value)}
-                                  placeholder="value"
+                                  placeholder={condition.operator === 'is_crs' || condition.operator === 'is_not_crs' ? 'N/A (CRS lookup)' : 'value'}
                                   className="h-8 text-xs mt-1"
+                                  disabled={condition.operator === 'is_crs' || condition.operator === 'is_not_crs'}
                                 />
                               )}
                             </div>
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
