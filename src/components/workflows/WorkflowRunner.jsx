@@ -867,6 +867,19 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
   };
 
+  const isActionNode = (step) => {
+    if (!step) return false;
+    
+    // A step is an action node if it has any routing mechanism
+    return !!(
+      step.conditional_logic?.condition_groups?.length > 0 ||
+      step.conditional_logic?.conditions?.length > 0 ||
+      step.conditional_logic?.multi_choice_routing_groups?.length > 0 ||
+      step.options?.some(opt => opt.next_step) ||
+      step.default_next_step
+    );
+  };
+
   const handleComplete = async () => {
     setLoading(true);
     
