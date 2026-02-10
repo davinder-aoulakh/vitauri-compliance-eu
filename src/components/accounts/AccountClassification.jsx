@@ -1157,17 +1157,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
           console.log(`   ✅ Group matched! Navigating to: ${group.next_step}`);
           nextNodeId = group.next_step;
           break;
-        } else if (group.false_step) {
-          console.log(`   ❌ Group NOT matched, routing to false_step: ${group.false_step}`);
-          nextNodeId = group.false_step;
-          break;
         }
       }
       
-      // Use default step if no groups matched
-      if (!nextNodeId && currentNode.conditional_logic.multi_choice_default_step) {
-        console.log('   ⚠️ No routing groups matched, using default step');
-        nextNodeId = currentNode.conditional_logic.multi_choice_default_step;
+      // If no groups matched, check for false_step on last evaluated group or use default
+      if (!nextNodeId) {
+        console.log('   ⚠️ No routing groups matched');
+        const lastGroup = currentNode.conditional_logic.multi_choice_routing_groups[currentNode.conditional_logic.multi_choice_routing_groups.length - 1];
+        if (lastGroup?.false_step) {
+          console.log(`   → Using last group's false_step: ${lastGroup.false_step}`);
+          nextNodeId = lastGroup.false_step;
+        } else if (currentNode.conditional_logic.multi_choice_default_step) {
+          console.log(`   → Using default step: ${currentNode.conditional_logic.multi_choice_default_step}`);
+          nextNodeId = currentNode.conditional_logic.multi_choice_default_step;
+        }
       }
     }
 

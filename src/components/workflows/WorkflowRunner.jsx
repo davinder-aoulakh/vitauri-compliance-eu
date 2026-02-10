@@ -258,18 +258,22 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             setCurrentStepIndex(nextIndex);
             return;
           }
-        } else if (group.false_step) {
-          console.log(`   ❌ Group NOT matched, routing to false_step: ${group.false_step}`);
-          const nextIndex = workflow.steps.findIndex(s => s.step_id === group.false_step);
-          if (nextIndex !== -1) {
-            setCurrentStepIndex(nextIndex);
-            return;
-          }
         }
       }
       
-      console.log('   ⚠️  No routing groups matched, using default step');
+      // If no groups matched, check for false_step on last group or use default
+      console.log('   ⚠️ No routing groups matched');
+      const lastGroup = currentStep.conditional_logic.multi_choice_routing_groups[currentStep.conditional_logic.multi_choice_routing_groups.length - 1];
+      if (lastGroup?.false_step) {
+        console.log(`   → Using last group's false_step: ${lastGroup.false_step}`);
+        const nextIndex = workflow.steps.findIndex(s => s.step_id === lastGroup.false_step);
+        if (nextIndex !== -1) {
+          setCurrentStepIndex(nextIndex);
+          return;
+        }
+      }
       if (currentStep.conditional_logic.multi_choice_default_step) {
+        console.log(`   → Using default step: ${currentStep.conditional_logic.multi_choice_default_step}`);
         const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.conditional_logic.multi_choice_default_step);
         if (nextIndex !== -1) {
           setCurrentStepIndex(nextIndex);
