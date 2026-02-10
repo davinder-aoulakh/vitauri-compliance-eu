@@ -237,8 +237,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             }
             console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
-            const evaluatedCondition = await evaluateConditionalLogic({ conditions: [condition] }, answer, answers);
-            conditionMet = !!evaluatedCondition;
+            conditionMet = await evaluateSingleCondition(condition, answers);
             console.log(`      - Field comparison: ${conditionMet}`);
           }
           
@@ -449,6 +448,148 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
   };
 
+  const getFieldValue = (fieldPath, allAnswers) => {
+    if (!fieldPath) return undefined;
+    
+    if (fieldPath.includes('.')) {
+      const [stepId, subField] = fieldPath.split('.');
+      const stepAnswer = allAnswers[stepId];
+      
+      if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
+        const value = stepAnswer[subField];
+        console.log(`getFieldValue("${fieldPath}") - stepAnswer[${subField}]:`, value);
+        return value;
+      }
+      console.log(`getFieldValue("${fieldPath}") - stepAnswer not an object or undefined:`, stepAnswer);
+      return undefined;
+    }
+    
+    const value = allAnswers[fieldPath];
+    console.log(`getFieldValue("${fieldPath}") - direct lookup:`, value);
+    return value;
+  };
+
+  const evaluateSingleCondition = async (condition, allAnswers) => {
+    console.log('    --- Evaluating Single Condition ---');
+    console.log('    Condition Object:', JSON.stringify(condition, null, 2));
+    console.log(`    Field: ${condition.field}, Operator: ${condition.operator}, Value: ${condition.value}, Value Type: ${condition.value_type}`);
+    
+    const fieldAnswer = getFieldValue(condition.field, allAnswers);
+    console.log(`    Field Answer for "${condition.field}":`, fieldAnswer);
+    console.log(`    Field Answer Type:`, typeof fieldAnswer);
+    
+    let comparisonValue = condition.value;
+    if (condition.value_type === 'field_reference') {
+      console.log(`    Value Type is field_reference, looking up: ${condition.value}`);
+      comparisonValue = getFieldValue(condition.value, allAnswers);
+      console.log(`    Resolved field reference value:`, comparisonValue);
+    } else {
+      console.log(`    Value Type is static, using value: ${comparisonValue}`);
+    }
+    
+    let met = false;
+
+    const isArrayAnswer = Array.isArray(fieldAnswer);
+    
+    switch (condition.operator) {
+      case '=':
+        if (isArrayAnswer) {
+          met = fieldAnswer.includes(comparisonValue);
+        } else {
+          met = fieldAnswer === comparisonValue;
+        }
+        break;
+      case '!=':
+        if (isArrayAnswer) {
+          met = !fieldAnswer.includes(comparisonValue);
+        } else {
+          met = fieldAnswer !== comparisonValue;
+        }
+        break;
+      case '>':
+        met = Number(fieldAnswer) > Number(comparisonValue);
+        break;
+      case '<':
+        met = Number(fieldAnswer) < Number(comparisonValue);
+        break;
+      case '>=':
+        met = Number(fieldAnswer) >= Number(comparisonValue);
+        break;
+      case '<=':
+        met = Number(fieldAnswer) <= Number(comparisonValue);
+        break;
+      case 'contains':
+        if (isArrayAnswer) {
+          met = fieldAnswer.some(opt => String(opt).includes(String(comparisonValue)));
+        } else {
+          met = String(fieldAnswer || '').includes(String(comparisonValue));
+        }
+        break;
+      case 'in':
+        if (isArrayAnswer) {
+          const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
+          met = fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+        } else {
+          met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+        }
+        break;
+      case 'not_in':
+        if (isArrayAnswer) {
+          const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
+          met = !fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+        } else {
+          met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+        }
+        break;
+      case 'is_crs':
+        console.log('    [IS_CRS OPERATOR] - checking fieldAnswer:', fieldAnswer);
+        if (fieldAnswer) {
+          try {
+            const crsCountries = await base44.entities.CrsCountryInfo.filter({
+              $or: [
+                { country_name: fieldAnswer },
+                { country_code: fieldAnswer }
+              ]
+            });
+            console.log('    [IS_CRS] CRS Countries found:', crsCountries);
+            met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
+            console.log('    [IS_CRS] Result - met:', met);
+          } catch (error) {
+            console.error("    [IS_CRS] Error checking CRS country status:", error);
+            met = false;
+          }
+        } else {
+          console.log('    [IS_CRS] No fieldAnswer provided, met = false');
+          met = false;
+        }
+        break;
+      case 'is_not_crs':
+        if (fieldAnswer) {
+          try {
+            const crsCountries = await base44.entities.CrsCountryInfo.filter({
+              $or: [
+                { country_name: fieldAnswer },
+                { country_code: fieldAnswer }
+              ]
+            });
+            met = crsCountries.length === 0 || crsCountries[0].is_crs_country === false;
+          } catch (error) {
+            console.error("Error checking CRS country status:", error);
+            met = true;
+          }
+        } else {
+          met = true;
+        }
+        break;
+      default:
+        met = false;
+    }
+
+    console.log(`    >>> Condition Result: ${met}`);
+    console.log('    --- End Single Condition ---\n');
+    return met;
+  };
+
   const evaluateConditionalLogic = async (logic, currentAnswer, allAnswers) => {
     console.log('\n========== EVALUATING CONDITIONAL LOGIC ==========');
     console.log('Full Logic Object:', JSON.stringify(logic, null, 2));
@@ -457,148 +598,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log('Trigger Value:', logic?.trigger_value);
     console.log('Has condition_groups:', !!logic?.condition_groups?.length);
     console.log('Number of condition_groups:', logic?.condition_groups?.length || 0);
-    
-    const getFieldValue = (fieldPath) => {
-      if (!fieldPath) return undefined;
-      
-      if (fieldPath.includes('.')) {
-        const [stepId, subField] = fieldPath.split('.');
-        const stepAnswer = allAnswers[stepId];
-        
-        if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
-          const value = stepAnswer[subField];
-          console.log(`getFieldValue("${fieldPath}") - stepAnswer[${subField}]:`, value);
-          return value;
-        }
-        console.log(`getFieldValue("${fieldPath}") - stepAnswer not an object or undefined:`, stepAnswer);
-        return undefined;
-      }
-      
-      const value = allAnswers[fieldPath];
-      console.log(`getFieldValue("${fieldPath}") - direct lookup:`, value);
-      return value;
-    };
-
-    const evaluateCondition = async (condition) => {
-      console.log('    --- Evaluating Single Condition ---');
-      console.log('    Condition Object:', JSON.stringify(condition, null, 2));
-      console.log(`    Field: ${condition.field}, Operator: ${condition.operator}, Value: ${condition.value}, Value Type: ${condition.value_type}`);
-      
-      const fieldAnswer = getFieldValue(condition.field);
-      console.log(`    Field Answer for "${condition.field}":`, fieldAnswer);
-      console.log(`    Field Answer Type:`, typeof fieldAnswer);
-      
-      let comparisonValue = condition.value;
-      if (condition.value_type === 'field_reference') {
-        console.log(`    Value Type is field_reference, looking up: ${condition.value}`);
-        comparisonValue = getFieldValue(condition.value);
-        console.log(`    Resolved field reference value:`, comparisonValue);
-      } else {
-        console.log(`    Value Type is static, using value: ${comparisonValue}`);
-      }
-      
-      let met = false;
-
-      const isArrayAnswer = Array.isArray(fieldAnswer);
-      
-      switch (condition.operator) {
-        case '=':
-          if (isArrayAnswer) {
-            met = fieldAnswer.includes(comparisonValue);
-          } else {
-            met = fieldAnswer === comparisonValue;
-          }
-          break;
-        case '!=':
-          if (isArrayAnswer) {
-            met = !fieldAnswer.includes(comparisonValue);
-          } else {
-            met = fieldAnswer !== comparisonValue;
-          }
-          break;
-        case '>':
-          met = Number(fieldAnswer) > Number(comparisonValue);
-          break;
-        case '<':
-          met = Number(fieldAnswer) < Number(comparisonValue);
-          break;
-        case '>=':
-          met = Number(fieldAnswer) >= Number(comparisonValue);
-          break;
-        case '<=':
-          met = Number(fieldAnswer) <= Number(comparisonValue);
-          break;
-        case 'contains':
-          if (isArrayAnswer) {
-            met = fieldAnswer.some(opt => String(opt).includes(String(comparisonValue)));
-          } else {
-            met = String(fieldAnswer || '').includes(String(comparisonValue));
-          }
-          break;
-        case 'in':
-          if (isArrayAnswer) {
-            const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
-            met = fieldAnswer.some(opt => comparisonList.includes(String(opt)));
-          } else {
-            met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
-          }
-          break;
-        case 'not_in':
-          if (isArrayAnswer) {
-            const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
-            met = !fieldAnswer.some(opt => comparisonList.includes(String(opt)));
-          } else {
-            met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
-          }
-          break;
-        case 'is_crs':
-          console.log('    [IS_CRS OPERATOR] - checking fieldAnswer:', fieldAnswer);
-          if (fieldAnswer) {
-            try {
-              const crsCountries = await base44.entities.CrsCountryInfo.filter({
-                $or: [
-                  { country_name: fieldAnswer },
-                  { country_code: fieldAnswer }
-                ]
-              });
-              console.log('    [IS_CRS] CRS Countries found:', crsCountries);
-              met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
-              console.log('    [IS_CRS] Result - met:', met);
-            } catch (error) {
-              console.error("    [IS_CRS] Error checking CRS country status:", error);
-              met = false;
-            }
-          } else {
-            console.log('    [IS_CRS] No fieldAnswer provided, met = false');
-            met = false;
-          }
-          break;
-        case 'is_not_crs':
-          if (fieldAnswer) {
-            try {
-              const crsCountries = await base44.entities.CrsCountryInfo.filter({
-                $or: [
-                  { country_name: fieldAnswer },
-                  { country_code: fieldAnswer }
-                ]
-              });
-              met = crsCountries.length === 0 || crsCountries[0].is_crs_country === false;
-            } catch (error) {
-              console.error("Error checking CRS country status:", error);
-              met = true;
-            }
-          } else {
-            met = true;
-          }
-          break;
-        default:
-          met = false;
-      }
-
-      console.log(`    >>> Condition Result: ${met}`);
-      console.log('    --- End Single Condition ---\n');
-      return met;
-    };
 
     if (logic?.condition_groups && logic.condition_groups.length > 0) {
       console.log('\n========== EVALUATING CONDITION GROUPS ==========');
@@ -651,7 +650,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`  - Value: ${condition.value}`);
           console.log(`  - Value Type: ${condition.value_type}`);
           
-          const conditionMet = await evaluateCondition(condition);
+          const conditionMet = await evaluateSingleCondition(condition, allAnswers);
           console.log(`  - Result: ${conditionMet}`);
           
           if (group.group_operator === 'AND') {
@@ -739,7 +738,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     for (let i = 0; i < logic.conditions.length; i++) {
       const condition = logic.conditions[i];
       console.log(`\nSimple Condition ${i + 1}/${logic.conditions.length}:`);
-      const met = await evaluateCondition(condition);
+      const met = await evaluateSingleCondition(condition, allAnswers);
       
       if (condition.logic_operator === 'AND' && !met) {
         console.log('AND condition failed, conditionsMet = false');
