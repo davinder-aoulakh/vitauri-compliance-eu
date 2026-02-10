@@ -60,6 +60,7 @@ export default function ReferencedDataForm({ item, onSave, onCancel }) {
   const accountFields = [
     { value: "account_type", label: "Account Type" },
     { value: "account_holder_type", label: "Account Holder Type" },
+    { value: "account_holder_entity_type", label: "Account Holder Entity Type" },
     { value: "currency", label: "Currency" },
     { value: "reportability_status", label: "Reportability Status" },
     { value: "status", label: "Status" },
