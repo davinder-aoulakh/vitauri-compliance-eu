@@ -83,6 +83,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       country: ""
     },
     tax_residencies: account?.tax_residencies || [],
+    beneficiaries_count: account?.beneficiaries_count || 0,
+    controlling_persons_count: account?.controlling_persons_count || 0,
     needs_reclassification: account?.needs_reclassification || false,
     self_certification_document_url: account?.self_certification_document_url || null,
     self_certification_document_name: account?.self_certification_document_name || null,
