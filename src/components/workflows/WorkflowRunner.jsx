@@ -209,6 +209,69 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     setHistory(prev => [...prev, currentStep.step_id]);
     
     if (currentStep.question_type === 'multiple_choice' && 
+        currentStep.conditional_logic?.multi_choice_routing_groups && 
+        currentStep.conditional_logic.multi_choice_routing_groups.length > 0 && 
+        Array.isArray(answer)) {
+      console.log('🔀 [MULTI-CHOICE ROUTING GROUPS]');
+      console.log('   Selected options:', answer);
+      
+      for (const group of currentStep.conditional_logic.multi_choice_routing_groups) {
+        console.log(`   📋 Evaluating group: ${group.group_name || group.group_id}`);
+        let groupMatches = group.group_operator === 'AND';
+        
+        for (const condition of group.conditions) {
+          let conditionMet = false;
+          
+          if (condition.condition_type === 'selected_options') {
+            conditionMet = answer.some(selectedOpt => condition.option_values?.includes(selectedOpt));
+            console.log(`      - Selected options check: ${conditionMet}`);
+          } else if (condition.condition_type === 'selection_count') {
+            const count = answer.length;
+            switch (condition.count_operator) {
+              case '=': conditionMet = count === condition.count_value; break;
+              case '!=': conditionMet = count !== condition.count_value; break;
+              case '>': conditionMet = count > condition.count_value; break;
+              case '<': conditionMet = count < condition.count_value; break;
+              case '>=': conditionMet = count >= condition.count_value; break;
+              case '<=': conditionMet = count <= condition.count_value; break;
+            }
+            console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
+          } else if (condition.condition_type === 'field_comparison') {
+            const evaluatedCondition = await evaluateConditionalLogic({ conditions: [condition] }, answer, answers);
+            conditionMet = !!evaluatedCondition;
+            console.log(`      - Field comparison: ${conditionMet}`);
+          }
+          
+          if (group.group_operator === 'AND') {
+            groupMatches = groupMatches && conditionMet;
+            if (!groupMatches) break;
+          } else {
+            groupMatches = groupMatches || conditionMet;
+            if (groupMatches) break;
+          }
+        }
+        
+        if (groupMatches) {
+          console.log(`   ✅ Group matched! Navigating to: ${group.next_step}`);
+          const nextIndex = workflow.steps.findIndex(s => s.step_id === group.next_step);
+          if (nextIndex !== -1) {
+            setCurrentStepIndex(nextIndex);
+            return;
+          }
+        }
+      }
+      
+      console.log('   ⚠️  No routing groups matched, using default step');
+      if (currentStep.conditional_logic.multi_choice_default_step) {
+        const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.conditional_logic.multi_choice_default_step);
+        if (nextIndex !== -1) {
+          setCurrentStepIndex(nextIndex);
+          return;
+        }
+      }
+    }
+    
+    if (currentStep.question_type === 'multiple_choice' && 
         currentStep.conditional_logic?.option_values && 
         currentStep.conditional_logic.option_values.length > 0 && 
         Array.isArray(answer)) {

@@ -39,6 +39,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
 import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
+import MultiChoiceRoutingBuilder from "./MultiChoiceRoutingBuilder";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
@@ -240,6 +241,8 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         option_values: Array.isArray(step.conditional_logic.option_values) && step.conditional_logic.option_values.length > 0 ? step.conditional_logic.option_values : null,
         option_values_next_step: step.conditional_logic.option_values_next_step || null,
         option_values_else_step: step.conditional_logic.option_values_else_step || null,
+        multi_choice_routing_groups: step.conditional_logic.multi_choice_routing_groups && step.conditional_logic.multi_choice_routing_groups.length > 0 ? step.conditional_logic.multi_choice_routing_groups : null,
+        multi_choice_default_step: step.conditional_logic.multi_choice_default_step || null,
         // NEW: Preserve condition_groups and overall logic fields
         condition_groups: step.conditional_logic.condition_groups && step.conditional_logic.condition_groups.length > 0 
           ? step.conditional_logic.condition_groups.map(group => ({
@@ -1769,12 +1772,15 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                 </p>
 
                 <Tabs defaultValue="options" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-3">
+                  <TabsList className="grid w-full grid-cols-3 mb-3">
                     <TabsTrigger value="options" className="text-xs">
                       By Selected Options
                     </TabsTrigger>
                     <TabsTrigger value="count" className="text-xs">
                       By Selection Count
+                    </TabsTrigger>
+                    <TabsTrigger value="routing-groups" className="text-xs">
+                      Routing Groups
                     </TabsTrigger>
                   </TabsList>
 
@@ -1960,6 +1966,18 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </div>
                       </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="routing-groups" className="space-y-3 mt-0">
+                    <MultiChoiceRoutingBuilder
+                      routingGroups={editedStep.conditional_logic?.multi_choice_routing_groups || []}
+                      defaultStep={editedStep.conditional_logic?.multi_choice_default_step || ""}
+                      availableOptions={editedStep.options || []}
+                      allSteps={allSteps}
+                      currentStepId={editedStep.step_id}
+                      onGroupsChange={(groups) => handleConditionalLogicChange("multi_choice_routing_groups", groups)}
+                      onDefaultStepChange={(step) => handleConditionalLogicChange("multi_choice_default_step", step)}
+                    />
                   </TabsContent>
                 </Tabs>
               </div>
