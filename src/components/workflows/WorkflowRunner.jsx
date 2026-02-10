@@ -1435,12 +1435,27 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 draftBeneficiaries: beneficiaries 
               });
             }}
-            onBeneficiariesAdded={(savedBeneficiaries) => {
+            onBeneficiariesAdded={async (savedBeneficiaries) => {
               handleAnswer(currentStep.step_id, { 
                 ...answer,
                 savedBeneficiaries: savedBeneficiaries,
                 draftBeneficiaries: savedBeneficiaries
               });
+              
+              // Update account beneficiaries count
+              if (accountId) {
+                try {
+                  await base44.entities.Account.update(accountId, {
+                    beneficiaries_count: savedBeneficiaries.length
+                  });
+                  const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
+                  if (updatedAccounts[0]) {
+                    setMappedEntityData(updatedAccounts[0]);
+                  }
+                } catch (error) {
+                  console.error("Error updating beneficiaries count:", error);
+                }
+              }
             }}
           />
         );
@@ -1457,12 +1472,27 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 draftPersons: persons 
               });
             }}
-            onControllingPersonsAdded={(savedPersons) => {
+            onControllingPersonsAdded={async (savedPersons) => {
               handleAnswer(currentStep.step_id, { 
                 ...answer,
                 savedPersons: savedPersons,
                 draftPersons: savedPersons
               });
+              
+              // Update account controlling persons count
+              if (accountId) {
+                try {
+                  await base44.entities.Account.update(accountId, {
+                    controlling_persons_count: savedPersons.length
+                  });
+                  const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
+                  if (updatedAccounts[0]) {
+                    setMappedEntityData(updatedAccounts[0]);
+                  }
+                } catch (error) {
+                  console.error("Error updating controlling persons count:", error);
+                }
+              }
             }}
           />
         );

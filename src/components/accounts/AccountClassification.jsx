@@ -2102,7 +2102,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               }
             }));
           }}
-          onBeneficiariesAdded={(savedBeneficiaries) => {
+          onBeneficiariesAdded={async (savedBeneficiaries) => {
             console.log('[AccountClassification] onBeneficiariesAdded called:', savedBeneficiaries);
             setAnswers(prev => ({
               ...prev,
@@ -2111,6 +2111,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 draftBeneficiaries: savedBeneficiaries
               }
             }));
+            
+            // Update account beneficiaries count
+            if (account?.id) {
+              try {
+                await base44.entities.Account.update(account.id, {
+                  beneficiaries_count: savedBeneficiaries.length
+                });
+                refetchAccount();
+              } catch (error) {
+                console.error("Error updating beneficiaries count:", error);
+              }
+            }
           }}
         />
       );
@@ -2135,7 +2147,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               }
             }));
           }}
-          onControllingPersonsAdded={(savedPersons) => {
+          onControllingPersonsAdded={async (savedPersons) => {
             console.log('[AccountClassification] onControllingPersonsAdded called:', savedPersons);
             setAnswers(prev => ({
               ...prev,
@@ -2144,6 +2156,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 draftPersons: savedPersons
               }
             }));
+            
+            // Update account controlling persons count
+            if (account?.id) {
+              try {
+                await base44.entities.Account.update(account.id, {
+                  controlling_persons_count: savedPersons.length
+                });
+                refetchAccount();
+              } catch (error) {
+                console.error("Error updating controlling persons count:", error);
+              }
+            }
           }}
         />
       );
