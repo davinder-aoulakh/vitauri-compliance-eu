@@ -231,6 +231,15 @@ export default function BeneficiaryInputRenderer({
       console.log('[BeneficiaryInputRenderer] Showing success toast');
       toast.success(`${savedBenefs.length} beneficiary(ies) saved successfully!`);
       
+      // Update beneficiaries count on Account
+      try {
+        await base44.entities.Account.update(account.id, {
+          beneficiaries_count: savedBenefs.length
+        });
+      } catch (error) {
+        console.error("Error updating beneficiaries count:", error);
+      }
+      
       if (onBeneficiariesAdded) {
         console.log('[BeneficiaryInputRenderer] Calling onBeneficiariesAdded callback');
         onBeneficiariesAdded(savedBenefs);

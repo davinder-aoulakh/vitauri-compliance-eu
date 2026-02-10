@@ -276,6 +276,15 @@ export default function ControllingPersonInputRenderer({
       console.log('[ControllingPersonInputRenderer] Showing success toast');
       toast.success(`${savedPers.length} controlling person(s) saved successfully!`);
       
+      // Update controlling persons count on Account
+      try {
+        await base44.entities.Account.update(account.id, {
+          controlling_persons_count: savedPers.length
+        });
+      } catch (error) {
+        console.error("Error updating controlling persons count:", error);
+      }
+      
       if (onControllingPersonsAdded) {
         console.log('[ControllingPersonInputRenderer] Calling onControllingPersonsAdded callback');
         onControllingPersonsAdded(savedPers);
