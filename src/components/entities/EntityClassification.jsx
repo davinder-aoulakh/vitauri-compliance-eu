@@ -224,8 +224,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     }
 
     setAnswers(newAnswers);
-    const newHistory = [...history, currentNodeId];
-    setHistory(newHistory);
 
     // Execute post-completion actions
     await executePostCompletionActions(currentNode, newAnswers);
@@ -262,13 +260,15 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     }
 
     // If this is an action node or no next step, show summary
+    const newHistory = [...history, currentNodeId];
     if (!nextNodeId || isActionNode(currentNode)) {
       setCompletedPath(newHistory);
       setShowSummary(true);
       return;
     }
 
-    // Move to next node
+    // Move to next node - add current to history
+    setHistory(newHistory);
     setCurrentNodeId(nextNodeId);
     
     // Check if next node has a pre-filled answer
