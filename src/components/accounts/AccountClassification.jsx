@@ -2409,31 +2409,28 @@ export default function AccountClassification({ account, onComplete, onCancel })
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 mb-1">Account Reportability Assessment</h2>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              {workflow.workflow_name} v{workflow.version}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowFlowchart(true)}
-              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-            >
-              <GitBranch className="w-4 h-4 mr-1" />
-              Flowchart
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAIAssistant(true)}
-              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-            >
-              <Sparkles className="w-4 h-4 mr-1" />
-              AI Assist
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            {workflow.workflow_name} v{workflow.version}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFlowchart(true)}
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+          >
+            <GitBranch className="w-4 h-4 mr-1" />
+            Flowchart
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAIAssistant(true)}
+            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+          >
+            <Sparkles className="w-4 h-4 mr-1" />
+            AI Assist
+          </Button>
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">
