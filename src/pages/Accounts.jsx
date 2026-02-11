@@ -968,10 +968,7 @@ export default function AccountsPage() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
-              {selectedAccount?.account_holder_type === "entity" 
-                ? `Entity Classification: ${selectedAccount?.account_holder_name}`
-                : `Reportability Assessment: ${selectedAccount?.account_holder_name}`
-              }
+              Account Classification: {selectedAccount?.account_holder_name}
             </DialogTitle>
           </DialogHeader>
           <AccountClassification
