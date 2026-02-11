@@ -263,7 +263,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
 
     // If this is an action node or no next step, show summary
     if (!nextNodeId || isActionNode(currentNode)) {
-      setCompletedPath([...newHistory, currentNodeId]);
+      setCompletedPath(newHistory);
       setShowSummary(true);
       return;
     }
