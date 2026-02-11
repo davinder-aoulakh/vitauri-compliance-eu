@@ -784,9 +784,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     <div className="space-y-6">
       {/* Workflow Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 mb-1">Entity Classification</h2>
-        </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">
             Step {currentStepIndex + 1}
