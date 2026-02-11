@@ -21,7 +21,7 @@ import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [answers, setAnswers] = useState(entity?.classification_answers || {});
+  const [answers, setAnswers] = useState({});
   const [selectedValue, setSelectedValue] = useState("");
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
@@ -233,43 +233,40 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     // Determine next step
     let nextNodeId = null;
 
-    // Check conditional logic first - but only if trigger condition matches (or no trigger defined)
-    if (currentNode.conditional_logic?.conditions?.length > 0) {
-      const logic = currentNode.conditional_logic;
-      console.log("🔍 [CONDITIONAL LOGIC] Evaluating conditional logic for step:", currentNodeId);
-      console.log("📋 [CONDITIONAL LOGIC] Logic config:", logic);
-      console.log("💾 [CONDITIONAL LOGIC] All answers:", newAnswers);
-      
-      // Check if there's a trigger condition - only evaluate advanced logic if trigger matches
-      let shouldEvaluateAdvancedLogic = true;
-      if (logic.trigger_field && logic.trigger_value) {
-        // Trigger is defined - only evaluate if the current answer matches the trigger
-        const currentAnswer = newAnswers[currentNodeId];
-        console.log("🎯 [TRIGGER] Trigger field:", logic.trigger_field);
-        console.log("🎯 [TRIGGER] Trigger value expected:", logic.trigger_value);
-        console.log("🎯 [TRIGGER] Current answer:", currentAnswer);
-        shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
-        console.log("🎯 [TRIGGER] Should evaluate advanced logic:", shouldEvaluateAdvancedLogic);
-      } else {
-        console.log("🎯 [TRIGGER] No trigger condition defined, evaluating logic directly");
-      }
-      
-      if (shouldEvaluateAdvancedLogic) {
-        const conditionMet = evaluateConditionalLogic(logic, newAnswers);
-        console.log("✅ [RESULT] Condition met:", conditionMet);
-        console.log("➡️ [RESULT] Next step will be:", conditionMet ? logic.next_step : logic.else_step);
-        nextNodeId = conditionMet ? logic.next_step : logic.else_step;
-      } else {
-        console.log("⏭️ [TRIGGER] Trigger not matched, falling through to option's next_step");
-      }
-      // If trigger doesn't match, fall through to check option's next_step
-    } 
-    // Check if there's a selected option with next_step
-    else if (selectedValue && currentNode.options) {
+    // Check if there's a selected option with next_step FIRST
+    if (selectedValue && currentNode.options) {
       const selectedOption = currentNode.options.find(opt => 
         opt.value === selectedValue || opt.label === selectedValue
       );
-      nextNodeId = selectedOption?.next_step;
+      
+      // If the option has a direct next_step, use it (unless conditional logic overrides)
+      if (selectedOption?.next_step) {
+        // Check if there's conditional logic with trigger that should override
+        if (currentNode.conditional_logic?.conditions?.length > 0 && 
+            currentNode.conditional_logic.trigger_field && 
+            currentNode.conditional_logic.trigger_value) {
+          const logic = currentNode.conditional_logic;
+          const currentAnswer = newAnswers[currentNodeId];
+          
+          console.log("🔍 [CONDITIONAL LOGIC] Checking if trigger overrides option next_step");
+          console.log("🎯 [TRIGGER] Current answer:", currentAnswer, "Expected trigger:", logic.trigger_value);
+          
+          // Only evaluate conditional logic if trigger matches
+          if (String(currentAnswer) === String(logic.trigger_value)) {
+            console.log("✅ [TRIGGER] Matched - evaluating conditional logic");
+            const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+            nextNodeId = conditionMet ? logic.next_step : logic.else_step;
+            console.log("➡️ [CONDITIONAL] Overriding option next_step with conditional result:", nextNodeId);
+          } else {
+            console.log("⏭️ [TRIGGER] Not matched - using option's next_step");
+            nextNodeId = selectedOption.next_step;
+          }
+        } else {
+          // No trigger-based conditional logic, use option's next_step
+          nextNodeId = selectedOption.next_step;
+          console.log("➡️ [OPTION] Using option's next_step:", nextNodeId);
+        }
+      }
     }
 
     // If this is an action node or no next step, show summary
