@@ -782,16 +782,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   // Main workflow screen
   return (
     <div className="space-y-6">
-      {/* Workflow Header */}
-      <div className="flex items-center justify-between">
-        <div className="text-right">
-          <p className="text-sm font-medium text-slate-700">
-            Step {currentStepIndex + 1}
-          </p>
-          <p className="text-xs text-slate-500">{progress}% Complete</p>
-        </div>
-      </div>
-
       <Dialog open={showFlowChart} onOpenChange={setShowFlowChart}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
@@ -815,6 +805,12 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
             <GitBranch className="w-4 h-4 mr-1" />
             Show Flowchart
           </Button>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-700">
+            Step {currentStepIndex + 1}
+          </p>
+          <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
 
