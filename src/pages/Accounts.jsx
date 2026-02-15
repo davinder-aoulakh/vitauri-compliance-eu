@@ -793,6 +793,12 @@ export default function AccountsPage() {
                                           Cert Overdue
                                         </Badge>
                                       )}
+                                      {account.has_unclassified_controlling_persons && (
+                                        <Badge className="bg-orange-100 text-orange-800 border-orange-300 text-xs">
+                                          <Users className="w-3 h-3 mr-1" />
+                                          Classify CPs
+                                        </Badge>
+                                      )}
                                       {hasDocument && (
                                         <FileCheck className="w-4 h-4 text-green-600" title="Self-certification document uploaded" />
                                       )}
@@ -974,13 +980,26 @@ export default function AccountsPage() {
           <AccountClassification
             account={selectedAccount}
             onComplete={(data) => {
+              const shouldRedirect = data._redirectToControllingPersons;
+              const { _redirectToControllingPersons, ...cleanData } = data;
+              
               // Merge classification data with existing account data to preserve documents
               const mergedData = {
-                ...data,
+                ...cleanData,
                 // If classification adds new documents, they're already in data.documents
                 // which was built from existing account.documents + new upload
               };
+              
+              // Update the account
               updateMutation.mutate({ id: selectedAccount.id, data: mergedData });
+              
+              // If redirect is needed, open controlling persons manager after classification dialog closes
+              if (shouldRedirect) {
+                setTimeout(() => {
+                  setShowClassification(false);
+                  setShowControllingPersons(true);
+                }, 300);
+              }
             }}
             onCancel={() => setShowClassification(false)}
           />

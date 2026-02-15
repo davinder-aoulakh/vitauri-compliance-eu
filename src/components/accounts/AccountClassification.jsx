@@ -1451,6 +1451,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
+    // Check if result_action is "manage_controlling_persons"
+    const shouldRedirectToControllingPersons = finalNode?.result_action === "manage_controlling_persons";
+    
+    // Sync controlling persons count and classification status
+    if (account?.id) {
+      try {
+        await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
+      } catch (error) {
+        console.error("Error syncing controlling persons:", error);
+      }
+    }
+
     // Check if workflow contains a "Request New Self Certification" step with a date
     let selfCertRequestDate = null;
     for (const [stepId, answerValue] of Object.entries(cleanedAnswers)) {
@@ -1629,7 +1641,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
       console.error("Error saving classification history:", error);
     }
 
-    onComplete(classificationData);
+    // Pass redirect instruction if needed
+    if (shouldRedirectToControllingPersons) {
+      onComplete({
+        ...classificationData,
+        _redirectToControllingPersons: true
+      });
+    } else {
+      onComplete(classificationData);
+    }
   };
 
   const renderNode = () => {
@@ -2165,15 +2185,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
               }
             }));
             
-            // Update account controlling persons count
+            // Sync controlling persons count and classification status
             if (account?.id) {
               try {
-                await base44.entities.Account.update(account.id, {
-                  controlling_persons_count: savedPersons.length
-                });
+                await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
                 refetchAccount();
               } catch (error) {
-                console.error("Error updating controlling persons count:", error);
+                console.error("Error syncing controlling persons:", error);
               }
             }
           }}
