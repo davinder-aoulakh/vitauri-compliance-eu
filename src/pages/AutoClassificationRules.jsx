@@ -59,7 +59,9 @@ export default function AutoClassificationRulesPage() {
     classification_reason: "",
     entity_classification_result: "",
     priority: 0,
-    is_active: true
+    is_active: true,
+    trigger_events: ["create", "update", "bulk_update", "bulk_import"],
+    triggered_on_fields: []
   });
   const [useGroupedConditions, setUseGroupedConditions] = useState(false);
 
@@ -131,7 +133,9 @@ export default function AutoClassificationRulesPage() {
       classification_reason: "",
       entity_classification_result: "",
       priority: 0,
-      is_active: true
+      is_active: true,
+      trigger_events: ["create", "update", "bulk_update", "bulk_import"],
+      triggered_on_fields: []
     });
     setEditingRule(null);
     setUseGroupedConditions(false);
@@ -155,7 +159,9 @@ export default function AutoClassificationRulesPage() {
       classification_reason: rule.classification_reason,
       entity_classification_result: rule.entity_classification_result || "",
       priority: rule.priority || 0,
-      is_active: rule.is_active !== false
+      is_active: rule.is_active !== false,
+      trigger_events: rule.trigger_events || ["create", "update", "bulk_update", "bulk_import"],
+      triggered_on_fields: rule.triggered_on_fields || []
     });
     setShowForm(true);
   };
@@ -749,6 +755,96 @@ export default function AutoClassificationRulesPage() {
                     For entity accounts, optionally set the entity classification
                   </p>
                 </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <div>
+                  <Label className="text-sm font-semibold">Trigger Events *</Label>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Select when this rule should be evaluated
+                  </p>
+                  <div className="space-y-2">
+                    {[
+                      { value: "create", label: "Account Creation" },
+                      { value: "update", label: "Account Update" },
+                      { value: "bulk_update", label: "Bulk Update" },
+                      { value: "bulk_import", label: "Bulk Import" },
+                      { value: "delete", label: "Account Deletion" }
+                    ].map(({ value, label }) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`trigger-${value}`}
+                          checked={formData.trigger_events?.includes(value)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setFormData(prev => ({
+                              ...prev,
+                              trigger_events: checked
+                                ? [...(prev.trigger_events || []), value]
+                                : (prev.trigger_events || []).filter(v => v !== value)
+                            }));
+                          }}
+                          className="w-4 h-4 rounded border-slate-300"
+                        />
+                        <Label htmlFor={`trigger-${value}`} className="font-normal cursor-pointer">
+                          {label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {formData.trigger_events?.includes("update") && (
+                  <div>
+                    <Label className="text-sm font-semibold">Triggered on Specific Fields (Optional)</Label>
+                    <p className="text-xs text-slate-500 mb-2">
+                      Leave empty to trigger on any field update, or select specific fields
+                    </p>
+                    <Select
+                      onValueChange={(value) => {
+                        if (!formData.triggered_on_fields?.includes(value)) {
+                          setFormData(prev => ({
+                            ...prev,
+                            triggered_on_fields: [...(prev.triggered_on_fields || []), value]
+                          }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Add field..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {accountFields.map((field) => (
+                          <SelectItem key={field.value} value={field.value}>
+                            {field.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.triggered_on_fields?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.triggered_on_fields.map((field) => (
+                          <Badge key={field} variant="outline" className="gap-1">
+                            {accountFields.find(f => f.value === field)?.label || field}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  triggered_on_fields: prev.triggered_on_fields.filter(f => f !== field)
+                                }));
+                              }}
+                              className="ml-1 hover:text-red-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

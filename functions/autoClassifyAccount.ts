@@ -10,11 +10,14 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { accountId, event_type } = await req.json();
+        const { accountId, event_type, changed_fields } = await req.json();
         
         if (!accountId) {
             return Response.json({ error: 'accountId is required' }, { status: 400 });
         }
+        
+        // Default event_type to 'update' if not provided
+        const triggerEvent = event_type || 'update';
 
         // Fetch the account
         const accounts = await base44.asServiceRole.entities.Account.filter({ id: accountId });
@@ -53,6 +56,22 @@ Deno.serve(async (req) => {
         // Evaluate each rule
         let matchedRule = null;
         for (const rule of sortedRules) {
+            // Check if rule should be triggered for this event type
+            const ruleTriggerEvents = rule.trigger_events || ["create", "update", "bulk_update", "bulk_import"];
+            if (!ruleTriggerEvents.includes(triggerEvent)) {
+                continue; // Skip this rule if event type doesn't match
+            }
+            
+            // For update events, check if specific fields were configured
+            if (triggerEvent === 'update' && rule.triggered_on_fields?.length > 0 && changed_fields) {
+                const hasMatchingField = rule.triggered_on_fields.some(field => 
+                    changed_fields.includes(field)
+                );
+                if (!hasMatchingField) {
+                    continue; // Skip this rule if none of the changed fields match
+                }
+            }
+            
             let ruleMatches = false;
             
             // Check if rule uses new grouped conditions or legacy flat conditions
