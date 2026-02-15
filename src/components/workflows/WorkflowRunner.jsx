@@ -497,14 +497,24 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         if (isArrayAnswer) {
           met = fieldAnswer.includes(comparisonValue);
         } else {
-          met = fieldAnswer === comparisonValue;
+          // Handle boolean vs string comparison
+          if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
+            met = fieldAnswer === (comparisonValue === 'true');
+          } else {
+            met = fieldAnswer === comparisonValue;
+          }
         }
         break;
       case '!=':
         if (isArrayAnswer) {
           met = !fieldAnswer.includes(comparisonValue);
         } else {
-          met = fieldAnswer !== comparisonValue;
+          // Handle boolean vs string comparison
+          if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
+            met = fieldAnswer !== (comparisonValue === 'true');
+          } else {
+            met = fieldAnswer !== comparisonValue;
+          }
         }
         break;
       case '>':
