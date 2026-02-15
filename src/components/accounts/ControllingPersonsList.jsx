@@ -121,13 +121,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     }
   }, [controllingPersons, onUpdateCount]);
 
-  // Auto-trigger for Passive NFE
-  useEffect(() => {
-    if (account?.entity_classification === 'passive_nfe' && controllingPersons.length === 0) {
-      // Show prominent alert if Passive NFE has no controlling persons
-      setShowForm(true);
-    }
-  }, [account, controllingPersons]);
+  // Removed auto-trigger - user should manually click "Add Controlling Person" button
 
   return (
     <div className="space-y-6">
