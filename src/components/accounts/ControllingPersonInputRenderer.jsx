@@ -546,26 +546,28 @@ export default function ControllingPersonInputRenderer({
         ))}
       </div>
 
-      <div className="flex items-center justify-between pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleAddPerson}
-          className="border-purple-200 text-purple-700 hover:bg-purple-50"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Another Controlling Person
-        </Button>
+      {!alreadySaved && (
+        <div className="flex items-center justify-between pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleAddPerson}
+            className="border-purple-200 text-purple-700 hover:bg-purple-50"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Another Controlling Person
+          </Button>
 
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-purple-50 text-purple-700">
-            {persons.length} person(s)
-          </Badge>
-          {isValid && (
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
-          )}
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-purple-50 text-purple-700">
+              {persons.length} person(s)
+            </Badge>
+            {isValid && (
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <Button
         type="button"
