@@ -188,16 +188,17 @@ export default function AccountsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
-      console.log(`⏱️ [MUTATION] Starting Account.update for ID: ${id}`);
+    mutationFn: async ({ id, data, skipHooks = false }) => {
+      console.log(`⏱️ [MUTATION] Starting Account.update for ID: ${id} (skipHooks: ${skipHooks})`);
       const updateStart = performance.now();
       const result = await base44.entities.Account.update(id, data);
       console.log(`⏱️ [MUTATION] Account.update completed in ${Math.round(performance.now() - updateStart)}ms`);
-      return result;
+      return { account: result, skipHooks };
     },
-    onSuccess: async (updatedAccount, variables) => {
+    onSuccess: async (response, variables) => {
       console.log('⏱️ [MUTATION] onSuccess callback started');
       const onSuccessStart = performance.now();
+      const { account: updatedAccount, skipHooks } = response;
       
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
@@ -206,7 +207,14 @@ export default function AccountsPage() {
       
       console.log(`⏱️ [MUTATION] onSuccess state updates took ${Math.round(performance.now() - onSuccessStart)}ms`);
       
+      if (skipHooks) {
+        console.log('⏱️ [MUTATION] ⏩ Skipping audit log, auto-classification, and workflow triggers (skipHooks=true) - FAST PATH');
+        console.log(`⏱️ [MUTATION] Total onSuccess took ${Math.round(performance.now() - onSuccessStart)}ms`);
+        return;
+      }
+      
       // Create audit log entry
+      const auditLogStart = performance.now();
       try {
         await base44.entities.AuditLog.create({
           tenant_id: user.tenant_id,
@@ -233,7 +241,6 @@ export default function AccountsPage() {
           accountId: variables.id,
           event_type: 'updated'
         });
-        console.log(`⏱️ [MUTATION] Auto-classification completed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
         console.log(`⏱️ [MUTATION] Auto-classification completed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
         queryClient.invalidateQueries(['accounts']);
       } catch (error) {
