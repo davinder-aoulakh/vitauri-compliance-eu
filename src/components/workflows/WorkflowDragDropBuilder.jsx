@@ -2449,6 +2449,8 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                           <SelectContent>
                             <SelectItem value="Entity">Entity</SelectItem>
                             <SelectItem value="Account">Account</SelectItem>
+                            <SelectItem value="ControllingPerson">Controlling Person</SelectItem>
+                            <SelectItem value="Beneficiary">Beneficiary</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
