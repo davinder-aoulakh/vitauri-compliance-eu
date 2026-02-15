@@ -109,8 +109,9 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   };
 
   const isPassiveNFE = account?.entity_classification === "passive_nfe";
-  const reportablePersons = controllingPersons.filter(p => p.is_reportable);
-  const nonReportablePersons = controllingPersons.filter(p => !p.is_reportable);
+  const reportablePersons = controllingPersons.filter(p => p.is_reportable === true);
+  const nonReportablePersons = controllingPersons.filter(p => p.is_reportable === false);
+  const pendingReviewPersons = controllingPersons.filter(p => p.is_reportable === null || p.is_reportable === undefined);
   const hasReportableControllingPersons = reportablePersons.length > 0;
 
   // Notify parent component about the count of controlling persons
@@ -177,7 +178,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
               <p className="text-2xl font-bold text-slate-900">{controllingPersons.length}</p>
               <p className="text-xs text-slate-600">Total Persons</p>
@@ -193,6 +194,12 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                 {reportablePersons.length}
               </p>
               <p className="text-xs text-amber-700">Reportable (Foreign)</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+              <p className="text-2xl font-bold text-yellow-600">
+                {pendingReviewPersons.length}
+              </p>
+              <p className="text-xs text-yellow-700">Pending Review</p>
             </div>
           </div>
         </CardContent>
@@ -241,27 +248,20 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                   {controllingPersons.map((person) => (
                     <TableRow key={person.id} className="hover:bg-slate-50/50">
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            person.is_reportable
-                              ? 'bg-green-100'
-                              : 'bg-slate-100'
-                          }`}>
-                            {person.is_reportable ? (
-                              <CheckCircle2 className="w-5 h-5 text-green-600" />
-                            ) : (
-                              <XCircle className="w-5 h-5 text-slate-600" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900">{person.full_name}</p>
-                            {person.ownership_percentage > 0 && (
-                              <p className="text-xs text-slate-500">
-                                {person.ownership_percentage}% ownership
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                       <div className="flex items-center gap-3">
+                         <div>
+                           <p className="font-semibold text-slate-900">
+                             {person.first_name && person.last_name 
+                               ? `${person.first_name} ${person.last_name}`
+                               : person.full_name || "N/A"}
+                           </p>
+                           {person.ownership_percentage > 0 && (
+                             <p className="text-xs text-slate-500">
+                               {person.ownership_percentage}% ownership
+                             </p>
+                           )}
+                         </div>
+                       </div>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-slate-700">
@@ -288,14 +288,20 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                         )}
                       </TableCell>
                       <TableCell>
-                        {person.is_reportable ? (
+                        {person.is_reportable === true ? (
                           <Badge className="bg-green-100 text-green-800 border-green-200">
                             <CheckCircle2 className="w-3 h-3 mr-1" />
                             Reportable
                           </Badge>
-                        ) : (
+                        ) : person.is_reportable === false ? (
                           <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200">
+                            <XCircle className="w-3 h-3 mr-1" />
                             Non-Reportable
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Pending Review
                           </Badge>
                         )}
                       </TableCell>
