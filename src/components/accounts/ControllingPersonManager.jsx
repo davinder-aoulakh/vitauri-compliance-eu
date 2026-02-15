@@ -97,8 +97,17 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.ControllingPerson.delete(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
+      // Trigger background sync to update controlling persons count
+      try {
+        await base44.functions.invoke('syncAccountControllingPersons', {
+          accountId: account.id
+        });
+        queryClient.invalidateQueries(['accounts']);
+      } catch (error) {
+        console.error('Failed to sync controlling persons count:', error);
+      }
     }
   });
 
