@@ -788,14 +788,14 @@ export default function AccountsPage() {
                                     <div className="flex items-center gap-2">
                                       <p className="font-semibold text-slate-900">{account.account_holder_name}</p>
                                       {account.self_certification_overdue && (
-                                        <Badge className="bg-red-100 text-red-800 border-red-300 text-xs flex items-center gap-1">
-                                          <AlertCircle className="w-3 h-3" />
+                                        <Badge className="bg-red-100 text-red-800 border-red-300 text-xs">
+                                          <AlertCircle className="w-3 h-3 mr-1" />
                                           Cert Overdue
                                         </Badge>
                                       )}
                                       {account.has_unclassified_controlling_persons && (
-                                        <Badge className="bg-orange-100 text-orange-800 border-orange-300 text-xs flex items-center gap-1">
-                                          <Users className="w-3 h-3" />
+                                        <Badge className="bg-orange-100 text-orange-800 border-orange-300 text-xs">
+                                          <Users className="w-3 h-3 mr-1" />
                                           Classify CPs
                                         </Badge>
                                       )}
