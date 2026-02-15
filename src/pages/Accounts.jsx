@@ -221,16 +221,19 @@ export default function AccountsPage() {
           },
           timestamp: new Date().toISOString()
         });
+        console.log(`⏱️ [MUTATION] Audit log created in ${Math.round(performance.now() - auditLogStart)}ms`);
       } catch (error) {
         console.error("Error creating audit log:", error);
       }
       
       // Trigger auto-classification
+      const autoClassifyStart = performance.now();
       try {
         await base44.functions.invoke('autoClassifyAccount', {
           accountId: variables.id,
           event_type: 'updated'
         });
+        console.log(`⏱️ [MUTATION] Auto-classification completed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
         console.log(`⏱️ [MUTATION] Auto-classification completed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
         queryClient.invalidateQueries(['accounts']);
       } catch (error) {
