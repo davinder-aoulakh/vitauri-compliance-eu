@@ -2301,24 +2301,46 @@ export default function AccountClassification({ account, onComplete, onCancel })
   if (showSummary) {
     const finalNode = stepMap[completedPath[completedPath.length - 1]];
     
-    // Determine reportability for summary display - use result_status if available
+    // Determine reportability for summary display - use same logic as completeClassification
     let summaryReportabilityStatus = "pending_review";
+    
+    // Priority 1: Use explicit result_status from workflow step configuration
     if (finalNode?.result_status) {
       summaryReportabilityStatus = finalNode.result_status;
-    } else if (finalNode?.post_completion_actions?.length > 0) {
+      console.log(`[SUMMARY DISPLAY] Using result_status: ${summaryReportabilityStatus}`);
+    } 
+    // Priority 2: Infer from post-completion actions (with proper value extraction)
+    else if (finalNode?.post_completion_actions?.length > 0) {
       const statusAction = finalNode.post_completion_actions.find(
         action => action.field_to_update === "reportability_status"
       );
-      if (statusAction?.value) {
-        summaryReportabilityStatus = statusAction.value;
+      if (statusAction) {
+        let extractedValue = null;
+        
+        if (statusAction.value_source === "static_value") {
+          extractedValue = statusAction.value;
+        } else if (statusAction.value_source === "from_step_answer") {
+          extractedValue = answers[statusAction.value];
+        }
+        
+        if (extractedValue) {
+          summaryReportabilityStatus = extractedValue;
+          console.log(`[SUMMARY DISPLAY] Using post-completion action value (${statusAction.value_source}): ${summaryReportabilityStatus}`);
+        }
       }
-    } else {
-      // Fallback to text-based inference
+    }
+    
+    // Priority 3: Fallback to text-based inference only if still pending_review
+    if (summaryReportabilityStatus === "pending_review") {
       if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
           !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "reportable";
+        console.log(`[SUMMARY DISPLAY] Inferred reportable from text`);
       } else if (finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "non_reportable";
+        console.log(`[SUMMARY DISPLAY] Inferred non-reportable from text`);
+      } else {
+        console.log(`[SUMMARY DISPLAY] Remaining as pending_review`);
       }
     }
     
