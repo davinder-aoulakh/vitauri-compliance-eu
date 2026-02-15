@@ -1026,17 +1026,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               return (
                 <div 
                   key={option.value}
-                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
                     isSelected
                       ? 'border-indigo-400 bg-indigo-50'
                       : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
                   }`}
-                  onClick={() => {
-                    const newValues = isSelected
-                      ? selectedOptions.filter(v => v !== option.value)
-                      : [...selectedOptions, option.value];
-                    handleAnswer(currentStep.step_id, newValues);
-                  }}
                 >
                   <Checkbox 
                     checked={isSelected}
