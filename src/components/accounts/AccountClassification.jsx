@@ -2329,15 +2329,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
       <div className="space-y-6">
         <div className="text-center">
           <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${
-            isReportable ? 'bg-amber-100' : 'bg-green-100'
+            isReportable ? 'bg-amber-100' : isPending ? 'bg-blue-100' : 'bg-green-100'
           }`}>
             {isReportable ? (
               <AlertCircle className="w-10 h-10 text-amber-600" />
+            ) : isPending ? (
+              <Clock className="w-10 h-10 text-blue-600" />
             ) : (
               <CheckCircle2 className="w-10 h-10 text-green-600" />
             )}
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Classification Complete</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">{isPending ? 'Work In Progress' : 'Classification Complete'}</h2>
           <p className="text-slate-600">
             Review your answers and confirm the reportability status for account <strong>{account.account_number}</strong>
           </p>
