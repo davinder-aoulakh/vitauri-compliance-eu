@@ -42,7 +42,8 @@ export default function ControllingPersonManager({ account, tenant }) {
   const { data: controllingPersons = [], isLoading } = useQuery({
     queryKey: ['controlling-persons', account?.id],
     queryFn: () => base44.entities.ControllingPerson.filter({ account_id: account?.id }),
-    enabled: !!account?.id
+    enabled: !!account?.id,
+    staleTime: 0 // Always fetch fresh data
   });
 
   const { data: workflows = [] } = useQuery({
