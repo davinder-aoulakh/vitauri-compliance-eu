@@ -1030,7 +1030,23 @@ const BENEFICIARY_FIELDS_SCHEMA = [
 
 // Helper function to get fields for a target entity type
 const getFieldsForEntity = (entityType) => {
-  const schema = entityType === "Entity" ? ENTITY_FIELDS_SCHEMA : ACCOUNT_FIELDS_SCHEMA;
+  let schema;
+  switch (entityType) {
+    case "Entity":
+      schema = ENTITY_FIELDS_SCHEMA;
+      break;
+    case "Account":
+      schema = ACCOUNT_FIELDS_SCHEMA;
+      break;
+    case "ControllingPerson":
+      schema = CONTROLLING_PERSON_FIELDS_SCHEMA;
+      break;
+    case "Beneficiary":
+      schema = BENEFICIARY_FIELDS_SCHEMA;
+      break;
+    default:
+      schema = ACCOUNT_FIELDS_SCHEMA;
+  }
   // Convert array format back to object format for backwards compatibility
   return schema.reduce((acc, field) => {
     acc[field.value] = { label: field.label, type: field.type };
