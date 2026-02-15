@@ -1490,9 +1490,25 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     let reportabilityStatus = "pending_review";
-    let reason = finalNode?.help_text || finalNode?.step_title || "Classification completed";
+    let reason = finalNode?.result_description || finalNode?.help_text || finalNode?.step_title || "Classification completed";
 
-    if (finalNode?.step_title?.toLowerCase().includes("reportable") ||
+    // Priority 1: Use explicit result_status from workflow step configuration
+    if (finalNode?.result_status) {
+      reportabilityStatus = finalNode.result_status;
+      console.log(`[CLASSIFICATION] Using result_status from workflow step: ${reportabilityStatus}`);
+    } 
+    // Priority 2: Infer from post-completion actions
+    else if (finalNode?.post_completion_actions?.length > 0) {
+      const statusAction = finalNode.post_completion_actions.find(
+        action => action.field_to_update === "reportability_status"
+      );
+      if (statusAction && statusAction.value_source === "static_value" && statusAction.value) {
+        reportabilityStatus = statusAction.value;
+        console.log(`[CLASSIFICATION] Using reportability_status from post-completion action: ${reportabilityStatus}`);
+      }
+    }
+    // Priority 3: Infer from text content (legacy fallback)
+    else if (finalNode?.step_title?.toLowerCase().includes("reportable") ||
         finalNode?.help_text?.toLowerCase().includes("reportable")) {
       if (finalNode.step_title?.toLowerCase().includes("non-reportable") ||
           finalNode.help_text?.toLowerCase().includes("non-reportable")) {
@@ -1503,6 +1519,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       } else {
         reportabilityStatus = "reportable";
       }
+      console.log(`[CLASSIFICATION] Inferred from text content: ${reportabilityStatus}`);
     }
 
     const fileUploadAnswer = Object.values(cleanedAnswers).find(ans =>
@@ -2266,8 +2283,30 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   if (showSummary) {
     const finalNode = stepMap[completedPath[completedPath.length - 1]];
-    const isReportable = finalNode?.step_title?.toLowerCase().includes("reportable") &&
-                         !finalNode?.step_title?.toLowerCase().includes("non-reportable");
+    
+    // Determine reportability for summary display - use result_status if available
+    let summaryReportabilityStatus = "pending_review";
+    if (finalNode?.result_status) {
+      summaryReportabilityStatus = finalNode.result_status;
+    } else if (finalNode?.post_completion_actions?.length > 0) {
+      const statusAction = finalNode.post_completion_actions.find(
+        action => action.field_to_update === "reportability_status"
+      );
+      if (statusAction?.value) {
+        summaryReportabilityStatus = statusAction.value;
+      }
+    } else {
+      // Fallback to text-based inference
+      if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
+          !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
+        summaryReportabilityStatus = "reportable";
+      } else if (finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
+        summaryReportabilityStatus = "non_reportable";
+      }
+    }
+    
+    const isReportable = summaryReportabilityStatus === "reportable";
+    const isPending = summaryReportabilityStatus === "pending_review";
 
     return (
       <div className="space-y-6">
@@ -2303,6 +2342,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
         <Card className={`border-2 ${
           isReportable
             ? 'bg-amber-50 border-amber-200'
+            : isPending
+            ? 'bg-blue-50 border-blue-200'
             : 'bg-green-50 border-green-200'
         }`}>
           <CardHeader className="border-b border-slate-200">
@@ -2318,9 +2359,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 <Badge className={`text-sm ${
                   isReportable
                     ? 'bg-amber-600 text-white'
+                    : isPending
+                    ? 'bg-blue-600 text-white'
                     : 'bg-green-600 text-white'
                 }`}>
-                  {isReportable ? 'Reportable' : 'Non-Reportable'}
+                  {isReportable ? 'Reportable' : isPending ? 'Pending Review' : 'Non-Reportable'}
                 </Badge>
               </div>
               <div className="flex items-start justify-between">
