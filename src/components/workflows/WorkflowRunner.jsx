@@ -1495,18 +1495,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 draftPersons: savedPersons
               });
               
-              // Update account controlling persons count
+              // Sync controlling persons count and classification status
               if (accountId) {
                 try {
-                  await base44.entities.Account.update(accountId, {
-                    controlling_persons_count: savedPersons.length
-                  });
+                  await base44.functions.invoke('syncAccountControllingPersons', { accountId: accountId });
                   const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
                   if (updatedAccounts[0]) {
                     setMappedEntityData(updatedAccounts[0]);
                   }
                 } catch (error) {
-                  console.error("Error updating controlling persons count:", error);
+                  console.error("Error syncing controlling persons:", error);
                 }
               }
             }}
