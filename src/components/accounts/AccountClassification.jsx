@@ -2334,14 +2334,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     console.log('  Final Node post_completion_actions:', finalNode?.post_completion_actions);
     console.log('  All Answers:', answers);
     
-    // Priority 1: Use explicit result_status from workflow step configuration
-    if (finalNode?.result_status) {
-      summaryReportabilityStatus = finalNode.result_status;
-      console.log(`  ✅ [PRIORITY 1] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
-    } 
-    // Priority 2: Infer from post-completion actions (with proper value extraction)
-    else if (finalNode?.post_completion_actions?.length > 0) {
-      console.log(`  📋 [PRIORITY 2] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
+    // PRIORITY 1: Post-completion actions (what's actually being saved to the account)
+    if (finalNode?.post_completion_actions?.length > 0) {
+      console.log(`  📋 [PRIORITY 1] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
       
       const statusAction = finalNode.post_completion_actions.find(
         action => action.field_to_update === "reportability_status"
@@ -2366,16 +2361,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
         
         if (extractedValue) {
           summaryReportabilityStatus = extractedValue;
-          console.log(`  ✅ [PRIORITY 2] Using post-completion action value: "${summaryReportabilityStatus}"`);
+          console.log(`  ✅ [PRIORITY 1] Using post-completion action value: "${summaryReportabilityStatus}"`);
         } else {
-          console.log(`  ⚠️ [PRIORITY 2] Could not extract value from post-completion action`);
+          console.log(`  ⚠️ [PRIORITY 1] Could not extract value from post-completion action`);
         }
       } else {
         console.log('    ⚠️ No reportability_status action found in post-completion actions');
       }
     }
     
-    // Priority 3: Fallback to text-based inference only if still pending_review
+    // PRIORITY 2: Explicit result_status from workflow step (if post-completion didn't provide value)
+    if (summaryReportabilityStatus === "pending_review" && finalNode?.result_status) {
+      summaryReportabilityStatus = finalNode.result_status;
+      console.log(`  ✅ [PRIORITY 2] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
+    } 
+    
+    // PRIORITY 3: Fallback to text-based inference only if still pending_review
     if (summaryReportabilityStatus === "pending_review") {
       console.log(`  🔤 [PRIORITY 3] Using text-based inference (still pending_review)`);
       if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
