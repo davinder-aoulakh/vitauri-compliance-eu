@@ -1476,9 +1476,75 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
             <SelectItem value="controlling_person_input">Controlling Person Input</SelectItem>
             <SelectItem value="info">Info (Display Only)</SelectItem>
             <SelectItem value="result">Result (End Step)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Result Action Configuration - for result type steps */}
+      {editedStep.question_type === "result" && (
+        <div className="p-4 border-2 border-green-100 rounded-lg bg-green-50/30 space-y-4">
+          <div className="flex items-start gap-2 text-xs text-slate-600 bg-white p-3 rounded border border-green-200">
+            <Info className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>Result Step:</strong> This is a final step that shows the classification result. 
+              You can optionally configure an action to perform after the classification is saved.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="result_status" className="text-sm">Result Status</Label>
+            <Select
+              value={editedStep.result_status || ""}
+              onValueChange={(value) => handleChange("result_status", value)}
+            >
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Select result status..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="reportable">Reportable</SelectItem>
+                <SelectItem value="non_reportable">Non-Reportable</SelectItem>
+                <SelectItem value="pending_review">Pending Review</SelectItem>
+                <SelectItem value="excluded">Excluded</SelectItem>
               </SelectContent>
-              </Select>
-              </div>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="result_description" className="text-sm">Result Description</Label>
+            <Textarea
+              id="result_description"
+              value={editedStep.result_description || ""}
+              onChange={(e) => handleChange("result_description", e.target.value)}
+              placeholder="e.g., Account is reportable to CRS jurisdictions"
+              rows={2}
+              className="mt-1.5"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="result_action" className="text-sm">Post-Classification Action (Optional)</Label>
+            <Select
+              value={editedStep.result_action || ""}
+              onValueChange={(value) => handleChange("result_action", value)}
+            >
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="No action (just close)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>No Action</SelectItem>
+                <SelectItem value="manage_controlling_persons">Open Controlling Person Manager</SelectItem>
+                <SelectItem value="manual_report_total">Manual Report Total</SelectItem>
+                <SelectItem value="report_per_beneficiary">Report Per Beneficiary</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-500 mt-1.5">
+              {editedStep.result_action === "manage_controlling_persons" 
+                ? "After saving classification, the Controlling Person Manager will open automatically"
+                : "Select what should happen after the classification is saved"}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* File Upload Configuration */}
       {editedStep.question_type === "file_upload" && (
