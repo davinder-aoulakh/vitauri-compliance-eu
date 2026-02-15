@@ -188,12 +188,23 @@ export default function AccountsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Account.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      console.log(`⏱️ [MUTATION] Starting Account.update for ID: ${id}`);
+      const updateStart = performance.now();
+      const result = await base44.entities.Account.update(id, data);
+      console.log(`⏱️ [MUTATION] Account.update completed in ${Math.round(performance.now() - updateStart)}ms`);
+      return result;
+    },
     onSuccess: async (updatedAccount, variables) => {
+      console.log('⏱️ [MUTATION] onSuccess callback started');
+      const onSuccessStart = performance.now();
+      
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
       setShowClassification(false);
       setSelectedAccount(null);
+      
+      console.log(`⏱️ [MUTATION] onSuccess state updates took ${Math.round(performance.now() - onSuccessStart)}ms`);
       
       // Create audit log entry
       try {
@@ -220,16 +231,22 @@ export default function AccountsPage() {
           accountId: variables.id,
           event_type: 'updated'
         });
+        console.log(`⏱️ [MUTATION] Auto-classification completed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
         queryClient.invalidateQueries(['accounts']);
       } catch (error) {
         console.error('Auto-classification failed:', error);
+        console.log(`⏱️ [MUTATION] Auto-classification failed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
       }
       
       // Check for workflow triggers
+      const workflowCheckStart = performance.now();
       const suggestedWorkflows = await suggestWorkflows(updatedAccount, 'account_updated');
+      console.log(`⏱️ [MUTATION] Workflow trigger check completed in ${Math.round(performance.now() - workflowCheckStart)}ms`);
       if (suggestedWorkflows.length > 0) {
         console.log(`${suggestedWorkflows.length} workflow(s) triggered for updated account:`, suggestedWorkflows);
       }
+      
+      console.log(`⏱️ [MUTATION] Total onSuccess took ${Math.round(performance.now() - onSuccessStart)}ms`);
     }
   });
 
@@ -1023,7 +1040,7 @@ export default function AccountsPage() {
                 console.log(`⏱️ [REDIRECT] Query invalidation completed in ${Math.round(performance.now() - invalidateStart)}ms`);
                 
                 // Wait for queries to refresh and get the updated account
-                console.log('⏱️ [REDIRECT] Scheduling controlling persons dialog open in 500ms');
+                console.log('⏱️ [REDIRECT] Scheduling controlling persons dialog open in 200ms (reduced from 500ms)');
                 setTimeout(() => {
                   console.log('⏱️ [REDIRECT] Timeout fired - opening controlling persons manager');
                   const finalSetupStart = performance.now();
@@ -1036,7 +1053,7 @@ export default function AccountsPage() {
                   
                   console.log(`⏱️ [REDIRECT] Final setup completed in ${Math.round(performance.now() - finalSetupStart)}ms`);
                   console.log(`🔄🔄🔄 [REDIRECT] Total redirect flow took ${Math.round(performance.now() - redirectFlowStart)}ms\n`);
-                }, 500);
+                }, 200);
               } else {
                 // If no redirect, deselect account
                 console.log('⏱️ [REDIRECT] No redirect needed, deselecting account');
