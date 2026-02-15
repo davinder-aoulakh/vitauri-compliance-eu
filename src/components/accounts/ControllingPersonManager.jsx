@@ -114,18 +114,25 @@ export default function ControllingPersonManager({ account, tenant }) {
   };
 
   const getStatusBadge = (isReportable) => {
-    if (isReportable) {
+    if (isReportable === true) {
       return (
         <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3" />
           Reportable
         </Badge>
       );
+    } else if (isReportable === false) {
+      return (
+        <Badge className="bg-slate-100 text-slate-800 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          Non-Reportable
+        </Badge>
+      );
     }
     return (
-      <Badge className="bg-slate-100 text-slate-800 flex items-center gap-1">
-        <AlertCircle className="w-3 h-3" />
-        Non-Reportable
+      <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+        <Clock className="w-3 h-3" />
+        Pending Review
       </Badge>
     );
   };
@@ -209,12 +216,12 @@ export default function ControllingPersonManager({ account, tenant }) {
                     <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
                       <User className="w-5 h-5 text-indigo-600" />
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900">
-                        {person.first_name && person.last_name 
-                          ? `${person.first_name} ${person.last_name}`
-                          : person.full_name || "N/A"}
-                      </h4>
+                    <div className="flex-1 min-w-0">
+                     <h4 className="font-semibold text-slate-900">
+                       {person.first_name && person.last_name 
+                         ? `${person.first_name} ${person.last_name}`
+                         : person.full_name || "N/A"}
+                     </h4>
                       <div className="flex items-center gap-3 text-sm text-slate-600 mt-1">
                         {person.control_type && (
                           <Badge variant="outline" className="capitalize text-xs">
@@ -401,11 +408,9 @@ function ControllingPersonForm({ person, onSubmit, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Auto-determine reportability based on foreign tax residencies
-    const hasForeignResidency = formData.tax_residencies.some(r => r.country);
     onSubmit({
       ...formData,
-      is_reportable: hasForeignResidency
+      is_reportable: null  // Set to pending review by default
     });
   };
 

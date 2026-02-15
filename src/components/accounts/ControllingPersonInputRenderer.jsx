@@ -248,9 +248,6 @@ export default function ControllingPersonInputRenderer({
       for (const p of persons) {
         console.log('[ControllingPersonInputRenderer] Saving person:', p);
         
-        // Determine if reportable based on tax residencies
-        const hasValidTaxResidency = p.tax_residencies?.some(tr => tr.country);
-        
         const personData = {
           tenant_id: account?.tenant_id,
           account_id: account.id,
@@ -261,7 +258,7 @@ export default function ControllingPersonInputRenderer({
           ownership_percentage: parseFloat(p.ownership_percentage) || 0,
           address: p.address,
           tax_residencies: p.tax_residencies?.filter(tr => tr.country) || [],
-          is_reportable: hasValidTaxResidency
+          is_reportable: null  // Set to pending review by default
         };
         
         console.log('[ControllingPersonInputRenderer] Creating person with data:', personData);
