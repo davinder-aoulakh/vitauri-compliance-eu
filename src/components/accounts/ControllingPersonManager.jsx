@@ -32,6 +32,10 @@ import CountrySelect from "../shared/CountrySelect";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 
 export default function ControllingPersonManager({ account, tenant, autoOpenAddForm = false }) {
+  console.log(`\n🎯 [CP MANAGER] Component mounted/updated for account: ${account?.id}`);
+  console.log(`⏱️ [CP MANAGER] Account holder: ${account?.account_holder_name}`);
+  const mountTime = React.useRef(performance.now());
+  
   const [showForm, setShowForm] = useState(autoOpenAddForm);
   const [editingPerson, setEditingPerson] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
@@ -39,12 +43,27 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
 
   const queryClient = useQueryClient();
 
+  console.log('⏱️ [CP MANAGER] Setting up data query');
   const { data: controllingPersons = [], isLoading } = useQuery({
     queryKey: ['controlling-persons', account?.id],
-    queryFn: () => base44.entities.ControllingPerson.filter({ account_id: account?.id }),
+    queryFn: async () => {
+      console.log('⏱️ [CP MANAGER] Fetching controlling persons from database');
+      const fetchStart = performance.now();
+      const result = await base44.entities.ControllingPerson.filter({ account_id: account?.id });
+      console.log(`⏱️ [CP MANAGER] Database fetch completed in ${Math.round(performance.now() - fetchStart)}ms (${result.length} persons)`);
+      return result;
+    },
     enabled: !!account?.id,
     staleTime: 0 // Always fetch fresh data
   });
+  
+  React.useEffect(() => {
+    if (!isLoading) {
+      const loadTime = Math.round(performance.now() - mountTime.current);
+      console.log(`⏱️ [CP MANAGER] Component fully loaded in ${loadTime}ms`);
+      console.log(`⏱️ [CP MANAGER] Loaded ${controllingPersons.length} controlling persons`);
+    }
+  }, [isLoading, controllingPersons]);
 
   const { data: workflows = [] } = useQuery({
     queryKey: ['workflows'],

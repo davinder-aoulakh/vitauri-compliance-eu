@@ -980,11 +980,17 @@ export default function AccountsPage() {
           <AccountClassification
             account={selectedAccount}
             onComplete={async (data) => {
+              console.log('\n🔄🔄🔄 [REDIRECT] onComplete callback started in Accounts page');
+              const redirectFlowStart = performance.now();
+              
               const shouldRedirect = data._redirectToControllingPersons;
               const { _redirectToControllingPersons, ...cleanData } = data;
               
+              console.log(`⏱️ [REDIRECT] shouldRedirect: ${shouldRedirect}`);
+              
               // Store account ID for redirect
               const accountId = selectedAccount.id;
+              console.log(`⏱️ [REDIRECT] Account ID: ${accountId}`);
               
               // Merge classification data with existing account data to preserve documents
               const mergedData = {
@@ -994,26 +1000,48 @@ export default function AccountsPage() {
               };
               
               // Update the account
+              console.log('⏱️ [REDIRECT] Starting database update');
+              const dbUpdateStart = performance.now();
               await updateMutation.mutateAsync({ id: accountId, data: mergedData });
+              console.log(`⏱️ [REDIRECT] Database update completed in ${Math.round(performance.now() - dbUpdateStart)}ms`);
               
               // Close classification dialog
+              console.log('⏱️ [REDIRECT] Closing classification dialog');
+              const dialogCloseStart = performance.now();
               setShowClassification(false);
+              console.log(`⏱️ [REDIRECT] Dialog closed in ${Math.round(performance.now() - dialogCloseStart)}ms`);
               
               // If redirect is needed, open controlling persons manager
               if (shouldRedirect) {
+                console.log('⏱️ [REDIRECT] Starting query invalidation for fresh data');
+                const invalidateStart = performance.now();
+                
                 // Ensure fresh account data is loaded
                 await queryClient.invalidateQueries(['accounts']);
                 await queryClient.invalidateQueries(['controlling-persons']);
                 
+                console.log(`⏱️ [REDIRECT] Query invalidation completed in ${Math.round(performance.now() - invalidateStart)}ms`);
+                
                 // Wait for queries to refresh and get the updated account
+                console.log('⏱️ [REDIRECT] Scheduling controlling persons dialog open in 500ms');
                 setTimeout(() => {
+                  console.log('⏱️ [REDIRECT] Timeout fired - opening controlling persons manager');
+                  const finalSetupStart = performance.now();
+                  
                   const refreshedAccount = queryClient.getQueryData(['accounts', user?.tenant_id])?.find(a => a.id === accountId);
+                  console.log('⏱️ [REDIRECT] Refreshed account found:', !!refreshedAccount);
+                  
                   setSelectedAccount(refreshedAccount);
                   setShowControllingPersons(true);
+                  
+                  console.log(`⏱️ [REDIRECT] Final setup completed in ${Math.round(performance.now() - finalSetupStart)}ms`);
+                  console.log(`🔄🔄🔄 [REDIRECT] Total redirect flow took ${Math.round(performance.now() - redirectFlowStart)}ms\n`);
                 }, 500);
               } else {
                 // If no redirect, deselect account
+                console.log('⏱️ [REDIRECT] No redirect needed, deselecting account');
                 setSelectedAccount(null);
+                console.log(`🔄🔄🔄 [REDIRECT] Total completion flow (no redirect) took ${Math.round(performance.now() - redirectFlowStart)}ms\n`);
               }
             }}
             onCancel={() => setShowClassification(false)}
