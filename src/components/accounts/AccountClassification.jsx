@@ -1497,29 +1497,46 @@ export default function AccountClassification({ account, onComplete, onCancel })
       reportabilityStatus = finalNode.result_status;
       console.log(`[CLASSIFICATION] Using result_status from workflow step: ${reportabilityStatus}`);
     } 
-    // Priority 2: Infer from post-completion actions
+    // Priority 2: Infer from post-completion actions (with proper value extraction)
     else if (finalNode?.post_completion_actions?.length > 0) {
       const statusAction = finalNode.post_completion_actions.find(
         action => action.field_to_update === "reportability_status"
       );
-      if (statusAction && statusAction.value_source === "static_value" && statusAction.value) {
-        reportabilityStatus = statusAction.value;
-        console.log(`[CLASSIFICATION] Using reportability_status from post-completion action: ${reportabilityStatus}`);
+      if (statusAction) {
+        let extractedValue = null;
+        
+        if (statusAction.value_source === "static_value") {
+          extractedValue = statusAction.value;
+        } else if (statusAction.value_source === "from_step_answer") {
+          extractedValue = cleanedAnswers[statusAction.value];
+        } else if (statusAction.value_source === "from_workflow_outcome") {
+          // This means it wants to use the computed reportability_status
+          // We'll let it fall through to text inference
+          extractedValue = null;
+        }
+        
+        if (extractedValue) {
+          reportabilityStatus = extractedValue;
+          console.log(`[CLASSIFICATION] Using reportability_status from post-completion action (${statusAction.value_source}): ${reportabilityStatus}`);
+        }
       }
     }
+    
     // Priority 3: Infer from text content (legacy fallback)
-    else if (finalNode?.step_title?.toLowerCase().includes("reportable") ||
-        finalNode?.help_text?.toLowerCase().includes("reportable")) {
-      if (finalNode.step_title?.toLowerCase().includes("non-reportable") ||
-          finalNode.help_text?.toLowerCase().includes("non-reportable")) {
-        reportabilityStatus = "non_reportable";
-      } else if (finalNode.step_title?.toLowerCase().includes("pending") ||
-                 finalNode.help_text?.toLowerCase().includes("pending")) {
-        reportabilityStatus = "pending_review";
-      } else {
-        reportabilityStatus = "reportable";
+    if (!reportabilityStatus || reportabilityStatus === "pending_review") {
+      if (finalNode?.step_title?.toLowerCase().includes("reportable") ||
+          finalNode?.help_text?.toLowerCase().includes("reportable")) {
+        if (finalNode.step_title?.toLowerCase().includes("non-reportable") ||
+            finalNode.help_text?.toLowerCase().includes("non-reportable")) {
+          reportabilityStatus = "non_reportable";
+        } else if (finalNode.step_title?.toLowerCase().includes("pending") ||
+                   finalNode.help_text?.toLowerCase().includes("pending")) {
+          reportabilityStatus = "pending_review";
+        } else {
+          reportabilityStatus = "reportable";
+        }
+        console.log(`[CLASSIFICATION] Inferred from text content: ${reportabilityStatus}`);
       }
-      console.log(`[CLASSIFICATION] Inferred from text content: ${reportabilityStatus}`);
     }
 
     const fileUploadAnswer = Object.values(cleanedAnswers).find(ans =>
