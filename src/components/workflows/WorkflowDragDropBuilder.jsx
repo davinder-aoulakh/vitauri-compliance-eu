@@ -997,6 +997,37 @@ const ENTITY_FIELDS_SCHEMA = [
   { value: "status", label: "Entity Status", type: "enum" }
 ];
 
+const CONTROLLING_PERSON_FIELDS_SCHEMA = [
+  { value: "first_name", label: "First Name", type: "string" },
+  { value: "last_name", label: "Last Name", type: "string" },
+  { value: "full_name", label: "Full Name", type: "string" },
+  { value: "date_of_birth", label: "Date of Birth", type: "date" },
+  { value: "address.street", label: "Address - Street", type: "string" },
+  { value: "address.city", label: "Address - City", type: "string" },
+  { value: "address.state", label: "Address - State", type: "string" },
+  { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
+  { value: "address.country", label: "Address - Country", type: "string" },
+  { value: "control_type", label: "Control Type", type: "enum" },
+  { value: "ownership_percentage", label: "Ownership Percentage", type: "number" },
+  { value: "is_reportable", label: "Is Reportable", type: "boolean" },
+  { value: "us_person_indic", label: "US Person Indicator", type: "boolean" }
+];
+
+const BENEFICIARY_FIELDS_SCHEMA = [
+  { value: "first_name", label: "First Name", type: "string" },
+  { value: "last_name", label: "Last Name", type: "string" },
+  { value: "full_name", label: "Full Name", type: "string" },
+  { value: "date_of_birth", label: "Date of Birth", type: "date" },
+  { value: "place_of_birth", label: "Place of Birth", type: "string" },
+  { value: "address.street", label: "Address - Street", type: "string" },
+  { value: "address.city", label: "Address - City", type: "string" },
+  { value: "address.state", label: "Address - State", type: "string" },
+  { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
+  { value: "address.country", label: "Address - Country", type: "string" },
+  { value: "reportability_status", label: "Reportability Status", type: "enum" },
+  { value: "reportability_reason", label: "Reportability Reason", type: "string" }
+];
+
 // Helper function to get fields for a target entity type
 const getFieldsForEntity = (entityType) => {
   const schema = entityType === "Entity" ? ENTITY_FIELDS_SCHEMA : ACCOUNT_FIELDS_SCHEMA;
