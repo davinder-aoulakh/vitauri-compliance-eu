@@ -1442,6 +1442,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const completeClassification = async () => {
+    console.log('\n⚡⚡⚡ [COMPLETE CLASSIFICATION] Starting...');
+    const startTime = Date.now();
+    
     const finalNode = stepMap[history[history.length - 1]] || stepMap[currentNodeId];
     const finalAnswers = answers;
 
@@ -1451,15 +1454,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
-    // Sync controlling persons count and classification status first
-    if (account?.id) {
-      try {
-        await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
-      } catch (error) {
-        console.error("Error syncing controlling persons:", error);
-      }
-    }
-    
     // Check if result_action is "manage_controlling_persons"
     const shouldRedirectToControllingPersons = finalNode?.result_action === "manage_controlling_persons";
 
@@ -1476,6 +1470,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
+    
+    // Execute all after_workflow actions in parallel for speed
+    const afterWorkflowPromises = [];
     for (const stepId of completedPath) {
       const step = stepMap[stepId];
       if (step?.post_completion_actions && step.post_completion_actions.length > 0) {
@@ -1483,10 +1480,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
           action => action.execution_timing === "after_workflow"
         );
         if (afterWorkflowActions.length > 0) {
-          console.log(`[POST-COMPLETION ACTIONS] Executing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
-          await executePostCompletionActions(afterWorkflowActions, cleanedAnswers);
+          console.log(`[POST-COMPLETION ACTIONS] Queueing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
+          afterWorkflowPromises.push(executePostCompletionActions(afterWorkflowActions, cleanedAnswers));
         }
       }
+    }
+    
+    // Wait for all after_workflow actions to complete in parallel
+    if (afterWorkflowPromises.length > 0) {
+      await Promise.all(afterWorkflowPromises);
+      console.log(`[POST-COMPLETION ACTIONS] Completed ${afterWorkflowPromises.length} after_workflow action groups`);
     }
 
     let reportabilityStatus = "pending_review";
@@ -1655,8 +1658,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    try {
-      await base44.entities.AccountClassificationHistory.create({
+    // Execute history creation and controlling persons sync in parallel
+    const parallelTasks = [];
+    
+    // Task 1: Save classification history
+    parallelTasks.push(
+      base44.entities.AccountClassificationHistory.create({
         tenant_id: account.tenant_id,
         account_id: account.id,
         classification_date: new Date().toISOString(),
@@ -1670,10 +1677,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
         account_holder_name: account.account_holder_name,
         account_number: account.account_number,
         account_balance: account.account_balance
-      });
-    } catch (error) {
-      console.error("Error saving classification history:", error);
+      }).catch(error => {
+        console.error("Error saving classification history:", error);
+      })
+    );
+    
+    // Task 2: Sync controlling persons (if needed)
+    if (account?.id && shouldRedirectToControllingPersons) {
+      parallelTasks.push(
+        base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id })
+          .catch(error => {
+            console.error("Error syncing controlling persons:", error);
+          })
+      );
     }
+    
+    // Wait for both to complete
+    await Promise.all(parallelTasks);
+    
+    const endTime = Date.now();
+    console.log(`⚡⚡⚡ [COMPLETE CLASSIFICATION] Finished in ${endTime - startTime}ms\n`);
 
     // Pass redirect instruction if needed
     if (shouldRedirectToControllingPersons) {
@@ -2304,45 +2327,71 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Determine reportability for summary display - use same logic as completeClassification
     let summaryReportabilityStatus = "pending_review";
     
+    console.log('\n🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Starting reportability status determination...');
+    console.log('  Final Node:', finalNode);
+    console.log('  Final Node Step Title:', finalNode?.step_title);
+    console.log('  Final Node result_status:', finalNode?.result_status);
+    console.log('  Final Node post_completion_actions:', finalNode?.post_completion_actions);
+    console.log('  All Answers:', answers);
+    
     // Priority 1: Use explicit result_status from workflow step configuration
     if (finalNode?.result_status) {
       summaryReportabilityStatus = finalNode.result_status;
-      console.log(`[SUMMARY DISPLAY] Using result_status: ${summaryReportabilityStatus}`);
+      console.log(`  ✅ [PRIORITY 1] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
     } 
     // Priority 2: Infer from post-completion actions (with proper value extraction)
     else if (finalNode?.post_completion_actions?.length > 0) {
+      console.log(`  📋 [PRIORITY 2] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
+      
       const statusAction = finalNode.post_completion_actions.find(
         action => action.field_to_update === "reportability_status"
       );
+      
       if (statusAction) {
+        console.log('    Found reportability_status action:', statusAction);
         let extractedValue = null;
         
         if (statusAction.value_source === "static_value") {
           extractedValue = statusAction.value;
+          console.log(`    → static_value: "${extractedValue}"`);
         } else if (statusAction.value_source === "from_step_answer") {
-          extractedValue = answers[statusAction.value];
+          const sourceStepId = statusAction.value;
+          extractedValue = answers[sourceStepId];
+          console.log(`    → from_step_answer: step="${sourceStepId}", value="${extractedValue}"`);
+        } else if (statusAction.value_source === "from_workflow_outcome") {
+          console.log(`    → from_workflow_outcome (not available at summary screen)`);
+        } else {
+          console.log(`    → Unknown value_source: "${statusAction.value_source}"`);
         }
         
         if (extractedValue) {
           summaryReportabilityStatus = extractedValue;
-          console.log(`[SUMMARY DISPLAY] Using post-completion action value (${statusAction.value_source}): ${summaryReportabilityStatus}`);
+          console.log(`  ✅ [PRIORITY 2] Using post-completion action value: "${summaryReportabilityStatus}"`);
+        } else {
+          console.log(`  ⚠️ [PRIORITY 2] Could not extract value from post-completion action`);
         }
+      } else {
+        console.log('    ⚠️ No reportability_status action found in post-completion actions');
       }
     }
     
     // Priority 3: Fallback to text-based inference only if still pending_review
     if (summaryReportabilityStatus === "pending_review") {
+      console.log(`  🔤 [PRIORITY 3] Using text-based inference (still pending_review)`);
       if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
           !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "reportable";
-        console.log(`[SUMMARY DISPLAY] Inferred reportable from text`);
+        console.log(`    ✅ Inferred "reportable" from step title`);
       } else if (finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "non_reportable";
-        console.log(`[SUMMARY DISPLAY] Inferred non-reportable from text`);
+        console.log(`    ✅ Inferred "non_reportable" from step title`);
       } else {
-        console.log(`[SUMMARY DISPLAY] Remaining as pending_review`);
+        console.log(`    ℹ️ No text match found, remaining as "pending_review"`);
       }
     }
+    
+    console.log(`\n  🎯 FINAL SUMMARY STATUS: "${summaryReportabilityStatus}"`);
+    console.log('🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Complete\n');
     
     const isReportable = summaryReportabilityStatus === "reportable";
     const isPending = summaryReportabilityStatus === "pending_review";
