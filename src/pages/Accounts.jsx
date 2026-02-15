@@ -983,6 +983,9 @@ export default function AccountsPage() {
               const shouldRedirect = data._redirectToControllingPersons;
               const { _redirectToControllingPersons, ...cleanData } = data;
               
+              // Store account ID for redirect
+              const accountId = selectedAccount.id;
+              
               // Merge classification data with existing account data to preserve documents
               const mergedData = {
                 ...cleanData,
@@ -991,7 +994,7 @@ export default function AccountsPage() {
               };
               
               // Update the account
-              await updateMutation.mutateAsync({ id: selectedAccount.id, data: mergedData });
+              await updateMutation.mutateAsync({ id: accountId, data: mergedData });
               
               // Close classification dialog
               setShowClassification(false);
@@ -999,11 +1002,13 @@ export default function AccountsPage() {
               // If redirect is needed, open controlling persons manager
               if (shouldRedirect) {
                 // Ensure fresh account data is loaded
-                queryClient.invalidateQueries(['accounts']);
-                queryClient.invalidateQueries(['controlling-persons']);
+                await queryClient.invalidateQueries(['accounts']);
+                await queryClient.invalidateQueries(['controlling-persons']);
                 
-                // Wait a bit for data to refresh, then open controlling persons
+                // Wait for queries to refresh and get the updated account
                 setTimeout(() => {
+                  const refreshedAccount = queryClient.getQueryData(['accounts', user?.tenant_id])?.find(a => a.id === accountId);
+                  setSelectedAccount(refreshedAccount);
                   setShowControllingPersons(true);
                 }, 500);
               } else {
