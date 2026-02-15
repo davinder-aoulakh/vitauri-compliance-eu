@@ -1451,10 +1451,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     delete cleanedAnswers._account_holder_is_alive;
     delete cleanedAnswers._account_holder_type;
 
-    // Check if result_action is "manage_controlling_persons"
-    const shouldRedirectToControllingPersons = finalNode?.result_action === "manage_controlling_persons";
-    
-    // Sync controlling persons count and classification status
+    // Sync controlling persons count and classification status first
     if (account?.id) {
       try {
         await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
@@ -1462,6 +1459,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
         console.error("Error syncing controlling persons:", error);
       }
     }
+    
+    // Check if result_action is "manage_controlling_persons"
+    const shouldRedirectToControllingPersons = finalNode?.result_action === "manage_controlling_persons";
 
     // Check if workflow contains a "Request New Self Certification" step with a date
     let selfCertRequestDate = null;
