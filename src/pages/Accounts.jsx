@@ -1019,10 +1019,10 @@ export default function AccountsPage() {
                 // which was built from existing account.documents + new upload
               };
               
-              // Update the account
-              console.log('⏱️ [REDIRECT] Starting database update');
+              // Update the account (skip hooks to avoid auto-classification and workflow checks)
+              console.log('⏱️ [REDIRECT] Starting database update (skipHooks=true to speed up redirect)');
               const dbUpdateStart = performance.now();
-              await updateMutation.mutateAsync({ id: accountId, data: mergedData });
+              await updateMutation.mutateAsync({ id: accountId, data: mergedData, skipHooks: true });
               console.log(`⏱️ [REDIRECT] Database update completed in ${Math.round(performance.now() - dbUpdateStart)}ms`);
               
               // Close classification dialog
