@@ -2364,7 +2364,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         if (extractedValue) {
           summaryReportabilityStatus = extractedValue;
           valueFoundInPriority1 = true;
-          console.log(`  ✅ [PRIORITY 1] SUCCESSFULLY extracted value: "${summaryReportabilityStatus}"`);
+          console.log(`  ✅✅✅ [PRIORITY 1 - LOCKED IN] Using post-completion action value: "${summaryReportabilityStatus}" - will NOT be overwritten`);
         } else {
           console.log(`  ⚠️ [PRIORITY 1] Could not extract value from post-completion action`);
         }
