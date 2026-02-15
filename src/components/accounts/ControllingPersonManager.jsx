@@ -31,8 +31,8 @@ import {
 import CountrySelect from "../shared/CountrySelect";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 
-export default function ControllingPersonManager({ account, tenant }) {
-  const [showForm, setShowForm] = useState(false);
+export default function ControllingPersonManager({ account, tenant, autoOpenAddForm = false }) {
+  const [showForm, setShowForm] = useState(autoOpenAddForm);
   const [editingPerson, setEditingPerson] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
   const [classifyingPerson, setClassifyingPerson] = useState(null);
