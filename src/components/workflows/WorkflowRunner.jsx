@@ -22,6 +22,7 @@ import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
+import MultiFieldRenderer from "./MultiFieldRenderer";
 
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -1511,6 +1512,19 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           />
         );
 
+      case 'multi_field_input':
+        const multiFieldAnswer = answer || {};
+        const multiFieldErrors = {};
+        
+        return (
+          <MultiFieldRenderer
+            fields={currentStep.multi_fields || []}
+            values={multiFieldAnswer}
+            onChange={(newValues) => handleAnswer(currentStep.step_id, newValues)}
+            errors={multiFieldErrors}
+          />
+        );
+
       case 'info':
         return null;
 
@@ -1574,6 +1588,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
     if (currentStep.question_type === 'controlling_person_input') {
       return answer?.savedPersons && answer.savedPersons.length > 0;
+    }
+
+    if (currentStep.question_type === 'multi_field_input') {
+      if (!answer || typeof answer !== 'object') return false;
+      const requiredFields = currentStep.multi_fields?.filter(f => f.is_required) || [];
+      return requiredFields.every(field => {
+        const value = answer[field.field_id];
+        return value !== undefined && value !== null && value !== '';
+      });
     }
     
     return answer !== undefined && answer !== null && answer !== '';
