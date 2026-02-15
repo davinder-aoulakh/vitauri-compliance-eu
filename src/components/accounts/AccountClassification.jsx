@@ -2334,6 +2334,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     console.log('  Final Node post_completion_actions:', finalNode?.post_completion_actions);
     console.log('  All Answers:', answers);
     
+    let valueFoundInPriority1 = false;
+    
     // PRIORITY 1: Post-completion actions (what's actually being saved to the account)
     if (finalNode?.post_completion_actions?.length > 0) {
       console.log(`  📋 [PRIORITY 1] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
@@ -2361,7 +2363,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
         
         if (extractedValue) {
           summaryReportabilityStatus = extractedValue;
-          console.log(`  ✅ [PRIORITY 1] Using post-completion action value: "${summaryReportabilityStatus}"`);
+          valueFoundInPriority1 = true;
+          console.log(`  ✅ [PRIORITY 1] SUCCESSFULLY extracted value: "${summaryReportabilityStatus}"`);
         } else {
           console.log(`  ⚠️ [PRIORITY 1] Could not extract value from post-completion action`);
         }
@@ -2370,14 +2373,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
     
-    // PRIORITY 2: Explicit result_status from workflow step (if post-completion didn't provide value)
-    if (summaryReportabilityStatus === "pending_review" && finalNode?.result_status) {
+    // PRIORITY 2: Explicit result_status from workflow step (ONLY if PRIORITY 1 didn't find a value)
+    if (!valueFoundInPriority1 && finalNode?.result_status) {
       summaryReportabilityStatus = finalNode.result_status;
       console.log(`  ✅ [PRIORITY 2] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
-    } 
+    } else if (valueFoundInPriority1) {
+      console.log(`  ⏭️ [PRIORITY 2] Skipping - value already found in PRIORITY 1`);
+    }
     
     // PRIORITY 3: Fallback to text-based inference only if still pending_review
-    if (summaryReportabilityStatus === "pending_review") {
+    if (summaryReportabilityStatus === "pending_review" && !valueFoundInPriority1) {
       console.log(`  🔤 [PRIORITY 3] Using text-based inference (still pending_review)`);
       if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
           !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
@@ -2389,6 +2394,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
       } else {
         console.log(`    ℹ️ No text match found, remaining as "pending_review"`);
       }
+    } else if (valueFoundInPriority1) {
+      console.log(`  ⏭️ [PRIORITY 3] Skipping - value already found in PRIORITY 1`);
     }
     
     console.log(`\n  🎯 FINAL SUMMARY STATUS: "${summaryReportabilityStatus}"`);
