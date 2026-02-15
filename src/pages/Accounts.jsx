@@ -979,7 +979,7 @@ export default function AccountsPage() {
           </DialogHeader>
           <AccountClassification
             account={selectedAccount}
-            onComplete={(data) => {
+            onComplete={async (data) => {
               const shouldRedirect = data._redirectToControllingPersons;
               const { _redirectToControllingPersons, ...cleanData } = data;
               
@@ -991,14 +991,24 @@ export default function AccountsPage() {
               };
               
               // Update the account
-              updateMutation.mutate({ id: selectedAccount.id, data: mergedData });
+              await updateMutation.mutateAsync({ id: selectedAccount.id, data: mergedData });
               
-              // If redirect is needed, open controlling persons manager after classification dialog closes
+              // Close classification dialog
+              setShowClassification(false);
+              
+              // If redirect is needed, open controlling persons manager
               if (shouldRedirect) {
+                // Ensure fresh account data is loaded
+                queryClient.invalidateQueries(['accounts']);
+                queryClient.invalidateQueries(['controlling-persons']);
+                
+                // Wait a bit for data to refresh, then open controlling persons
                 setTimeout(() => {
-                  setShowClassification(false);
                   setShowControllingPersons(true);
-                }, 300);
+                }, 500);
+              } else {
+                // If no redirect, deselect account
+                setSelectedAccount(null);
               }
             }}
             onCancel={() => setShowClassification(false)}
