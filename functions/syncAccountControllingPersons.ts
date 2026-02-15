@@ -9,7 +9,13 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { accountId } = await req.json();
+        const payload = await req.json();
+        
+        // Support both direct call and automation event
+        let accountId = payload.accountId;
+        if (!accountId && payload.event?.entity_name === 'ControllingPerson' && payload.data?.account_id) {
+            accountId = payload.data.account_id;
+        }
 
         if (!accountId) {
             return Response.json({ error: 'Account ID is required' }, { status: 400 });
