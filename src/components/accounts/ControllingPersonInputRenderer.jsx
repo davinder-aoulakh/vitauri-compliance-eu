@@ -281,9 +281,6 @@ export default function ControllingPersonInputRenderer({
         console.log('[ControllingPersonInputRenderer] Calling onControllingPersonsAdded callback');
         onControllingPersonsAdded(savedPers);
       }
-      
-      // Reset form to allow adding more persons
-      setPersons([createEmptyPerson()]);
     } catch (error) {
       console.error("[ControllingPersonInputRenderer] Error saving controlling persons:", error);
       toast.error("Failed to save controlling persons. Please try again.");
