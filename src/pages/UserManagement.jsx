@@ -151,12 +151,12 @@ export default function UserManagement() {
     );
   }
 
-  if (user?.user_role !== "tenant_admin") {
+  if (user?.user_role !== "tenant_admin" && user?.user_role !== "super_admin") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 flex items-center justify-center p-6">
         <Alert className="max-w-md border-amber-200 bg-amber-50">
           <AlertDescription className="text-amber-900">
-            Only tenant administrators can manage users.
+            Only administrators can manage users.
           </AlertDescription>
         </Alert>
       </div>
