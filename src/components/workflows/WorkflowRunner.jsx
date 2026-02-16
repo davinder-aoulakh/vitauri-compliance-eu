@@ -312,13 +312,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
     
     if (currentStep.question_type === 'multiple_choice' && 
-        currentStep.conditional_logic?.selection_count_operator && 
+        currentStep.conditional_logic?.selection_count_value !== undefined &&
+        currentStep.conditional_logic?.selection_count_value !== null &&
+        (currentStep.conditional_logic?.selection_count_next_step || currentStep.conditional_logic?.selection_count_else_step) &&
         Array.isArray(answer)) {
       console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING]');
       console.log('   Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
       const selectionCount = answer.length;
       const targetCount = currentStep.conditional_logic.selection_count_value || 0;
-      const operator = currentStep.conditional_logic.selection_count_operator;
+      const operator = currentStep.conditional_logic.selection_count_operator || '=';
       
       console.log(`   📊 Selection count: ${selectionCount}`);
       console.log(`   🎯 Target count: ${targetCount}`);
