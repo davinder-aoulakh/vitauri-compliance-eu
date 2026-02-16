@@ -212,7 +212,7 @@ export default function UserManagement() {
                 <div>
                   <p className="text-sm text-slate-600">Administrators</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {tenantUsers.filter(u => u.user_role === "tenant_admin").length}
+                    {tenantUsers.filter(u => u.app_role === "tenant_admin").length}
                   </p>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function UserManagement() {
                 <div>
                   <p className="text-sm text-slate-600">Regular Users</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {tenantUsers.filter(u => u.user_role === "tenant_user" || u.user_role === "tenant_supervisor").length}
+                    {tenantUsers.filter(u => u.app_role === "tenant_user" || u.app_role === "tenant_supervisor").length}
                   </p>
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default function UserManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getRoleBadge(u.user_role)}
+                          {getRoleBadge(u.app_role)}
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-slate-700">
