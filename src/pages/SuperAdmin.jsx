@@ -29,7 +29,7 @@ export default function SuperAdminDashboard() {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       
-      if (currentUser.user_role !== "super_admin") {
+      if (currentUser.app_role !== "super_admin") {
         window.location.href = createPageUrl("Dashboard");
       }
     } catch (error) {
@@ -114,7 +114,7 @@ export default function SuperAdminDashboard() {
           <StatCard
             title="Total Users"
             value={allUsers.length}
-            subtitle={`${allUsers.filter(u => u.user_role === "tenant_admin").length} admins`}
+            subtitle={`${allUsers.filter(u => u.app_role === "tenant_admin").length} admins`}
             icon={Users}
             color="#3b82f6"
           />
