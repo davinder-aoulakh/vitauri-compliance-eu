@@ -289,7 +289,7 @@ export default function DashboardBuilder() {
     });
   };
 
-  if (!user || (user.user_role !== "tenant_admin" && user.user_role !== "super_admin")) {
+  if (!user || (user.app_role !== "tenant_admin" && user.app_role !== "super_admin")) {
     return (
       <div className="p-6 text-center">
         <p className="text-slate-600">You don't have permission to access this page.</p>
