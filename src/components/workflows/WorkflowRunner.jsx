@@ -784,50 +784,111 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const executePostCompletionActions = async (actions) => {
-    if (!actions || actions.length === 0) return;
+    if (!actions || actions.length === 0) {
+      console.log('[POST-COMPLETION ACTIONS] No actions to execute');
+      return;
+    }
 
-    for (const action of actions) {
+    console.log(`\n🎬 [POST-COMPLETION ACTIONS] Starting execution of ${actions.length} action(s)`);
+    console.log('[POST-COMPLETION ACTIONS] Actions:', JSON.stringify(actions, null, 2));
+
+    for (let i = 0; i < actions.length; i++) {
+      const action = actions[i];
+      console.log(`\n📌 [ACTION ${i + 1}/${actions.length}] Processing:`, action);
+      
       try {
-        console.log(`[POST-COMPLETION ACTION] Executing action:`, action);
-        
         let targetEntityId = null;
         let targetEntityType = action.target_entity_type;
 
+        console.log(`   Target Entity Type: ${targetEntityType}`);
+        console.log(`   Available IDs - accountId: ${accountId}, entityId: ${entityId}`);
+
         if (targetEntityType === "Account" && accountId) {
           targetEntityId = accountId;
+          console.log(`   ✓ Using Account ID: ${targetEntityId}`);
         } else if (targetEntityType === "Entity" && entityId) {
           targetEntityId = entityId;
+          console.log(`   ✓ Using Entity ID: ${targetEntityId}`);
         } else if (targetEntityType === "ControllingPerson") {
-          console.warn("ControllingPerson target not yet supported in post-completion actions");
-          continue;
+          // For ControllingPerson, we need to get the ID from the workflow answer
+          // Check if there's a controlling_person_input step
+          console.log(`   ℹ️  ControllingPerson target detected`);
+          console.log(`   All answers:`, answers);
+          
+          // Look for controlling_person_input step answer
+          const cpInputStep = workflow.steps.find(s => s.question_type === 'controlling_person_input');
+          if (cpInputStep) {
+            const cpAnswer = answers[cpInputStep.step_id];
+            console.log(`   Found controlling_person_input step: ${cpInputStep.step_id}`);
+            console.log(`   Answer:`, cpAnswer);
+            
+            if (cpAnswer?.savedPersons && cpAnswer.savedPersons.length > 0) {
+              // Get the most recently added controlling person
+              const latestPerson = cpAnswer.savedPersons[cpAnswer.savedPersons.length - 1];
+              targetEntityId = latestPerson.id;
+              console.log(`   ✓ Using ControllingPerson ID from latest person: ${targetEntityId}`);
+            } else {
+              console.warn(`   ⚠️  No saved controlling persons found in answer`);
+            }
+          } else {
+            // Try to get from initialData if passed
+            if (initialData?.controllingPersonId) {
+              targetEntityId = initialData.controllingPersonId;
+              console.log(`   ✓ Using ControllingPerson ID from initialData: ${targetEntityId}`);
+            } else {
+              console.warn(`   ⚠️  No controlling_person_input step found and no initialData.controllingPersonId`);
+            }
+          }
         }
 
         if (!targetEntityId || !targetEntityType) {
-          console.warn(`[POST-COMPLETION ACTION] No valid target entity found for action:`, action);
+          console.error(`   ❌ [ACTION ${i + 1}] FAILED: No valid target entity found`);
+          console.error(`   - targetEntityType: ${targetEntityType}`);
+          console.error(`   - targetEntityId: ${targetEntityId}`);
           continue;
         }
 
+        console.log(`   ✅ Target identified: ${targetEntityType} (ID: ${targetEntityId})`);
+
+
         let valueToUpdate = null;
+        
+        console.log(`   Value Source: ${action.value_source}`);
+        console.log(`   Raw Value: ${action.value}`);
         
         if (action.value_source === "static_value") {
           valueToUpdate = action.value;
+          console.log(`   → Static value: ${valueToUpdate}`);
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
           valueToUpdate = answers[sourceStepId];
+          console.log(`   → From step answer (${sourceStepId}): ${valueToUpdate}`);
           
-          if (valueToUpdate === 'YES') valueToUpdate = true;
-          if (valueToUpdate === 'NO') valueToUpdate = false;
+          if (valueToUpdate === 'YES') {
+            valueToUpdate = true;
+            console.log(`   → Converted 'YES' to true`);
+          }
+          if (valueToUpdate === 'NO') {
+            valueToUpdate = false;
+            console.log(`   → Converted 'NO' to false`);
+          }
         } else if (action.value_source === "from_workflow_outcome") {
           const resultStep = workflow.steps.find(s => s.question_type === 'result');
           valueToUpdate = resultStep?.result_description || action.value;
+          console.log(`   → From workflow outcome: ${valueToUpdate}`);
         }
+        
+        console.log(`   Final value to update: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
+
 
         if (action.condition) {
+          console.log(`   📋 Evaluating condition:`, action.condition);
           const conditionField = action.condition.field;
           const conditionOperator = action.condition.operator;
           const conditionValue = action.condition.value;
           
           const fieldValue = answers[conditionField];
+          console.log(`   Condition: ${conditionField} (value: ${fieldValue}) ${conditionOperator} ${conditionValue}`);
           
           let conditionMet = false;
           switch (conditionOperator) {
@@ -850,44 +911,79 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               conditionMet = false;
           }
           
-          console.log(`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
+          console.log(`   Condition result: ${conditionMet ? '✅ MET' : '❌ NOT MET'}`);
           
           if (!conditionMet) {
-            console.log(`[POST-COMPLETION ACTION] Condition not met, skipping action`);
+            console.log(`   ⏭️  Skipping action due to unmet condition`);
             continue;
           }
         }
 
+
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
-        console.log(`[POST-COMPLETION ACTION] Updating ${targetEntityType}.${fieldToUpdate} = "${valueToUpdate}"`);
-        console.log(`[POST-COMPLETION ACTION] Update data:`, updateData);
+        console.log(`   🔄 Preparing update:`);
+        console.log(`   - Entity Type: ${targetEntityType}`);
+        console.log(`   - Entity ID: ${targetEntityId}`);
+        console.log(`   - Field: ${fieldToUpdate}`);
+        console.log(`   - Value: ${valueToUpdate}`);
+        console.log(`   - Update Data:`, updateData);
 
         if (targetEntityType === "Account") {
+          console.log(`   🚀 Executing Account.update...`);
           await base44.entities.Account.update(targetEntityId, updateData);
-          console.log(`[POST-COMPLETION ACTION] Successfully updated Account.${fieldToUpdate}`);
+          console.log(`   ✅ Account.${fieldToUpdate} updated successfully`);
           
           const updatedAccounts = await base44.entities.Account.filter({ id: targetEntityId });
           if (updatedAccounts[0]) {
             setMappedEntityData(updatedAccounts[0]);
-            console.log(`[POST-COMPLETION ACTION] Refreshed account data:`, updatedAccounts[0]);
+            console.log(`   🔄 Refreshed account data in state`);
           }
         } else if (targetEntityType === "Entity") {
+          console.log(`   🚀 Executing Entity.update...`);
           await base44.entities.Entity.update(targetEntityId, updateData);
-          console.log(`[POST-COMPLETION ACTION] Successfully updated Entity.${fieldToUpdate}`);
+          console.log(`   ✅ Entity.${fieldToUpdate} updated successfully`);
           
           const updatedEntities = await base44.entities.Entity.filter({ id: targetEntityId });
           if (updatedEntities[0]) {
             setMappedEntityData(updatedEntities[0]);
-            console.log(`[POST-COMPLETION ACTION] Refreshed entity data:`, updatedEntities[0]);
+            console.log(`   🔄 Refreshed entity data in state`);
+          }
+        } else if (targetEntityType === "ControllingPerson") {
+          console.log(`   🚀 Executing ControllingPerson.update...`);
+          await base44.entities.ControllingPerson.update(targetEntityId, updateData);
+          console.log(`   ✅ ControllingPerson.${fieldToUpdate} updated successfully`);
+          
+          // If account is associated, also check if we need to sync the account
+          if (accountId) {
+            console.log(`   🔄 Syncing account controlling persons count...`);
+            try {
+              await base44.functions.invoke('syncAccountControllingPersons', { accountId: accountId });
+              console.log(`   ✅ Account sync completed`);
+              
+              const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
+              if (updatedAccounts[0]) {
+                setMappedEntityData(updatedAccounts[0]);
+                console.log(`   🔄 Refreshed account data in state`);
+              }
+            } catch (syncError) {
+              console.error(`   ⚠️  Account sync failed:`, syncError);
+            }
           }
         }
+        
+        console.log(`   ✅ [ACTION ${i + 1}] Completed successfully\n`);
+
       } catch (error) {
-        console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
-        console.error(`[POST-COMPLETION ACTION] Error details:`, error.message);
+        console.error(`   ❌ [ACTION ${i + 1}] FAILED with error:`, error);
+        console.error(`   Error message:`, error.message);
+        console.error(`   Full error:`, error);
+        console.error(`   Action that failed:`, action);
       }
     }
+    
+    console.log(`\n🎬 [POST-COMPLETION ACTIONS] All actions completed\n`);
   };
 
   const isActionNode = (step) => {
