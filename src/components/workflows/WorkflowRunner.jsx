@@ -1468,7 +1468,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                       {isPDF && (
                         <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-white">
                           <iframe 
-                            src={uploadedDocument.url} 
+                            src={`https://docs.google.com/viewer?url=${encodeURIComponent(uploadedDocument.url)}&embedded=true`}
                             className="w-full h-96"
                             title="Self-certification document"
                           />
