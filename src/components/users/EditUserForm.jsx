@@ -16,13 +16,13 @@ export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
     display_name: user?.display_name || user?.full_name || "",
     job_title: user?.job_title || "",
     department: user?.department || "",
-    user_role: user?.user_role || "tenant_user"
+    app_role: user?.app_role || "tenant_user"
   });
 
   const handleRoleChange = (role) => {
     setFormData(prev => ({
       ...prev,
-      user_role: role
+      app_role: role
     }));
   };
 
@@ -83,9 +83,9 @@ export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="user_role">User Role</Label>
+        <Label htmlFor="app_role">User Role</Label>
         <Select
-          value={formData.user_role}
+          value={formData.app_role}
           onValueChange={handleRoleChange}
         >
           <SelectTrigger className="mt-1.5">
