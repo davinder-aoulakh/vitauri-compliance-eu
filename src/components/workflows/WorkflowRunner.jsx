@@ -312,12 +312,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
     
     if (currentStep.question_type === 'multiple_choice' && 
+        Array.isArray(answer) &&
         currentStep.conditional_logic?.selection_count_value !== undefined &&
-        currentStep.conditional_logic?.selection_count_value !== null &&
-        (currentStep.conditional_logic?.selection_count_next_step || currentStep.conditional_logic?.selection_count_else_step) &&
-        Array.isArray(answer)) {
-      console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING]');
+        currentStep.conditional_logic?.selection_count_value !== null) {
+      console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING DETECTED]');
       console.log('   Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
+      console.log('   Has selection_count_next_step:', !!currentStep.conditional_logic?.selection_count_next_step);
+      console.log('   Has selection_count_else_step:', !!currentStep.conditional_logic?.selection_count_else_step);
+      
+      if (currentStep.conditional_logic?.selection_count_next_step || currentStep.conditional_logic?.selection_count_else_step) {
       const selectionCount = answer.length;
       const targetCount = currentStep.conditional_logic.selection_count_value || 0;
       const operator = currentStep.conditional_logic.selection_count_operator || '=';
@@ -381,11 +384,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       } else {
         console.warn(`   ⚠️  WARNING: No next step defined for count-based branching!`);
       }
-    } else if (currentStep.question_type === 'multiple_choice') {
-      console.log('ℹ️  [MULTI-CHOICE] Not using count-based branching');
-      console.log('   use_selection_count:', currentStep.conditional_logic?.use_selection_count);
-      console.log('   selection_count_operator:', currentStep.conditional_logic?.selection_count_operator);
-      console.log('   Is array answer:', Array.isArray(answer));
+      } else {
+        console.log('   ℹ️  Count-based branching config exists but no routing steps defined');
+      }
     }
     
     if (currentStep.conditional_logic) {
@@ -1028,12 +1029,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               return (
                 <div 
                   key={option.value}
-                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
                     isSelected
                       ? 'border-indigo-400 bg-indigo-50'
                       : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
                   }`}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     const newValues = isSelected
                       ? selectedOptions.filter(v => v !== option.value)
@@ -1043,19 +1045,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 >
                   <Checkbox 
                     checked={isSelected}
-                    onCheckedChange={(checked) => {
-                      const newValues = checked
-                        ? [...selectedOptions, option.value]
-                        : selectedOptions.filter(v => v !== option.value);
-                      handleAnswer(currentStep.step_id, newValues);
-                    }}
                     id={`option-${option.value}`}
-                    onClick={(e) => e.stopPropagation()}
                   />
                   <Label 
                     htmlFor={`option-${option.value}`}
                     className="flex-1 cursor-pointer font-medium text-slate-900"
-                    onClick={(e) => e.stopPropagation()}
                   >
                     {option.label}
                   </Label>
