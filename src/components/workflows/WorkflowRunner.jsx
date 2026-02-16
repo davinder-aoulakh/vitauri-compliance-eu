@@ -41,7 +41,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
 
   const handleAnswer = (stepId, answer) => {
-    setAnswers(prev => ({ ...prev, [stepId]: answer }));
+    console.log('\n📝 [HANDLE ANSWER CALLED]');
+    console.log('   Step ID:', stepId);
+    console.log('   New answer:', answer);
+    console.log('   Previous answers:', answers);
+    
+    setAnswers(prev => {
+      const updated = { ...prev, [stepId]: answer };
+      console.log('   Updated answers:', updated);
+      return updated;
+    });
   };
 
   useEffect(() => {
@@ -1021,10 +1030,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       case 'multiple_choice':
         const selectedOptions = answer ? (Array.isArray(answer) ? answer : answer.split(',').filter(Boolean)) : [];
         
+        console.log('🎯 [MULTIPLE CHOICE RENDER]');
+        console.log('   Step ID:', currentStep.step_id);
+        console.log('   Answer value:', answer);
+        console.log('   Selected options array:', selectedOptions);
+        console.log('   Available options:', currentStep.options?.map(o => ({ value: o.value, label: o.label })));
+        
         return (
           <div className="space-y-3">
-            {currentStep.options?.map((option) => {
+            {currentStep.options?.map((option, index) => {
               const isSelected = selectedOptions.includes(option.value);
+              
+              console.log(`   Option ${index + 1}: value="${option.value}", label="${option.label}", isSelected=${isSelected}`);
               
               return (
                 <div 
@@ -1037,9 +1054,19 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    
+                    console.log(`\n🖱️ [CLICK EVENT] Option ${index + 1} clicked`);
+                    console.log('   Clicked option value:', option.value);
+                    console.log('   Current selectedOptions before change:', selectedOptions);
+                    console.log('   isSelected before change:', isSelected);
+                    
                     const newValues = isSelected
                       ? selectedOptions.filter(v => v !== option.value)
                       : [...selectedOptions, option.value];
+                    
+                    console.log('   New values array:', newValues);
+                    console.log('   Calling handleAnswer with:', { stepId: currentStep.step_id, newValues });
+                    
                     handleAnswer(currentStep.step_id, newValues);
                   }}
                 >
