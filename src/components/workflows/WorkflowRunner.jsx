@@ -1031,6 +1031,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                       ? 'border-indigo-400 bg-indigo-50'
                       : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
                   }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newValues = isSelected
+                      ? selectedOptions.filter(v => v !== option.value)
+                      : [...selectedOptions, option.value];
+                    handleAnswer(currentStep.step_id, newValues);
+                  }}
                 >
                   <Checkbox 
                     checked={isSelected}
@@ -1041,10 +1048,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                       handleAnswer(currentStep.step_id, newValues);
                     }}
                     id={`option-${option.value}`}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   <Label 
                     htmlFor={`option-${option.value}`}
                     className="flex-1 cursor-pointer font-medium text-slate-900"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {option.label}
                   </Label>
