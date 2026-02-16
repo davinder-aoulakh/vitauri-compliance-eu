@@ -1045,14 +1045,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 >
                   <Checkbox 
                     checked={isSelected}
-                    id={`option-${option.value}`}
+                    onCheckedChange={() => {}}
                   />
-                  <Label 
-                    htmlFor={`option-${option.value}`}
-                    className="flex-1 cursor-pointer font-medium text-slate-900"
-                  >
+                  <span className="flex-1 cursor-pointer font-medium text-slate-900">
                     {option.label}
-                  </Label>
+                  </span>
                   {isSelected && (
                     <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                   )}
