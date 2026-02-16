@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Shield, CheckCircle2, User, Building2 } from "lucide-react";
+import { Shield, CheckCircle2, User, Building2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Setup() {
   const [user, setUser] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState(null);
@@ -20,6 +30,12 @@ export default function Setup() {
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
+      
+      // Load all users for super admin
+      if (currentUser.user_role === "super_admin") {
+        const users = await base44.asServiceRole.entities.User.list();
+        setAllUsers(users);
+      }
     } catch (error) {
       console.error("Error loading user:", error);
       setMessage({ type: "error", text: "Failed to load user data" });
@@ -139,6 +155,43 @@ export default function Setup() {
     }
   };
 
+  const updateUserRole = async () => {
+    if (!selectedUserId || !selectedRole) {
+      setMessage({ type: "error", text: "Please select both user and role" });
+      return;
+    }
+
+    setUpdating(true);
+    setMessage(null);
+
+    try {
+      const updateData = { user_role: selectedRole };
+      
+      // For super_admin, remove tenant_id
+      if (selectedRole === "super_admin") {
+        updateData.tenant_id = null;
+      }
+
+      await base44.asServiceRole.entities.User.update(selectedUserId, updateData);
+      
+      setMessage({ 
+        type: "success", 
+        text: "User role updated successfully! Reloading..." 
+      });
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      setMessage({ 
+        type: "error", 
+        text: "Failed to update user: " + error.message 
+      });
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -199,6 +252,65 @@ export default function Setup() {
             )}
           </CardContent>
         </Card>
+
+        {/* Super Admin: Update Any User's Role */}
+        {user?.user_role === "super_admin" && (
+          <Card className="border-2 border-purple-100 bg-gradient-to-br from-white to-purple-50/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-purple-600" />
+                Update User Role
+              </CardTitle>
+              <CardDescription>
+                As super admin, you can update any user's role
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">
+                  Select User
+                </label>
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a user..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name || u.email} ({u.user_role || "no role"})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1.5 block">
+                  Select New Role
+                </label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a role..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                    <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+                    <SelectItem value="tenant_supervisor">Tenant Supervisor</SelectItem>
+                    <SelectItem value="tenant_user">Tenant User</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                onClick={updateUserRole}
+                disabled={updating || !selectedUserId || !selectedRole}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+              >
+                {updating ? "Updating..." : "Update User Role"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Messages */}
         {message && (
