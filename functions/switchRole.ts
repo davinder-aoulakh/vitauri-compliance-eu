@@ -18,15 +18,10 @@ Deno.serve(async (req) => {
 
         // Use service role to update user - this bypasses permission restrictions
         const updateData = {
-            user_role: role,
+            app_role: role,
             tenant_id: tenant_id || null,
             job_title: job_title || null
         };
-        
-        // Only include permissions if it exists in the schema
-        if (permissions && Object.keys(permissions).length > 0) {
-            updateData.permissions = permissions;
-        }
         
         await base44.asServiceRole.entities.User.update(currentUser.id, updateData);
 

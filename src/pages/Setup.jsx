@@ -32,7 +32,7 @@ export default function Setup() {
       setUser(currentUser);
       
       // Load all users for super admin
-      if (currentUser.user_role === "super_admin") {
+      if (currentUser.app_role === "super_admin") {
         const users = await base44.asServiceRole.entities.User.list();
         setAllUsers(users);
       }
@@ -165,7 +165,7 @@ export default function Setup() {
     setMessage(null);
 
     try {
-      const updateData = { user_role: selectedRole };
+      const updateData = { app_role: selectedRole };
       
       // For super_admin, remove tenant_id
       if (selectedRole === "super_admin") {
@@ -200,9 +200,9 @@ export default function Setup() {
     );
   }
 
-  const isSuperAdmin = user?.user_role === "super_admin";
-  const isTenantAdmin = user?.user_role === "tenant_admin";
-  const isTenantUser = user?.user_role === "tenant_user";
+  const isSuperAdmin = user?.app_role === "super_admin";
+  const isTenantAdmin = user?.app_role === "tenant_admin";
+  const isTenantUser = user?.app_role === "tenant_user";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
@@ -254,7 +254,7 @@ export default function Setup() {
         </Card>
 
         {/* Super Admin: Update Any User's Role */}
-        {user?.user_role === "super_admin" && (
+        {user?.app_role === "super_admin" && (
           <Card className="border-2 border-purple-100 bg-gradient-to-br from-white to-purple-50/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -277,7 +277,7 @@ export default function Setup() {
                   <SelectContent>
                     {allUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
-                        {u.full_name || u.email} ({u.user_role || "no role"})
+                        {u.full_name || u.email} ({u.app_role || "no role"})
                       </SelectItem>
                     ))}
                   </SelectContent>

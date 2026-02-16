@@ -187,8 +187,8 @@ export default function Layout({ children }) {
     }
   };
 
-  const isSuperAdmin = user?.user_role === "super_admin";
-  const isTenantAdmin = user?.user_role === "tenant_admin";
+  const isSuperAdmin = user?.app_role === "super_admin";
+  const isTenantAdmin = user?.app_role === "tenant_admin";
 
   // Menu item mapping
   const menuItemMap = {
@@ -650,7 +650,7 @@ export default function Layout({ children }) {
                       {user?.display_name || user?.full_name || "User"}
                     </p>
                     <p className="text-xs text-slate-500 truncate capitalize">
-                      {user?.user_role?.replace("_", " ") || "User"}
+                      {user?.app_role?.replace("_", " ") || "User"}
                     </p>
                   </div>
                   <ChevronDown className="w-4 h-4 text-slate-400" />

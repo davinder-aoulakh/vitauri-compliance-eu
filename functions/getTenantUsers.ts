@@ -11,13 +11,13 @@ Deno.serve(async (req) => {
     }
 
     // Verify user is a tenant admin or super admin
-    if (user.user_role !== 'tenant_admin' && user.user_role !== 'super_admin') {
+    if (user.app_role !== 'tenant_admin' && user.app_role !== 'super_admin') {
       return Response.json({ error: 'Forbidden: Only admins can list users' }, { status: 403 });
     }
 
     // Super admins can see all users, tenant admins see only their tenant
     let tenantUsers;
-    if (user.user_role === 'super_admin') {
+    if (user.app_role === 'super_admin') {
       tenantUsers = await base44.asServiceRole.entities.User.list();
     } else {
       // Verify tenant admin has a tenant_id
