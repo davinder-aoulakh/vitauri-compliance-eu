@@ -24,7 +24,7 @@ import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
 import MultiFieldRenderer from "./MultiFieldRenderer";
 
-export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
+export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId, controllingPersonId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [mappedEntityData, setMappedEntityData] = useState(null);
@@ -810,33 +810,39 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           targetEntityId = entityId;
           console.log(`   ✓ Using Entity ID: ${targetEntityId}`);
         } else if (targetEntityType === "ControllingPerson") {
-          // For ControllingPerson, we need to get the ID from the workflow answer
-          // Check if there's a controlling_person_input step
+          // For ControllingPerson, we need to get the ID from the workflow answer or props
           console.log(`   ℹ️  ControllingPerson target detected`);
+          console.log(`   controllingPersonId prop: ${controllingPersonId}`);
           console.log(`   All answers:`, answers);
           
-          // Look for controlling_person_input step answer
-          const cpInputStep = workflow.steps.find(s => s.question_type === 'controlling_person_input');
-          if (cpInputStep) {
-            const cpAnswer = answers[cpInputStep.step_id];
-            console.log(`   Found controlling_person_input step: ${cpInputStep.step_id}`);
-            console.log(`   Answer:`, cpAnswer);
-            
-            if (cpAnswer?.savedPersons && cpAnswer.savedPersons.length > 0) {
-              // Get the most recently added controlling person
-              const latestPerson = cpAnswer.savedPersons[cpAnswer.savedPersons.length - 1];
-              targetEntityId = latestPerson.id;
-              console.log(`   ✓ Using ControllingPerson ID from latest person: ${targetEntityId}`);
-            } else {
-              console.warn(`   ⚠️  No saved controlling persons found in answer`);
-            }
+          // First try from prop (for classification workflows)
+          if (controllingPersonId) {
+            targetEntityId = controllingPersonId;
+            console.log(`   ✓ Using ControllingPerson ID from prop: ${targetEntityId}`);
           } else {
-            // Try to get from initialData if passed
-            if (initialData?.controllingPersonId) {
-              targetEntityId = initialData.controllingPersonId;
-              console.log(`   ✓ Using ControllingPerson ID from initialData: ${targetEntityId}`);
+            // Look for controlling_person_input step answer (for creation workflows)
+            const cpInputStep = workflow.steps.find(s => s.question_type === 'controlling_person_input');
+            if (cpInputStep) {
+              const cpAnswer = answers[cpInputStep.step_id];
+              console.log(`   Found controlling_person_input step: ${cpInputStep.step_id}`);
+              console.log(`   Answer:`, cpAnswer);
+              
+              if (cpAnswer?.savedPersons && cpAnswer.savedPersons.length > 0) {
+                // Get the most recently added controlling person
+                const latestPerson = cpAnswer.savedPersons[cpAnswer.savedPersons.length - 1];
+                targetEntityId = latestPerson.id;
+                console.log(`   ✓ Using ControllingPerson ID from latest person: ${targetEntityId}`);
+              } else {
+                console.warn(`   ⚠️  No saved controlling persons found in answer`);
+              }
             } else {
-              console.warn(`   ⚠️  No controlling_person_input step found and no initialData.controllingPersonId`);
+              // Try to get from initialData if passed
+              if (initialData?.controllingPersonId) {
+                targetEntityId = initialData.controllingPersonId;
+                console.log(`   ✓ Using ControllingPerson ID from initialData: ${targetEntityId}`);
+              } else {
+                console.warn(`   ⚠️  No controlling_person_input step found and no controllingPersonId prop or initialData`);
+              }
             }
           }
         }
