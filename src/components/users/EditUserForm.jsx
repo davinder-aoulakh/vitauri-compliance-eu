@@ -92,6 +92,12 @@ export default function EditUserForm({ user, tenant, onSubmit, onCancel }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="super_admin">
+              <div className="flex flex-col">
+                <span className="font-medium">Super Admin</span>
+                <span className="text-xs text-slate-500">Full system access, all tenants</span>
+              </div>
+            </SelectItem>
             <SelectItem value="tenant_admin">
               <div className="flex flex-col">
                 <span className="font-medium">Administrator</span>
