@@ -233,9 +233,14 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
         })),
         next_step: step.conditional_logic.next_step || "",
         else_step: step.conditional_logic.else_step || "",
-        use_selection_count: step.conditional_logic.use_selection_count || false,
+        // Automatically set use_selection_count to true if any selection count routing is configured
+        use_selection_count: !!(
+          step.conditional_logic.selection_count_next_step || 
+          step.conditional_logic.selection_count_else_step ||
+          (step.conditional_logic.selection_count_value !== undefined && step.conditional_logic.selection_count_value !== null)
+        ),
         selection_count_operator: step.conditional_logic.selection_count_operator || null,
-        selection_count_value: step.conditional_logic.selection_count_value || null,
+        selection_count_value: step.conditional_logic.selection_count_value !== undefined ? step.conditional_logic.selection_count_value : null,
         selection_count_next_step: step.conditional_logic.selection_count_next_step || null,
         selection_count_else_step: step.conditional_logic.selection_count_else_step || null,
         option_values: Array.isArray(step.conditional_logic.option_values) && step.conditional_logic.option_values.length > 0 ? step.conditional_logic.option_values : null,
