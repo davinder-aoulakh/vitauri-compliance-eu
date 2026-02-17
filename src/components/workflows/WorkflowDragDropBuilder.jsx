@@ -2031,52 +2031,64 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 pt-3 mt-3 border-t">
-                        <div>
-                          <Label className="text-xs text-green-700 font-semibold">
-                            If condition met → Go to:
-                          </Label>
-                          <Select
-                            value={editedStep.conditional_logic?.selection_count_next_step || ""}
-                            onValueChange={(value) => handleConditionalLogicChange("selection_count_next_step", value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs mt-1 border-green-300">
-                              <SelectValue placeholder="Select step..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={null}>None (End)</SelectItem>
-                              {allSteps
-                                .filter(s => s.step_id !== editedStep.step_id)
-                                .map(s => (
-                                  <SelectItem key={s.step_id} value={s.step_id}>
-                                    {s.step_title}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-red-700 font-semibold">
-                            Otherwise → Go to:
-                          </Label>
-                          <Select
-                            value={editedStep.conditional_logic?.selection_count_else_step || ""}
-                            onValueChange={(value) => handleConditionalLogicChange("selection_count_else_step", value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs mt-1 border-red-300">
-                              <SelectValue placeholder="Select step..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={null}>None (End)</SelectItem>
-                              {allSteps
-                                .filter(s => s.step_id !== editedStep.step_id)
-                                .map(s => (
-                                  <SelectItem key={s.step_id} value={s.step_id}>
-                                    {s.step_title}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                       <div>
+                         <Label className="text-xs text-green-700 font-semibold">
+                           If condition met → Go to:
+                         </Label>
+                         <Select
+                           value={editedStep.conditional_logic?.selection_count_next_step || ""}
+                           onValueChange={(value) => {
+                             handleConditionalLogicChange("selection_count_next_step", value);
+                             // Enable use_selection_count flag when setting routing
+                             if (value) {
+                               handleConditionalLogicChange("use_selection_count", true);
+                             }
+                           }}
+                         >
+                           <SelectTrigger className="h-8 text-xs mt-1 border-green-300">
+                             <SelectValue placeholder="Select step..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value={null}>None (End)</SelectItem>
+                             {allSteps
+                               .filter(s => s.step_id !== editedStep.step_id)
+                               .map(s => (
+                                 <SelectItem key={s.step_id} value={s.step_id}>
+                                   {s.step_title}
+                                 </SelectItem>
+                               ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       <div>
+                         <Label className="text-xs text-red-700 font-semibold">
+                           Otherwise → Go to:
+                         </Label>
+                         <Select
+                           value={editedStep.conditional_logic?.selection_count_else_step || ""}
+                           onValueChange={(value) => {
+                             handleConditionalLogicChange("selection_count_else_step", value);
+                             // Enable use_selection_count flag when setting routing
+                             if (value) {
+                               handleConditionalLogicChange("use_selection_count", true);
+                             }
+                           }}
+                         >
+                           <SelectTrigger className="h-8 text-xs mt-1 border-red-300">
+                             <SelectValue placeholder="Select step..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value={null}>None (End)</SelectItem>
+                             {allSteps
+                               .filter(s => s.step_id !== editedStep.step_id)
+                               .map(s => (
+                                 <SelectItem key={s.step_id} value={s.step_id}>
+                                   {s.step_title}
+                                 </SelectItem>
+                               ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
                       </div>
                     </div>
                   </TabsContent>
