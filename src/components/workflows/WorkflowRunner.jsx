@@ -365,14 +365,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log('   ⚠️ This workflow may have been saved before the flag was automatically set.');
         console.log('   ⚠️ APPLYING WORKAROUND: Proceeding with selection count logic anyway...');
       }
-      console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING DETECTED]');
+      console.log('   🔢 [MULTI-CHOICE COUNT-BASED BRANCHING ACTIVE]');
       console.log('   Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
       console.log('   Has use_selection_count:', !!currentStep.conditional_logic?.use_selection_count);
       console.log('   Has selection_count_next_step:', !!currentStep.conditional_logic?.selection_count_next_step);
       console.log('   Has selection_count_else_step:', !!currentStep.conditional_logic?.selection_count_else_step);
+      console.log('   Current answer array:', answer);
+      console.log('   Current answer length:', answer.length);
       
       if (currentStep.conditional_logic?.selection_count_next_step || currentStep.conditional_logic?.selection_count_else_step) {
       const selectionCount = answer.length;
+      console.log('   ✅ HAS ROUTING STEPS - Proceeding with count-based branching logic');
       const targetCount = currentStep.conditional_logic.selection_count_value || 0;
       const operator = currentStep.conditional_logic.selection_count_operator || '=';
       
