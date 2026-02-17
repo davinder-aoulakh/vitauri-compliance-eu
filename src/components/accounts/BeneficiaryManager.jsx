@@ -18,14 +18,17 @@ import {
   AlertCircle,
   Clock,
   PlayCircle,
-  Users
+  Users,
+  Eye
 } from "lucide-react";
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryClassification from "./BeneficiaryClassification";
+import BeneficiaryDetails from "./BeneficiaryDetails";
 
 export default function BeneficiaryManager({ account, tenant }) {
   const [showForm, setShowForm] = useState(false);
   const [showClassification, setShowClassification] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [editingBeneficiary, setEditingBeneficiary] = useState(null);
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
 
@@ -80,6 +83,11 @@ export default function BeneficiaryManager({ account, tenant }) {
   const handleClassify = (beneficiary) => {
     setSelectedBeneficiary(beneficiary);
     setShowClassification(true);
+  };
+
+  const handleViewDetails = (beneficiary) => {
+    setSelectedBeneficiary(beneficiary);
+    setShowDetails(true);
   };
 
   const handleClassificationComplete = async (classificationData) => {
@@ -220,6 +228,18 @@ export default function BeneficiaryManager({ account, tenant }) {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        handleViewDetails(beneficiary);
+                      }}
+                      className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         handleClassify(beneficiary);
                       }}
                       className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
@@ -304,6 +324,25 @@ export default function BeneficiaryManager({ account, tenant }) {
                 setShowClassification(false);
                 setSelectedBeneficiary(null);
               }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>
+              Beneficiary Details: {selectedBeneficiary?.first_name && selectedBeneficiary?.last_name 
+                ? `${selectedBeneficiary.first_name} ${selectedBeneficiary.last_name}`
+                : selectedBeneficiary?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedBeneficiary && (
+            <BeneficiaryDetails
+              beneficiary={selectedBeneficiary}
+              account={account}
             />
           )}
         </DialogContent>
