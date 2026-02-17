@@ -107,18 +107,18 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   };
 
   const handleClassificationComplete = async (answers) => {
-    // Update controlling person based on classification results
-    const finalStep = answers[answers.length - 1];
-    const isReportable = finalStep?.result_status === 'reportable';
+    console.log('[ControllingPersonsList] handleClassificationComplete called');
+    console.log('[ControllingPersonsList] Invalidating controlling-persons and accounts queries');
     
-    await base44.entities.ControllingPerson.update(classifyingPerson.id, {
-      is_reportable: isReportable,
-      classification_answers: answers
-    });
+    // Invalidate queries to refresh the data
+    await queryClient.invalidateQueries(['controlling-persons', account?.id]);
+    await queryClient.invalidateQueries(['accounts']);
     
-    queryClient.invalidateQueries(['controlling-persons']);
+    // Close the dialog
     setShowClassification(false);
     setClassifyingPerson(null);
+    
+    console.log('[ControllingPersonsList] Classification dialog closed, queries invalidated');
   };
 
   const isPassiveNFE = account?.entity_classification === "passive_nfe";
