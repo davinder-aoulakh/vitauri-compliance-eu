@@ -934,34 +934,41 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`[ACTION ${i + 1}] ✅✅✅ Target identified successfully: ${targetEntityType} (ID: ${targetEntityId})`);
 
 
-        let valueToUpdate = null;
+        console.log(`\n[ACTION ${i + 1}] 💰 Determining Value to Update...`);
+        console.log(`[ACTION ${i + 1}]    Value Source: ${action.value_source}`);
+        console.log(`[ACTION ${i + 1}]    Raw Value from action: ${action.value}`);
+        console.log(`[ACTION ${i + 1}]    Field to Update: ${action.field_to_update}`);
         
-        console.log(`   Value Source: ${action.value_source}`);
-        console.log(`   Raw Value: ${action.value}`);
+        let valueToUpdate = null;
         
         if (action.value_source === "static_value") {
           valueToUpdate = action.value;
-          console.log(`   → Static value: ${valueToUpdate}`);
+          console.log(`[ACTION ${i + 1}]    ✅ Using static value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
           valueToUpdate = answers[sourceStepId];
-          console.log(`   → From step answer (${sourceStepId}): ${valueToUpdate}`);
+          console.log(`[ACTION ${i + 1}]    📝 From step answer (step ID: ${sourceStepId})`);
+          console.log(`[ACTION ${i + 1}]    Raw answer value: ${valueToUpdate}`);
           
           if (valueToUpdate === 'YES') {
             valueToUpdate = true;
-            console.log(`   → Converted 'YES' to true`);
+            console.log(`[ACTION ${i + 1}]    🔄 Converted 'YES' string to boolean true`);
           }
           if (valueToUpdate === 'NO') {
             valueToUpdate = false;
-            console.log(`   → Converted 'NO' to false`);
+            console.log(`[ACTION ${i + 1}]    🔄 Converted 'NO' string to boolean false`);
           }
+          
+          console.log(`[ACTION ${i + 1}]    ✅ Final value from step answer: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
         } else if (action.value_source === "from_workflow_outcome") {
           const resultStep = workflow.steps.find(s => s.question_type === 'result');
           valueToUpdate = resultStep?.result_description || action.value;
-          console.log(`   → From workflow outcome: ${valueToUpdate}`);
+          console.log(`[ACTION ${i + 1}]    📊 From workflow outcome: ${valueToUpdate}`);
+        } else {
+          console.warn(`[ACTION ${i + 1}]    ⚠️ Unknown value source: ${action.value_source}`);
         }
         
-        console.log(`   Final value to update: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
+        console.log(`[ACTION ${i + 1}] 💰 Final value to update: "${valueToUpdate}" (type: ${typeof valueToUpdate})`);
 
 
         if (action.condition) {
