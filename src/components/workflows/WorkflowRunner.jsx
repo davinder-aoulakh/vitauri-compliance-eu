@@ -36,6 +36,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [showAIHelper, setShowAIHelper] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [dragActive, setDragActive] = useState({});
+  const [showSummary, setShowSummary] = useState(false);
+  const [completedPath, setCompletedPath] = useState([]);
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
