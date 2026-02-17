@@ -1013,57 +1013,84 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
-        console.log(`   🔄 Preparing update:`);
-        console.log(`   - Entity Type: ${targetEntityType}`);
-        console.log(`   - Entity ID: ${targetEntityId}`);
-        console.log(`   - Field: ${fieldToUpdate}`);
-        console.log(`   - Value: ${valueToUpdate}`);
-        console.log(`   - Update Data:`, updateData);
+        console.log(`\n[ACTION ${i + 1}] 🔄 Preparing Database Update:`);
+        console.log(`[ACTION ${i + 1}]    Entity Type: ${targetEntityType}`);
+        console.log(`[ACTION ${i + 1}]    Entity ID: ${targetEntityId}`);
+        console.log(`[ACTION ${i + 1}]    Field to Update: ${fieldToUpdate}`);
+        console.log(`[ACTION ${i + 1}]    Value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
+        console.log(`[ACTION ${i + 1}]    Update Object:`, JSON.stringify(updateData, null, 2));
 
         if (targetEntityType === "Account") {
-          console.log(`   🚀 Executing Account.update...`);
+          console.log(`\n[ACTION ${i + 1}] 🚀 Executing Account.update...`);
+          console.log(`[ACTION ${i + 1}]    Account ID: ${targetEntityId}`);
+          console.log(`[ACTION ${i + 1}]    Update data:`, JSON.stringify(updateData, null, 2));
+          
           await base44.entities.Account.update(targetEntityId, updateData);
-          console.log(`   ✅ Account.${fieldToUpdate} updated successfully`);
+          
+          console.log(`[ACTION ${i + 1}] ✅✅✅ Account.${fieldToUpdate} updated to "${valueToUpdate}" successfully!`);
           
           const updatedAccounts = await base44.entities.Account.filter({ id: targetEntityId });
           if (updatedAccounts[0]) {
+            console.log(`[ACTION ${i + 1}]    Updated account ${fieldToUpdate}:`, updatedAccounts[0][fieldToUpdate]);
             setMappedEntityData(updatedAccounts[0]);
-            console.log(`   🔄 Refreshed account data in state`);
+            console.log(`[ACTION ${i + 1}]    🔄 Refreshed account data in state`);
           }
         } else if (targetEntityType === "Entity") {
-          console.log(`   🚀 Executing Entity.update...`);
+          console.log(`\n[ACTION ${i + 1}] 🚀 Executing Entity.update...`);
+          console.log(`[ACTION ${i + 1}]    Entity ID: ${targetEntityId}`);
+          console.log(`[ACTION ${i + 1}]    Update data:`, JSON.stringify(updateData, null, 2));
+          
           await base44.entities.Entity.update(targetEntityId, updateData);
-          console.log(`   ✅ Entity.${fieldToUpdate} updated successfully`);
+          
+          console.log(`[ACTION ${i + 1}] ✅✅✅ Entity.${fieldToUpdate} updated to "${valueToUpdate}" successfully!`);
           
           const updatedEntities = await base44.entities.Entity.filter({ id: targetEntityId });
           if (updatedEntities[0]) {
+            console.log(`[ACTION ${i + 1}]    Updated entity ${fieldToUpdate}:`, updatedEntities[0][fieldToUpdate]);
             setMappedEntityData(updatedEntities[0]);
-            console.log(`   🔄 Refreshed entity data in state`);
+            console.log(`[ACTION ${i + 1}]    🔄 Refreshed entity data in state`);
           }
         } else if (targetEntityType === "ControllingPerson") {
-          console.log(`   🚀 Executing ControllingPerson.update...`);
+          console.log(`\n[ACTION ${i + 1}] 🚀 Executing ControllingPerson.update...`);
+          console.log(`[ACTION ${i + 1}]    ControllingPerson ID: ${targetEntityId}`);
+          console.log(`[ACTION ${i + 1}]    Update data:`, JSON.stringify(updateData, null, 2));
+          
           await base44.entities.ControllingPerson.update(targetEntityId, updateData);
-          console.log(`   ✅ ControllingPerson.${fieldToUpdate} updated successfully`);
+          
+          console.log(`[ACTION ${i + 1}] ✅✅✅ ControllingPerson.${fieldToUpdate} updated to "${valueToUpdate}" successfully!`);
+          
+          // Verify the update
+          const updatedPersons = await base44.entities.ControllingPerson.filter({ id: targetEntityId });
+          if (updatedPersons[0]) {
+            console.log(`[ACTION ${i + 1}]    Verification - Updated controlling person ${fieldToUpdate}:`, updatedPersons[0][fieldToUpdate]);
+            console.log(`[ACTION ${i + 1}]    Full updated person:`, JSON.stringify(updatedPersons[0], null, 2));
+          }
           
           // If account is associated, also check if we need to sync the account
           if (accountId) {
-            console.log(`   🔄 Syncing account controlling persons count...`);
+            console.log(`\n[ACTION ${i + 1}]    🔄 Syncing account controlling persons count...`);
+            console.log(`[ACTION ${i + 1}]    Account ID to sync: ${accountId}`);
             try {
               await base44.functions.invoke('syncAccountControllingPersons', { accountId: accountId });
-              console.log(`   ✅ Account sync completed`);
+              console.log(`[ACTION ${i + 1}]    ✅ Account sync completed successfully`);
               
               const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
               if (updatedAccounts[0]) {
+                console.log(`[ACTION ${i + 1}]    Synced account reportability_status:`, updatedAccounts[0].reportability_status);
+                console.log(`[ACTION ${i + 1}]    Synced account controlling_persons_count:`, updatedAccounts[0].controlling_persons_count);
                 setMappedEntityData(updatedAccounts[0]);
-                console.log(`   🔄 Refreshed account data in state`);
+                console.log(`[ACTION ${i + 1}]    🔄 Refreshed account data in state`);
               }
             } catch (syncError) {
-              console.error(`   ⚠️  Account sync failed:`, syncError);
+              console.error(`[ACTION ${i + 1}]    ❌ Account sync failed:`, syncError);
+              console.error(`[ACTION ${i + 1}]    Error details:`, syncError.message);
             }
+          } else {
+            console.warn(`[ACTION ${i + 1}]    ⚠️ No accountId available, skipping account sync`);
           }
         }
         
-        console.log(`   ✅ [ACTION ${i + 1}] Completed successfully\n`);
+        console.log(`\n[ACTION ${i + 1}] ✅ ========== ACTION ${i + 1} COMPLETED SUCCESSFULLY ==========\n`);
 
       } catch (error) {
         console.error(`   ❌ [ACTION ${i + 1}] FAILED with error:`, error);
