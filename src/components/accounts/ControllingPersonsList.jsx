@@ -112,19 +112,73 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     setShowClassification(true);
   };
 
-  const handleClassificationComplete = async (answers) => {
+  const handleClassificationComplete = async (classificationData) => {
     console.log('[ControllingPersonsList] handleClassificationComplete called');
-    console.log('[ControllingPersonsList] Invalidating controlling-persons and accounts queries');
+    console.log('[ControllingPersonsList] Classification Data:', classificationData);
     
-    // Invalidate queries to refresh the data
-    await queryClient.invalidateQueries(['controlling-persons', account?.id]);
-    await queryClient.invalidateQueries(['accounts']);
-    
-    // Close the dialog
-    setShowClassification(false);
-    setClassifyingPerson(null);
-    
-    console.log('[ControllingPersonsList] Classification dialog closed, queries invalidated');
+    try {
+      // Fetch current user for audit log
+      const user = await base44.auth.me();
+      
+      // Update the controlling person with classification data
+      await base44.entities.ControllingPerson.update(classifyingPerson.id, classificationData);
+      console.log('[ControllingPersonsList] ControllingPerson updated successfully');
+      
+      // Create classification history record
+      try {
+        await base44.entities.ControllingPersonClassificationHistory.create({
+          tenant_id: account.tenant_id,
+          controlling_person_id: classifyingPerson.id,
+          account_id: account.id,
+          classification_date: new Date().toISOString(),
+          reportability_status: classificationData.reportability_status,
+          classification_reason: classificationData.reportability_reason,
+          classification_source: 'workflow',
+          workflow_answers: classificationData.classification_answers,
+          performed_by: user?.email || 'unknown',
+          controlling_person_name: `${classifyingPerson.first_name || ''} ${classifyingPerson.last_name || ''}`.trim(),
+          control_type: classifyingPerson.control_type,
+          tax_residencies: classifyingPerson.tax_residencies
+        });
+        console.log('[ControllingPersonsList] ControllingPersonClassificationHistory created successfully');
+      } catch (historyError) {
+        console.error('[ControllingPersonsList] Error creating classification history:', historyError);
+      }
+      
+      // Create audit log entry
+      try {
+        await base44.entities.AuditLog.create({
+          tenant_id: account.tenant_id,
+          action_type: 'controlling_person_classified',
+          actor_email: user?.email || 'unknown',
+          actor_role: user?.role || 'unknown',
+          target_entity_type: 'ControllingPerson',
+          target_entity_id: classifyingPerson.id,
+          target_entity_name: `${classifyingPerson.first_name || ''} ${classifyingPerson.last_name || ''}`.trim(),
+          changes: {
+            reportability_status: classificationData.reportability_status,
+            reportability_reason: classificationData.reportability_reason,
+            classification_date: classificationData.classification_date
+          },
+          timestamp: new Date().toISOString()
+        });
+        console.log('[ControllingPersonsList] AuditLog entry created successfully');
+      } catch (auditError) {
+        console.error('[ControllingPersonsList] Error creating audit log:', auditError);
+      }
+      
+      // Invalidate queries to refresh the data
+      await queryClient.invalidateQueries(['controlling-persons', account?.id]);
+      await queryClient.invalidateQueries(['accounts']);
+      
+      // Close the dialog
+      setShowClassification(false);
+      setClassifyingPerson(null);
+      
+      console.log('[ControllingPersonsList] Classification completed, queries invalidated');
+    } catch (error) {
+      console.error('[ControllingPersonsList] Error in handleClassificationComplete:', error);
+    }
   };
 
   const isPassiveNFE = account?.entity_classification === "passive_nfe";
