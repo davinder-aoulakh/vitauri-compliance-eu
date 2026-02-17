@@ -322,10 +322,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     
     if (currentStep.question_type === 'multiple_choice' && 
         Array.isArray(answer) &&
+        currentStep.conditional_logic?.use_selection_count &&
         currentStep.conditional_logic?.selection_count_value !== undefined &&
         currentStep.conditional_logic?.selection_count_value !== null) {
       console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING DETECTED]');
       console.log('   Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
+      console.log('   Has use_selection_count:', !!currentStep.conditional_logic?.use_selection_count);
       console.log('   Has selection_count_next_step:', !!currentStep.conditional_logic?.selection_count_next_step);
       console.log('   Has selection_count_else_step:', !!currentStep.conditional_logic?.selection_count_else_step);
       
