@@ -333,14 +333,38 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log('   Is answer array?', Array.isArray(answer));
     console.log('   use_selection_count flag:', currentStep.conditional_logic?.use_selection_count);
     console.log('   selection_count_value:', currentStep.conditional_logic?.selection_count_value);
+    console.log('   selection_count_operator:', currentStep.conditional_logic?.selection_count_operator);
     console.log('   Has next_step:', !!currentStep.conditional_logic?.selection_count_next_step);
     console.log('   Has else_step:', !!currentStep.conditional_logic?.selection_count_else_step);
     
+    // DETAILED CONDITION CHECKS
+    const check1 = currentStep.question_type === 'multiple_choice';
+    const check2 = Array.isArray(answer);
+    const check3 = currentStep.conditional_logic?.use_selection_count;
+    const check4 = currentStep.conditional_logic?.selection_count_value !== undefined;
+    const check5 = currentStep.conditional_logic?.selection_count_value !== null;
+    
+    console.log('\n   ========== INDIVIDUAL CONDITION CHECKS ==========');
+    console.log(`   ✓ Check 1 - Is multiple_choice: ${check1}`);
+    console.log(`   ✓ Check 2 - Is answer array: ${check2}`);
+    console.log(`   ${check3 ? '✓' : '❌'} Check 3 - use_selection_count is true: ${check3} ⚠️ THIS IS THE PROBLEM`);
+    console.log(`   ✓ Check 4 - selection_count_value !== undefined: ${check4}`);
+    console.log(`   ✓ Check 5 - selection_count_value !== null: ${check5}`);
+    console.log(`   ========================================`);
+    console.log(`   FINAL: All checks pass? ${check1 && check2 && check3 && check4 && check5}`);
+    
+    // WORKAROUND: Check if selection count config exists even if flag is false
     if (currentStep.question_type === 'multiple_choice' && 
         Array.isArray(answer) &&
-        currentStep.conditional_logic?.use_selection_count &&
         currentStep.conditional_logic?.selection_count_value !== undefined &&
-        currentStep.conditional_logic?.selection_count_value !== null) {
+        currentStep.conditional_logic?.selection_count_value !== null &&
+        (currentStep.conditional_logic?.selection_count_next_step || currentStep.conditional_logic?.selection_count_else_step)) {
+      
+      if (!currentStep.conditional_logic?.use_selection_count) {
+        console.log('   ⚠️ WARNING: use_selection_count is FALSE but selection count config exists!');
+        console.log('   ⚠️ This workflow may have been saved before the flag was automatically set.');
+        console.log('   ⚠️ APPLYING WORKAROUND: Proceeding with selection count logic anyway...');
+      }
       console.log('🔢 [MULTI-CHOICE COUNT-BASED BRANCHING DETECTED]');
       console.log('   Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
       console.log('   Has use_selection_count:', !!currentStep.conditional_logic?.use_selection_count);
