@@ -41,11 +41,13 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   });
 
   const { data: workflows = [] } = useQuery({
-    queryKey: ['workflows'],
+    queryKey: ['workflows', 'controlling_person_classification'],
     queryFn: () => base44.entities.Workflow.filter({ 
       workflow_type: 'controlling_person_classification',
       status: 'published'
-    })
+    }),
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0 // Don't cache workflow data
   });
 
   const createMutation = useMutation({
