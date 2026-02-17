@@ -141,8 +141,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     
     console.log(`\n========== HANDLE NEXT from Step ${currentStepIndex + 1}: ${currentStep.step_title} ==========`);
     console.log(`Current answer:`, answer);
+    console.log(`Current step question_type:`, currentStep.question_type);
+    console.log(`Is answer an array:`, Array.isArray(answer));
     console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
+    console.log(`Full conditional_logic object:`, JSON.stringify(currentStep.conditional_logic, null, 2));
     console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
+    console.log(`use_selection_count flag:`, currentStep.conditional_logic?.use_selection_count);
+    console.log(`selection_count_value:`, currentStep.conditional_logic?.selection_count_value);
+    console.log(`selection_count_operator:`, currentStep.conditional_logic?.selection_count_operator);
+    console.log(`selection_count_next_step:`, currentStep.conditional_logic?.selection_count_next_step);
+    console.log(`selection_count_else_step:`, currentStep.conditional_logic?.selection_count_else_step);
     
     if (currentStep.question_type === 'address_input' && answer && accountId) {
       try {
