@@ -845,26 +845,39 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       return;
     }
 
-    console.log(`\n🎬 [POST-COMPLETION ACTIONS] Starting execution of ${actions.length} action(s)`);
-    console.log('[POST-COMPLETION ACTIONS] Actions:', JSON.stringify(actions, null, 2));
+    console.log(`\n🎬 ========== POST-COMPLETION ACTIONS EXECUTION START ==========`);
+    console.log(`[POST-COMPLETION] Total actions to execute: ${actions.length}`);
+    console.log(`[POST-COMPLETION] Context - accountId: ${accountId}, entityId: ${entityId}`);
+    console.log(`[POST-COMPLETION] Context - initialData:`, JSON.stringify(initialData, null, 2));
+    console.log(`[POST-COMPLETION] All actions:`, JSON.stringify(actions, null, 2));
 
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];
-      console.log(`\n📌 [ACTION ${i + 1}/${actions.length}] Processing:`, action);
+      console.log(`\n📌 ========== ACTION ${i + 1}/${actions.length} START ==========`);
+      console.log(`[ACTION ${i + 1}] Full action object:`, JSON.stringify(action, null, 2));
+      console.log(`[ACTION ${i + 1}] Target Entity Type: ${action.target_entity_type}`);
+      console.log(`[ACTION ${i + 1}] Field to Update: ${action.field_to_update}`);
+      console.log(`[ACTION ${i + 1}] Value Source: ${action.value_source}`);
+      console.log(`[ACTION ${i + 1}] Value: ${action.value}`);
+      console.log(`[ACTION ${i + 1}] Execution Timing: ${action.execution_timing}`);
       
       try {
         let targetEntityId = null;
         let targetEntityType = action.target_entity_type;
 
-        console.log(`   Target Entity Type: ${targetEntityType}`);
-        console.log(`   Available IDs - accountId: ${accountId}, entityId: ${entityId}`);
+        console.log(`\n[ACTION ${i + 1}] 🔍 Determining Target Entity ID...`);
+        console.log(`[ACTION ${i + 1}]    Target Entity Type: ${targetEntityType}`);
+        console.log(`[ACTION ${i + 1}]    Available - accountId: ${accountId}`);
+        console.log(`[ACTION ${i + 1}]    Available - entityId: ${entityId}`);
+        console.log(`[ACTION ${i + 1}]    Available - initialData.controlling_person:`, initialData?.controlling_person);
+        console.log(`[ACTION ${i + 1}]    Available - initialData.controllingPersonId:`, initialData?.controllingPersonId);
 
         if (targetEntityType === "Account" && accountId) {
           targetEntityId = accountId;
-          console.log(`   ✓ Using Account ID: ${targetEntityId}`);
+          console.log(`[ACTION ${i + 1}]    ✅ Using Account ID: ${targetEntityId}`);
         } else if (targetEntityType === "Entity" && entityId) {
           targetEntityId = entityId;
-          console.log(`   ✓ Using Entity ID: ${targetEntityId}`);
+          console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID: ${targetEntityId}`);
         } else if (targetEntityType === "ControllingPerson") {
           // For ControllingPerson, we need to get the ID from the workflow answer
           // Check if there's a controlling_person_input step
