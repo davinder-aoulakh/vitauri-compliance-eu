@@ -1093,14 +1093,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`\n[ACTION ${i + 1}] ✅ ========== ACTION ${i + 1} COMPLETED SUCCESSFULLY ==========\n`);
 
       } catch (error) {
-        console.error(`   ❌ [ACTION ${i + 1}] FAILED with error:`, error);
-        console.error(`   Error message:`, error.message);
-        console.error(`   Full error:`, error);
-        console.error(`   Action that failed:`, action);
+        console.error(`\n[ACTION ${i + 1}] ❌❌❌ EXCEPTION THROWN ❌❌❌`);
+        console.error(`[ACTION ${i + 1}] Error message:`, error.message);
+        console.error(`[ACTION ${i + 1}] Error stack:`, error.stack);
+        console.error(`[ACTION ${i + 1}] Full error object:`, error);
+        console.error(`[ACTION ${i + 1}] Action that failed:`, JSON.stringify(action, null, 2));
+        console.error(`[ACTION ${i + 1}] ========== ACTION ${i + 1} FAILED ==========\n`);
       }
     }
     
-    console.log(`\n🎬 [POST-COMPLETION ACTIONS] All actions completed\n`);
+    console.log(`\n🎬 ========== POST-COMPLETION ACTIONS: ALL ${actions.length} ACTIONS PROCESSED ==========\n`);
   };
 
   const isActionNode = (step) => {
