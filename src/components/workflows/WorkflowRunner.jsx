@@ -485,12 +485,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
 
     console.log('[SEQUENTIAL NAVIGATION]');
+    
+    // Check if current step is an action node (result step or no next step defined)
+    if (isActionNode(currentStep)) {
+      console.log('  🏁 Current step is action node - showing summary');
+      const uniquePath = [...new Set([...history, currentStep.step_id])];
+      setCompletedPath(uniquePath);
+      setShowSummary(true);
+      console.log(`========== END HANDLE NEXT (SUMMARY) ==========\n`);
+      return;
+    }
+    
     if (currentStepIndex < workflow.steps.length - 1) {
       console.log(`Going to next step in sequence: ${currentStepIndex + 2}`);
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
-      console.log('Last step reached, completing workflow');
-      handleComplete();
+      console.log('Last step reached, showing summary');
+      const uniquePath = [...new Set([...history, currentStep.step_id])];
+      setCompletedPath(uniquePath);
+      setShowSummary(true);
     }
     console.log(`========== END HANDLE NEXT ==========\n`);
   };
