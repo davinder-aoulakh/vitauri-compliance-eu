@@ -99,7 +99,9 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     }
   };
 
-  const handleClassify = (person) => {
+  const handleClassify = async (person) => {
+    // Invalidate workflow cache to ensure we get the latest version
+    await queryClient.invalidateQueries(['workflows', 'controlling_person_classification']);
     setClassifyingPerson(person);
     setShowClassification(true);
   };
