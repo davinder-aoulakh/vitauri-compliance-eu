@@ -2296,20 +2296,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
         <Button
           type="button"
-          onClick={isLastStep || currentStep.question_type === 'result' ? handleComplete : handleNext}
+          onClick={handleNext}
           disabled={!canProceed() || loading}
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >
-          {loading ? (
+          {isActionNode(currentStep) ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : isLastStep || currentStep.question_type === 'result' ? (
-            <>
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              Complete
+              View Summary
+              <ArrowRight className="w-4 h-4 ml-2" />
             </>
           ) : (
             <>
