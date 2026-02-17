@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
