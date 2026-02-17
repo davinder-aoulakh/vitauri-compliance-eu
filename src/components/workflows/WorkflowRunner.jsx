@@ -328,6 +328,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
+    console.log('\n🔍 [CHECKING SELECTION COUNT CONDITIONS]');
+    console.log('   Is multiple_choice?', currentStep.question_type === 'multiple_choice');
+    console.log('   Is answer array?', Array.isArray(answer));
+    console.log('   use_selection_count flag:', currentStep.conditional_logic?.use_selection_count);
+    console.log('   selection_count_value:', currentStep.conditional_logic?.selection_count_value);
+    console.log('   Has next_step:', !!currentStep.conditional_logic?.selection_count_next_step);
+    console.log('   Has else_step:', !!currentStep.conditional_logic?.selection_count_else_step);
+    
     if (currentStep.question_type === 'multiple_choice' && 
         Array.isArray(answer) &&
         currentStep.conditional_logic?.use_selection_count &&
