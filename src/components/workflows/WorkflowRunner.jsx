@@ -1098,20 +1098,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleComplete = async () => {
     setLoading(true);
     
-    // Execute current step's "after_step" actions if this is being called directly (e.g., for result steps)
-    if (currentStep.post_completion_actions && currentStep.post_completion_actions.length > 0) {
-      const afterStepActions = currentStep.post_completion_actions.filter(
-        action => (action.execution_timing || "after_step") === "after_step"
-      );
-      if (afterStepActions.length > 0) {
-        console.log(`[COMPLETE - POST-ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for current step: ${currentStep.step_title}`);
-        await executePostCompletionActions(afterStepActions);
-      }
-    }
-    
     console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
-    for (const step of workflow.steps) {
-      if (step.post_completion_actions && step.post_completion_actions.length > 0) {
+    const allStepsInPath = completedPath.length > 0 ? completedPath : [...history, currentStep.step_id];
+    
+    for (const stepId of allStepsInPath) {
+      const step = workflow.steps.find(s => s.step_id === stepId);
+      if (step?.post_completion_actions && step.post_completion_actions.length > 0) {
         const afterWorkflowActions = step.post_completion_actions.filter(
           action => action.execution_timing === "after_workflow"
         );
@@ -1147,10 +1139,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         } else if (step.question_type === 'date_input' && answer) {
           valueToUpdate = answer.includes('T') ? answer.split('T')[0] : answer;
         } else if (step.question_type === 'file_upload') {
-          // For file_upload, we might want to store just the file URLs or a specific identifier
-          // For now, storing the whole answer object from file_upload, or handling files specifically
-          // This assumes the backend handles the new file_upload answer structure correctly
-          valueToUpdate = answer.files || []; // Store only the files array if it exists, else empty
+          valueToUpdate = answer.files || [];
         }
 
         updates[fieldName] = valueToUpdate;
