@@ -437,9 +437,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       } else {
         console.warn(`   ⚠️  WARNING: No next step defined for count-based branching!`);
       }
-      } else {
-        console.log('   ℹ️  Count-based branching config exists but no routing steps defined');
-      }
     }
     
     if (currentStep.conditional_logic) {
