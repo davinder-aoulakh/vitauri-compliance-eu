@@ -1101,21 +1101,48 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleComplete = async () => {
     setLoading(true);
     
-    console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
+    console.log(`\n🏁 ========== WORKFLOW COMPLETION STARTED ==========`);
+    console.log(`[COMPLETE] accountId:`, accountId);
+    console.log(`[COMPLETE] entityId:`, entityId);
+    console.log(`[COMPLETE] initialData:`, initialData);
+    console.log(`[COMPLETE] completedPath:`, completedPath);
+    console.log(`[COMPLETE] history:`, history);
+    console.log(`[COMPLETE] currentStep.step_id:`, currentStep.step_id);
+    
     const allStepsInPath = completedPath.length > 0 ? completedPath : [...history, currentStep.step_id];
+    console.log(`[COMPLETE] allStepsInPath (steps to check for actions):`, allStepsInPath);
+    
+    console.log(`\n[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across ${allStepsInPath.length} steps`);
     
     for (const stepId of allStepsInPath) {
       const step = workflow.steps.find(s => s.step_id === stepId);
+      console.log(`\n  📋 Checking step: "${step?.step_title}" (${stepId})`);
+      console.log(`     Has post_completion_actions:`, !!step?.post_completion_actions);
+      console.log(`     Number of actions:`, step?.post_completion_actions?.length || 0);
+      
       if (step?.post_completion_actions && step.post_completion_actions.length > 0) {
+        console.log(`     All actions for this step:`, JSON.stringify(step.post_completion_actions, null, 2));
+        
         const afterWorkflowActions = step.post_completion_actions.filter(
           action => action.execution_timing === "after_workflow"
         );
+        
+        console.log(`     After filtering by "after_workflow": ${afterWorkflowActions.length} action(s)`);
+        
         if (afterWorkflowActions.length > 0) {
-          console.log(`[POST-COMPLETION ACTIONS] Executing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
+          console.log(`\n  🚀 Executing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
+          console.log(`     Actions to execute:`, JSON.stringify(afterWorkflowActions, null, 2));
           await executePostCompletionActions(afterWorkflowActions);
+        } else {
+          console.log(`     ⚠️ No "after_workflow" actions found (all actions have different timing)`);
         }
+      } else {
+        console.log(`     ℹ️ No post_completion_actions defined for this step`);
       }
     }
+    
+    console.log(`\n✅ [POST-COMPLETION ACTIONS] All "after_workflow" actions completed`);
+    console.log(`========== WORKFLOW COMPLETION: MOVING TO DATA SAVE ==========\n`);
     
     const completionData = Object.entries(answers).map(([stepId, answer]) => {
       const step = workflow.steps.find(s => s.step_id === stepId);
