@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -943,7 +944,7 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "first_name", label: "First Name", type: "string" },
   { value: "last_name", label: "Last Name", type: "string" },
   { value: "date_of_birth", label: "Date of Birth", type: "date" },
-  { value: "place_of_birth", label: "Place of Birth", type: "string" },
+  { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true },
   { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean" },
   { value: "account_holder_is_alive", label: "Account Holder Is Alive", type: "boolean" },
   { value: "account_holder_deceased_during_period", label: "Account Holder Deceased During Period", type: "boolean" },
@@ -960,13 +961,13 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "current_address.city", label: "Current Address - City", type: "string" },
   { value: "current_address.state", label: "Current Address - State", type: "string" },
   { value: "current_address.postal_code", label: "Current Address - Postal Code", type: "string" },
-  { value: "current_address.country", label: "Current Address - Country", type: "string" },
+  { value: "current_address.country", label: "Current Address - Country", type: "string", isCountry: true },
   { value: "account_holder_address.street", label: "Account Holder Address - Street", type: "string" },
   { value: "account_holder_address.city", label: "Account Holder Address - City", type: "string" },
   { value: "account_holder_address.state", label: "Account Holder Address - State", type: "string" },
   { value: "account_holder_address.postal_code", label: "Account Holder Address - Postal Code", type: "string" },
-  { value: "account_holder_address.country", label: "Account Holder Address - Country", type: "string" },
-  { value: "country_of_residence", label: "Country of Residence", type: "string" },
+  { value: "account_holder_address.country", label: "Account Holder Address - Country", type: "string", isCountry: true },
+  { value: "country_of_residence", label: "Country of Residence", type: "string", isCountry: true },
   { value: "current_email", label: "Current Email", type: "string" },
   { value: "current_phone", label: "Current Phone", type: "string" },
   { value: "entity_classification", label: "Entity Classification", type: "enum" },
@@ -980,6 +981,8 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "us_person_indic", label: "US Person Indicia", type: "boolean" },
   { value: "self_certification_obtained", label: "Self-Certification Obtained", type: "boolean" },
   { value: "self_certification_date", label: "Self-Certification Date", type: "date" },
+  { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date" },
+  { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean" },
   { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean" },
   { value: "status", label: "Account Status", type: "enum" }
 ];
@@ -987,7 +990,7 @@ const ACCOUNT_FIELDS_SCHEMA = [
 const ENTITY_FIELDS_SCHEMA = [
   { value: "entity_name", label: "Entity Name", type: "string" },
   { value: "entity_type", label: "Entity Type", type: "enum" },
-  { value: "country_of_incorporation", label: "Country of Incorporation", type: "string" },
+  { value: "country_of_incorporation", label: "Country of Incorporation", type: "string", isCountry: true },
   { value: "tax_id", label: "Tax ID", type: "string" },
   { value: "giin", label: "GIIN", type: "string" },
   { value: "rfi_status", label: "RFI Status", type: "enum" },
@@ -998,7 +1001,7 @@ const ENTITY_FIELDS_SCHEMA = [
   { value: "address.city", label: "Address - City", type: "string" },
   { value: "address.state", label: "Address - State", type: "string" },
   { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
-  { value: "address.country", label: "Address - Country", type: "string" },
+  { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
   { value: "status", label: "Entity Status", type: "enum" }
 ];
 
@@ -1011,11 +1014,15 @@ const CONTROLLING_PERSON_FIELDS_SCHEMA = [
   { value: "address.city", label: "Address - City", type: "string" },
   { value: "address.state", label: "Address - State", type: "string" },
   { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
-  { value: "address.country", label: "Address - Country", type: "string" },
+  { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
+  { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true },
+  { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
   { value: "control_type", label: "Control Type", type: "enum" },
   { value: "ownership_percentage", label: "Ownership Percentage", type: "number" },
   { value: "is_reportable", label: "Is Reportable", type: "boolean" },
-  { value: "us_person_indic", label: "US Person Indicator", type: "boolean" }
+  { value: "us_person_indic", label: "US Person Indicator", type: "boolean" },
+  { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date" },
+  { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean" }
 ];
 
 const BENEFICIARY_FIELDS_SCHEMA = [
@@ -1023,12 +1030,14 @@ const BENEFICIARY_FIELDS_SCHEMA = [
   { value: "last_name", label: "Last Name", type: "string" },
   { value: "full_name", label: "Full Name", type: "string" },
   { value: "date_of_birth", label: "Date of Birth", type: "date" },
-  { value: "place_of_birth", label: "Place of Birth", type: "string" },
+  { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true },
   { value: "address.street", label: "Address - Street", type: "string" },
   { value: "address.city", label: "Address - City", type: "string" },
   { value: "address.state", label: "Address - State", type: "string" },
   { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
-  { value: "address.country", label: "Address - Country", type: "string" },
+  { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
+  { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true },
+  { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
   { value: "reportability_status", label: "Reportability Status", type: "enum" },
   { value: "reportability_reason", label: "Reportability Reason", type: "string" }
 ];
@@ -1178,6 +1187,8 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       { value: "us_person_indic", label: "US Person Indicia", type: "boolean", isCountry: false, group: "Account Fields" },
       { value: "self_certification_obtained", label: "Self-Certification Obtained", type: "boolean", isCountry: false, group: "Account Fields" },
       { value: "self_certification_date", label: "Self-Certification Date", type: "date", isCountry: false, group: "Account Fields" },
+      { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date", isCountry: false, group: "Account Fields" },
+      { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean", isCountry: false, group: "Account Fields" },
       { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean", isCountry: false, group: "Account Fields" },
       { value: "status", label: "Status", type: "string", isCountry: false, group: "Account Fields" }
     ];
@@ -1202,6 +1213,49 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       { value: "address.postal_code", label: "Address Postal Code", type: "string", isCountry: false, group: "Entity Fields" },
       { value: "address.country", label: "Address Country", type: "string", isCountry: true, group: "Entity Fields" },
       { value: "status", label: "Status", type: "string", isCountry: false, group: "Entity Fields" }
+    ];
+  }, []);
+
+  // Controlling Person schema fields
+  const controllingPersonFields = React.useMemo(() => {
+    return [
+      { value: "first_name", label: "First Name", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "last_name", label: "Last Name", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "full_name", label: "Full Name", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "date_of_birth", label: "Date of Birth", type: "date", isCountry: false, group: "Controlling Person Fields" },
+      { value: "address.street", label: "Address - Street", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "address.city", label: "Address - City", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "address.state", label: "Address - State", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "address.postal_code", label: "Address - Postal Code", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "address.country", label: "Address - Country", type: "string", isCountry: true, group: "Controlling Person Fields" },
+      { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true, group: "Controlling Person Fields" },
+      { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string", isCountry: false, group: "Controlling Person Fields" },
+      { value: "control_type", label: "Control Type", type: "enum", isCountry: false, group: "Controlling Person Fields" },
+      { value: "ownership_percentage", label: "Ownership Percentage", type: "number", isCountry: false, group: "Controlling Person Fields" },
+      { value: "is_reportable", label: "Is Reportable", type: "boolean", isCountry: false, group: "Controlling Person Fields" },
+      { value: "us_person_indic", label: "US Person Indicator", type: "boolean", isCountry: false, group: "Controlling Person Fields" },
+      { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date", isCountry: false, group: "Controlling Person Fields" },
+      { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean", isCountry: false, group: "Controlling Person Fields" }
+    ];
+  }, []);
+
+  // Beneficiary schema fields
+  const beneficiaryFields = React.useMemo(() => {
+    return [
+      { value: "first_name", label: "First Name", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "last_name", label: "Last Name", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "full_name", label: "Full Name", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "date_of_birth", label: "Date of Birth", type: "date", isCountry: false, group: "Beneficiary Fields" },
+      { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true, group: "Beneficiary Fields" },
+      { value: "address.street", label: "Address - Street", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "address.city", label: "Address - City", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "address.state", label: "Address - State", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "address.postal_code", label: "Address - Postal Code", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "address.country", label: "Address - Country", type: "string", isCountry: true, group: "Beneficiary Fields" },
+      { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true, group: "Beneficiary Fields" },
+      { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string", isCountry: false, group: "Beneficiary Fields" },
+      { value: "reportability_status", label: "Reportability Status", type: "enum", isCountry: false, group: "Beneficiary Fields" },
+      { value: "reportability_reason", label: "Reportability Reason", type: "string", isCountry: false, group: "Beneficiary Fields" }
     ];
   }, []);
 
@@ -1299,8 +1353,18 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       fields.push({ ...field, group: 'Entity Fields' });
     });
 
+    // 4. Add Controlling Person fields
+    controllingPersonFields.forEach(field => {
+      fields.push({ ...field, group: 'Controlling Person Fields' });
+    });
+
+    // 5. Add Beneficiary fields
+    beneficiaryFields.forEach(field => {
+      fields.push({ ...field, group: 'Beneficiary Fields' });
+    });
+
     return fields;
-  }, [allSteps, editedStep.step_id, accountFields, entityFields]);
+  }, [allSteps, editedStep.step_id, accountFields, entityFields, controllingPersonFields, beneficiaryFields]);
 
   const handleChange = (field, value) => {
     setEditedStep({ ...editedStep, [field]: value });
@@ -1432,7 +1496,24 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
 
   const filteredMappedFields = React.useMemo(() => {
     if (!editedStep.mapped_field?.entity_type) return [];
-    const allFields = editedStep.mapped_field.entity_type === "Account" ? accountFields : entityFields;
+    let allFields = [];
+    switch (editedStep.mapped_field.entity_type) {
+      case "Account":
+        allFields = accountFields;
+        break;
+      case "Entity":
+        allFields = entityFields;
+        break;
+      case "ControllingPerson":
+        allFields = controllingPersonFields;
+        break;
+      case "Beneficiary":
+        allFields = beneficiaryFields;
+        break;
+      default:
+        return [];
+    }
+    
     const questionFieldType = getQuestionFieldType(editedStep.question_type);
     
     if (!questionFieldType) return [];
@@ -1441,7 +1522,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
     return allFields.filter(field => {
       // Special handling for address_input - can only map to address object fields
       if (editedStep.question_type === 'address_input') {
-        return field.type === 'object' && (field.value === 'current_address' || field.value === 'account_holder_address');
+        return field.type === 'object' && (field.value === 'current_address' || field.value === 'account_holder_address' || field.value === 'address');
       }
 
       // NEW: Allow dropdown/enum fields to map to yes_no questions
@@ -1468,7 +1549,7 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
       }
       return false;
     });
-  }, [editedStep.mapped_field?.entity_type, editedStep.question_type, accountFields, entityFields, referencedData]);
+  }, [editedStep.mapped_field?.entity_type, editedStep.question_type, accountFields, entityFields, controllingPersonFields, beneficiaryFields, referencedData]);
 
   const handleSave = () => {
     console.log(`[StepEditor] Saving step ${editedStep.step_id}:`, {
@@ -1657,10 +1738,11 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               <SelectContent>
                 <SelectItem value="current_address">Current Address</SelectItem>
                 <SelectItem value="account_holder_address">Account Holder Address</SelectItem>
+                <SelectItem value="address">Entity Address</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500 mt-1">
-              Select which address field on the Account will be updated with the collected address.
+              Select which address field on the Account/Entity will be updated with the collected address.
             </p>
           </div>
           <div className="mt-4">
