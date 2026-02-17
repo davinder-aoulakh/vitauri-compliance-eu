@@ -890,9 +890,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             // Try to get from initialData if passed
             if (initialData?.controllingPersonId) {
               targetEntityId = initialData.controllingPersonId;
-              console.log(`   ✓ Using ControllingPerson ID from initialData: ${targetEntityId}`);
+              console.log(`   ✓ Using ControllingPerson ID from initialData.controllingPersonId: ${targetEntityId}`);
+            } else if (initialData?.controlling_person?.id) {
+              targetEntityId = initialData.controlling_person.id;
+              console.log(`   ✓ Using ControllingPerson ID from initialData.controlling_person.id: ${targetEntityId}`);
             } else {
-              console.warn(`   ⚠️  No controlling_person_input step found and no initialData.controllingPersonId`);
+              console.warn(`   ⚠️  No controlling_person_input step found and no initialData with controlling person ID`);
             }
           }
         }
