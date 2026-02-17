@@ -1032,14 +1032,54 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const isActionNode = (step) => {
     if (!step) return false;
     
-    // A step is an action node if it has any routing mechanism
-    return !!(
-      step.conditional_logic?.condition_groups?.length > 0 ||
-      step.conditional_logic?.conditions?.length > 0 ||
-      step.conditional_logic?.multi_choice_routing_groups?.length > 0 ||
-      step.options?.some(opt => opt.next_step) ||
-      step.default_next_step
-    );
+    console.log(`\n🔍 [isActionNode] Checking step: "${step.step_title}"`);
+    console.log(`   Question Type: ${step.question_type}`);
+    console.log(`   Has conditional_logic:`, !!step.conditional_logic);
+    console.log(`   Full conditional_logic:`, JSON.stringify(step.conditional_logic, null, 2));
+
+    // Input types with default_next_step are NOT action nodes (they have a next step to go to)
+    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input", "beneficiary_input", "controlling_person_input"];
+    if (inputTypes.includes(step.question_type)) {
+      console.log(`   ✓ Is input type: ${step.question_type}`);
+      if (step.default_next_step) {
+        console.log(`   ✓ Has default_next_step: ${step.default_next_step} → NOT action node`);
+        return false;
+      }
+      console.log(`   ✓ Is input type without default_next_step → NOT action node`);
+      return false;
+    }
+
+    // Check for condition groups
+    if (step.conditional_logic?.condition_groups?.length > 0) {
+      console.log(`   ✓ Has condition_groups (${step.conditional_logic.condition_groups.length} groups) → NOT action node`);
+      return false;
+    }
+
+    // Check for routing groups
+    if (step.conditional_logic?.multi_choice_routing_groups?.length > 0) {
+      console.log(`   ✓ Has multi_choice_routing_groups (${step.conditional_logic.multi_choice_routing_groups.length} groups) → NOT action node`);
+      return false;
+    }
+
+    // Check for selection count branching
+    if (step.question_type === "multiple_choice") {
+      if (step.conditional_logic?.selection_count_next_step || step.conditional_logic?.selection_count_else_step) {
+        console.log(`   ✓ Has selection count branching → NOT action node`);
+        return false;
+      }
+    }
+
+    // Check for option-based branching
+    console.log(`   Checking options: ${step.options?.length || 0} options`);
+    if (!step.options || step.options.length === 0) {
+      console.log(`   → No options → IS action node`);
+      return true;
+    }
+
+    const hasOptionNextSteps = step.options.some(opt => opt.next_step);
+    console.log(`   Options have next_step:`, hasOptionNextSteps);
+    console.log(`   → Final result: ${!hasOptionNextSteps ? 'IS action node' : 'NOT action node'}`);
+    return !hasOptionNextSteps;
   };
 
   const handleComplete = async () => {
