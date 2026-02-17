@@ -20,9 +20,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import WorkflowRunner from "../workflows/WorkflowRunner";
+import ControllingPersonDetails from "./ControllingPersonDetails";
+import ControllingPersonClassificationHistory from "./ControllingPersonClassificationHistory";
 import { format } from "date-fns";
 
 export default function ControllingPersonsList({ account, onUpdateCount }) {
@@ -30,6 +32,10 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
   const [classifyingPerson, setClassifyingPerson] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [detailsPerson, setDetailsPerson] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyPerson, setHistoryPerson] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: controllingPersons = [], isLoading } = useQuery({
@@ -332,6 +338,20 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                setDetailsPerson(person);
+                                setShowDetails(true);
+                              }}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setHistoryPerson(person);
+                                setShowHistory(true);
+                              }}>
+                                <History className="w-4 h-4 mr-2" />
+                                View History
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(person)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
@@ -421,6 +441,31 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Controlling Person Details</DialogTitle>
+          </DialogHeader>
+          <ControllingPersonDetails 
+            controllingPerson={detailsPerson} 
+            account={account}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Classification History</DialogTitle>
+          </DialogHeader>
+          <ControllingPersonClassificationHistory 
+            controllingPerson={historyPerson}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
