@@ -1043,6 +1043,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleComplete = async () => {
     setLoading(true);
     
+    // Execute current step's "after_step" actions if this is being called directly (e.g., for result steps)
+    if (currentStep.post_completion_actions && currentStep.post_completion_actions.length > 0) {
+      const afterStepActions = currentStep.post_completion_actions.filter(
+        action => (action.execution_timing || "after_step") === "after_step"
+      );
+      if (afterStepActions.length > 0) {
+        console.log(`[COMPLETE - POST-ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for current step: ${currentStep.step_title}`);
+        await executePostCompletionActions(afterStepActions);
+      }
+    }
+    
     console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
     for (const step of workflow.steps) {
       if (step.post_completion_actions && step.post_completion_actions.length > 0) {
