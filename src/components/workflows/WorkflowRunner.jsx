@@ -880,47 +880,58 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID: ${targetEntityId}`);
         } else if (targetEntityType === "ControllingPerson") {
           // For ControllingPerson, we need to get the ID from the workflow answer
-          // Check if there's a controlling_person_input step
-          console.log(`   ℹ️  ControllingPerson target detected`);
-          console.log(`   All answers:`, answers);
+          console.log(`[ACTION ${i + 1}]    ℹ️  ControllingPerson target detected - searching for ID...`);
+          console.log(`[ACTION ${i + 1}]    All workflow answers:`, JSON.stringify(answers, null, 2));
           
           // Look for controlling_person_input step answer
           const cpInputStep = workflow.steps.find(s => s.question_type === 'controlling_person_input');
+          console.log(`[ACTION ${i + 1}]    controlling_person_input step found:`, !!cpInputStep);
+          
           if (cpInputStep) {
             const cpAnswer = answers[cpInputStep.step_id];
-            console.log(`   Found controlling_person_input step: ${cpInputStep.step_id}`);
-            console.log(`   Answer:`, cpAnswer);
+            console.log(`[ACTION ${i + 1}]    controlling_person_input step ID: ${cpInputStep.step_id}`);
+            console.log(`[ACTION ${i + 1}]    controlling_person_input answer:`, JSON.stringify(cpAnswer, null, 2));
             
             if (cpAnswer?.savedPersons && cpAnswer.savedPersons.length > 0) {
               // Get the most recently added controlling person
               const latestPerson = cpAnswer.savedPersons[cpAnswer.savedPersons.length - 1];
               targetEntityId = latestPerson.id;
-              console.log(`   ✓ Using ControllingPerson ID from latest person: ${targetEntityId}`);
+              console.log(`[ACTION ${i + 1}]    ✅ Using ControllingPerson ID from savedPersons (latest): ${targetEntityId}`);
+              console.log(`[ACTION ${i + 1}]    Latest person object:`, JSON.stringify(latestPerson, null, 2));
             } else {
-              console.warn(`   ⚠️  No saved controlling persons found in answer`);
+              console.warn(`[ACTION ${i + 1}]    ⚠️  No saved controlling persons found in controlling_person_input answer`);
             }
           } else {
+            console.log(`[ACTION ${i + 1}]    No controlling_person_input step - checking initialData...`);
+            
             // Try to get from initialData if passed
             if (initialData?.controllingPersonId) {
               targetEntityId = initialData.controllingPersonId;
-              console.log(`   ✓ Using ControllingPerson ID from initialData.controllingPersonId: ${targetEntityId}`);
+              console.log(`[ACTION ${i + 1}]    ✅ Using ControllingPerson ID from initialData.controllingPersonId: ${targetEntityId}`);
             } else if (initialData?.controlling_person?.id) {
               targetEntityId = initialData.controlling_person.id;
-              console.log(`   ✓ Using ControllingPerson ID from initialData.controlling_person.id: ${targetEntityId}`);
+              console.log(`[ACTION ${i + 1}]    ✅ Using ControllingPerson ID from initialData.controlling_person.id: ${targetEntityId}`);
             } else {
-              console.warn(`   ⚠️  No controlling_person_input step found and no initialData with controlling person ID`);
+              console.warn(`[ACTION ${i + 1}]    ❌ No controlling_person_input step AND no initialData with controlling person ID`);
+              console.warn(`[ACTION ${i + 1}]    initialData keys:`, Object.keys(initialData || {}));
             }
           }
         }
 
+        console.log(`\n[ACTION ${i + 1}] 🎯 Target Entity Resolution:`);
+        console.log(`[ACTION ${i + 1}]    targetEntityType: ${targetEntityType}`);
+        console.log(`[ACTION ${i + 1}]    targetEntityId: ${targetEntityId}`);
+
         if (!targetEntityId || !targetEntityType) {
-          console.error(`   ❌ [ACTION ${i + 1}] FAILED: No valid target entity found`);
-          console.error(`   - targetEntityType: ${targetEntityType}`);
-          console.error(`   - targetEntityId: ${targetEntityId}`);
+          console.error(`\n[ACTION ${i + 1}] ❌❌❌ CRITICAL ERROR: No valid target entity found ❌❌❌`);
+          console.error(`[ACTION ${i + 1}] targetEntityType: ${targetEntityType}`);
+          console.error(`[ACTION ${i + 1}] targetEntityId: ${targetEntityId}`);
+          console.error(`[ACTION ${i + 1}] This action will be SKIPPED`);
+          console.error(`========== ACTION ${i + 1} FAILED (NO TARGET) ==========\n`);
           continue;
         }
 
-        console.log(`   ✅ Target identified: ${targetEntityType} (ID: ${targetEntityId})`);
+        console.log(`[ACTION ${i + 1}] ✅✅✅ Target identified successfully: ${targetEntityType} (ID: ${targetEntityId})`);
 
 
         let valueToUpdate = null;
