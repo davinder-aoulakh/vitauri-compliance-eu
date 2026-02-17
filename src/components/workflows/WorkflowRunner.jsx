@@ -1829,6 +1829,171 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   const progress = Math.round(((currentStepIndex + 1) / workflow.steps.length) * 100);
 
+  // Summary Screen
+  if (showSummary) {
+    const finalStep = workflow.steps[completedPath[completedPath.length - 1]] || currentStep;
+    let summaryStatus = finalStep?.result_status || "pending_review";
+    
+    // Extract status from post-completion actions if available
+    if (finalStep?.post_completion_actions?.length > 0) {
+      const statusAction = finalStep.post_completion_actions.find(
+        action => action.field_to_update === "reportability_status" || action.field_to_update === "is_reportable"
+      );
+      if (statusAction && statusAction.value_source === "static_value") {
+        summaryStatus = statusAction.value;
+      }
+    }
+    
+    const isReportable = summaryStatus === "reportable" || summaryStatus === true;
+    const isPending = summaryStatus === "pending_review";
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${
+            isReportable ? 'bg-amber-100' : isPending ? 'bg-blue-100' : 'bg-green-100'
+          }`}>
+            {isReportable ? (
+              <AlertCircle className="w-10 h-10 text-amber-600" />
+            ) : isPending ? (
+              <Info className="w-10 h-10 text-blue-600" />
+            ) : (
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            )}
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            {isPending ? 'Work In Progress' : 'Classification Complete'}
+          </h2>
+          <p className="text-slate-600">
+            Review your answers and confirm the classification
+          </p>
+        </div>
+
+        <Card className={`border-2 ${
+          isReportable ? 'bg-amber-50 border-amber-200' :
+          isPending ? 'bg-blue-50 border-blue-200' :
+          'bg-green-50 border-green-200'
+        }`}>
+          <CardHeader className="border-b border-slate-200">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Classification Result
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">Status:</span>
+                <Badge className={`text-sm ${
+                  isReportable ? 'bg-amber-600 text-white' :
+                  isPending ? 'bg-blue-600 text-white' :
+                  'bg-green-600 text-white'
+                }`}>
+                  {isReportable ? 'Reportable' : isPending ? 'Pending Review' : 'Non-Reportable'}
+                </Badge>
+              </div>
+              <div className="flex items-start justify-between">
+                <span className="text-sm font-medium text-slate-700">Result:</span>
+                <span className="text-sm text-slate-900 text-right max-w-md">
+                  {finalStep?.result_description || finalStep?.help_text || finalStep?.step_title}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-slate-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Complete Answer Summary ({completedPath.length} steps)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {completedPath.map((stepId, idx) => {
+                const step = workflow.steps.find(s => s.step_id === stepId);
+                const answer = answers[stepId];
+                if (!step || !answer) return null;
+
+                let displayValue = '';
+                if (Array.isArray(answer)) {
+                  const labels = answer.map(v =>
+                    step.options?.find(o => o.value === v)?.label || v
+                  );
+                  displayValue = labels.join(', ');
+                } else if (typeof answer === 'object' && answer !== null) {
+                  if (answer.files) {
+                    displayValue = `${answer.files.length} file(s) uploaded`;
+                  } else if (answer.savedPersons) {
+                    displayValue = `${answer.savedPersons.length} controlling person(s) added`;
+                  } else if (answer.savedBeneficiaries) {
+                    displayValue = `${answer.savedBeneficiaries.length} beneficiary(ies) added`;
+                  } else if (answer.street && answer.country) {
+                    displayValue = `${answer.street}, ${answer.city}, ${answer.country}`;
+                  } else {
+                    displayValue = 'Data entered';
+                  }
+                } else {
+                  displayValue = step.options?.find(o => o.value === answer)?.label || String(answer || '');
+                }
+
+                return (
+                  <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900 mb-1">
+                        {step.step_title}
+                      </p>
+                      {step.question_text && (
+                        <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
+                      )}
+                      <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                        {displayValue}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-between gap-3 pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowSummary(false)}
+            size="lg"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Review Answers
+          </Button>
+          <Button
+            onClick={handleComplete}
+            disabled={loading}
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Complete Classification
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
