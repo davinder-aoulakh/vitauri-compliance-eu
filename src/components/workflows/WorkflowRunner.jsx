@@ -869,15 +869,33 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`[ACTION ${i + 1}]    Target Entity Type: ${targetEntityType}`);
         console.log(`[ACTION ${i + 1}]    Available - accountId: ${accountId}`);
         console.log(`[ACTION ${i + 1}]    Available - entityId: ${entityId}`);
+        console.log(`[ACTION ${i + 1}]    Available - initialData.account:`, initialData?.account);
+        console.log(`[ACTION ${i + 1}]    Available - initialData.entity:`, initialData?.entity);
         console.log(`[ACTION ${i + 1}]    Available - initialData.controlling_person:`, initialData?.controlling_person);
         console.log(`[ACTION ${i + 1}]    Available - initialData.controllingPersonId:`, initialData?.controllingPersonId);
 
-        if (targetEntityType === "Account" && accountId) {
-          targetEntityId = accountId;
-          console.log(`[ACTION ${i + 1}]    ✅ Using Account ID: ${targetEntityId}`);
-        } else if (targetEntityType === "Entity" && entityId) {
-          targetEntityId = entityId;
-          console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID: ${targetEntityId}`);
+        if (targetEntityType === "Account") {
+          // Try accountId prop first, then fall back to initialData.account.id
+          if (accountId) {
+            targetEntityId = accountId;
+            console.log(`[ACTION ${i + 1}]    ✅ Using Account ID from prop: ${targetEntityId}`);
+          } else if (initialData?.account?.id) {
+            targetEntityId = initialData.account.id;
+            console.log(`[ACTION ${i + 1}]    ✅ Using Account ID from initialData.account.id: ${targetEntityId}`);
+          } else {
+            console.error(`[ACTION ${i + 1}]    ❌ No Account ID found (neither accountId prop nor initialData.account.id)`);
+          }
+        } else if (targetEntityType === "Entity") {
+          // Try entityId prop first, then fall back to initialData.entity.id
+          if (entityId) {
+            targetEntityId = entityId;
+            console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID from prop: ${targetEntityId}`);
+          } else if (initialData?.entity?.id) {
+            targetEntityId = initialData.entity.id;
+            console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID from initialData.entity.id: ${targetEntityId}`);
+          } else {
+            console.error(`[ACTION ${i + 1}]    ❌ No Entity ID found (neither entityId prop nor initialData.entity.id)`);
+          }
         } else if (targetEntityType === "ControllingPerson") {
           // For ControllingPerson, we need to get the ID from the workflow answer
           console.log(`[ACTION ${i + 1}]    ℹ️  ControllingPerson target detected - searching for ID...`);
