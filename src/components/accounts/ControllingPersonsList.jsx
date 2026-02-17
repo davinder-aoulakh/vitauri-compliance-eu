@@ -430,7 +430,13 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
         <Dialog open={showClassification} onOpenChange={setShowClassification}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Classify Controlling Person: {classifyingPerson.full_name}</DialogTitle>
+              <DialogTitle>
+                Classify Controlling Person: {
+                  classifyingPerson.first_name && classifyingPerson.last_name
+                    ? `${classifyingPerson.first_name} ${classifyingPerson.last_name}`
+                    : classifyingPerson.full_name || "N/A"
+                }
+              </DialogTitle>
             </DialogHeader>
             <WorkflowRunner
               workflow={workflows[0]}
