@@ -1084,18 +1084,32 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             console.log(`[ACTION ${i + 1}]    Full updated person:`, JSON.stringify(updatedPersons[0], null, 2));
           }
           
-          // If account is associated, also check if we need to sync the account
-          if (accountId) {
+          // If account is associated, sync the account
+          // Try to get accountId from multiple sources
+          const syncAccountId = accountId || 
+                                 initialData?.account?.id || 
+                                 initialData?.controlling_person?.account_id ||
+                                 updatedPersons[0]?.account_id;
+          
+          console.log(`\n[ACTION ${i + 1}]    🔍 Looking for account to sync...`);
+          console.log(`[ACTION ${i + 1}]       accountId prop: ${accountId}`);
+          console.log(`[ACTION ${i + 1}]       initialData.account.id: ${initialData?.account?.id}`);
+          console.log(`[ACTION ${i + 1}]       initialData.controlling_person.account_id: ${initialData?.controlling_person?.account_id}`);
+          console.log(`[ACTION ${i + 1}]       Updated person's account_id: ${updatedPersons[0]?.account_id}`);
+          console.log(`[ACTION ${i + 1}]       Final syncAccountId: ${syncAccountId}`);
+          
+          if (syncAccountId) {
             console.log(`\n[ACTION ${i + 1}]    🔄 Syncing account controlling persons count...`);
-            console.log(`[ACTION ${i + 1}]    Account ID to sync: ${accountId}`);
+            console.log(`[ACTION ${i + 1}]    Account ID to sync: ${syncAccountId}`);
             try {
-              await base44.functions.invoke('syncAccountControllingPersons', { accountId: accountId });
+              await base44.functions.invoke('syncAccountControllingPersons', { accountId: syncAccountId });
               console.log(`[ACTION ${i + 1}]    ✅ Account sync completed successfully`);
               
-              const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
+              const updatedAccounts = await base44.entities.Account.filter({ id: syncAccountId });
               if (updatedAccounts[0]) {
                 console.log(`[ACTION ${i + 1}]    Synced account reportability_status:`, updatedAccounts[0].reportability_status);
                 console.log(`[ACTION ${i + 1}]    Synced account controlling_persons_count:`, updatedAccounts[0].controlling_persons_count);
+                console.log(`[ACTION ${i + 1}]    Synced account has_unclassified_controlling_persons:`, updatedAccounts[0].has_unclassified_controlling_persons);
                 setMappedEntityData(updatedAccounts[0]);
                 console.log(`[ACTION ${i + 1}]    🔄 Refreshed account data in state`);
               }
@@ -1104,7 +1118,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               console.error(`[ACTION ${i + 1}]    Error details:`, syncError.message);
             }
           } else {
-            console.warn(`[ACTION ${i + 1}]    ⚠️ No accountId available, skipping account sync`);
+            console.warn(`[ACTION ${i + 1}]    ⚠️ No accountId found from any source, skipping account sync`);
           }
         }
         
