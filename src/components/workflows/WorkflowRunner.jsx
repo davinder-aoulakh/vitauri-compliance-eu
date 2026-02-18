@@ -442,22 +442,52 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
     
     if (currentStep.conditional_logic) {
-      console.log('[EVALUATING CONDITIONAL LOGIC]');
-      console.log('Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
+      console.log('\n🔍🔍🔍 [CONDITIONAL LOGIC CHECK - START] 🔍🔍🔍');
+      console.log('Current Step:', currentStep.step_id, '-', currentStep.step_title);
+      console.log('Current Answer:', answer);
+      console.log('Question Type:', currentStep.question_type);
+      console.log('Has conditional_logic object:', !!currentStep.conditional_logic);
+      console.log('Full conditional_logic object:');
+      console.log(JSON.stringify(currentStep.conditional_logic, null, 2));
+      console.log('');
+      console.log('Checking for condition_groups...');
+      console.log('Has condition_groups:', !!currentStep.conditional_logic?.condition_groups);
+      console.log('Number of condition_groups:', currentStep.conditional_logic?.condition_groups?.length || 0);
+      console.log('Has trigger_field:', !!currentStep.conditional_logic?.trigger_field);
+      console.log('trigger_field value:', currentStep.conditional_logic?.trigger_field);
+      console.log('trigger_value:', currentStep.conditional_logic?.trigger_value);
+      console.log('');
+      console.log('All workflow answers so far:');
+      console.log(JSON.stringify(answers, null, 2));
+      console.log('');
+      
       const nextStepId = await evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
-      console.log(`Conditional logic returned next step: ${nextStepId}`);
+      
+      console.log('');
+      console.log('🎯 [CONDITIONAL LOGIC RESULT]');
+      console.log('Returned next step ID:', nextStepId);
+      console.log('Next step ID type:', typeof nextStepId);
+      console.log('Next step ID is null/undefined:', nextStepId === null || nextStepId === undefined);
+      
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
+        console.log(`✅ Found next step at index ${nextIndex}:`, workflow.steps[nextIndex]?.step_title);
         if (nextIndex !== -1) {
-          console.log(`Navigating to step index ${nextIndex + 1}: ${workflow.steps[nextIndex].step_title}`);
+          console.log(`➡️ [CONDITIONAL LOGIC] Navigating to step index ${nextIndex + 1}: ${workflow.steps[nextIndex].step_title}`);
+          console.log('🔍🔍🔍 [CONDITIONAL LOGIC CHECK - END - NAVIGATING] 🔍🔍🔍\n');
           setCurrentStepIndex(nextIndex);
           return;
         } else {
-          console.log(`WARNING: Next step ID "${nextStepId}" not found in workflow steps!`);
+          console.error(`❌ ERROR: Next step ID "${nextStepId}" not found in workflow steps!`);
+          console.log('Available step IDs:', workflow.steps.map(s => s.step_id));
         }
       } else {
-        console.log('Conditional logic returned null/empty next step');
+        console.warn('⚠️ Conditional logic returned null/empty/undefined next step');
+        console.log('Will continue to check other navigation methods...');
       }
+      console.log('🔍🔍🔍 [CONDITIONAL LOGIC CHECK - END - NO RESULT] 🔍🔍🔍\n');
+    } else {
+      console.log('ℹ️ No conditional_logic on this step, skipping to option-based navigation');
     }
 
     if (currentStep.question_type === 'yes_no' || currentStep.question_type === 'single_choice') {
