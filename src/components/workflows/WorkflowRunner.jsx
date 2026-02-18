@@ -769,6 +769,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       if (logic.overall_logic_operator) {
         console.log(`\n--- COMBINING GROUPS with ${logic.overall_logic_operator} ---`);
         let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
+        let matchedGroupIndex = -1;
 
         for (let i = 0; i < groupResults.length; i++) {
           const { result } = groupResults[i];
@@ -780,17 +781,34 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               break;
             }
           } else {
+            // OR logic - track which group matched first
+            const previousResult = finalResult;
             finalResult = finalResult || result;
-            console.log(`After group ${i + 1}: finalResult = ${finalResult} (OR logic)`);
-            if (finalResult) {
-              console.log('Short-circuit OR - stopping evaluation');
+            console.log(`After group ${i + 1}: finalResult = ${finalResult} (OR logic, group result: ${result})`);
+            if (result && matchedGroupIndex === -1) {
+              matchedGroupIndex = i;
+              console.log(`✅ First TRUE group found at index ${i}`);
+            }
+            if (finalResult && previousResult === false && result === true) {
+              console.log('Short-circuit OR - first TRUE group found, stopping evaluation');
               break;
             }
           }
         }
 
         console.log(`\n>>> FINAL OVERALL RESULT: ${finalResult}`);
-        const nextStep = finalResult ? logic.overall_true_step : logic.overall_false_step;
+        
+        // For OR logic, if any group was TRUE, use that group's true_step instead of overall_true_step
+        let nextStep;
+        if (logic.overall_logic_operator === 'OR' && finalResult && matchedGroupIndex >= 0) {
+          const matchedGroup = groupResults[matchedGroupIndex].group;
+          nextStep = matchedGroup.true_step;
+          console.log(`>>> OR Logic - Using matched group ${matchedGroupIndex + 1}'s true_step: ${nextStep}`);
+        } else {
+          nextStep = finalResult ? logic.overall_true_step : logic.overall_false_step;
+          console.log(`>>> Using overall ${finalResult ? 'true' : 'false'} step: ${nextStep}`);
+        }
+        
         console.log(`>>> RETURNING NEXT STEP: ${nextStep} (${finalResult ? 'TRUE' : 'FALSE'} path)`);
         
         const nextStepObj = workflow.steps.find(s => s.step_id === nextStep);
