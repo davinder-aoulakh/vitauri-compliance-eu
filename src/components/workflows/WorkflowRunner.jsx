@@ -491,16 +491,24 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
 
     if (currentStep.question_type === 'yes_no' || currentStep.question_type === 'single_choice') {
-      console.log('[CHECKING OPTION-BASED NEXT STEP]');
+      console.log('\n📋 [CHECKING OPTION-BASED NEXT STEP]');
+      console.log('Question type:', currentStep.question_type);
+      console.log('Current answer:', answer);
+      console.log('Available options:', currentStep.options?.map(o => ({ value: o.value, label: o.label, next_step: o.next_step })));
       const selectedOption = currentStep.options?.find(opt => opt.value === answer);
-      console.log(`Selected option:`, selectedOption);
+      console.log('Selected option:', selectedOption);
+      console.log('Selected option has next_step:', !!selectedOption?.next_step);
       if (selectedOption?.next_step) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === selectedOption.next_step);
+        console.log(`➡️ [OPTION] Using option's next_step: ${selectedOption.next_step}`);
+        console.log(`Found at index ${nextIndex}:`, workflow.steps[nextIndex]?.step_title);
         if (nextIndex !== -1) {
-          console.log(`Navigating to step index ${nextIndex + 1} via option next_step`);
+          console.log(`✅ Navigating to step index ${nextIndex + 1} via option next_step`);
           setCurrentStepIndex(nextIndex);
           return;
         }
+      } else {
+        console.log('⚠️ No next_step defined on selected option, continuing...');
       }
     }
 
