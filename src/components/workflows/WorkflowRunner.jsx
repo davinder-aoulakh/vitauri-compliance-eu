@@ -510,10 +510,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   const handleBack = () => {
     if (history.length > 0) {
+      // Get the actual previous step from history
+      const previousStepId = history[history.length - 1];
+      const previousStepIndex = workflow.steps.findIndex(s => s.step_id === previousStepId);
+      
+      console.log('[BACK] Previous step from history:', previousStepId, 'at index:', previousStepIndex);
+      
+      if (previousStepIndex !== -1) {
+        setCurrentStepIndex(previousStepIndex);
+      }
+      
+      // Remove the last step from history
       setHistory(prev => prev.slice(0, -1));
-    }
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
     }
   };
 
