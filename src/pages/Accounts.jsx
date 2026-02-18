@@ -23,7 +23,8 @@ import {
   Globe,
   RefreshCw,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  HeartHandshake
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ import AccountDetails from "../components/accounts/AccountDetails";
 import AccountClassification from "../components/accounts/AccountClassification";
 import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory";
 import ControllingPersonsList from "../components/accounts/ControllingPersonsList";
+import BeneficiaryManager from "../components/accounts/BeneficiaryManager";
 import AIBulkImport from "../components/import/AIBulkImport";
 import ComplianceFlags from "../components/accounts/ComplianceFlags";
 import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluator";
@@ -77,6 +79,7 @@ export default function AccountsPage() {
   const [showClassification, setShowClassification] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showControllingPersons, setShowControllingPersons] = useState(false);
+  const [showBeneficiaries, setShowBeneficiaries] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showComplianceFlags, setShowComplianceFlags] = useState(false);
   const [showAIValidator, setShowAIValidator] = useState(false);
@@ -393,6 +396,11 @@ export default function AccountsPage() {
   const handleManageControllingPersons = (account) => {
     setSelectedAccount(account);
     setShowControllingPersons(true);
+  };
+
+  const handleManageBeneficiaries = (account) => {
+    setSelectedAccount(account);
+    setShowBeneficiaries(true);
   };
 
   const handleDelete = async (id) => {
@@ -903,6 +911,13 @@ export default function AccountsPage() {
                                       </DropdownMenuItem>
                                     )}
                                     
+                                    {account.account_holder_type === "individual" && account.account_holder_is_alive === false && (
+                                      <DropdownMenuItem onClick={() => handleManageBeneficiaries(account)}>
+                                        <HeartHandshake className="w-4 h-4 mr-2" />
+                                        Manage Beneficiaries
+                                      </DropdownMenuItem>
+                                    )}
+                                    
                                     <DropdownMenuItem onClick={() => handleEdit(account)}>
                                       <Edit className="w-4 h-4 mr-2" />
                                       Edit Account
@@ -1096,6 +1111,17 @@ export default function AccountsPage() {
             </DialogTitle>
           </DialogHeader>
           <ControllingPersonsList account={selectedAccount} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBeneficiaries} onOpenChange={setShowBeneficiaries}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>
+              Beneficiaries: {selectedAccount?.account_holder_name}
+            </DialogTitle>
+          </DialogHeader>
+          <BeneficiaryManager account={selectedAccount} tenant={tenant} />
         </DialogContent>
       </Dialog>
 
