@@ -340,8 +340,252 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     }
   };
 
-  const evaluateConditionalLogic = (logic, answers) => {
-    console.log("🔧 [EVALUATE] Starting condition evaluation");
+  const getFieldValue = (fieldPath, allAnswers) => {
+    if (!fieldPath) return undefined;
+    
+    if (fieldPath.includes('.')) {
+      const [stepId, subField] = fieldPath.split('.');
+      const stepAnswer = allAnswers[stepId];
+      
+      if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
+        return stepAnswer[subField];
+      }
+      return undefined;
+    }
+    
+    return allAnswers[fieldPath];
+  };
+
+  const evaluateSingleCondition = async (condition, allAnswers) => {
+    const fieldAnswer = getFieldValue(condition.field, allAnswers);
+    let comparisonValue = condition.value;
+    
+    if (condition.value_type === 'field_reference') {
+      comparisonValue = getFieldValue(condition.value, allAnswers);
+    }
+    
+    let met = false;
+    const isArrayAnswer = Array.isArray(fieldAnswer);
+    
+    switch (condition.operator) {
+      case '=':
+        if (isArrayAnswer) {
+          met = fieldAnswer.includes(comparisonValue);
+        } else {
+          if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
+            met = fieldAnswer === (comparisonValue === 'true');
+          } else {
+            met = fieldAnswer === comparisonValue;
+          }
+        }
+        break;
+      case '!=':
+        if (isArrayAnswer) {
+          met = !fieldAnswer.includes(comparisonValue);
+        } else {
+          if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
+            met = fieldAnswer !== (comparisonValue === 'true');
+          } else {
+            met = fieldAnswer !== comparisonValue;
+          }
+        }
+        break;
+      case '>':
+        met = Number(fieldAnswer) > Number(comparisonValue);
+        break;
+      case '<':
+        met = Number(fieldAnswer) < Number(comparisonValue);
+        break;
+      case '>=':
+        met = Number(fieldAnswer) >= Number(comparisonValue);
+        break;
+      case '<=':
+        met = Number(fieldAnswer) <= Number(comparisonValue);
+        break;
+      case 'contains':
+        if (isArrayAnswer) {
+          met = fieldAnswer.some(opt => String(opt).includes(String(comparisonValue)));
+        } else {
+          met = String(fieldAnswer || '').includes(String(comparisonValue));
+        }
+        break;
+      case 'in':
+        if (isArrayAnswer) {
+          const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
+          met = fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+        } else {
+          met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+        }
+        break;
+      case 'not_in':
+        if (isArrayAnswer) {
+          const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
+          met = !fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+        } else {
+          met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+        }
+        break;
+      case 'is_crs':
+        if (fieldAnswer) {
+          try {
+            const crsResult = await base44.entities.CrsCountryInfo.filter({
+              $or: [
+                { country_name: fieldAnswer },
+                { country_code: fieldAnswer }
+              ]
+            });
+            met = crsResult.length > 0 && crsResult[0].is_crs_country === true;
+          } catch (error) {
+            console.error("Error checking CRS status:", error);
+            met = false;
+          }
+        } else {
+          met = false;
+        }
+        break;
+      case 'is_not_crs':
+        if (fieldAnswer) {
+          try {
+            const crsResult = await base44.entities.CrsCountryInfo.filter({
+              $or: [
+                { country_name: fieldAnswer },
+                { country_code: fieldAnswer }
+              ]
+            });
+            met = crsResult.length === 0 || crsResult[0].is_crs_country === false;
+          } catch (error) {
+            console.error("Error checking CRS status:", error);
+            met = true;
+          }
+        } else {
+          met = true;
+        }
+        break;
+      default:
+        met = false;
+    }
+
+    return met;
+  };
+
+  const evaluateConditionalLogic = async (logic, allAnswers) => {
+    console.log('\n========== EVALUATING CONDITIONAL LOGIC (EntityClassification) ==========');
+    console.log('Has condition_groups:', !!logic?.condition_groups?.length);
+    console.log('Number of condition_groups:', logic?.condition_groups?.length || 0);
+    console.log('Full logic object:', JSON.stringify(logic, null, 2));
+
+    // Check for advanced condition_groups
+    if (logic?.condition_groups && logic.condition_groups.length > 0) {
+      console.log('\n========== EVALUATING CONDITION GROUPS ==========');
+      console.log(`Total condition_groups: ${logic.condition_groups.length}`);
+      console.log('Overall Logic Operator:', logic.overall_logic_operator);
+      console.log('Overall True Step:', logic.overall_true_step);
+      console.log('Overall False Step:', logic.overall_false_step);
+      console.log('Trigger field:', logic.trigger_field);
+      console.log('Trigger value:', logic.trigger_value);
+      
+      // Check trigger if specified
+      if (logic.trigger_field && logic.trigger_value) {
+        const triggerAnswer = allAnswers[logic.trigger_field];
+        console.log(`Trigger check: field="${logic.trigger_field}", expected="${logic.trigger_value}", actual="${triggerAnswer}"`);
+        
+        if (triggerAnswer !== logic.trigger_value) {
+          console.log('⚠️ TRIGGER NOT MET - skipping condition groups evaluation');
+          return null;
+        }
+        console.log('✅ TRIGGER MET - proceeding with condition groups');
+      }
+      
+      const groupResults = [];
+
+      for (let i = 0; i < logic.condition_groups.length; i++) {
+        const group = logic.condition_groups[i];
+        console.log(`\n--- GROUP ${i + 1}: ${group.group_name || group.group_id} ---`);
+        console.log(`Group Operator: ${group.group_operator}`);
+        console.log(`Conditions: ${group.conditions?.length || 0}`);
+
+        if (!group.conditions || group.conditions.length === 0) {
+          console.log('WARNING: Group has no conditions, treating as FALSE');
+          groupResults.push({ group, result: false });
+          continue;
+        }
+
+        let groupResult = group.group_operator === 'AND' ? true : false;
+
+        for (let j = 0; j < group.conditions.length; j++) {
+          const condition = group.conditions[j];
+          console.log(`  Condition ${j + 1}: field="${condition.field}", operator="${condition.operator}", value="${condition.value}"`);
+          
+          const conditionMet = await evaluateSingleCondition(condition, allAnswers);
+          console.log(`  Result: ${conditionMet}`);
+          
+          if (group.group_operator === 'AND') {
+            groupResult = groupResult && conditionMet;
+            if (!groupResult) {
+              console.log('  Short-circuit AND');
+              break;
+            }
+          } else {
+            groupResult = groupResult || conditionMet;
+            if (groupResult) {
+              console.log('  Short-circuit OR');
+              break;
+            }
+          }
+        }
+
+        console.log(`>>> GROUP ${i + 1} RESULT: ${groupResult}`);
+        groupResults.push({ group, result: groupResult });
+      }
+
+      // Combine groups
+      if (logic.overall_logic_operator) {
+        console.log(`\n--- COMBINING GROUPS with ${logic.overall_logic_operator} ---`);
+        let finalResult = logic.overall_logic_operator === 'AND' ? true : false;
+        let matchedGroupIndex = -1;
+
+        for (let i = 0; i < groupResults.length; i++) {
+          const { result } = groupResults[i];
+          if (logic.overall_logic_operator === 'AND') {
+            finalResult = finalResult && result;
+            if (!finalResult) break;
+          } else {
+            const previousResult = finalResult;
+            finalResult = finalResult || result;
+            if (result && matchedGroupIndex === -1) {
+              matchedGroupIndex = i;
+              console.log(`✅ First TRUE group at index ${i}`);
+            }
+            if (finalResult && previousResult === false && result === true) {
+              break;
+            }
+          }
+        }
+
+        console.log(`>>> FINAL RESULT: ${finalResult}`);
+        
+        // For OR logic, use matched group's true_step
+        let nextStep;
+        if (logic.overall_logic_operator === 'OR' && finalResult && matchedGroupIndex >= 0) {
+          nextStep = groupResults[matchedGroupIndex].group.true_step;
+          console.log(`>>> OR Logic - Using matched group's true_step: ${nextStep}`);
+        } else {
+          nextStep = finalResult ? logic.overall_true_step : logic.overall_false_step;
+          console.log(`>>> Using overall ${finalResult ? 'true' : 'false'} step: ${nextStep}`);
+        }
+        
+        console.log('========== END CONDITION GROUPS ==========\n');
+        return nextStep;
+      } else {
+        const firstGroup = groupResults[0];
+        const nextStep = firstGroup.result ? firstGroup.group.true_step : firstGroup.group.false_step;
+        console.log('>>> Using first group result:', nextStep);
+        return nextStep;
+      }
+    }
+
+    // Legacy simple conditions
+    console.log("🔧 [EVALUATE] Starting legacy condition evaluation");
     if (!logic.conditions || logic.conditions.length === 0) {
       console.log("❌ [EVALUATE] No conditions found, returning false");
       return false;
@@ -356,11 +600,9 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       console.log("🔍 [CONDITION] Operator:", condition.operator);
       console.log("🎯 [CONDITION] Expected value:", condition.value);
       
-      // Try to get field value - condition.field might be step_id or step_title
       let fieldValue = answers[condition.field];
       console.log("💾 [CONDITION] Direct lookup result:", fieldValue);
       
-      // If not found by direct lookup, try to find by matching step title
       if (fieldValue === undefined) {
         console.log("🔎 [CONDITION] Direct lookup failed, searching by step title...");
         const matchingStep = workflow.steps.find(s => s.step_title === condition.field || s.step_id === condition.field);
@@ -375,7 +617,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       
       let conditionMet = false;
 
-      // Evaluate condition based on operator
       switch (condition.operator) {
         case "=":
           conditionMet = String(fieldValue) === String(condition.value);
@@ -420,12 +661,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           console.log(`❌ [OPERATOR] Unknown operator: ${condition.operator}`);
       }
 
-      // Combine with previous result
       if (idx === 0) {
         result = conditionMet;
         console.log(`🎯 [LOGIC] First condition, result = ${result}`);
       } else {
-        // Use the logic operator from the PREVIOUS condition (it defines how to combine with the next)
         const prevCondition = logic.conditions[idx - 1];
         const prevResult = result;
         console.log(`🔗 [LOGIC] Logic operator from previous condition: "${prevCondition.logic_operator}"`);
@@ -433,7 +672,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           result = result || conditionMet;
           console.log(`🔗 [LOGIC] OR: ${prevResult} || ${conditionMet} = ${result}`);
         } else {
-          // Default to AND if not specified or if explicitly AND
           result = result && conditionMet;
           console.log(`🔗 [LOGIC] AND: ${prevResult} && ${conditionMet} = ${result}`);
         }
