@@ -610,9 +610,24 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         console.log('========== END CONDITION GROUPS ==========\n');
         return nextStep;
       } else {
+        // No overall operator - find first group that evaluates to TRUE
+        console.log('\n--- NO OVERALL OPERATOR - Finding first TRUE group ---');
+        for (let i = 0; i < groupResults.length; i++) {
+          const { group, result } = groupResults[i];
+          console.log(`Group ${i + 1} (${group.group_id}): ${result}`);
+          if (result) {
+            const nextStep = group.true_step;
+            console.log(`>>> Using first TRUE group's true_step: ${nextStep}`);
+            console.log('========== END CONDITION GROUPS ==========\n');
+            return nextStep;
+          }
+        }
+        
+        // No groups were true - use first group's false_step as fallback
         const firstGroup = groupResults[0];
-        const nextStep = firstGroup.result ? firstGroup.group.true_step : firstGroup.group.false_step;
-        console.log('>>> Using first group result:', nextStep);
+        const nextStep = firstGroup.group.false_step;
+        console.log('>>> No TRUE groups found, using first group false_step:', nextStep);
+        console.log('========== END CONDITION GROUPS ==========\n');
         return nextStep;
       }
     }
