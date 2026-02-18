@@ -20,15 +20,26 @@ import {
   Plus,
   Trash2,
   Edit,
-  User,
   MapPin,
   CheckCircle2,
   AlertCircle,
-  Clock,
   PlayCircle,
   Users,
-  Eye
+  Eye,
+  MoreVertical,
+  XCircle,
+  AlertTriangle,
+  History,
+  Globe
 } from "lucide-react";
+import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import BeneficiaryAuditLog from "./BeneficiaryAuditLog";
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryClassification from "./BeneficiaryClassification";
 import BeneficiaryDetails from "./BeneficiaryDetails";
@@ -37,8 +48,11 @@ export default function BeneficiaryManager({ account, tenant }) {
   const [showForm, setShowForm] = useState(false);
   const [showClassification, setShowClassification] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [editingBeneficiary, setEditingBeneficiary] = useState(null);
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
+  const [detailsBeneficiary, setDetailsBeneficiary] = useState(null);
+  const [historyBeneficiary, setHistoryBeneficiary] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -94,8 +108,13 @@ export default function BeneficiaryManager({ account, tenant }) {
   };
 
   const handleViewDetails = (beneficiary) => {
-    setSelectedBeneficiary(beneficiary);
+    setDetailsBeneficiary(beneficiary);
     setShowDetails(true);
+  };
+
+  const handleViewHistory = (beneficiary) => {
+    setHistoryBeneficiary(beneficiary);
+    setShowHistory(true);
   };
 
   const handleClassificationComplete = async (classificationData) => {
@@ -126,164 +145,233 @@ export default function BeneficiaryManager({ account, tenant }) {
   };
 
   const reportableBeneficiaries = beneficiaries.filter(b => b.reportability_status === "reportable");
+  const nonReportableBeneficiaries = beneficiaries.filter(b => b.reportability_status === "non_reportable");
   const pendingBeneficiaries = beneficiaries.filter(b => b.reportability_status === "pending_review");
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-purple-600" />
-          <h3 className="text-sm font-semibold text-slate-700">
-            Beneficiaries ({beneficiaries.length})
-          </h3>
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => {
-            setEditingBeneficiary(null);
-            setShowForm(true);
-          }}
-          className="bg-purple-600 hover:bg-purple-700 text-white"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Add Beneficiary
-        </Button>
-      </div>
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-purple-600" />
+                Beneficiaries
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Individuals who will receive benefits from this deceased account holder
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => {
+                setEditingBeneficiary(null);
+                setShowForm(true);
+              }}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Beneficiary
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-2xl font-bold text-slate-900">{beneficiaries.length}</p>
+              <p className="text-xs text-slate-600">Total Beneficiaries</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+              <p className="text-2xl font-bold text-green-600">
+                {nonReportableBeneficiaries.length}
+              </p>
+              <p className="text-xs text-green-700">Non-Reportable</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-2xl font-bold text-amber-600">
+                {reportableBeneficiaries.length}
+              </p>
+              <p className="text-xs text-amber-700">Reportable</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+              <p className="text-2xl font-bold text-yellow-600">
+                {pendingBeneficiaries.length}
+              </p>
+              <p className="text-xs text-yellow-700">Pending Review</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Summary Alert */}
-      {beneficiaries.length > 0 && (
-        <Alert className={`${
-          reportableBeneficiaries.length > 0 
-            ? "bg-amber-50 border-amber-200" 
-            : pendingBeneficiaries.length > 0
-              ? "bg-blue-50 border-blue-200"
-              : "bg-green-50 border-green-200"
-        }`}>
-          <Users className={`w-4 h-4 ${
-            reportableBeneficiaries.length > 0 ? "text-amber-600" : 
-            pendingBeneficiaries.length > 0 ? "text-blue-600" : "text-green-600"
-          }`} />
-          <AlertDescription className="text-sm">
-            {reportableBeneficiaries.length > 0 ? (
-              <span className="text-amber-900">
-                <strong>{reportableBeneficiaries.length}</strong> beneficiary(ies) are reportable
-              </span>
-            ) : pendingBeneficiaries.length > 0 ? (
-              <span className="text-blue-900">
-                <strong>{pendingBeneficiaries.length}</strong> beneficiary(ies) pending classification
-              </span>
-            ) : (
-              <span className="text-green-900">
-                All beneficiaries have been classified
-              </span>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Beneficiaries List */}
-      {isLoading ? (
-        <div className="text-center py-8 text-slate-500">Loading beneficiaries...</div>
-      ) : beneficiaries.length === 0 ? (
-        <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-lg">
-          <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <p className="text-slate-600 mb-2">No beneficiaries added yet</p>
-          <p className="text-xs text-slate-500">
-            Add beneficiaries who will inherit this account
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {beneficiaries.map((beneficiary) => (
-            <Card key={beneficiary.id} className="border border-slate-200">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <User className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900">
-                        {beneficiary.first_name && beneficiary.last_name 
-                          ? `${beneficiary.first_name} ${beneficiary.last_name}`
-                          : beneficiary.full_name || "N/A"}
-                      </h4>
-                      {beneficiary.address?.country && (
-                        <div className="flex items-center gap-1 text-sm text-slate-600 mt-1">
-                          <MapPin className="w-3 h-3" />
-                          {[
-                            beneficiary.address.city,
-                            beneficiary.address.country
-                          ].filter(Boolean).join(", ")}
+      {/* Beneficiaries Table */}
+      <Card className="border-0 shadow-lg">
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            </div>
+          ) : beneficiaries.length === 0 ? (
+            <div className="p-12 text-center">
+              <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                No Beneficiaries Added
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Add beneficiaries to track who will receive benefits from this deceased account holder.
+              </p>
+              <Button
+                onClick={() => setShowForm(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Beneficiary
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Date of Birth</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Tax Residencies</TableHead>
+                    <TableHead>Reportability</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {beneficiaries.map((beneficiary) => (
+                    <TableRow key={beneficiary.id} className="hover:bg-slate-50/50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-900">
+                              {beneficiary.first_name && beneficiary.last_name
+                                ? `${beneficiary.first_name} ${beneficiary.last_name}`
+                                : beneficiary.full_name || "N/A"}
+                            </p>
+                          </div>
                         </div>
-                      )}
-                      <div className="mt-2">
-                        {getStatusBadge(beneficiary.reportability_status)}
-                      </div>
-                      {beneficiary.reportability_reason && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          {beneficiary.reportability_reason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleViewDetails(beneficiary);
-                      }}
-                      className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleClassify(beneficiary);
-                      }}
-                      className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                    >
-                      <PlayCircle className="w-4 h-4 mr-1" />
-                      Classify
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleEdit(beneficiary);
-                      }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDelete(beneficiary.id);
-                      }}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-slate-700">
+                          {beneficiary.date_of_birth ? format(new Date(beneficiary.date_of_birth), 'MMM d, yyyy') : '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {beneficiary.address?.country ? (
+                          <span className="text-sm text-slate-700">
+                            {beneficiary.address.city ? `${beneficiary.address.city}, ` : ''}
+                            {beneficiary.address.country}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-sm">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {beneficiary.tax_residencies && beneficiary.tax_residencies.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {beneficiary.tax_residencies.map((res, idx) => (
+                              <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                <Globe className="w-3 h-3 mr-1" />
+                                {res.country}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {beneficiary.reportability_status === 'reportable' ? (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Reportable
+                          </Badge>
+                        ) : beneficiary.reportability_status === 'non_reportable' ? (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Non-Reportable
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Pending Review
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleClassify(beneficiary)}
+                            className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                          >
+                            <PlayCircle className="w-4 h-4 mr-1" />
+                            Classify
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(beneficiary)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewHistory(beneficiary)}>
+                                <History className="w-4 h-4 mr-2" />
+                                View History
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(beneficiary)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(beneficiary.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Reportability Summary */}
+      {beneficiaries.length > 0 && (
+        <Alert className={reportableBeneficiaries.length > 0 ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}>
+          {reportableBeneficiaries.length > 0 ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <AlertDescription className="text-sm text-green-900">
+                <strong>Reportable Beneficiaries:</strong> {reportableBeneficiaries.length} beneficiary{reportableBeneficiaries.length !== 1 ? '(ies) are' : ' is'} tax resident in foreign CRS participating jurisdictions. 
+                Their information will be included in CRS XML reporting.
+              </AlertDescription>
+            </>
+          ) : (
+            <>
+              <XCircle className="w-4 h-4 text-slate-600" />
+              <AlertDescription className="text-sm text-slate-700">
+                <strong>No Reportable Beneficiaries:</strong> No beneficiaries are tax resident in foreign jurisdictions. 
+                This account does not require CRS reporting for beneficiaries.
+              </AlertDescription>
+            </>
+          )}
+        </Alert>
       )}
 
       {/* Add/Edit Beneficiary Dialog */}
@@ -342,16 +430,28 @@ export default function BeneficiaryManager({ account, tenant }) {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
-              Beneficiary Details: {selectedBeneficiary?.first_name && selectedBeneficiary?.last_name 
-                ? `${selectedBeneficiary.first_name} ${selectedBeneficiary.last_name}`
-                : selectedBeneficiary?.full_name}
+              Beneficiary Details
             </DialogTitle>
           </DialogHeader>
-          {selectedBeneficiary && (
+          {detailsBeneficiary && (
             <BeneficiaryDetails
-              beneficiary={selectedBeneficiary}
+              beneficiary={detailsBeneficiary}
               account={account}
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>
+              Classification History
+            </DialogTitle>
+          </DialogHeader>
+          {historyBeneficiary && (
+            <BeneficiaryAuditLog beneficiary={historyBeneficiary} />
           )}
         </DialogContent>
       </Dialog>
