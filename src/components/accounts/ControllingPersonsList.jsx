@@ -112,16 +112,44 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     setShowClassification(true);
   };
 
-  const handleClassificationComplete = async (classificationData) => {
+  const handleClassificationComplete = async (completionData) => {
     console.log('[ControllingPersonsList] handleClassificationComplete called');
-    console.log('[ControllingPersonsList] Classification Data:', classificationData);
+    console.log('[ControllingPersonsList] Completion Data:', completionData);
     
     try {
       // Fetch current user for audit log
       const user = await base44.auth.me();
       
+      // Extract classification data from workflow completion
+      // completionData is an array of {step_id, step_title, answer, result_status, result_description}
+      const workflowAnswers = {};
+      let reportabilityStatus = null;
+      let reportabilityReason = '';
+      
+      completionData.forEach(item => {
+        workflowAnswers[item.step_id] = item.answer;
+        
+        // Get status from the last result step
+        if (item.result_status) {
+          reportabilityStatus = item.result_status;
+        }
+        if (item.result_description) {
+          reportabilityReason = item.result_description;
+        }
+      });
+      
+      // Determine is_reportable boolean from status
+      const isReportable = reportabilityStatus === 'reportable' || reportabilityStatus === true;
+      
+      const classificationUpdate = {
+        is_reportable: isReportable,
+        classification_answers: workflowAnswers,
+        classification_date: new Date().toISOString(),
+        classified_by: user?.email || 'unknown'
+      };
+      
       // Update the controlling person with classification data
-      await base44.entities.ControllingPerson.update(classifyingPerson.id, classificationData);
+      await base44.entities.ControllingPerson.update(classifyingPerson.id, classificationUpdate);
       console.log('[ControllingPersonsList] ControllingPerson updated successfully');
       
       // Create classification history record
@@ -131,10 +159,10 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
           controlling_person_id: classifyingPerson.id,
           account_id: account.id,
           classification_date: new Date().toISOString(),
-          reportability_status: classificationData.reportability_status,
-          classification_reason: classificationData.reportability_reason,
+          reportability_status: isReportable,
+          classification_reason: reportabilityReason || 'Classification completed via workflow',
           classification_source: 'workflow',
-          workflow_answers: classificationData.classification_answers,
+          workflow_answers: workflowAnswers,
           performed_by: user?.email || 'unknown',
           controlling_person_name: `${classifyingPerson.first_name || ''} ${classifyingPerson.last_name || ''}`.trim(),
           control_type: classifyingPerson.control_type,
@@ -149,16 +177,15 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
       try {
         await base44.entities.AuditLog.create({
           tenant_id: account.tenant_id,
-          action_type: 'controlling_person_classified',
+          action_type: 'account_updated',
           actor_email: user?.email || 'unknown',
-          actor_role: user?.role || 'unknown',
+          actor_role: user?.app_role || 'unknown',
           target_entity_type: 'ControllingPerson',
           target_entity_id: classifyingPerson.id,
           target_entity_name: `${classifyingPerson.first_name || ''} ${classifyingPerson.last_name || ''}`.trim(),
           changes: {
-            reportability_status: classificationData.reportability_status,
-            reportability_reason: classificationData.reportability_reason,
-            classification_date: classificationData.classification_date
+            is_reportable: isReportable,
+            classification_date: classificationUpdate.classification_date
           },
           timestamp: new Date().toISOString()
         });
@@ -178,6 +205,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
       console.log('[ControllingPersonsList] Classification completed, queries invalidated');
     } catch (error) {
       console.error('[ControllingPersonsList] Error in handleClassificationComplete:', error);
+      alert('Error completing classification: ' + error.message);
     }
   };
 
