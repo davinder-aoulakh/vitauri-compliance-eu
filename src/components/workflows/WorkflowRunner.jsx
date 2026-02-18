@@ -1967,7 +1967,10 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return answer !== undefined && answer !== null && answer !== '';
   };
 
-  const progress = Math.round(((currentStepIndex + 1) / workflow.steps.length) * 100);
+  // Calculate dynamic step number and progress based on actual path taken (history)
+  const currentStepNumber = history.length + 1;
+  const totalSteps = completedPath.length || history.length + 1;
+  const progress = Math.round((currentStepNumber / totalSteps) * 100);
 
   // Summary Screen
   if (showSummary) {
@@ -2162,7 +2165,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">
-            Step {currentStepIndex + 1}
+            Step {currentStepNumber}
           </p>
           <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
@@ -2324,10 +2327,10 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         })}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-indigo-50 border-indigo-300">
           <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
-            <span className="text-white text-xs font-bold">{currentStepIndex + 1}</span>
+            <span className="text-white text-xs font-bold">{currentStepNumber}</span>
           </div>
           <span className="text-xs font-medium whitespace-nowrap text-indigo-700">
-            {currentStep?.step_title?.substring(0, 15) || `Step ${currentStepIndex + 1}`}
+            {currentStep?.step_title?.substring(0, 15) || `Step ${currentStepNumber}`}
             {currentStep?.step_title?.length > 15 && '...'}
           </span>
         </div>
@@ -2338,7 +2341,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           <div className="space-y-5">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center flex-shrink-0 shadow-lg">
-                <span className="text-white font-bold text-lg">{currentStepIndex + 1}</span>
+                <span className="text-white font-bold text-lg">{currentStepNumber}</span>
               </div>
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-slate-900 mb-3">
