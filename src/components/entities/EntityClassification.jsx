@@ -215,15 +215,22 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   const handleNext = async () => {
     const newAnswers = { ...answers };
     
+    console.log('\n========== HANDLE NEXT (EntityClassification) ==========');
+    console.log('Current Node ID:', currentNodeId);
+    console.log('Current Node Title:', currentNode.step_title);
+    console.log('Selected Value:', selectedValue);
+    
     // Store the answer
     if (currentNode.question_type === "single_choice" || 
         currentNode.question_type === "yes_no" ||
         currentNode.question_type === "multiple_choice") {
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
+      console.log('Stored answer:', currentNodeId, '=', selectedValue);
     }
 
     setAnswers(newAnswers);
+    console.log('All answers:', JSON.stringify(newAnswers, null, 2));
 
     // Execute post-completion actions
     await executePostCompletionActions(currentNode, newAnswers);
@@ -231,23 +238,42 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     // Determine next step
     let nextNodeId = null;
 
-    // Check conditional logic first if it has a trigger that matches current answer
-    if (currentNode.conditional_logic?.conditions?.length > 0 && 
+    console.log('\n🔍 Checking for conditional logic...');
+    console.log('Has conditional_logic:', !!currentNode.conditional_logic);
+    console.log('Full conditional_logic:', JSON.stringify(currentNode.conditional_logic, null, 2));
+
+    // Check for condition_groups first (advanced conditional logic)
+    if (currentNode.conditional_logic?.condition_groups?.length > 0) {
+      console.log('✅ Found condition_groups, evaluating...');
+      nextNodeId = await evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
+      console.log('➡️ [CONDITION GROUPS] Result:', nextNodeId);
+      
+      if (nextNodeId) {
+        console.log('✅ Condition groups returned next step:', nextNodeId);
+      } else {
+        console.log('⚠️ Condition groups returned null/undefined');
+      }
+    }
+    // Legacy trigger-based conditional logic
+    else if (currentNode.conditional_logic?.conditions?.length > 0 && 
         currentNode.conditional_logic.trigger_field && 
         currentNode.conditional_logic.trigger_value) {
       const logic = currentNode.conditional_logic;
       const currentAnswer = newAnswers[currentNodeId];
       
-      console.log("🔍 [CONDITIONAL LOGIC] Checking trigger-based conditional logic");
+      console.log("🔍 [LEGACY CONDITIONAL] Checking trigger-based conditional logic");
       console.log("🎯 [TRIGGER] Current answer:", currentAnswer, "Expected trigger:", logic.trigger_value);
       
-      // Only evaluate conditional logic if trigger matches
       if (String(currentAnswer) === String(logic.trigger_value)) {
         console.log("✅ [TRIGGER] Matched - evaluating conditional logic");
-        const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+        const conditionMet = await evaluateConditionalLogic(logic, newAnswers);
         nextNodeId = conditionMet ? logic.next_step : logic.else_step;
-        console.log("➡️ [CONDITIONAL] Using conditional logic result:", nextNodeId);
+        console.log("➡️ [LEGACY CONDITIONAL] Using conditional logic result:", nextNodeId);
+      } else {
+        console.log("❌ [TRIGGER] Not matched, skipping legacy conditional logic");
       }
+    } else {
+      console.log('ℹ️ No conditional logic or condition_groups found');
     }
     
     // If no conditional logic applied, check option's next_step
@@ -259,21 +285,28 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       console.log("➡️ [OPTION] Using option's next_step:", nextNodeId);
     }
 
+    console.log('\nFinal nextNodeId:', nextNodeId);
+    console.log('Is action node:', isActionNode(currentNode));
+
     // If this is an action node or no next step, show summary
     const newHistory = [...history, currentNodeId];
     if (!nextNodeId || isActionNode(currentNode)) {
+      console.log('🏁 Showing summary');
       setCompletedPath(newHistory);
       setShowSummary(true);
+      console.log('========== END HANDLE NEXT ==========\n');
       return;
     }
 
     // Move to next node - add current to history
+    console.log(`➡️ Navigating to: ${nextNodeId}`);
     setHistory(newHistory);
     setCurrentNodeId(nextNodeId);
     
     // Check if next node has a pre-filled answer
     const nextNodePreFill = newAnswers[nextNodeId];
     setSelectedValue(nextNodePreFill || "");
+    console.log('========== END HANDLE NEXT ==========\n');
   };
 
   const executePostCompletionActions = async (step, allAnswers) => {
