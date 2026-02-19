@@ -177,8 +177,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return null;
     };
 
-    let result = true;
+    let result = null;
+    let currentAndGroup = [];
 
+    // Group conditions by AND/OR operators to properly handle precedence
+    // AND has higher precedence than OR, so we evaluate AND groups first
     for (let idx = 0; idx < conditions.length; idx++) {
       const condition = conditions[idx];
       const fieldValue = getFieldValue(condition.field);
@@ -223,15 +226,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
           conditionMet = false;
       }
 
-      if (idx === 0) {
-        result = conditionMet;
-      } else {
-        const logicOp = conditions[idx - 1]?.logic_operator || "AND";
-        if (logicOp === "AND") {
-          result = result && conditionMet;
-        } else if (logicOp === "OR") {
-          result = result || conditionMet;
+      currentAndGroup.push(conditionMet);
+
+      // Check if we need to evaluate the current AND group
+      const isLastCondition = idx === conditions.length - 1;
+      const nextOperator = !isLastCondition ? conditions[idx]?.logic_operator : null;
+
+      if (nextOperator === "OR" || isLastCondition) {
+        // Evaluate current AND group
+        const andGroupResult = currentAndGroup.every(val => val === true);
+        
+        if (result === null) {
+          result = andGroupResult;
+        } else {
+          result = result || andGroupResult;
         }
+        
+        currentAndGroup = [];
       }
     }
 

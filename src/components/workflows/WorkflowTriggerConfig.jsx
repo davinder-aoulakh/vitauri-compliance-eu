@@ -311,18 +311,24 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                               })()}
                             </div>
                             <div className="col-span-2">
-                              <Select
-                                value={condition.logic_operator}
-                                onValueChange={(value) => handleUpdateCondition(index, 'logic_operator', value)}
-                              >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="AND">AND</SelectItem>
-                                  <SelectItem value="OR">OR</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              {index < config.conditions.length - 1 ? (
+                                <Select
+                                  value={condition.logic_operator}
+                                  onValueChange={(value) => handleUpdateCondition(index, 'logic_operator', value)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AND">AND</SelectItem>
+                                    <SelectItem value="OR">OR</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="h-8 flex items-center text-xs text-slate-400 italic">
+                                  (no operator)
+                                </div>
+                              )}
                             </div>
                             <div className="col-span-1">
                               <Button
@@ -404,18 +410,24 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                               />
                             </div>
                             <div className="col-span-2">
-                              <Select
-                                value={compCondition.logic_operator}
-                                onValueChange={(value) => handleUpdateComputedCondition(index, 'logic_operator', value)}
-                              >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="AND">AND</SelectItem>
-                                  <SelectItem value="OR">OR</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              {index < config.computed_conditions.length - 1 ? (
+                                <Select
+                                  value={compCondition.logic_operator}
+                                  onValueChange={(value) => handleUpdateComputedCondition(index, 'logic_operator', value)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AND">AND</SelectItem>
+                                    <SelectItem value="OR">OR</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="h-8 flex items-center text-xs text-slate-400 italic">
+                                  (no operator)
+                                </div>
+                              )}
                             </div>
                             <div className="col-span-2">
                               <Button
