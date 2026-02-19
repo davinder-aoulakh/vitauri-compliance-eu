@@ -180,71 +180,102 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let result = null;
     let currentAndGroup = [];
 
+    console.log(`\n  📊 [CONDITION EVALUATION] Processing ${conditions.length} condition(s):`);
+    
     // Group conditions by AND/OR operators to properly handle precedence
     // AND has higher precedence than OR, so we evaluate AND groups first
     for (let idx = 0; idx < conditions.length; idx++) {
       const condition = conditions[idx];
+      console.log(`\n  🔹 Condition ${idx + 1}/${conditions.length}:`);
+      console.log(`     Field: "${condition.field}"`);
+      console.log(`     Operator: "${condition.operator}"`);
+      console.log(`     Expected Value: "${condition.value}"`);
+      console.log(`     Logic Operator: "${condition.logic_operator}"`);
+      
       const fieldValue = getFieldValue(condition.field);
+      console.log(`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
+      
       const comparisonValue = condition.value;
       let conditionMet = false;
 
       switch (condition.operator) {
         case "equals":
           conditionMet = String(fieldValue).toLowerCase() === String(comparisonValue).toLowerCase();
+          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" === "${String(comparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "not_equals":
           conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
+          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" !== "${String(comparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "greater_than":
         case ">":
           conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
+          console.log(`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "less_than":
         case "<":
           conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
+          console.log(`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "greater_than_or_equal":
         case ">=":
           conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
+          console.log(`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "less_than_or_equal":
         case "<=":
           conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
+          console.log(`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "contains":
           conditionMet = String(fieldValue).toLowerCase().includes(String(comparisonValue).toLowerCase());
+          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" contains "${String(comparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "in":
           const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
           conditionMet = inValues.includes(String(fieldValue).toLowerCase());
+          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" in [${inValues.join(', ')}] = ${conditionMet}`);
           break;
         case "not_in":
           const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
           conditionMet = !notInValues.includes(String(fieldValue).toLowerCase());
+          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" not in [${notInValues.join(', ')}] = ${conditionMet}`);
           break;
         default:
           conditionMet = false;
+          console.log(`     ⚠️ Unknown operator: ${condition.operator}`);
       }
 
+      console.log(`     ✅ Condition Result: ${conditionMet}`);
       currentAndGroup.push(conditionMet);
 
       // Check if we need to evaluate the current AND group
       const isLastCondition = idx === conditions.length - 1;
       const nextOperator = !isLastCondition ? conditions[idx]?.logic_operator : null;
 
+      console.log(`     🔗 Next Operator: ${nextOperator || '(none - last condition)'}`);
+      console.log(`     📦 Current AND Group: [${currentAndGroup.join(', ')}]`);
+
       if (nextOperator === "OR" || isLastCondition) {
         // Evaluate current AND group
         const andGroupResult = currentAndGroup.every(val => val === true);
+        console.log(`     🎯 AND Group Result: ${andGroupResult} (all must be true)`);
         
         if (result === null) {
           result = andGroupResult;
+          console.log(`     💾 Setting initial result: ${result}`);
         } else {
+          const previousResult = result;
           result = result || andGroupResult;
+          console.log(`     💾 OR combination: ${previousResult} OR ${andGroupResult} = ${result}`);
         }
         
         currentAndGroup = [];
+        console.log(`     🔄 Starting new AND group`);
       }
     }
+
+    console.log(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' : '❌ WORKFLOW DOES NOT MATCH'}\n`);
 
     for (let idx = 0; idx < computedConditions.length; idx++) {
       const compCondition = computedConditions[idx];
