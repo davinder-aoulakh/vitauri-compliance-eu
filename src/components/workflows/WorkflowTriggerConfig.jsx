@@ -37,7 +37,7 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     return referencedData
       .filter(rd => rd.entity_name === entityName && rd.field_name === fieldName && rd.is_published)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(rd => rd.value);
+      .map(rd => ({ value: rd.value, label: rd.label }));
   };
 
   // Available fields for Account and Entity with type information
