@@ -277,8 +277,8 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                                       </SelectTrigger>
                                       <SelectContent>
                                         {fieldOptions.map((option) => (
-                                          <SelectItem key={option} value={option}>
-                                            {option}
+                                          <SelectItem key={option.value || option} value={option.label || option}>
+                                            {option.label || option}
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
