@@ -44,7 +44,6 @@ const evaluateConditions = async (entityData, triggerConfig) => {
   
   // Evaluate regular conditions
   let result = true;
-  let currentLogicOperator = 'AND';
   
   for (let i = 0; i < conditions.length; i++) {
     const condition = conditions[i];
@@ -53,14 +52,16 @@ const evaluateConditions = async (entityData, triggerConfig) => {
     if (i === 0) {
       result = conditionResult;
     } else {
-      if (currentLogicOperator === 'AND') {
-        result = result && conditionResult;
-      } else {
+      // Use the PREVIOUS condition's logic operator to combine with current result
+      const prevCondition = conditions[i - 1];
+      const logicOperator = prevCondition.logic_operator || 'AND';
+      
+      if (logicOperator === 'OR') {
         result = result || conditionResult;
+      } else {
+        result = result && conditionResult;
       }
     }
-    
-    currentLogicOperator = condition.logic_operator || 'AND';
   }
   
   // Evaluate computed conditions
