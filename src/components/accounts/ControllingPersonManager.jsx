@@ -298,7 +298,7 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
                         className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                       >
                         <PlayCircle className="w-4 h-4 mr-1" />
-                        Classify
+                        {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
                       </Button>
                     )}
                     <Button
