@@ -2027,7 +2027,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const currentStepNumber = history.length + 1;
   // Use workflow total steps for consistent progress calculation
   const totalSteps = workflow.steps.length;
-  const progress = Math.round((currentStepNumber / totalSteps) * 100);
+  // Progress based on completed steps (history.length), not current step number
+  const progress = Math.round((history.length / totalSteps) * 100);
 
   // Summary Screen
   if (showSummary) {
