@@ -200,16 +200,40 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return { fieldValue, comparisonValue };
       }
 
-      // Check if fieldValue is a database value - if so, get its label
-      const fieldValueRefData = matchingRefData.find(rd => 
-        rd.value.toLowerCase() === String(fieldValue).toLowerCase()
+      // Helper for fuzzy matching (handles case, plural/singular, extra spaces)
+      const fuzzyMatch = (str1, str2) => {
+        const normalize = (s) => String(s).toLowerCase().trim().replace(/s$/, ''); // Remove trailing 's' for plural
+        return normalize(str1) === normalize(str2);
+      };
+
+      // Try exact match first, then fuzzy match for fieldValue
+      let fieldValueRefData = matchingRefData.find(rd => 
+        rd.value.toLowerCase() === String(fieldValue).toLowerCase() ||
+        rd.label.toLowerCase() === String(fieldValue).toLowerCase()
       );
+      
+      if (!fieldValueRefData) {
+        // Try fuzzy match
+        fieldValueRefData = matchingRefData.find(rd => 
+          fuzzyMatch(rd.value, fieldValue) || fuzzyMatch(rd.label, fieldValue)
+        );
+      }
+
       const normalizedFieldValue = fieldValueRefData?.label || fieldValue;
 
-      // Check if comparisonValue is a database value - if so, get its label
-      const comparisonValueRefData = matchingRefData.find(rd => 
-        rd.value.toLowerCase() === String(comparisonValue).toLowerCase()
+      // Try exact match first, then fuzzy match for comparisonValue
+      let comparisonValueRefData = matchingRefData.find(rd => 
+        rd.value.toLowerCase() === String(comparisonValue).toLowerCase() ||
+        rd.label.toLowerCase() === String(comparisonValue).toLowerCase()
       );
+      
+      if (!comparisonValueRefData) {
+        // Try fuzzy match
+        comparisonValueRefData = matchingRefData.find(rd => 
+          fuzzyMatch(rd.value, comparisonValue) || fuzzyMatch(rd.label, comparisonValue)
+        );
+      }
+
       const normalizedComparisonValue = comparisonValueRefData?.label || comparisonValue;
 
       console.log(`    🔄 Enum normalization for "${fieldName}":`);
