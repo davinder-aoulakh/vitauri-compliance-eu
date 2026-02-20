@@ -141,16 +141,17 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
       // Determine is_reportable boolean from status
       const isReportable = reportabilityStatus === 'reportable' || reportabilityStatus === true;
       
+      // NOTE: The workflow's post-completion actions have already updated is_reportable
+      // We only need to update the classification metadata here
       const classificationUpdate = {
-        is_reportable: isReportable,
         classification_answers: workflowAnswers,
         classification_date: new Date().toISOString(),
         classified_by: user?.email || 'unknown'
       };
       
-      // Update the controlling person with classification data
+      // Update the controlling person with classification metadata (workflow already updated is_reportable)
       await base44.entities.ControllingPerson.update(classifyingPerson.id, classificationUpdate);
-      console.log('[ControllingPersonsList] ControllingPerson updated successfully');
+      console.log('[ControllingPersonsList] ControllingPerson metadata updated successfully');
       
       // Create classification history record
       try {
