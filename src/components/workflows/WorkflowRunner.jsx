@@ -2034,18 +2034,36 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   // Summary Screen
   if (showSummary) {
+    console.log('\n🎯 ========== RENDERING SUMMARY SCREEN ==========');
+    console.log('completedPath:', completedPath);
+    console.log('completedPath.length:', completedPath.length);
+    console.log('Last step ID in path:', completedPath[completedPath.length - 1]);
+    
     const finalStep = workflow.steps.find(s => s.step_id === completedPath[completedPath.length - 1]) || currentStep;
+    console.log('Final step found:', finalStep?.step_id, '-', finalStep?.step_title);
+    console.log('Final step result_status:', finalStep?.result_status);
+    console.log('Final step post_completion_actions:', finalStep?.post_completion_actions);
+    
     let summaryStatus = finalStep?.result_status || "pending_review";
+    console.log('Initial summaryStatus from result_status:', summaryStatus);
     
     // Extract status from post-completion actions if available
     if (finalStep?.post_completion_actions?.length > 0) {
+      console.log('\n📋 Checking post-completion actions for status...');
       const statusAction = finalStep.post_completion_actions.find(
         action => action.field_to_update === "reportability_status" || action.field_to_update === "is_reportable"
       );
+      console.log('Found status action:', statusAction);
       if (statusAction && statusAction.value_source === "static_value") {
         summaryStatus = statusAction.value;
+        console.log('✅ Updated summaryStatus from post-completion action:', summaryStatus);
       }
     }
+    
+    console.log('\n🎯 FINAL SUMMARY STATUS:', summaryStatus);
+    console.log('Is reportable?', summaryStatus === "reportable" || summaryStatus === true);
+    console.log('Is pending?', summaryStatus === "pending_review");
+    console.log('========================================\n');
     
     const isReportable = summaryStatus === "reportable" || summaryStatus === true;
     const isPending = summaryStatus === "pending_review";
