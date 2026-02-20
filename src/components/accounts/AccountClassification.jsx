@@ -252,8 +252,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
           console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "not_equals":
-          conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
-          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" !== "${String(comparisonValue).toLowerCase()}" = ${conditionMet}`);
+          conditionMet = String(normalizedFieldValue).toLowerCase() !== String(normalizedComparisonValue).toLowerCase();
+          console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" !== "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "greater_than":
         case ">":
