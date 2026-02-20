@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -1738,11 +1737,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
               <SelectContent>
                 <SelectItem value="current_address">Current Address</SelectItem>
                 <SelectItem value="account_holder_address">Account Holder Address</SelectItem>
+                <SelectItem value="controlling_person_address">Controlling Person Address</SelectItem>
+                <SelectItem value="beneficiary_address">Beneficiary Address</SelectItem>
                 <SelectItem value="address">Entity Address</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500 mt-1">
-              Select which address field on the Account/Entity will be updated with the collected address.
+              Select which address field will be updated with the collected address (Account, Entity, Controlling Person, or Beneficiary).
             </p>
           </div>
           <div className="mt-4">
