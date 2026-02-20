@@ -1026,6 +1026,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         
         if (action.value_source === "static_value") {
           valueToUpdate = action.value;
+          
+          // Convert string booleans to actual booleans for boolean fields
+          if (valueToUpdate === 'true') {
+            valueToUpdate = true;
+            console.log(`[ACTION ${i + 1}]    🔄 Converted string 'true' to boolean true`);
+          } else if (valueToUpdate === 'false') {
+            valueToUpdate = false;
+            console.log(`[ACTION ${i + 1}]    🔄 Converted string 'false' to boolean false`);
+          }
+          
           console.log(`[ACTION ${i + 1}]    ✅ Using static value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
