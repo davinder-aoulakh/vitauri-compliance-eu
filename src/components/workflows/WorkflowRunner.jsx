@@ -2025,7 +2025,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   // Calculate dynamic step number and progress based on actual path taken (history)
   const currentStepNumber = history.length + 1;
-  const totalSteps = completedPath.length || history.length + 1;
+  // Use workflow total steps for consistent progress calculation
+  const totalSteps = workflow.steps.length;
   const progress = Math.round((currentStepNumber / totalSteps) * 100);
 
   // Summary Screen
