@@ -23,6 +23,7 @@ import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
 import MultiFieldRenderer from "./MultiFieldRenderer";
+import CountrySelect from "../shared/CountrySelect";
 
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -1837,12 +1838,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 <Label className="text-sm font-medium text-slate-700">
                   Country <span className="text-red-600">*</span>
                 </Label>
-                <Input
-                  value={addressData.country || ""}
-                  onChange={(e) => handleAddressChange("country", e.target.value)}
-                  placeholder="Country"
-                  className="mt-1.5"
-                />
+                <div className="mt-1.5">
+                  <CountrySelect
+                    value={addressData.country || ""}
+                    onValueChange={(value) => handleAddressChange("country", value)}
+                    placeholder="Select country..."
+                  />
+                </div>
               </div>
             </div>
 
