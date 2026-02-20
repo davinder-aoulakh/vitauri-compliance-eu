@@ -40,9 +40,52 @@ export default function ControllingPersonClassificationHistory({ controllingPers
 
     const question = step.step_title || step.question_text || stepId;
     
-    // Try to find matching option label
     let answer = answerValue;
-    if (step.options && Array.isArray(step.options)) {
+    
+    // Handle array answers (multiple choice questions)
+    if (Array.isArray(answerValue) && step.options) {
+      const selectedLabels = answerValue
+        .map(val => {
+          const matchingOption = step.options.find(opt => opt.value === val);
+          return matchingOption?.label || val;
+        })
+        .filter(Boolean);
+      answer = selectedLabels.length > 0 ? selectedLabels.join(', ') : answerValue.join(', ');
+    }
+    // Handle object answers (multi-field inputs, address inputs, file uploads)
+    else if (typeof answerValue === 'object' && answerValue !== null) {
+      // File upload
+      if (answerValue.files && Array.isArray(answerValue.files)) {
+        answer = answerValue.files.map(f => f.name || 'Uploaded file').join(', ');
+      }
+      // Address input
+      else if (answerValue.street || answerValue.city || answerValue.country) {
+        const parts = [
+          answerValue.street,
+          answerValue.city,
+          answerValue.state,
+          answerValue.postal_code,
+          answerValue.country
+        ].filter(Boolean);
+        answer = parts.join(', ');
+      }
+      // Multi-field input
+      else if (step.multi_fields && Array.isArray(step.multi_fields)) {
+        const fieldParts = step.multi_fields
+          .map(field => {
+            const value = answerValue[field.field_id];
+            if (value === undefined || value === null || value === '') return null;
+            return `${field.display_label}: ${value}`;
+          })
+          .filter(Boolean);
+        answer = fieldParts.length > 0 ? fieldParts.join(', ') : JSON.stringify(answerValue);
+      }
+      else {
+        answer = JSON.stringify(answerValue);
+      }
+    }
+    // Handle single choice/yes-no questions
+    else if (step.options && Array.isArray(step.options)) {
       const matchingOption = step.options.find(opt => 
         opt.value === answerValue || opt.label === answerValue
       );
