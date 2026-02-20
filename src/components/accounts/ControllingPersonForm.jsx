@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { XCircle, Save, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import CountrySelect from "../shared/CountrySelect";
 
 export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel }) {
   const [formData, setFormData] = useState(controllingPerson || {
@@ -196,14 +197,13 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
             </div>
             <div>
               <Label htmlFor="country">Country *</Label>
-              <Input
-                id="country"
-                value={formData.address.country}
-                onChange={(e) => handleAddressChange("country", e.target.value)}
-                placeholder="e.g., United States"
-                required
-                className="mt-1.5"
-              />
+              <div className="mt-1.5">
+                <CountrySelect
+                  value={formData.address.country}
+                  onValueChange={(value) => handleAddressChange("country", value)}
+                  placeholder="Select country..."
+                />
+              </div>
             </div>
           </div>
         </CardContent>
@@ -242,14 +242,13 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
 
               <div>
                 <Label htmlFor={`country_${index}`}>Country *</Label>
-                <Input
-                  id={`country_${index}`}
-                  value={residency.country}
-                  onChange={(e) => handleTaxResidencyChange(index, "country", e.target.value)}
-                  placeholder="e.g., United Kingdom"
-                  required
-                  className="mt-1.5"
-                />
+                <div className="mt-1.5">
+                  <CountrySelect
+                    value={residency.country}
+                    onValueChange={(value) => handleTaxResidencyChange(index, "country", value)}
+                    placeholder="Select country..."
+                  />
+                </div>
               </div>
 
               <div>
