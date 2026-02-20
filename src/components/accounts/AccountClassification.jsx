@@ -276,18 +276,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
           console.log(`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "contains":
-          conditionMet = String(fieldValue).toLowerCase().includes(String(comparisonValue).toLowerCase());
-          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" contains "${String(comparisonValue).toLowerCase()}" = ${conditionMet}`);
+          conditionMet = String(normalizedFieldValue).toLowerCase().includes(String(normalizedComparisonValue).toLowerCase());
+          console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" contains "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "in":
-          const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-          conditionMet = inValues.includes(String(fieldValue).toLowerCase());
-          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" in [${inValues.join(', ')}] = ${conditionMet}`);
+          const inValues = String(normalizedComparisonValue).split(",").map(v => v.trim().toLowerCase());
+          conditionMet = inValues.includes(String(normalizedFieldValue).toLowerCase());
+          console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" in [${inValues.join(', ')}] = ${conditionMet}`);
           break;
         case "not_in":
-          const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-          conditionMet = !notInValues.includes(String(fieldValue).toLowerCase());
-          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" not in [${notInValues.join(', ')}] = ${conditionMet}`);
+          const notInValues = String(normalizedComparisonValue).split(",").map(v => v.trim().toLowerCase());
+          conditionMet = !notInValues.includes(String(normalizedFieldValue).toLowerCase());
+          console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" not in [${notInValues.join(', ')}] = ${conditionMet}`);
           break;
         default:
           conditionMet = false;
