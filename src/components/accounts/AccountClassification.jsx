@@ -240,13 +240,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const fieldValue = getFieldValue(condition.field);
       console.log(`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
       
-      const comparisonValue = condition.value;
+      // Normalize enum values for comparison
+      const { fieldValue: normalizedFieldValue, comparisonValue: normalizedComparisonValue } = 
+        normalizeEnumComparison(condition.field, fieldValue, condition.value);
+      
       let conditionMet = false;
 
       switch (condition.operator) {
         case "equals":
-          conditionMet = String(fieldValue).toLowerCase() === String(comparisonValue).toLowerCase();
-          console.log(`     📐 Comparison: "${String(fieldValue).toLowerCase()}" === "${String(comparisonValue).toLowerCase()}" = ${conditionMet}`);
+          conditionMet = String(normalizedFieldValue).toLowerCase() === String(normalizedComparisonValue).toLowerCase();
+          console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "not_equals":
           conditionMet = String(fieldValue).toLowerCase() !== String(comparisonValue).toLowerCase();
