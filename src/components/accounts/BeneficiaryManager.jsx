@@ -310,7 +310,7 @@ export default function BeneficiaryManager({ account, tenant }) {
                             className="text-purple-600 border-purple-200 hover:bg-purple-50"
                           >
                             <PlayCircle className="w-4 h-4 mr-1" />
-                            Classify
+                            {beneficiary.reportability_status === "pending_review" || !beneficiary.reportability_status ? "Classify" : "Re-Classify"}
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
