@@ -236,9 +236,7 @@ export default function ControllingPersonClassificationHistory({ controllingPers
                               {question}
                             </p>
                             <p className="text-sm text-slate-900 font-semibold">
-                              {typeof answer === 'object' && answer !== null
-                                ? (answer.file_name || JSON.stringify(answer))
-                                : (Array.isArray(answer) ? answer.join(', ') : String(answer || ''))}
+                              {String(answer || '—')}
                             </p>
                           </div>
                         );
