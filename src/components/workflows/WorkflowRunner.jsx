@@ -2034,7 +2034,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   // Summary Screen
   if (showSummary) {
-    const finalStep = workflow.steps[completedPath[completedPath.length - 1]] || currentStep;
+    const finalStep = workflow.steps.find(s => s.step_id === completedPath[completedPath.length - 1]) || currentStep;
     let summaryStatus = finalStep?.result_status || "pending_review";
     
     // Extract status from post-completion actions if available
