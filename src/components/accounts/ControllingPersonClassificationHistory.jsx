@@ -77,7 +77,7 @@ export default function ControllingPersonClassificationHistory({ controllingPers
   const getStatusBadge = (isReportable) => {
     if (isReportable === true) {
       return (
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 border">
+        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 border">
           <CheckCircle2 className="w-3 h-3 mr-1" />
           Reportable
         </Badge>
