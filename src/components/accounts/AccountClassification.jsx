@@ -90,6 +90,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
     enabled: !!account
   });
 
+  const { data: referencedData = [] } = useQuery({
+    queryKey: ['referenced-data-for-triggers'],
+    queryFn: () => base44.entities.ReferencedData.list(),
+    staleTime: Infinity
+  });
+
   const { data: crsCountryMap = {} } = useQuery({
     queryKey: ['crs-country-map-for-evaluation'],
     queryFn: async () => {
