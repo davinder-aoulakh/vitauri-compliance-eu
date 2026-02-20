@@ -183,6 +183,45 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return null;
     };
 
+    // Helper to normalize enum values for comparison (supports both value and label matching)
+    const normalizeEnumComparison = (fieldName, fieldValue, comparisonValue) => {
+      if (!fieldValue || !comparisonValue) return { fieldValue, comparisonValue };
+
+      // Try to find matching referenced data for this field
+      const entityType = entityData && fieldName === 'fi_type' ? 'Entity' : 'Account';
+      const matchingRefData = referencedData.filter(rd => 
+        rd.entity_name === entityType && 
+        rd.field_name === fieldName && 
+        rd.is_published
+      );
+
+      if (matchingRefData.length === 0) {
+        // No referenced data, return as-is
+        return { fieldValue, comparisonValue };
+      }
+
+      // Check if fieldValue is a database value - if so, get its label
+      const fieldValueRefData = matchingRefData.find(rd => 
+        rd.value.toLowerCase() === String(fieldValue).toLowerCase()
+      );
+      const normalizedFieldValue = fieldValueRefData?.label || fieldValue;
+
+      // Check if comparisonValue is a database value - if so, get its label
+      const comparisonValueRefData = matchingRefData.find(rd => 
+        rd.value.toLowerCase() === String(comparisonValue).toLowerCase()
+      );
+      const normalizedComparisonValue = comparisonValueRefData?.label || comparisonValue;
+
+      console.log(`    🔄 Enum normalization for "${fieldName}":`);
+      console.log(`       Original field value: "${fieldValue}" → Normalized: "${normalizedFieldValue}"`);
+      console.log(`       Original comparison value: "${comparisonValue}" → Normalized: "${normalizedComparisonValue}"`);
+
+      return { 
+        fieldValue: normalizedFieldValue, 
+        comparisonValue: normalizedComparisonValue 
+      };
+    };
+
     let result = null;
     let currentAndGroup = [];
 
