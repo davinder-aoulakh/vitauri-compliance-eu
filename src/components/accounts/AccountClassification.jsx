@@ -345,6 +345,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow && account) {
+      // Wait for entity data to load if this is an entity account
+      if (account.entity_id && !linkedEntity) {
+        console.log('⏳ [WORKFLOW SELECTION] Waiting for linked entity to load...');
+        return;
+      }
+      
       console.log('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
       console.log('  Available workflows:', workflows.map(w => w.workflow_name));
       console.log('  Account holder type:', account?.account_holder_type);
