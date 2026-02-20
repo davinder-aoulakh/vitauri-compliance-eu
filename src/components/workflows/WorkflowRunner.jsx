@@ -155,61 +155,133 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     console.log(`selection_count_next_step:`, currentStep.conditional_logic?.selection_count_next_step);
     console.log(`selection_count_else_step:`, currentStep.conditional_logic?.selection_count_else_step);
     
-    if (currentStep.question_type === 'address_input' && answer && accountId) {
+    if (currentStep.question_type === 'address_input' && answer) {
       try {
         const addressConfig = currentStep.address_config || {};
         const targetField = addressConfig.target_field || 'current_address';
         
-        const addressUpdate = {
-          [targetField]: {
-            street: answer.street,
-            city: answer.city,
-            state: answer.state,
-            postal_code: answer.postal_code,
-            country: answer.country
-          }
-        };
+        console.log(`\n[ADDRESS INPUT] Processing address update`);
+        console.log(`   Target field: ${targetField}`);
+        console.log(`   accountId: ${accountId}`);
+        console.log(`   initialData.controlling_person: ${!!initialData?.controlling_person}`);
+        console.log(`   initialData.controlling_person.id: ${initialData?.controlling_person?.id}`);
+        console.log(`   Address data:`, answer);
         
-        await base44.entities.Account.update(accountId, addressUpdate);
-        console.log(`[ADDRESS INPUT] Updated ${targetField} on account`);
-        
-        if (answer.tin && answer.country) {
-          const currentAccount = await base44.entities.Account.filter({ id: accountId });
-          const existingTaxResidencies = currentAccount[0]?.tax_residencies || [];
+        // Handle controlling person address update
+        if (targetField === 'controlling_person_address' && initialData?.controlling_person?.id) {
+          const controllingPersonId = initialData.controlling_person.id;
+          console.log(`[ADDRESS INPUT] Updating ControllingPerson address (ID: ${controllingPersonId})`);
           
-          const existingIndex = existingTaxResidencies.findIndex(
-            tr => tr.country?.toLowerCase() === answer.country.toLowerCase()
-          );
-          
-          let updatedTaxResidencies;
-          if (existingIndex !== -1) {
-            updatedTaxResidencies = [...existingTaxResidencies];
-            updatedTaxResidencies[existingIndex] = {
-              ...updatedTaxResidencies[existingIndex],
-              country: answer.country,
-              tin: answer.tin
-            };
-          } else {
-            updatedTaxResidencies = [
-              ...existingTaxResidencies,
-              {
-                country: answer.country,
-                tin: answer.tin,
-                tin_unavailable_reason: null
-              }
-            ];
-          }
-          
-          await base44.entities.Account.update(accountId, {
-            tax_residencies: updatedTaxResidencies
+          await base44.entities.ControllingPerson.update(controllingPersonId, {
+            address: {
+              street: answer.street,
+              city: answer.city,
+              state: answer.state,
+              postal_code: answer.postal_code,
+              country: answer.country
+            }
           });
           
-          console.log(`[ADDRESS INPUT] Updated tax_residencies with TIN for ${answer.country}`);
+          console.log(`[ADDRESS INPUT] ControllingPerson address updated successfully`);
+          
+          // Update tax residencies if TIN provided
+          if (answer.tin && answer.country) {
+            const persons = await base44.entities.ControllingPerson.filter({ id: controllingPersonId });
+            const existingTaxResidencies = persons[0]?.tax_residencies || [];
+            
+            const existingIndex = existingTaxResidencies.findIndex(
+              tr => tr.country?.toLowerCase() === answer.country.toLowerCase()
+            );
+            
+            let updatedTaxResidencies;
+            if (existingIndex !== -1) {
+              updatedTaxResidencies = [...existingTaxResidencies];
+              updatedTaxResidencies[existingIndex] = {
+                ...updatedTaxResidencies[existingIndex],
+                country: answer.country,
+                tin: answer.tin
+              };
+            } else {
+              updatedTaxResidencies = [
+                ...existingTaxResidencies,
+                {
+                  country: answer.country,
+                  tin: answer.tin,
+                  tin_unavailable_reason: null
+                }
+              ];
+            }
+            
+            await base44.entities.ControllingPerson.update(controllingPersonId, {
+              tax_residencies: updatedTaxResidencies
+            });
+            
+            console.log(`[ADDRESS INPUT] Updated ControllingPerson tax_residencies with TIN for ${answer.country}`);
+          }
+          
+          // Refresh controlling person data
+          const updatedPersons = await base44.entities.ControllingPerson.filter({ id: controllingPersonId });
+          if (updatedPersons[0]) {
+            console.log(`[ADDRESS INPUT] Refreshed ControllingPerson data:`, updatedPersons[0].address);
+          }
         }
-        
-        const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
-        if (updatedAccounts[0]) {
-          setMappedEntityData(updatedAccounts[0]);
+        // Handle account address update
+        else if (accountId) {
+          console.log(`[ADDRESS INPUT] Updating Account ${targetField} (ID: ${accountId})`);
+          
+          const addressUpdate = {
+            [targetField]: {
+              street: answer.street,
+              city: answer.city,
+              state: answer.state,
+              postal_code: answer.postal_code,
+              country: answer.country
+            }
+          };
+          
+          await base44.entities.Account.update(accountId, addressUpdate);
+          console.log(`[ADDRESS INPUT] Updated ${targetField} on account`);
+          
+          if (answer.tin && answer.country) {
+            const currentAccount = await base44.entities.Account.filter({ id: accountId });
+            const existingTaxResidencies = currentAccount[0]?.tax_residencies || [];
+            
+            const existingIndex = existingTaxResidencies.findIndex(
+              tr => tr.country?.toLowerCase() === answer.country.toLowerCase()
+            );
+            
+            let updatedTaxResidencies;
+            if (existingIndex !== -1) {
+              updatedTaxResidencies = [...existingTaxResidencies];
+              updatedTaxResidencies[existingIndex] = {
+                ...updatedTaxResidencies[existingIndex],
+                country: answer.country,
+                tin: answer.tin
+              };
+            } else {
+              updatedTaxResidencies = [
+                ...existingTaxResidencies,
+                {
+                  country: answer.country,
+                  tin: answer.tin,
+                  tin_unavailable_reason: null
+                }
+              ];
+            }
+            
+            await base44.entities.Account.update(accountId, {
+              tax_residencies: updatedTaxResidencies
+            });
+            
+            console.log(`[ADDRESS INPUT] Updated tax_residencies with TIN for ${answer.country}`);
+          }
+          
+          const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
+          if (updatedAccounts[0]) {
+            setMappedEntityData(updatedAccounts[0]);
+          }
+        } else {
+          console.warn(`[ADDRESS INPUT] No valid target found - accountId: ${accountId}, controlling_person: ${!!initialData?.controlling_person}`);
         }
       } catch (error) {
         console.error('[ADDRESS INPUT] Error updating address and tax residencies:', error);
