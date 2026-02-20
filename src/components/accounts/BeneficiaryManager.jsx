@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import BeneficiaryAuditLog from "./BeneficiaryAuditLog";
+import BeneficiaryClassificationHistory from "./BeneficiaryClassificationHistory";
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryClassification from "./BeneficiaryClassification";
 import BeneficiaryDetails from "./BeneficiaryDetails";
@@ -451,7 +452,7 @@ export default function BeneficiaryManager({ account, tenant }) {
             </DialogTitle>
           </DialogHeader>
           {historyBeneficiary && (
-            <BeneficiaryAuditLog beneficiary={historyBeneficiary} />
+            <BeneficiaryClassificationHistory beneficiary={historyBeneficiary} />
           )}
         </DialogContent>
       </Dialog>
