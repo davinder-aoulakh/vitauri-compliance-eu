@@ -120,12 +120,14 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   useEffect(() => {
     if (currentNodeId && answers[currentNodeId]) {
       setSelectedValue(answers[currentNodeId]);
-    } else {
-      const currentStep = stepMap[currentNodeId];
+    } else if (workflow && currentNodeId) {
+      const currentStep = workflow.steps.find(s => s.step_id === currentNodeId);
       // Initialize as empty array for multiple choice, empty string otherwise
       setSelectedValue(currentStep?.question_type === "multiple_choice" ? [] : "");
+    } else {
+      setSelectedValue("");
     }
-  }, [currentNodeId, answers]);
+  }, [currentNodeId, answers, workflow]);
 
   const loadUser = async () => {
     try {
