@@ -213,6 +213,15 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     if (!step.options || step.options.length === 0) {
       return true;
     }
+    // Check if step has selection count routing (multiple choice with conditional logic)
+    if (step.conditional_logic?.use_selection_count && 
+        (step.conditional_logic?.selection_count_next_step || step.conditional_logic?.selection_count_else_step)) {
+      return false;
+    }
+    // Check if step has condition groups (advanced conditional logic)
+    if (step.conditional_logic?.condition_groups?.length > 0) {
+      return false;
+    }
     // Check if any option has a next_step
     return !step.options.some(opt => opt.next_step);
   };
