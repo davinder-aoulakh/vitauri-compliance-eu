@@ -21,7 +21,12 @@ export default function SelectionCountBranching({
           <Label className="text-xs">Operator</Label>
           <Select
             value={conditionalLogic?.selection_count_operator || "="}
-            onValueChange={(value) => onConditionalLogicChange("selection_count_operator", value)}
+            onValueChange={(value) => {
+              console.log('[SelectionCountBranching] Operator changed to:', value);
+              onConditionalLogicChange("selection_count_operator", value);
+              // Automatically enable selection count when operator is set
+              onConditionalLogicChange("use_selection_count", true);
+            }}
           >
             <SelectTrigger className="h-8 text-xs mt-1">
               <SelectValue />
@@ -42,7 +47,15 @@ export default function SelectionCountBranching({
             type="number"
             min="0"
             value={conditionalLogic?.selection_count_value || ""}
-            onChange={(e) => onConditionalLogicChange("selection_count_value", parseInt(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || 0;
+              console.log('[SelectionCountBranching] Count value changed to:', val);
+              onConditionalLogicChange("selection_count_value", val);
+              // Automatically enable selection count when value is set
+              if (val > 0) {
+                onConditionalLogicChange("use_selection_count", true);
+              }
+            }}
             placeholder="e.g., 3"
             className="h-8 text-xs mt-1"
           />
