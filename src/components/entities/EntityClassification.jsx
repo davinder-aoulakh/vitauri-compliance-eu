@@ -980,7 +980,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700">FI Type:</span>
                   <Badge variant="outline">
-                    {currentNode?.options?.find(o => o.value === answers.frm_select_fi_type)?.label || answers.frm_select_fi_type}
+                    {stepMap['frm_select_fi_type']?.options?.find(o => o.value === answers.frm_select_fi_type)?.label || answers.frm_select_fi_type}
                   </Badge>
                 </div>
               )}
