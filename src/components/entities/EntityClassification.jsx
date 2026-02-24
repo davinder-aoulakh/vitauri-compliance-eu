@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch } from "lucide-react";
@@ -120,7 +121,9 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     if (currentNodeId && answers[currentNodeId]) {
       setSelectedValue(answers[currentNodeId]);
     } else {
-      setSelectedValue("");
+      const currentStep = stepMap[currentNodeId];
+      // Initialize as empty array for multiple choice, empty string otherwise
+      setSelectedValue(currentStep?.question_type === "multiple_choice" ? [] : "");
     }
   }, [currentNodeId, answers]);
 
@@ -221,12 +224,15 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     console.log('Selected Value:', selectedValue);
     
     // Store the answer
-    if (currentNode.question_type === "single_choice" || 
-        currentNode.question_type === "yes_no" ||
-        currentNode.question_type === "multiple_choice") {
+    if (currentNode.question_type === "single_choice" || currentNode.question_type === "yes_no") {
       if (!selectedValue) return;
       newAnswers[currentNodeId] = selectedValue;
       console.log('Stored answer:', currentNodeId, '=', selectedValue);
+    } else if (currentNode.question_type === "multiple_choice") {
+      // For multiple choice, selectedValue should be an array
+      if (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) return;
+      newAnswers[currentNodeId] = selectedValue;
+      console.log('Stored multiple choice answer:', currentNodeId, '=', selectedValue);
     }
 
     setAnswers(newAnswers);
@@ -887,7 +893,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       );
     }
 
-    if (currentNode.question_type === "single_choice" || currentNode.question_type === "multiple_choice") {
+    if (currentNode.question_type === "single_choice") {
       return (
         <div className="space-y-4">
           <Select value={selectedValue} onValueChange={setSelectedValue}>
@@ -902,6 +908,48 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      );
+    }
+
+    if (currentNode.question_type === "multiple_choice") {
+      const selectedArray = Array.isArray(selectedValue) ? selectedValue : [];
+      
+      const handleCheckboxChange = (optionValue, checked) => {
+        let newSelection;
+        if (checked) {
+          newSelection = [...selectedArray, optionValue];
+        } else {
+          newSelection = selectedArray.filter(v => v !== optionValue);
+        }
+        setSelectedValue(newSelection);
+      };
+      
+      return (
+        <div className="space-y-3">
+          {currentNode.options?.map((option) => (
+            <div 
+              key={option.value}
+              className="flex items-start space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
+              onClick={() => handleCheckboxChange(option.value, !selectedArray.includes(option.value))}
+            >
+              <Checkbox
+                id={option.value}
+                checked={selectedArray.includes(option.value)}
+                onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
+                className="mt-0.5"
+              />
+              <Label 
+                htmlFor={option.value}
+                className="flex-1 cursor-pointer font-medium text-slate-900 leading-relaxed"
+              >
+                {option.label}
+              </Label>
+              {selectedArray.includes(option.value) && (
+                <CheckCircle2 className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+              )}
+            </div>
+          ))}
         </div>
       );
     }
@@ -1001,11 +1049,32 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
               {completedPath.map((stepId, idx) => {
                 const step = stepMap[stepId];
                 const answer = answers[stepId];
-                
+
                 // Only show steps that have answers
                 if (!step || !answer) return null;
 
-                const answerLabel = step.options?.find(o => o.value === answer)?.label || answer;
+                // Handle multiple choice answers (arrays)
+                let answerDisplay;
+                if (Array.isArray(answer)) {
+                 const labels = answer.map(v => step.options?.find(o => o.value === v)?.label || v);
+                 answerDisplay = (
+                   <div className="flex flex-wrap gap-1">
+                     {labels.map((label, idx) => (
+                       <Badge key={idx} variant="secondary" className="bg-indigo-50 text-indigo-700">
+                         {label}
+                       </Badge>
+                     ))}
+                   </div>
+                 );
+                } else {
+                 const answerLabel = step.options?.find(o => o.value === answer)?.label || answer;
+                 answerDisplay = (
+                   <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                     {answerLabel}
+                   </Badge>
+                 );
+                }
+
                 const isLastStep = idx === completedPath.length - 1;
 
                 return (
@@ -1021,9 +1090,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
                         {step.question_text && (
                           <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
                         )}
-                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
-                          {answerLabel}
-                        </Badge>
+                        {answerDisplay}
                       </div>
                     </div>
                     {isLastStep && (
@@ -1214,18 +1281,38 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
               </summary>
               <div className="mt-3 space-y-2 pl-6">
                 {Object.entries(answers).map(([key, value]) => {
-                  const step = stepMap[key];
-                  if (!step) return null;
-                  return (
-                    <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-600 text-xs">
-                        {step.step_title || key}
-                      </span>
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {step.options?.find(o => o.value === value)?.label || value}
-                      </Badge>
-                    </div>
-                  );
+                 const step = stepMap[key];
+                 if (!step) return null;
+
+                 // Handle multiple choice answers (arrays)
+                 if (Array.isArray(value)) {
+                   const labels = value.map(v => step.options?.find(o => o.value === v)?.label || v);
+                   return (
+                     <div key={key} className="flex items-start justify-between text-sm py-2 border-b border-slate-200 last:border-0">
+                       <span className="text-slate-600 text-xs">
+                         {step.step_title || key}
+                       </span>
+                       <div className="flex flex-wrap gap-1 justify-end">
+                         {labels.map((label, idx) => (
+                           <Badge key={idx} variant="outline" className="capitalize text-xs">
+                             {label}
+                           </Badge>
+                         ))}
+                       </div>
+                     </div>
+                   );
+                 }
+
+                 return (
+                   <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
+                     <span className="text-slate-600 text-xs">
+                       {step.step_title || key}
+                     </span>
+                     <Badge variant="outline" className="capitalize text-xs">
+                       {step.options?.find(o => o.value === value)?.label || value}
+                     </Badge>
+                   </div>
+                 );
                 })}
               </div>
             </details>
@@ -1255,7 +1342,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         </Button>
         <Button 
           onClick={handleNext}
-          disabled={!selectedValue && !isActionNode(currentNode)}
+          disabled={
+            !isActionNode(currentNode) && 
+            (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0))
+          }
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
         >
