@@ -308,8 +308,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         : currentNode.conditional_logic.selection_count_else_step;
       
       console.log(`➡️ [SELECTION COUNT] Condition ${conditionMet ? 'MET' : 'NOT MET'}, next step:`, nextNodeId);
-    } else {
-      console.log('❌ Did NOT enter selection count logic block');
     }
     // Check for condition_groups (advanced conditional logic)
     else if (currentNode.conditional_logic?.condition_groups?.length > 0) {
