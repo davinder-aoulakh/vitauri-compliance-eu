@@ -347,8 +347,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
 
     // If this is an action node or no next step, show summary
     const newHistory = [...history, currentNodeId];
-    if (!nextNodeId || isActionNode(currentNode)) {
-      console.log('🏁 Showing summary');
+    if (!nextNodeId) {
+      console.log('🏁 Showing summary - no next step found');
       setCompletedPath(newHistory);
       setShowSummary(true);
       console.log('========== END HANDLE NEXT ==========\n');
