@@ -40,6 +40,7 @@ import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
 import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
 import MultiChoiceRoutingBuilder from "./MultiChoiceRoutingBuilder";
+import SelectionCountBranching from "./SelectionCountBranching";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
@@ -1474,13 +1475,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
   };
 
   const handleConditionalLogicChange = (field, value) => {
-    setEditedStep({
-      ...editedStep,
+    setEditedStep(prev => ({
+      ...prev,
       conditional_logic: {
-        ...editedStep.conditional_logic,
+        ...prev.conditional_logic,
         [field]: value
       }
-    });
+    }));
   };
 
   const handleMappedFieldChange = (field, value) => {
@@ -2077,108 +2078,13 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
                   </TabsContent>
 
                   <TabsContent value="count" className="space-y-3 mt-0">
-                    <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                      <p className="text-xs text-blue-900 mb-3">
-                        <strong>Count-based branching:</strong> Navigate based on how many total options the user selects
-                      </p>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label className="text-xs">Operator</Label>
-                          <Select
-                            value={editedStep.conditional_logic?.selection_count_operator || "="}
-                            onValueChange={(value) => handleConditionalLogicChange("selection_count_operator", value)}
-                          >
-                            <SelectTrigger className="h-8 text-xs mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="=">Equals (=)</SelectItem>
-                              <SelectItem value="!=">Not Equals (≠)</SelectItem>
-                              <SelectItem value=">">Greater Than (&gt;)</SelectItem>
-                              <SelectItem value="<">Less Than (&lt;)</SelectItem>
-                              <SelectItem value=">=">Greater or Equal (≥)</SelectItem>
-                              <SelectItem value="<=">Less or Equal (≤)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Count</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={editedStep.conditional_logic?.selection_count_value || ""}
-                            onChange={(e) => handleConditionalLogicChange("selection_count_value", parseInt(e.target.value) || 0)}
-                            placeholder="e.g., 3"
-                            className="h-8 text-xs mt-1"
-                          />
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-end pb-2">
-                          of {editedStep.options?.length || 0} total options
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 pt-3 mt-3 border-t">
-                       <div>
-                         <Label className="text-xs text-green-700 font-semibold">
-                           If condition met → Go to:
-                         </Label>
-                         <Select
-                           value={editedStep.conditional_logic?.selection_count_next_step || ""}
-                           onValueChange={(value) => {
-                             handleConditionalLogicChange("selection_count_next_step", value);
-                             // Enable use_selection_count flag when setting routing
-                             if (value) {
-                               handleConditionalLogicChange("use_selection_count", true);
-                             }
-                           }}
-                         >
-                           <SelectTrigger className="h-8 text-xs mt-1 border-green-300">
-                             <SelectValue placeholder="Select step..." />
-                           </SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value={null}>None (End)</SelectItem>
-                             {allSteps
-                               .filter(s => s.step_id !== editedStep.step_id)
-                               .map(s => (
-                                 <SelectItem key={s.step_id} value={s.step_id}>
-                                   {s.step_title}
-                                 </SelectItem>
-                               ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                       <div>
-                         <Label className="text-xs text-red-700 font-semibold">
-                           Otherwise → Go to:
-                         </Label>
-                         <Select
-                           value={editedStep.conditional_logic?.selection_count_else_step || ""}
-                           onValueChange={(value) => {
-                             handleConditionalLogicChange("selection_count_else_step", value);
-                             // Enable use_selection_count flag when setting routing
-                             if (value) {
-                               handleConditionalLogicChange("use_selection_count", true);
-                             }
-                           }}
-                         >
-                           <SelectTrigger className="h-8 text-xs mt-1 border-red-300">
-                             <SelectValue placeholder="Select step..." />
-                           </SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value={null}>None (End)</SelectItem>
-                             {allSteps
-                               .filter(s => s.step_id !== editedStep.step_id)
-                               .map(s => (
-                                 <SelectItem key={s.step_id} value={s.step_id}>
-                                   {s.step_title}
-                                 </SelectItem>
-                               ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                      </div>
-                    </div>
+                    <SelectionCountBranching
+                      conditionalLogic={editedStep.conditional_logic}
+                      allSteps={allSteps}
+                      currentStepId={editedStep.step_id}
+                      optionsCount={editedStep.options?.length || 0}
+                      onConditionalLogicChange={handleConditionalLogicChange}
+                    />
                   </TabsContent>
 
                   <TabsContent value="routing-groups" className="space-y-3 mt-0">
