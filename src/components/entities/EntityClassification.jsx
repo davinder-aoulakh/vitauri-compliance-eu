@@ -260,10 +260,15 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     console.log('Full conditional_logic:', JSON.stringify(currentNode.conditional_logic, null, 2));
 
     // Check for selection count logic (for multiple choice questions)
+    console.log('Checking selection count logic...');
+    console.log('Question type:', currentNode.question_type);
+    console.log('use_selection_count:', currentNode.conditional_logic?.use_selection_count);
+    console.log('Has next steps:', !!(currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step));
+    
     if (currentNode.question_type === "multiple_choice" && 
         currentNode.conditional_logic?.use_selection_count &&
         (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step)) {
-      console.log('✅ Found selection count logic for multiple choice');
+      console.log('✅ ENTERED selection count logic block');
       
       const selectedCount = Array.isArray(newAnswers[currentNodeId]) ? newAnswers[currentNodeId].length : 0;
       const operator = currentNode.conditional_logic.selection_count_operator || '='; // Default to equals if not specified
@@ -274,6 +279,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       let conditionMet = false;
       switch (operator) {
         case '=':
+        case 'Equals (=)':
           conditionMet = selectedCount === targetCount;
           break;
         case '!=':
@@ -291,6 +297,10 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         case '<=':
           conditionMet = selectedCount <= targetCount;
           break;
+        default:
+          // If operator is still null or unknown, default to equals comparison
+          conditionMet = selectedCount === targetCount;
+          console.log(`⚠️ Unknown or null operator "${operator}", defaulting to equals comparison`);
       }
       
       nextNodeId = conditionMet 
@@ -298,6 +308,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         : currentNode.conditional_logic.selection_count_else_step;
       
       console.log(`➡️ [SELECTION COUNT] Condition ${conditionMet ? 'MET' : 'NOT MET'}, next step:`, nextNodeId);
+    } else {
+      console.log('❌ Did NOT enter selection count logic block');
     }
     // Check for condition_groups (advanced conditional logic)
     else if (currentNode.conditional_logic?.condition_groups?.length > 0) {
