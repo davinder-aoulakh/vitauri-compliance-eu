@@ -262,11 +262,11 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     // Check for selection count logic (for multiple choice questions)
     if (currentNode.question_type === "multiple_choice" && 
         currentNode.conditional_logic?.use_selection_count &&
-        currentNode.conditional_logic?.selection_count_operator) {
+        (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step)) {
       console.log('✅ Found selection count logic for multiple choice');
       
       const selectedCount = Array.isArray(newAnswers[currentNodeId]) ? newAnswers[currentNodeId].length : 0;
-      const operator = currentNode.conditional_logic.selection_count_operator;
+      const operator = currentNode.conditional_logic.selection_count_operator || '='; // Default to equals if not specified
       const targetCount = currentNode.conditional_logic.selection_count_value || 0;
       
       console.log(`Selection count: ${selectedCount} ${operator} ${targetCount}`);
