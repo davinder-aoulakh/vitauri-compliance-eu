@@ -250,8 +250,48 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     console.log('Has conditional_logic:', !!currentNode.conditional_logic);
     console.log('Full conditional_logic:', JSON.stringify(currentNode.conditional_logic, null, 2));
 
-    // Check for condition_groups first (advanced conditional logic)
-    if (currentNode.conditional_logic?.condition_groups?.length > 0) {
+    // Check for selection count logic (for multiple choice questions)
+    if (currentNode.question_type === "multiple_choice" && 
+        currentNode.conditional_logic?.use_selection_count &&
+        currentNode.conditional_logic?.selection_count_operator) {
+      console.log('✅ Found selection count logic for multiple choice');
+      
+      const selectedCount = Array.isArray(newAnswers[currentNodeId]) ? newAnswers[currentNodeId].length : 0;
+      const operator = currentNode.conditional_logic.selection_count_operator;
+      const targetCount = currentNode.conditional_logic.selection_count_value || 0;
+      
+      console.log(`Selection count: ${selectedCount} ${operator} ${targetCount}`);
+      
+      let conditionMet = false;
+      switch (operator) {
+        case '=':
+          conditionMet = selectedCount === targetCount;
+          break;
+        case '!=':
+          conditionMet = selectedCount !== targetCount;
+          break;
+        case '>':
+          conditionMet = selectedCount > targetCount;
+          break;
+        case '<':
+          conditionMet = selectedCount < targetCount;
+          break;
+        case '>=':
+          conditionMet = selectedCount >= targetCount;
+          break;
+        case '<=':
+          conditionMet = selectedCount <= targetCount;
+          break;
+      }
+      
+      nextNodeId = conditionMet 
+        ? currentNode.conditional_logic.selection_count_next_step 
+        : currentNode.conditional_logic.selection_count_else_step;
+      
+      console.log(`➡️ [SELECTION COUNT] Condition ${conditionMet ? 'MET' : 'NOT MET'}, next step:`, nextNodeId);
+    }
+    // Check for condition_groups (advanced conditional logic)
+    else if (currentNode.conditional_logic?.condition_groups?.length > 0) {
       console.log('✅ Found condition_groups, evaluating...');
       nextNodeId = await evaluateConditionalLogic(currentNode.conditional_logic, newAnswers);
       console.log('➡️ [CONDITION GROUPS] Result:', nextNodeId);
