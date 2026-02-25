@@ -259,19 +259,42 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     console.log('Has conditional_logic:', !!currentNode.conditional_logic);
     console.log('Full conditional_logic:', JSON.stringify(currentNode.conditional_logic, null, 2));
 
-    // Check for selection count logic (for multiple choice questions)
-    console.log('Checking selection count logic...');
+    // Check for "By Selected Options" logic (for multiple choice questions)
+    console.log('Checking option_values logic...');
     console.log('Question type:', currentNode.question_type);
-    console.log('use_selection_count:', currentNode.conditional_logic?.use_selection_count);
-    console.log('Has next steps:', !!(currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step));
+    console.log('Has option_values:', !!currentNode.conditional_logic?.option_values);
+    console.log('option_values:', currentNode.conditional_logic?.option_values);
     
     if (currentNode.question_type === "multiple_choice" && 
+        currentNode.conditional_logic?.option_values?.length > 0 &&
+        (currentNode.conditional_logic?.option_values_next_step || currentNode.conditional_logic?.option_values_else_step)) {
+      console.log('✅ ENTERED option_values logic block');
+      
+      const selectedOptions = Array.isArray(newAnswers[currentNodeId]) ? newAnswers[currentNodeId] : [];
+      const targetOptions = currentNode.conditional_logic.option_values;
+      
+      console.log('Selected options:', selectedOptions);
+      console.log('Target options:', targetOptions);
+      
+      // Check if ANY of the selected options are in the target options list
+      const hasMatch = selectedOptions.some(selected => targetOptions.includes(selected));
+      
+      console.log(`Match found: ${hasMatch}`);
+      
+      nextNodeId = hasMatch
+        ? currentNode.conditional_logic.option_values_next_step 
+        : currentNode.conditional_logic.option_values_else_step;
+      
+      console.log(`➡️ [OPTION VALUES] ${hasMatch ? 'Matched' : 'No match'}, next step:`, nextNodeId);
+    }
+    // Check for selection count logic (for multiple choice questions)
+    else if (currentNode.question_type === "multiple_choice" && 
         currentNode.conditional_logic?.use_selection_count &&
         (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step)) {
       console.log('✅ ENTERED selection count logic block');
       
       const selectedCount = Array.isArray(newAnswers[currentNodeId]) ? newAnswers[currentNodeId].length : 0;
-      const operator = currentNode.conditional_logic.selection_count_operator || '='; // Default to equals if not specified
+      const operator = currentNode.conditional_logic.selection_count_operator || '=';
       const targetCount = currentNode.conditional_logic.selection_count_value || 0;
       
       console.log(`Selection count: ${selectedCount} ${operator} ${targetCount}`);
@@ -298,7 +321,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           conditionMet = selectedCount <= targetCount;
           break;
         default:
-          // If operator is still null or unknown, default to equals comparison
           conditionMet = selectedCount === targetCount;
           console.log(`⚠️ Unknown or null operator "${operator}", defaulting to equals comparison`);
       }
