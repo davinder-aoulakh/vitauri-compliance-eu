@@ -236,8 +236,8 @@ export default function XMLGenerator({ report, onSuccess }) {
           <crs:TIN>${res.tin || 'NOTIN'}</crs:TIN>
           `).join('') : '<crs:TIN>NOTIN</crs:TIN>'}
           <crs:Name>
-            <crs:FirstName>${escapeXML(account.account_holder_name.split(' ')[0] || 'Unknown')}</crs:FirstName>
-            <crs:LastName>${escapeXML(account.account_holder_name.split(' ').slice(1).join(' ') || 'Unknown')}</crs:LastName>
+            <crs:FirstName>${escapeXML((account.account_holder_name || 'Unknown').split(' ')[0] || 'Unknown')}</crs:FirstName>
+            <crs:LastName>${escapeXML((account.account_holder_name || 'Unknown').split(' ').slice(1).join(' ') || 'Unknown')}</crs:LastName>
           </crs:Name>
           ${account.account_holder_address ? `
           <crs:Address>
@@ -293,8 +293,8 @@ export default function XMLGenerator({ report, onSuccess }) {
           <crs:TIN>${res.tin || 'NOTIN'}</crs:TIN>
           `).join('') : ''}
           <crs:Name>
-            <crs:FirstName>${escapeXML(cp.full_name.split(' ')[0] || 'Unknown')}</crs:FirstName>
-            <crs:LastName>${escapeXML(cp.full_name.split(' ').slice(1).join(' ') || 'Unknown')}</crs:LastName>
+            <crs:FirstName>${escapeXML((cp.full_name || 'Unknown').split(' ')[0] || 'Unknown')}</crs:FirstName>
+            <crs:LastName>${escapeXML((cp.full_name || 'Unknown').split(' ').slice(1).join(' ') || 'Unknown')}</crs:LastName>
           </crs:Name>
           ${cp.address ? `
           <crs:Address>
