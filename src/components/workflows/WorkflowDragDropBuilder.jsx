@@ -40,6 +40,29 @@ import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
 import StepEditorComponent from "./StepEditor";
 
+// Schema definitions for workflow introduction fields
+const ACCOUNT_FIELDS_SCHEMA = [
+  { value: "account_number", label: "Account Number", type: "string", isCountry: false },
+  { value: "account_creation_date", label: "Account Creation Date", type: "date", isCountry: false },
+  { value: "account_type", label: "Account Type", type: "string", isCountry: false },
+  { value: "account_holder_type", label: "Account Holder Type", type: "string", isCountry: false },
+  { value: "account_holder_name", label: "Account Holder Name", type: "string", isCountry: false },
+  { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean", isCountry: false },
+  { value: "account_holder_is_alive", label: "Account Holder Is Alive", type: "boolean", isCountry: false },
+  { value: "year_end_cash_value", label: "Year End Cash Value", type: "number", isCountry: false },
+  { value: "gross_payments", label: "Gross Payments", type: "number", isCountry: false },
+  { value: "reportability_status", label: "Reportability Status", type: "string", isCountry: false },
+  { value: "status", label: "Status", type: "string", isCountry: false }
+];
+
+const ENTITY_FIELDS_SCHEMA = [
+  { value: "entity_name", label: "Entity Name", type: "string", isCountry: false },
+  { value: "entity_type", label: "Entity Type", type: "string", isCountry: false },
+  { value: "country_of_incorporation", label: "Country of Incorporation", type: "string", isCountry: true },
+  { value: "rfi_status", label: "RFI Status", type: "string", isCountry: false },
+  { value: "status", label: "Status", type: "string", isCountry: false }
+];
+
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
   const initialSteps = (workflow?.steps || []).map(step => {
