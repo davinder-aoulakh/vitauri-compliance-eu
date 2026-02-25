@@ -149,9 +149,18 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
       console.log('  Conditions:', group.conditions?.length || 0);
 
       if (!group.conditions || group.conditions.length === 0) {
-        groupResults.push({ group, result: false });
-        continue;
+        continue; // Skip empty groups
       }
+
+      // First, check the first condition to see if this group is relevant
+      console.log(`  [Condition 1/${group.conditions.length}] (Primary Check)`);
+      const firstConditionMet = evaluateSingleConditionFn(group.conditions[0]);
+      
+      if (!firstConditionMet) {
+        console.log(`  ⏭️ First condition failed - skipping entire group`);
+        continue; // Skip this group entirely and move to next
+      }
+      console.log(`  ✅ First condition passed - evaluating remaining conditions`);
 
       let groupResult = group.group_operator === 'AND' ? true : false;
 
@@ -180,30 +189,25 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
       console.log(`  🎯 Group ${i + 1} Final Result:`, groupResult);
       console.log(`  → True Step: ${group.true_step}`);
       console.log(`  → False Step: ${group.false_step}`);
-      groupResults.push({ group, result: groupResult });
-    }
-
-    // First match wins logic
-    console.log('\n🏁 [FINAL DECISION] Processing results:');
-    for (let i = 0; i < groupResults.length; i++) {
-      const { group, result } = groupResults[i];
-
-      if (result === true) {
-        console.log(`  ✅ Group ${i + 1} matched! Returning: ${group.true_step}`);
+      
+      // Return immediately based on this group's result
+      if (groupResult === true) {
+        console.log('\n🏁 [FINAL DECISION] Group matched!');
+        console.log(`  ✅ Returning: ${group.true_step}`);
         console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
         return group.true_step;
       } else {
-        console.log(`  ❌ Group ${i + 1} failed → Returning: ${group.false_step}`);
+        console.log('\n🏁 [FINAL DECISION] Group failed!');
+        console.log(`  ❌ Returning: ${group.false_step}`);
         console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
         return group.false_step;
       }
     }
 
-    // No groups matched - return fallback
-    console.log('  ⚠️ No groups evaluated, using fallback...');
-    const fallbackStep = logic.overall_false_step ||
-                         groupResults[groupResults.length - 1]?.group.false_step ||
-                         groupResults[0]?.group.false_step;
+    // No groups had their first condition match - return fallback
+    console.log('\n🏁 [FINAL DECISION] No groups matched');
+    console.log('  ⚠️ All first conditions failed, using fallback...');
+    const fallbackStep = logic.overall_false_step || logic.condition_groups[0]?.false_step;
     console.log(`  → Fallback Step: ${fallbackStep}`);
     console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
     return fallbackStep;
