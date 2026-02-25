@@ -45,10 +45,24 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
   const normalizeCountryForComparison = (val) => {
     if (!val) return '';
     const valLower = String(val).toLowerCase();
-    const countryInfo = crsCountryMap[valLower];
+    
+    // First, try to find by country name
+    let countryInfo = crsCountryMap[valLower];
+    
+    // If not found, try to find by country code
+    if (!countryInfo) {
+      countryInfo = Object.values(crsCountryMap).find(
+        c => c.code?.toLowerCase() === valLower
+      );
+    }
+    
+    // Return normalized code if found, otherwise return original
     if (countryInfo?.code) {
+      console.log(`    Country normalization: "${val}" → "${countryInfo.code.toLowerCase()}"`);
       return countryInfo.code.toLowerCase();
     }
+    
+    console.log(`    Country normalization: "${val}" → "${valLower}" (no match in CRS map)`);
     return valLower;
   };
 
