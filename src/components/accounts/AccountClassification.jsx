@@ -783,7 +783,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
         for (let j = 0; j < group.conditions.length; j++) {
           const condition = group.conditions[j];
-          const conditionMet = evaluateSingleCondition(condition);
+          const conditionMet = evaluateSingleCondition(condition, currentAnswers);
 
           if (group.group_operator === 'AND') {
             groupResult = groupResult && conditionMet;
@@ -837,7 +837,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let result = true;
 
     logic.conditions.forEach((condition, idx) => {
-      const conditionMet = evaluateSingleCondition(condition);
+      const conditionMet = evaluateSingleCondition(condition, currentAnswers);
 
       if (idx === 0) {
         result = conditionMet;
@@ -1126,7 +1126,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }
             console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
-            conditionMet = evaluateSingleCondition(condition);
+            conditionMet = evaluateSingleCondition(condition, newAnswers);
             console.log(`      - Field comparison: ${conditionMet}`);
           }
           
