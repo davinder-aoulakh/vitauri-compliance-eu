@@ -920,7 +920,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
 
       {/* Step Editor Dialog */}
       <Dialog open={showStepEditor} onOpenChange={setShowStepEditor}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Edit Step: {selectedStep?.step_title}</DialogTitle>
           </DialogHeader>
