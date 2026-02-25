@@ -14,8 +14,16 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
   let fieldValue = getFieldValue(condition.field);
   let comparisonValue = condition.value;
   
+  console.log('\n🔍 [CONDITION EVAL] Starting evaluation...');
+  console.log('  Field:', condition.field);
+  console.log('  Operator:', condition.operator);
+  console.log('  Comparison Value (raw):', condition.value);
+  console.log('  Field Value (raw):', fieldValue);
+  console.log('  Value Type:', condition.value_type);
+  
   if (condition.value_type === 'field_reference') {
     comparisonValue = getFieldValue(condition.value);
+    console.log('  Comparison Value (after field_reference lookup):', comparisonValue);
   }
 
   const normalizeBoolean = (val) => {
@@ -28,6 +36,9 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
 
   fieldValue = normalizeBoolean(fieldValue);
   comparisonValue = normalizeBoolean(comparisonValue);
+
+  console.log('  Field Value (after normalize):', fieldValue);
+  console.log('  Comparison Value (after normalize):', comparisonValue);
 
   let conditionMet = false;
 
@@ -96,6 +107,9 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
       conditionMet = false;
   }
 
+  console.log('  ✅ Result:', conditionMet);
+  console.log('🔍 [CONDITION EVAL] Complete\n');
+
   return conditionMet;
 };
 
@@ -108,10 +122,17 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
  */
 export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleConditionFn) => {
   if (logic?.condition_groups && logic.condition_groups.length > 0) {
+    console.log('\n🔷🔷🔷 [CONDITION GROUPS] Starting evaluation...');
+    console.log('  Total Groups:', logic.condition_groups.length);
+    console.log('  Current Answers:', currentAnswers);
+    
     const groupResults = [];
 
     for (let i = 0; i < logic.condition_groups.length; i++) {
       const group = logic.condition_groups[i];
+      console.log(`\n📋 [GROUP ${i + 1}] "${group.group_name || group.group_id}"`);
+      console.log('  Operator:', group.group_operator);
+      console.log('  Conditions:', group.conditions?.length || 0);
 
       if (!group.conditions || group.conditions.length === 0) {
         groupResults.push({ group, result: false });
@@ -122,33 +143,51 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
 
       for (let j = 0; j < group.conditions.length; j++) {
         const condition = group.conditions[j];
+        console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
         const conditionMet = evaluateSingleConditionFn(condition);
 
         if (group.group_operator === 'AND') {
           groupResult = groupResult && conditionMet;
-          if (!groupResult) break;
+          console.log(`    AND logic: groupResult = ${groupResult}`);
+          if (!groupResult) {
+            console.log('    ❌ AND failed, breaking early');
+            break;
+          }
         } else {
           groupResult = groupResult || conditionMet;
-          if (groupResult) break;
+          console.log(`    OR logic: groupResult = ${groupResult}`);
+          if (groupResult) {
+            console.log('    ✅ OR succeeded, breaking early');
+            break;
+          }
         }
       }
 
+      console.log(`  🎯 Group ${i + 1} Final Result:`, groupResult);
+      console.log(`  → True Step: ${group.true_step}`);
+      console.log(`  → False Step: ${group.false_step}`);
       groupResults.push({ group, result: groupResult });
     }
 
     // First match wins logic
+    console.log('\n🏁 [FINAL DECISION] First Match Wins:');
     for (let i = 0; i < groupResults.length; i++) {
       const { group, result } = groupResults[i];
 
       if (result === true) {
+        console.log(`  ✅ Group ${i + 1} matched! Returning: ${group.true_step}`);
+        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
         return group.true_step;
       }
     }
 
     // No groups matched - return fallback
+    console.log('  ❌ No groups matched, using fallback...');
     const fallbackStep = logic.overall_false_step ||
                          groupResults[groupResults.length - 1]?.group.false_step ||
                          groupResults[0]?.group.false_step;
+    console.log(`  → Fallback Step: ${fallbackStep}`);
+    console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
     return fallbackStep;
   }
 
