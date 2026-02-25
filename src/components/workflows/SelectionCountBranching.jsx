@@ -10,16 +10,6 @@ export default function SelectionCountBranching({
   optionsCount,
   onConditionalLogicChange 
 }) {
-  React.useEffect(() => {
-    console.log('[SelectionCountBranching] Component rendered with conditionalLogic:', {
-      selection_count_operator: conditionalLogic?.selection_count_operator,
-      selection_count_value: conditionalLogic?.selection_count_value,
-      selection_count_next_step: conditionalLogic?.selection_count_next_step,
-      selection_count_else_step: conditionalLogic?.selection_count_else_step,
-      use_selection_count: conditionalLogic?.use_selection_count
-    });
-  }, [conditionalLogic]);
-
   return (
     <div className="p-3 bg-blue-50 rounded border border-blue-200">
       <p className="text-xs text-blue-900 mb-3">
