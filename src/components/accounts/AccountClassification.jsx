@@ -25,6 +25,8 @@ import BeneficiaryInputRenderer from "@/components/accounts/BeneficiaryInputRend
 import ControllingPersonInputRenderer from "@/components/accounts/ControllingPersonInputRenderer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import AIClassificationAssistant from "../ai/AIClassificationAssistant";
+import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/workflowConditionUtils";
+import { isActionNode } from "../workflows/workflowNavigationUtils";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -713,100 +715,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
     return null;
   };
 
-  const evaluateSingleCondition = (condition) => {
-    let fieldValue = getFieldValue(condition.field, linkedEntity);
-    let comparisonValue = condition.value;
-    if (condition.value_type === 'field_reference') {
-      comparisonValue = getFieldValue(condition.value, linkedEntity);
-    }
-
-    const normalizeBoolean = (val) => {
-      if (val === 'YES') return 'true';
-      if (val === 'NO') return 'false';
-      if (val === true) return 'true';
-      if (val === false) return 'false';
-      return val;
-    };
-
-    const originalFieldValue = fieldValue;
-    const originalComparisonValue = comparisonValue;
-
-    fieldValue = normalizeBoolean(fieldValue);
-    comparisonValue = normalizeBoolean(comparisonValue);
-
-    // console.log(`  🔍 Condition: field="${condition.field}", operator="${condition.operator}", value="${condition.value}", value_type="${condition.value_type}"`);
-    // console.log(`  📊 Original field value:`, originalFieldValue, `→ Normalized:`, fieldValue);
-    // console.log(`  📊 Original comparison value:`, originalComparisonValue, `→ Normalized:`, comparisonValue);
-
-    let conditionMet = false;
-
-    const normalizeCountryForComparison = (val) => {
-      if (!val) return '';
-      const valLower = String(val).toLowerCase();
-      const countryInfo = crsCountryMap[valLower];
-      if (countryInfo?.code) {
-        return countryInfo.code.toLowerCase();
-      }
-      return valLower;
-    };
-
-    const isCountryComparison = (
-      condition.field?.toLowerCase().includes('country') ||
-      condition.value?.toLowerCase().includes('country')
-    );
-
-    switch (condition.operator) {
-      case "=":
-        if (isCountryComparison) {
-          conditionMet = normalizeCountryForComparison(fieldValue) === normalizeCountryForComparison(comparisonValue);
-        } else {
-          conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
-        }
-        break;
-      case "!=":
-        if (isCountryComparison) {
-          conditionMet = normalizeCountryForComparison(fieldValue) !== normalizeCountryForComparison(comparisonValue);
-        } else {
-          conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
-        }
-        break;
-      case "in":
-        const inValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-        conditionMet = inValues.includes(String(fieldValue || '').toLowerCase());
-        break;
-      case "not_in":
-        const notInValues = String(comparisonValue).split(",").map(v => v.trim().toLowerCase());
-        conditionMet = !notInValues.includes(String(fieldValue || '').toLowerCase());
-        break;
-      case "contains":
-        conditionMet = String(fieldValue || '').toLowerCase().includes(String(comparisonValue || '').toLowerCase());
-        break;
-      case ">":
-        conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
-        break;
-      case "<":
-        conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
-        break;
-      case ">=":
-        conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
-        break;
-      case "<=":
-        conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
-        break;
-      case "is_crs":
-        const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
-        conditionMet = countryLookup?.isCrs === true;
-        break;
-      case "is_not_crs":
-        const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
-        conditionMet = countryLookupNot?.isCrs === false;
-        break;
-      default:
-        conditionMet = false;
-    }
-
-    // console.log(`  >>> Condition Result: ${conditionMet}`);
-    return conditionMet;
+  // Wrapper to maintain compatibility with existing code
+  const evaluateSingleConditionWrapper = (condition) => {
+    const getFieldValueFn = (field) => getFieldValue(field, linkedEntity);
+    return evaluateSingleCondition(condition, getFieldValueFn, crsCountryMap);
   };
 
   const executePostCompletionActions = async (actions, currentAnswers) => {
@@ -890,110 +802,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  const evaluateConditionalLogic = (logic, currentAnswers) => {
-    // console.log('\n🟢🟢🟢 ========== EVALUATING CONDITIONAL LOGIC (AccountClassification) ========== 🟢🟢🟢');
-    // console.log('📜 Full Logic Object:', JSON.stringify(logic, null, 2));
-    // console.log('🔢 Has condition_groups:', !!logic?.condition_groups?.length);
-    // console.log('🔢 Number of condition_groups:', logic?.condition_groups?.length || 0);
-    // console.log('📊 Current Answers Being Evaluated:', JSON.stringify(currentAnswers, null, 2));
-
-    if (logic?.condition_groups && logic.condition_groups.length > 0) {
-      // console.log('\n🟣🟣🟣 EVALUATING CONDITION GROUPS 🟣🟣🟣');
-      // console.log(`📊 Total groups: ${logic.condition_groups.length}`);
-      // console.log(`🔗 Overall operator: ${logic.overall_logic_operator}`);
-      // console.log(`✅ Overall TRUE step: ${logic.overall_true_step}`);
-      // console.log(`❌ Overall FALSE step: ${logic.overall_false_step}`);
-
-      const groupResults = [];
-
-      for (let i = 0; i < logic.condition_groups.length; i++) {
-        const group = logic.condition_groups[i];
-        // console.log(`\n  GROUP ${i + 1}: ${group.group_name}`);
-        // console.log(`  Group operator: ${group.group_operator}`);
-        // console.log(`  Conditions in group: ${group.conditions?.length || 0}`);
-
-        if (!group.conditions || group.conditions.length === 0) {
-          // console.log(`  WARNING: Group has no conditions, treating as FALSE`);
-          groupResults.push({ group, result: false });
-          continue;
-        }
-
-        let groupResult = group.group_operator === 'AND' ? true : false;
-
-        for (let j = 0; j < group.conditions.length; j++) {
-          const condition = group.conditions[j];
-          const conditionMet = evaluateSingleCondition(condition);
-
-          if (group.group_operator === 'AND') {
-            groupResult = groupResult && conditionMet;
-            if (!groupResult) break;
-          } else {
-            groupResult = groupResult || conditionMet;
-            if (groupResult) break;
-          }
-        }
-
-        // console.log(`  >>> Group ${i + 1} result: ${groupResult}`);
-        groupResults.push({ group, result: groupResult });
-      }
-
-      // console.log(`\n--- FIRST MATCH WINS LOGIC ---`);
-      for (let i = 0; i < groupResults.length; i++) {
-        const { group, result } = groupResults[i];
-        // console.log(`  Checking Group ${i + 1} (${group.group_name}): ${result ? 'TRUE ✅' : 'FALSE ❌'}`);
-
-        if (result === true) {
-          // console.log(`  🎯 FIRST MATCH FOUND! Using Group ${i + 1}'s TRUE path`);
-          // console.log(`  >>> RETURNING STEP: ${group.true_step}`);
-          // console.log('========== END CONDITIONAL LOGIC ==========\n');
-          return group.true_step;
-        }
-      }
-
-      // console.log(`  ⚠️ NO GROUPS MATCHED`);
-      const fallbackStep = logic.overall_false_step ||
-                           groupResults[groupResults.length - 1]?.group.false_step ||
-                           groupResults[0]?.group.false_step;
-      // console.log(`  >>> RETURNING FALLBACK STEP: ${fallbackStep}`);
-      // console.log('========== END CONDITIONAL LOGIC ==========\n');
-      return fallbackStep;
-    }
-
-    // console.log('\n--- EVALUATING LEGACY CONDITIONS ---');
-    if (!logic?.conditions || logic.conditions.length === 0) {
-      // console.log('No conditions found, returning false');
-      return false;
-    }
-
-    if (logic.trigger_field && logic.trigger_value) {
-      const triggerAnswer = currentAnswers[logic.trigger_field];
-      if (String(triggerAnswer) !== String(logic.trigger_value)) {
-        // console.log('Trigger condition not met, returning false');
-        return false;
-      }
-    }
-
-    let result = true;
-
-    logic.conditions.forEach((condition, idx) => {
-      const conditionMet = evaluateSingleCondition(condition);
-
-      if (idx === 0) {
-        result = conditionMet;
-      } else {
-        const prevLogicOp = logic.conditions[idx - 1]?.logic_operator || "AND";
-        // console.log(`Combining with previous result using ${prevLogicOp}: ${result} ${prevLogicOp} ${conditionMet}`);
-        if (prevLogicOp === "AND") {
-          result = result && conditionMet;
-        } else if (prevLogicOp === "OR") {
-          result = result || conditionMet;
-        }
-      }
-    });
-
-    // console.log(`Final conditional logic result:`, result);
-    // console.log('========== END CONDITIONAL LOGIC ==========\n');
-    return result;
+  // Wrapper to use extracted utility function
+  const evaluateConditionalLogicWrapper = (logic, currentAnswers) => {
+    return evaluateConditionalLogic(logic, currentAnswers, evaluateSingleConditionWrapper);
   };
 
   const stepMap = {};
@@ -1003,81 +814,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     });
   }
 
-  const isActionNode = (step) => {
-    if (!step) return false;
-
-    // console.log(`\n🔍 [isActionNode] Checking step: "${step.step_title}"`);
-    // console.log(`   Question Type: ${step.question_type}`);
-    // console.log(`   Has conditional_logic:`, !!step.conditional_logic);
-    // console.log(`   Full conditional_logic:`, JSON.stringify(step.conditional_logic, null, 2));
-
-    const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input", "beneficiary_input", "controlling_person_input"];
-    if (inputTypes.includes(step.question_type)) {
-      // console.log(`   ✓ Is input type: ${step.question_type}`);
-      if (step.default_next_step) {
-        // console.log(`   ✓ Has default_next_step: ${step.default_next_step} → NOT action node`);
-        return false;
-      }
-      if (step.question_type === "text_input") {
-        // console.log(`   ✓ Is text_input without default_next_step → IS action node`);
-        return true;
-      }
-      // console.log(`   ✓ Is input type without default_next_step → NOT action node`);
-      return false;
-    }
-
-    if (step.question_type === "multiple_choice" && step.conditional_logic?.option_values?.length > 0) {
-      // console.log(`   ✓ Multiple choice with option_values branching`);
-      // console.log(`     option_values:`, step.conditional_logic.option_values);
-      // console.log(`     option_values_next_step:`, step.conditional_logic.option_values_next_step);
-      // console.log(`     option_values_else_step:`, step.conditional_logic.option_values_else_step);
-      if (step.conditional_logic.option_values_next_step || step.conditional_logic.option_values_else_step) {
-        // console.log(`   → Has option-based branching paths → NOT action node`);
-        return false;
-      }
-    }
-
-    if (step.question_type === "multiple_choice") {
-      // console.log(`   ✓ Checking multiple choice selection count branching`);
-      // console.log(`     selection_count_operator:`, step.conditional_logic?.selection_count_operator);
-      // console.log(`     selection_count_value:`, step.conditional_logic?.selection_count_value);
-      // console.log(`     selection_count_next_step:`, step.conditional_logic?.selection_count_next_step);
-      // console.log(`     selection_count_else_step:`, step.conditional_logic?.selection_count_else_step);
-      if (step.conditional_logic?.selection_count_next_step || step.conditional_logic?.selection_count_else_step) {
-        // console.log(`   → Has selection count branching paths → NOT action node`);
-        return false;
-      }
-    }
-
-    if (step.conditional_logic?.multi_choice_routing_groups?.length > 0) {
-      // console.log(`   ✓ Has multi_choice_routing_groups (${step.conditional_logic.multi_choice_routing_groups.length} groups) → NOT action node`);
-      return false;
-    }
-
-    if (step.conditional_logic?.condition_groups?.length > 0) {
-      // console.log(`   ✓ Has condition_groups (${step.conditional_logic.condition_groups.length} groups) → NOT action node`);
-      return false;
-    }
-
-    if (step.conditional_logic?.conditions?.length > 0) {
-      // console.log(`   ✓ Has legacy conditions (${step.conditional_logic.conditions.length} conditions)`);
-      if (step.conditional_logic.next_step || step.conditional_logic.else_step) {
-        // console.log(`   → Has conditional logic paths → NOT action node`);
-        return false;
-      }
-    }
-
-    // console.log(`   Checking options: ${step.options?.length || 0} options`);
-    if (!step.options || step.options.length === 0) {
-      // console.log(`   → No options → IS action node`);
-      return true;
-    }
-
-    const hasOptionNextSteps = step.options.some(opt => opt.next_step);
-    // console.log(`   Options have next_step:`, hasOptionNextSteps);
-    // console.log(`   → Final result: ${!hasOptionNextSteps ? 'IS action node' : 'NOT action node'}`);
-    return !hasOptionNextSteps;
-  };
+  // Use extracted utility function directly
+  // (isActionNode is now imported from workflowNavigationUtils)
 
   const handleNext = async () => {
     // console.log('\n\n🔵🔵🔵 ========== ACCOUNT CLASSIFICATION - HANDLE NEXT ========== 🔵🔵🔵');
@@ -1265,7 +1003,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }
             // console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
-            conditionMet = evaluateSingleCondition(condition);
+            conditionMet = evaluateSingleConditionWrapper(condition);
             // console.log(`      - Field comparison: ${conditionMet}`);
           }
           
@@ -1384,7 +1122,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (shouldEvaluateAdvancedLogic) {
         if (logic.condition_groups?.length > 0) {
           // console.log('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
-          nextNodeId = evaluateConditionalLogic(logic, newAnswers);
+          nextNodeId = evaluateConditionalLogicWrapper(logic, newAnswers);
           // console.log(`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
 
           if (nextNodeId) {
@@ -1399,7 +1137,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
         else if (logic.conditions?.length > 0) {
           // console.log('\n📋 Using LEGACY simple conditions logic');
-          const conditionMet = evaluateConditionalLogic(logic, newAnswers);
+          const conditionMet = evaluateConditionalLogicWrapper(logic, newAnswers);
           // console.log(`  Condition Met: ${conditionMet}`);
           if (conditionMet) {
             nextNodeId = logic.next_step;
