@@ -38,9 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import MultiFieldEditor from "./MultiFieldEditor";
 import OutcomeRulesConfig from "./OutcomeRulesConfig";
-import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
-import MultiChoiceRoutingBuilder from "./MultiChoiceRoutingBuilder";
-import SelectionCountBranching from "./SelectionCountBranching";
+import StepEditorComponent from "./StepEditor";
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   // Ensure all steps have default_next_step and conditional_logic.conditions.value_type initialized from saved data
@@ -904,7 +902,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
             <DialogTitle>Edit Step: {selectedStep?.step_title}</DialogTitle>
           </DialogHeader>
           {selectedStep && (
-            <StepEditor
+            <StepEditorComponent
               key={`step-editor-${selectedStep.step_id}`}
               step={steps.find(s => s.step_id === selectedStep.step_id) || selectedStep}
               allSteps={steps}
@@ -918,193 +916,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   );
 }
 
-// Helper function to determine the field type of a workflow question
-const getQuestionFieldType = (questionType) => {
-  switch (questionType) {
-    case 'yes_no': return 'boolean';
-    case 'text_input':
-    case 'single_choice':
-    case 'multiple_choice': return 'string'; 
-    case 'number_input': return 'number';
-    case 'date_input': return 'date';
-    case 'address_input': return 'object'; // Address input is an object with sub-fields
-    default: return null;
-  }
-};
 
-
-
-const ACCOUNT_FIELDS_SCHEMA = [
-  { value: "account_number", label: "Account Number", type: "string" },
-  { value: "account_creation_date", label: "Account Creation Date", type: "date" },
-  { value: "account_type", label: "Account Type", type: "enum" },
-  { value: "account_holder_entity_type", label: "Account Holder Entity Type", type: "string" },
-  { value: "account_holder_type", label: "Account Holder Type", type: "enum" },
-  { value: "account_holder_name", label: "Account Holder Name", type: "string" },
-  { value: "first_name", label: "First Name", type: "string" },
-  { value: "last_name", label: "Last Name", type: "string" },
-  { value: "date_of_birth", label: "Date of Birth", type: "date" },
-  { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true },
-  { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean" },
-  { value: "account_holder_is_alive", label: "Account Holder Is Alive", type: "boolean" },
-  { value: "account_holder_deceased_during_period", label: "Account Holder Deceased During Period", type: "boolean" },
-  { value: "death_certificate_requested", label: "Death Certificate Requested", type: "boolean" },
-  { value: "death_certificate_received", label: "Death Certificate Received", type: "boolean" },
-  { value: "will_or_inheritance_requested", label: "Will or Inheritance Requested", type: "boolean" },
-  { value: "will_or_inheritance_received", label: "Will or Inheritance Received", type: "boolean" },
-  { value: "legacy_of_deceased_settled", label: "Legacy of Deceased Settled", type: "boolean" },
-  { value: "entity_managed_by_fiduciary_trust", label: "Entity Managed by Fiduciary Trust", type: "boolean" },
-  { value: "entity_managed_by_asset_manager", label: "Entity Managed by Asset Manager", type: "boolean" },
-  { value: "gross_income_from_financial_assets", label: "Gross Income From Financial Assets", type: "boolean" },
-  { value: "account_closed_during_period", label: "Account Closed During Period", type: "boolean" },
-  { value: "current_address.street", label: "Current Address - Street", type: "string" },
-  { value: "current_address.city", label: "Current Address - City", type: "string" },
-  { value: "current_address.state", label: "Current Address - State", type: "string" },
-  { value: "current_address.postal_code", label: "Current Address - Postal Code", type: "string" },
-  { value: "current_address.country", label: "Current Address - Country", type: "string", isCountry: true },
-  { value: "account_holder_address.street", label: "Account Holder Address - Street", type: "string" },
-  { value: "account_holder_address.city", label: "Account Holder Address - City", type: "string" },
-  { value: "account_holder_address.state", label: "Account Holder Address - State", type: "string" },
-  { value: "account_holder_address.postal_code", label: "Account Holder Address - Postal Code", type: "string" },
-  { value: "account_holder_address.country", label: "Account Holder Address - Country", type: "string", isCountry: true },
-  { value: "country_of_residence", label: "Country of Residence", type: "string", isCountry: true },
-  { value: "current_email", label: "Current Email", type: "string" },
-  { value: "current_phone", label: "Current Phone", type: "string" },
-  { value: "entity_classification", label: "Entity Classification", type: "enum" },
-  { value: "year_end_cash_value", label: "Year End Cash Value", type: "number" },
-  { value: "year_end_cash_value_currency", label: "Year End Cash Value Currency", type: "string" },
-  { value: "gross_payments", label: "Gross Payments", type: "number" },
-  { value: "gross_payments_currency", label: "Gross Payments Currency", type: "string" },
-  { value: "reporting_year", label: "Reporting Year", type: "string" },
-  { value: "reportability_status", label: "Reportability Status", type: "enum" },
-  { value: "reportability_reason", label: "Reportability Reason", type: "string" },
-  { value: "us_person_indic", label: "US Person Indicia", type: "boolean" },
-  { value: "self_certification_obtained", label: "Self-Certification Obtained", type: "boolean" },
-  { value: "self_certification_date", label: "Self-Certification Date", type: "date" },
-  { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date" },
-  { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean" },
-  { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean" },
-  { value: "status", label: "Account Status", type: "enum" }
-];
-
-const ENTITY_FIELDS_SCHEMA = [
-  { value: "entity_name", label: "Entity Name", type: "string" },
-  { value: "entity_type", label: "Entity Type", type: "enum" },
-  { value: "country_of_incorporation", label: "Country of Incorporation", type: "string", isCountry: true },
-  { value: "tax_id", label: "Tax ID", type: "string" },
-  { value: "giin", label: "GIIN", type: "string" },
-  { value: "rfi_status", label: "RFI Status", type: "enum" },
-  { value: "fi_type", label: "FI Type", type: "enum" },
-  { value: "non_reporting_reason", label: "Non-Reporting Reason", type: "string" },
-  { value: "classification_completed_date", label: "Classification Completed Date", type: "date" },
-  { value: "address.street", label: "Address - Street", type: "string" },
-  { value: "address.city", label: "Address - City", type: "string" },
-  { value: "address.state", label: "Address - State", type: "string" },
-  { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
-  { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
-  { value: "status", label: "Entity Status", type: "enum" }
-];
-
-const CONTROLLING_PERSON_FIELDS_SCHEMA = [
-  { value: "first_name", label: "First Name", type: "string" },
-  { value: "last_name", label: "Last Name", type: "string" },
-  { value: "full_name", label: "Full Name", type: "string" },
-  { value: "date_of_birth", label: "Date of Birth", type: "date" },
-  { value: "address.street", label: "Address - Street", type: "string" },
-  { value: "address.city", label: "Address - City", type: "string" },
-  { value: "address.state", label: "Address - State", type: "string" },
-  { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
-  { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
-  { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true },
-  { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
-  { value: "control_type", label: "Control Type", type: "enum" },
-  { value: "ownership_percentage", label: "Ownership Percentage", type: "number" },
-  { value: "is_reportable", label: "Is Reportable", type: "boolean" },
-  { value: "us_person_indic", label: "US Person Indicator", type: "boolean" },
-  { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date" },
-  { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean" }
-];
-
-const BENEFICIARY_FIELDS_SCHEMA = [
-  { value: "first_name", label: "First Name", type: "string" },
-  { value: "last_name", label: "Last Name", type: "string" },
-  { value: "full_name", label: "Full Name", type: "string" },
-  { value: "date_of_birth", label: "Date of Birth", type: "date" },
-  { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true },
-  { value: "address.street", label: "Address - Street", type: "string" },
-  { value: "address.city", label: "Address - City", type: "string" },
-  { value: "address.state", label: "Address - State", type: "string" },
-  { value: "address.postal_code", label: "Address - Postal Code", type: "string" },
-  { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
-  { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true },
-  { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
-  { value: "reportability_status", label: "Reportability Status", type: "enum" },
-  { value: "reportability_reason", label: "Reportability Reason", type: "string" }
-];
-
-// Helper function to get fields for a target entity type
-const getFieldsForEntity = (entityType) => {
-  let schema;
-  switch (entityType) {
-    case "Entity":
-      schema = ENTITY_FIELDS_SCHEMA;
-      break;
-    case "Account":
-      schema = ACCOUNT_FIELDS_SCHEMA;
-      break;
-    case "ControllingPerson":
-      schema = CONTROLLING_PERSON_FIELDS_SCHEMA;
-      break;
-    case "Beneficiary":
-      schema = BENEFICIARY_FIELDS_SCHEMA;
-      break;
-    default:
-      schema = ACCOUNT_FIELDS_SCHEMA;
-  }
-  // Convert array format back to object format for backwards compatibility
-  return schema.reduce((acc, field) => {
-    acc[field.value] = { label: field.label, type: field.type };
-    return acc;
-  }, {});
-};
-
-// Helper function to get suggested values for a field - now using ReferencedData
-const getSuggestedValuesForField = (entityType, fieldName, referencedDataList = []) => {
-  // First, check ReferencedData for this field
-  const referencedOptions = referencedDataList.filter(rd => 
-    rd.entity_name === entityType && rd.field_name === fieldName
-  );
-  
-  if (referencedOptions.length > 0) {
-    // Sort by order and return
-    return referencedOptions
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(rd => ({
-        value: rd.value,
-        label: rd.label
-      }));
-  }
-
-  // Fallback to hardcoded schema if no ReferencedData found
-  const schema = getFieldsForEntity(entityType);
-  const field = schema[fieldName];
-  if (field?.enum) {
-    return field.enum.map(val => ({
-      value: val,
-      label: val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-    }));
-  }
-  if (field?.type === "boolean") {
-    return [
-      { value: "true", label: "True" },
-      { value: "false", label: "False" }
-    ];
-  }
-  return null; // No suggestions - free text input
-};
-
-// Step Editor Component
-function StepEditor({ step, allSteps, onUpdate, onClose }) {
   // Ensure all conditions have value_type defaulted and option_values is always an array
   const normalizedConditionalLogic = step.conditional_logic ? {
     ...step.conditional_logic,
@@ -2828,16 +2640,3 @@ function StepEditor({ step, allSteps, onUpdate, onClose }) {
           </div>
         )}
       </div>
-
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4 mr-2" />
-          Save Step
-        </Button>
-      </div>
-    </div>
-  );
-}

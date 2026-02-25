@@ -210,9 +210,22 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
     // CRITICAL FIX: Default selection_count_operator to "=" if using selection count but operator is null
     const finalConditionalLogic = { ...editedStep.conditional_logic };
     
-    if (finalConditionalLogic.use_selection_count && !finalConditionalLogic.selection_count_operator) {
-      console.log(`[StepEditor] 🔧 FIXING: use_selection_count is true but operator is null, defaulting to "="`);
-      finalConditionalLogic.selection_count_operator = "=";
+    // Auto-detect if selection count is being used
+    const hasSelectionCountConfig = !!(
+      finalConditionalLogic.selection_count_next_step || 
+      finalConditionalLogic.selection_count_else_step ||
+      (finalConditionalLogic.selection_count_value !== undefined && finalConditionalLogic.selection_count_value !== null)
+    );
+    
+    if (hasSelectionCountConfig) {
+      // Ensure use_selection_count is true
+      finalConditionalLogic.use_selection_count = true;
+      
+      // Default operator to "=" if not set
+      if (!finalConditionalLogic.selection_count_operator) {
+        console.log(`[StepEditor] 🔧 FIXING: Selection count configured but operator is null, defaulting to "="`);
+        finalConditionalLogic.selection_count_operator = "=";
+      }
     }
     
     const finalStep = {
