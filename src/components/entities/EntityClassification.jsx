@@ -259,13 +259,71 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     console.log('Has conditional_logic:', !!currentNode.conditional_logic);
     console.log('Full conditional_logic:', JSON.stringify(currentNode.conditional_logic, null, 2));
 
-    // Check for "By Selected Options" logic (for multiple choice questions)
-    console.log('Checking option_values logic...');
-    console.log('Question type:', currentNode.question_type);
-    console.log('Has option_values:', !!currentNode.conditional_logic?.option_values);
-    console.log('option_values:', currentNode.conditional_logic?.option_values);
+    // Multi-choice routing groups - advanced branching for multiple choice questions
+    if (!nextNodeId && currentNode.question_type === "multiple_choice" &&
+        currentNode.conditional_logic?.multi_choice_routing_groups?.length > 0) {
+      console.log('🔀 [MULTI-CHOICE ROUTING GROUPS] Found routing groups');
+      const selectedOptions = Array.isArray(newAnswers[currentNodeId]) ? newAnswers[currentNodeId] : [];
+      console.log('   Selected options:', selectedOptions);
+      
+      for (const group of currentNode.conditional_logic.multi_choice_routing_groups) {
+        console.log(`   📋 Evaluating group: ${group.group_name || group.group_id}`);
+        let groupMatches = group.group_operator === 'AND';
+        
+        for (const condition of group.conditions) {
+          let conditionMet = false;
+          
+          if (condition.condition_type === 'selected_options') {
+            conditionMet = selectedOptions.some(selectedOpt => condition.option_values?.includes(selectedOpt));
+            console.log(`      - Selected options check: ${conditionMet}`);
+          } else if (condition.condition_type === 'selection_count') {
+            const count = selectedOptions.length;
+            switch (condition.count_operator) {
+              case '=': conditionMet = count === condition.count_value; break;
+              case '!=': conditionMet = count !== condition.count_value; break;
+              case '>': conditionMet = count > condition.count_value; break;
+              case '<': conditionMet = count < condition.count_value; break;
+              case '>=': conditionMet = count >= condition.count_value; break;
+              case '<=': conditionMet = count <= condition.count_value; break;
+            }
+            console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
+          } else if (condition.condition_type === 'field_comparison') {
+            conditionMet = await evaluateSingleCondition(condition, newAnswers);
+            console.log(`      - Field comparison: ${conditionMet}`);
+          }
+          
+          if (group.group_operator === 'AND') {
+            groupMatches = groupMatches && conditionMet;
+            if (!groupMatches) break;
+          } else {
+            groupMatches = groupMatches || conditionMet;
+            if (groupMatches) break;
+          }
+        }
+        
+        if (groupMatches) {
+          console.log(`   ✅ Group matched! Navigating to: ${group.next_step}`);
+          nextNodeId = group.next_step;
+          break;
+        }
+      }
+      
+      // If no groups matched, check for false_step on last evaluated group or use default
+      if (!nextNodeId) {
+        console.log('   ⚠️ No routing groups matched');
+        const lastGroup = currentNode.conditional_logic.multi_choice_routing_groups[currentNode.conditional_logic.multi_choice_routing_groups.length - 1];
+        if (lastGroup?.false_step) {
+          console.log(`   → Using last group's false_step: ${lastGroup.false_step}`);
+          nextNodeId = lastGroup.false_step;
+        } else if (currentNode.conditional_logic.multi_choice_default_step) {
+          console.log(`   → Using default step: ${currentNode.conditional_logic.multi_choice_default_step}`);
+          nextNodeId = currentNode.conditional_logic.multi_choice_default_step;
+        }
+      }
+    }
     
-    if (currentNode.question_type === "multiple_choice" && 
+    // Check for "By Selected Options" logic (for multiple choice questions)
+    if (!nextNodeId && currentNode.question_type === "multiple_choice" && 
         currentNode.conditional_logic?.option_values?.length > 0 &&
         (currentNode.conditional_logic?.option_values_next_step || currentNode.conditional_logic?.option_values_else_step)) {
       console.log('✅ ENTERED option_values logic block');
