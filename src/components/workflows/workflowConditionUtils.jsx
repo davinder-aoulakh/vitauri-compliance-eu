@@ -183,20 +183,25 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
       groupResults.push({ group, result: groupResult });
     }
 
-    // First match wins logic
+    // First match wins logic - return the first group's result immediately
     console.log('\n🏁 [FINAL DECISION] First Match Wins:');
     for (let i = 0; i < groupResults.length; i++) {
       const { group, result } = groupResults[i];
 
       if (result === true) {
-        console.log(`  ✅ Group ${i + 1} matched! Returning: ${group.true_step}`);
+        console.log(`  ✅ Group ${i + 1} TRUE → Returning: ${group.true_step}`);
         console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
         return group.true_step;
+      } else if (group.false_step) {
+        // First group's false result wins - don't check remaining groups
+        console.log(`  ❌ Group ${i + 1} FALSE → Returning: ${group.false_step}`);
+        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
+        return group.false_step;
       }
     }
 
-    // No groups matched - return fallback
-    console.log('  ❌ No groups matched, using fallback...');
+    // No groups had false_step defined - use fallback
+    console.log('  ⚠️ No group had false_step, using fallback...');
     const fallbackStep = logic.overall_false_step ||
                          groupResults[groupResults.length - 1]?.group.false_step ||
                          groupResults[0]?.group.false_step;
