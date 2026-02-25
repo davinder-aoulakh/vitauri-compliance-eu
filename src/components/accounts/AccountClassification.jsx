@@ -157,7 +157,7 @@ console.log('  Entity Data:', entityData);
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
 
-  (`    🔎 Getting field value for: "${fieldPath}"`);
+console.log(`    🔎 Getting field value for: "${fieldPath}"`);
 
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
@@ -166,23 +166,23 @@ console.log('  Entity Data:', entityData);
           value = value?.[part];
           if (value === undefined) return null;
         }
-    (`      → Account nested field value: "${value}"`);
+console.log(`      → Account nested field value: "${value}"`);
         return value;
       }
 
       // Check account data first
       if (accountData?.[fieldPath] !== undefined) {
-    (`      → Account field value: "${accountData[fieldPath]}"`);
+console.log(`      → Account field value: "${accountData[fieldPath]}"`);
         return accountData[fieldPath];
       }
 
-      // Check entity data for entity-specific fields
-      if (entityData?.[fieldPath] !== undefined) {
-    (`      → Entity field value: "${entityData[fieldPath]}"`);
+      // Check entity data ONLY if this is an entity account
+      if (accountData?.account_holder_type === "entity" && entityData?.[fieldPath] !== undefined) {
+console.log(`      → Entity field value: "${entityData[fieldPath]}"`);
         return entityData[fieldPath];
       }
 
-  (`      → Field not found in account or entity`);
+console.log(`      → Field not found (account_holder_type: ${accountData?.account_holder_type})`);
       return null;
     };
 
