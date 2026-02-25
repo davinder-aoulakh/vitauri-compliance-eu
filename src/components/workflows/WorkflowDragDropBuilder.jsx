@@ -2598,45 +2598,23 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                                 <Checkbox
                                   id={`prefill-opt-${idx}`}
                                   checked={editedStep.mapped_field?.prefill_config?.match_values?.includes(opt.value) || false}
-                                  onCheckedChange={(checked) => {
-                                    const currentValues = editedStep.mapped_field?.prefill_config?.match_values || [];
-                                    const newValues = checked 
-                                      ? [...currentValues, opt.value]
-                                      : currentValues.filter(v => v !== opt.value);
-                                    handleMappedFieldChange("prefill_config", {
-                                      ...editedStep.mapped_field.prefill_config,
-                                      match_values: newValues
-                                    });
-                                  }}
-                                />
-                                <Label htmlFor={`prefill-opt-${idx}`} className="text-xs cursor-pointer">
-                                  {opt.label}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                          {editedStep.mapped_field?.prefill_config?.match_values?.length > 0 && (
-                            <Alert className="bg-blue-50 border-blue-200 mt-3">
-                              <Info className="w-4 h-4 text-blue-600" />
-                              <AlertDescription className="text-xs text-blue-900">
-                                Pre-fill rule: Answer as <strong>YES</strong> if field value is <strong>{editedStep.mapped_field.prefill_config.match_values.join(', ')}</strong>, otherwise <strong>NO</strong>
-                              </AlertDescription>
-                            </Alert>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else {
-                  // No dropdown options - not eligible for prefill rules
-                  return (
-                    <p className="text-xs text-slate-500 italic">
-                      Pre-fill rules are only available for dropdown/enum fields
-                    </p>
-                  );
-                }
-              })()}
-            </div>
-          </div>
-        )}
-      </div>
+                                  {/* Step Editor Dialog */}
+                                  <Dialog open={showStepEditor} onOpenChange={setShowStepEditor}>
+                                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+                                      <DialogHeader>
+                                        <DialogTitle>Edit Step: {selectedStep?.step_title}</DialogTitle>
+                                      </DialogHeader>
+                                      {selectedStep && (
+                                        <StepEditorComponent
+                                          key={`step-editor-${selectedStep.step_id}`}
+                                          step={steps.find(s => s.step_id === selectedStep.step_id) || selectedStep}
+                                          allSteps={steps}
+                                          onUpdate={handleUpdateStep}
+                                          onClose={() => setShowStepEditor(false)}
+                                        />
+                                      )}
+                                    </DialogContent>
+                                  </Dialog>
+                                  </div>
+                                  );
+                                  }
