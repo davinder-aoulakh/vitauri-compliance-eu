@@ -75,7 +75,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   useEffect(() => {
     const handleAccountUpdate = (event) => {
-      // console.log('[ACCOUNT UPDATE EVENT] Received:', event.detail);
+
       refetchAccount();
     };
 
@@ -135,13 +135,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
   });
 
   const evaluateTriggerConditions = (triggerConfig, accountData, entityData = null) => {
-    // console.log('\n🔍 [TRIGGER EVALUATION] Starting...');
-    // console.log('  Trigger Config:', triggerConfig);
-    // console.log('  Account Data:', accountData);
-    // console.log('  Entity Data:', entityData);
+('\n🔍 [TRIGGER EVALUATION] Starting...');
+('  Trigger Config:', triggerConfig);
+('  Account Data:', accountData);
+('  Entity Data:', entityData);
     
     if (!triggerConfig?.enabled) {
-      // console.log('  ❌ Trigger not enabled');
+  ('  ❌ Trigger not enabled');
       return false;
     }
 
@@ -149,14 +149,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const computedConditions = triggerConfig.computed_conditions || [];
 
     if (conditions.length === 0 && computedConditions.length === 0) {
-      // console.log('  ✅ No conditions - auto-match');
+  ('  ✅ No conditions - auto-match');
       return true;
     }
 
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
 
-      // console.log(`    🔎 Getting field value for: "${fieldPath}"`);
+  (`    🔎 Getting field value for: "${fieldPath}"`);
 
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
@@ -165,23 +165,23 @@ export default function AccountClassification({ account, onComplete, onCancel })
           value = value?.[part];
           if (value === undefined) return null;
         }
-        // console.log(`      → Account nested field value: "${value}"`);
+    (`      → Account nested field value: "${value}"`);
         return value;
       }
 
       // Check account data first
       if (accountData?.[fieldPath] !== undefined) {
-        // console.log(`      → Account field value: "${accountData[fieldPath]}"`);
+    (`      → Account field value: "${accountData[fieldPath]}"`);
         return accountData[fieldPath];
       }
 
       // Check entity data for entity-specific fields
       if (entityData?.[fieldPath] !== undefined) {
-        // console.log(`      → Entity field value: "${entityData[fieldPath]}"`);
+    (`      → Entity field value: "${entityData[fieldPath]}"`);
         return entityData[fieldPath];
       }
 
-      // console.log(`      → Field not found in account or entity`);
+  (`      → Field not found in account or entity`);
       return null;
     };
 
@@ -238,9 +238,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       const normalizedComparisonValue = comparisonValueRefData?.label || comparisonValue;
 
-      // console.log(`    🔄 Enum normalization for "${fieldName}":`);
-      // console.log(`       Original field value: "${fieldValue}" → Normalized: "${normalizedFieldValue}"`);
-      // console.log(`       Original comparison value: "${comparisonValue}" → Normalized: "${normalizedComparisonValue}"`);
+  (`    🔄 Enum normalization for "${fieldName}":`);
+  (`       Original field value: "${fieldValue}" → Normalized: "${normalizedFieldValue}"`);
+  (`       Original comparison value: "${comparisonValue}" → Normalized: "${normalizedComparisonValue}"`);
 
       return { 
         fieldValue: normalizedFieldValue, 
@@ -251,20 +251,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let result = null;
     let currentAndGroup = [];
 
-    // console.log(`\n  📊 [CONDITION EVALUATION] Processing ${conditions.length} condition(s):`);
+(`\n  📊 [CONDITION EVALUATION] Processing ${conditions.length} condition(s):`);
     
     // Group conditions by AND/OR operators to properly handle precedence
     // AND has higher precedence than OR, so we evaluate AND groups first
     for (let idx = 0; idx < conditions.length; idx++) {
       const condition = conditions[idx];
-      // console.log(`\n  🔹 Condition ${idx + 1}/${conditions.length}:`);
-      // console.log(`     Field: "${condition.field}"`);
-      // console.log(`     Operator: "${condition.operator}"`);
-      // console.log(`     Expected Value: "${condition.value}"`);
-      // console.log(`     Logic Operator: "${condition.logic_operator}"`);
+  (`\n  🔹 Condition ${idx + 1}/${conditions.length}:`);
+  (`     Field: "${condition.field}"`);
+  (`     Operator: "${condition.operator}"`);
+  (`     Expected Value: "${condition.value}"`);
+  (`     Logic Operator: "${condition.logic_operator}"`);
       
       const fieldValue = getFieldValue(condition.field);
-      // console.log(`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
+  (`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
       
       // Normalize enum values for comparison
       const { fieldValue: normalizedFieldValue, comparisonValue: normalizedComparisonValue } = 
@@ -275,81 +275,81 @@ export default function AccountClassification({ account, onComplete, onCancel })
       switch (condition.operator) {
         case "equals":
           conditionMet = String(normalizedFieldValue).toLowerCase() === String(normalizedComparisonValue).toLowerCase();
-          // console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
+      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "not_equals":
           conditionMet = String(normalizedFieldValue).toLowerCase() !== String(normalizedComparisonValue).toLowerCase();
-          // console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" !== "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
+      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" !== "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "greater_than":
         case ">":
           conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
-          // console.log(`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(comparisonValue)} = ${conditionMet}`);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "less_than":
         case "<":
           conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
-          // console.log(`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(comparisonValue)} = ${conditionMet}`);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "greater_than_or_equal":
         case ">=":
           conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
-          // console.log(`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(comparisonValue)} = ${conditionMet}`);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "less_than_or_equal":
         case "<=":
           conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
-          // console.log(`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(comparisonValue)} = ${conditionMet}`);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "contains":
           conditionMet = String(normalizedFieldValue).toLowerCase().includes(String(normalizedComparisonValue).toLowerCase());
-          // console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" contains "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
+      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" contains "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "in":
           const inValues = String(normalizedComparisonValue).split(",").map(v => v.trim().toLowerCase());
           conditionMet = inValues.includes(String(normalizedFieldValue).toLowerCase());
-          // console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" in [${inValues.join(', ')}] = ${conditionMet}`);
+      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" in [${inValues.join(', ')}] = ${conditionMet}`);
           break;
         case "not_in":
           const notInValues = String(normalizedComparisonValue).split(",").map(v => v.trim().toLowerCase());
           conditionMet = !notInValues.includes(String(normalizedFieldValue).toLowerCase());
-          // console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" not in [${notInValues.join(', ')}] = ${conditionMet}`);
+      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" not in [${notInValues.join(', ')}] = ${conditionMet}`);
           break;
         default:
           conditionMet = false;
-          // console.log(`     ⚠️ Unknown operator: ${condition.operator}`);
+      (`     ⚠️ Unknown operator: ${condition.operator}`);
       }
 
-      // console.log(`     ✅ Condition Result: ${conditionMet}`);
+  (`     ✅ Condition Result: ${conditionMet}`);
       currentAndGroup.push(conditionMet);
 
       // Check if we need to evaluate the current AND group
       const isLastCondition = idx === conditions.length - 1;
       const nextOperator = !isLastCondition ? conditions[idx]?.logic_operator : null;
 
-      // console.log(`     🔗 Next Operator: ${nextOperator || '(none - last condition)'}`);
-      // console.log(`     📦 Current AND Group: [${currentAndGroup.join(', ')}]`);
+  (`     🔗 Next Operator: ${nextOperator || '(none - last condition)'}`);
+  (`     📦 Current AND Group: [${currentAndGroup.join(', ')}]`);
 
       if (nextOperator === "OR" || isLastCondition) {
         // Evaluate current AND group
         const andGroupResult = currentAndGroup.every(val => val === true);
-        // console.log(`     🎯 AND Group Result: ${andGroupResult} (all must be true)`);
+    (`     🎯 AND Group Result: ${andGroupResult} (all must be true)`);
         
         if (result === null) {
           result = andGroupResult;
-          // console.log(`     💾 Setting initial result: ${result}`);
+      (`     💾 Setting initial result: ${result}`);
         } else {
           const previousResult = result;
           result = result || andGroupResult;
-          // console.log(`     💾 OR combination: ${previousResult} OR ${andGroupResult} = ${result}`);
+      (`     💾 OR combination: ${previousResult} OR ${andGroupResult} = ${result}`);
         }
         
         currentAndGroup = [];
-        // console.log(`     🔄 Starting new AND group`);
+    (`     🔄 Starting new AND group`);
       }
     }
 
-    // console.log(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' : '❌ WORKFLOW DOES NOT MATCH'}\n`);
+(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' : '❌ WORKFLOW DOES NOT MATCH'}\n`);
 
     for (let idx = 0; idx < computedConditions.length; idx++) {
       const compCondition = computedConditions[idx];
@@ -392,7 +392,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             compResult = false;
         }
       } catch (error) {
-        // console.error("Error evaluating computed condition:", error);
+    ("Error evaluating computed condition:", error);
         compResult = false;
       }
 
@@ -421,30 +421,30 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (workflows.length > 0 && !workflow && account) {
       // Wait for entity data to load if this is an entity account
       if (account.entity_id && !linkedEntity) {
-        // console.log('⏳ [WORKFLOW SELECTION] Waiting for linked entity to load...');
+    ('⏳ [WORKFLOW SELECTION] Waiting for linked entity to load...');
         return;
       }
       
-      // console.log('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
-      // console.log('  Available workflows:', workflows.map(w => w.workflow_name));
-      // console.log('  Account holder type:', account?.account_holder_type);
-      // console.log('  Linked Entity:', linkedEntity);
+  ('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
+  ('  Available workflows:', workflows.map(w => w.workflow_name));
+  ('  Account holder type:', account?.account_holder_type);
+  ('  Linked Entity:', linkedEntity);
       
       const matchingWorkflows = workflows.filter(w => {
-        // console.log(`\n  📋 Evaluating workflow: "${w.workflow_name}"`);
+    (`\n  📋 Evaluating workflow: "${w.workflow_name}"`);
         if (w.trigger_conditions?.enabled) {
           const matches = evaluateTriggerConditions(w.trigger_conditions, account, linkedEntity);
-          // console.log(`    Result: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
+      (`    Result: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
           return matches;
         }
-        // console.log(`    ⏭️ No trigger conditions`);
+    (`    ⏭️ No trigger conditions`);
         return false;
       });
 
       let selectedWorkflow = null;
 
       if (matchingWorkflows.length > 0) {
-        // console.log(`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, matchingWorkflows.map(w => w.workflow_name));
+    (`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, matchingWorkflows.map(w => w.workflow_name));
         const sortedWorkflows = matchingWorkflows.sort((a, b) => {
           const priorityA = a.trigger_conditions?.priority || 0;
           const priorityB = b.trigger_conditions?.priority || 0;
@@ -452,9 +452,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
           return parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0");
         });
         selectedWorkflow = sortedWorkflows[0];
-        // console.log(`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_name}" (priority: ${selectedWorkflow.trigger_conditions?.priority || 0})`);
+    (`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_name}" (priority: ${selectedWorkflow.trigger_conditions?.priority || 0})`);
       } else {
-        // console.log(`\n  ⚠️ No workflows matched triggers - using fallback name matching`);
+    (`\n  ⚠️ No workflows matched triggers - using fallback name matching`);
         const isIndividual = account?.account_holder_type === "individual";
         const fallbackWorkflows = workflows.filter(w => {
           const nameMatch = isIndividual
@@ -472,13 +472,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       if (selectedWorkflow) {
-        // console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
+    (`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         setWorkflow(selectedWorkflow);
         if (selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
           setCurrentNodeId(selectedWorkflow.steps[0].step_id);
         }
       } else {
-        // console.log(`\n  ❌ No workflow selected`);
+    (`\n  ❌ No workflow selected`);
       }
     }
   }, [workflows, workflow, account, linkedEntity]);
@@ -489,8 +489,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const currentNode = stepMap[currentNodeId];
     const existingAnswer = answers[currentNodeId];
 
-    // console.log(`[AccountClassification] Current step changed to: ${currentNode?.step_title}`);
-    // console.log(`[AccountClassification] Existing answer for this step:`, existingAnswer);
+(`[AccountClassification] Current step changed to: ${currentNode?.step_title}`);
+(`[AccountClassification] Existing answer for this step:`, existingAnswer);
 
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       const { _address_config, ...savedAddress } = existingAnswer;
@@ -511,7 +511,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   useEffect(() => {
     if (account && !answers._account_data_loaded && workflow) {
       const currentAccount = latestAccountData || account;
-      // console.log('[PREFILL] Using account data:', currentAccount);
+  ('[PREFILL] Using account data:', currentAccount);
 
       const preFillAnswers = {
         _account_data_loaded: true,
@@ -524,7 +524,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         if (step.mapped_field?.entity_type === "Account" && step.mapped_field?.field_name) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = currentAccount[fieldName];
-          // console.log(`[PREFILL] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}"`);
+      (`[PREFILL] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}"`);
 
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
@@ -535,13 +535,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 const countryInfo = crsCountryMap[normalizedCountry];
                 if (countryInfo) {
                   preFillAnswers[step.step_id] = countryInfo.isCrs ? 'YES' : 'NO';
-                  // console.log(`[PREFILL] country_crs: ${fieldValue} -> ${countryInfo.isCrs ? 'YES' : 'NO'}`);
+              (`[PREFILL] country_crs: ${fieldValue} -> ${countryInfo.isCrs ? 'YES' : 'NO'}`);
                 }
               } else if (prefillType === 'enum_match') {
                 const matchValues = step.mapped_field.prefill_config.match_values || [];
                 const isMatch = matchValues.includes(String(fieldValue));
                 preFillAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
-                // console.log(`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
+            (`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
               }
             }
             else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
@@ -567,26 +567,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
           const fieldName = step.mapped_field.field_name;
           let fieldValue = linkedEntity[fieldName];
           
-          // console.log(`\n========== [PREFILL - ENTITY] DETAILED DEBUG ==========`);
-          // console.log(`Step Title: "${step.step_title}"`);
-          // console.log(`Step ID: "${step.step_id}"`);
-          // console.log(`Question Type: "${step.question_type}"`);
-          // console.log(`Mapped Field Name: "${fieldName}"`);
-          // console.log(`Entity Field Value (raw): "${fieldValue}" (type: ${typeof fieldValue})`);
-          // console.log(`Entity full data:`, linkedEntity);
-          // console.log(`Available dropdown options:`, step.options);
+      (`\n========== [PREFILL - ENTITY] DETAILED DEBUG ==========`);
+      (`Step Title: "${step.step_title}"`);
+      (`Step ID: "${step.step_id}"`);
+      (`Question Type: "${step.question_type}"`);
+      (`Mapped Field Name: "${fieldName}"`);
+      (`Entity Field Value (raw): "${fieldValue}" (type: ${typeof fieldValue})`);
+      (`Entity full data:`, linkedEntity);
+      (`Available dropdown options:`, step.options);
 
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-              // console.log(`[PREFILL - ENTITY] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
+          (`[PREFILL - ENTITY] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
             } else if (step.question_type === 'single_choice') {
               // Pre-fill dropdown - try matching by VALUE first, then by LABEL (case-insensitive)
               const stringValue = String(fieldValue);
               
-              // console.log(`[PREFILL - ENTITY] Single choice dropdown:`);
-              // console.log(`  Value to pre-fill: "${stringValue}"`);
-              // console.log(`  Checking against dropdown options:`);
+          (`[PREFILL - ENTITY] Single choice dropdown:`);
+          (`  Value to pre-fill: "${stringValue}"`);
+          (`  Checking against dropdown options:`);
               
               // First try exact value match
               let matchingOption = step.options?.find(opt => opt.value === stringValue);
@@ -601,15 +601,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
               step.options?.forEach(opt => {
                 const valueMatches = opt.value === stringValue;
                 const labelMatches = opt.label?.toLowerCase() === stringValue.toLowerCase();
-                // console.log(`    Option: value="${opt.value}", label="${opt.label}", valueMatch=${valueMatches}, labelMatch=${labelMatches}`);
+            (`    Option: value="${opt.value}", label="${opt.label}", valueMatch=${valueMatches}, labelMatch=${labelMatches}`);
               });
               
               if (matchingOption) {
                 preFillAnswers[step.step_id] = matchingOption.value;
-                // console.log(`  ✅ MATCH FOUND: Using option "${matchingOption.label}" (value: ${matchingOption.value})`);
+            (`  ✅ MATCH FOUND: Using option "${matchingOption.label}" (value: ${matchingOption.value})`);
               } else {
-                // console.log(`  ⚠️ NO MATCH FOUND! Entity value "${stringValue}" does not match any dropdown option values or labels`);
-                // console.log(`  Available options:`, step.options?.map(o => `${o.value}="${o.label}"`));
+            (`  ⚠️ NO MATCH FOUND! Entity value "${stringValue}" does not match any dropdown option values or labels`);
+            (`  Available options:`, step.options?.map(o => `${o.value}="${o.label}"`));
               }
             } else if (step.question_type === 'date_input') {
               preFillAnswers[step.step_id] = String(fieldValue);
@@ -619,9 +619,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
               preFillAnswers[step.step_id] = String(fieldValue);
             }
           } else {
-            // console.log(`  ⚠️ Field value is empty/null/undefined - NOT pre-filling`);
+        (`  ⚠️ Field value is empty/null/undefined - NOT pre-filling`);
           }
-          // console.log(`========== END DETAILED DEBUG ==========\n`);
+      (`========== END DETAILED DEBUG ==========\n`);
         }
 
         if (step.question_type === 'yes_no' && step.mapped_field?.field_name) {
@@ -658,7 +658,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
       });
 
-      // console.log('[PREFILL] Final pre-fill answers:', preFillAnswers);
+  ('[PREFILL] Final pre-fill answers:', preFillAnswers);
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
   }, [account, workflow, latestAccountData, crsCountryMap, linkedEntity]);
@@ -668,7 +668,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const currentUser = await base44.auth.me();
       setUser(currentUser);
     } catch (error) {
-      // console.error("Error loading user:", error);
+  ("Error loading user:", error);
     }
   };
 
@@ -726,10 +726,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     for (const action of actions) {
       try {
-        // console.log(`[POST-COMPLETION ACTION] Executing action:`, action);
+    (`[POST-COMPLETION ACTION] Executing action:`, action);
 
         if (action.target_entity_type !== "Account" || !account?.id) {
-          // console.warn(`[POST-COMPLETION ACTION] Unsupported target or no account ID:`, action.target_entity_type);
+      (`[POST-COMPLETION ACTION] Unsupported target or no account ID:`, action.target_entity_type);
           continue;
         }
 
@@ -744,7 +744,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           if (valueToUpdate === 'YES') valueToUpdate = true;
           if (valueToUpdate === 'NO') valueToUpdate = false;
         } else if (action.value_source === "from_workflow_outcome") {
-          // console.warn(`[POST-COMPLETION ACTION] from_workflow_outcome not available mid-workflow`);
+      (`[POST-COMPLETION ACTION] from_workflow_outcome not available mid-workflow`);
           continue;
         }
 
@@ -776,10 +776,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
               conditionMet = false;
           }
 
-          // console.log(`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
+      (`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
 
           if (!conditionMet) {
-            // console.log(`[POST-COMPLETION ACTION] Condition not met, skipping action`);
+        (`[POST-COMPLETION ACTION] Condition not met, skipping action`);
             continue;
           }
         }
@@ -787,17 +787,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const fieldToUpdate = action.field_to_update;
         const updateData = { [fieldToUpdate]: valueToUpdate };
 
-        // console.log(`[POST-COMPLETION ACTION] Updating Account.${fieldToUpdate} = "${valueToUpdate}"`);
-        // console.log(`[POST-COMPLETION ACTION] Update data:`, updateData);
+    (`[POST-COMPLETION ACTION] Updating Account.${fieldToUpdate} = "${valueToUpdate}"`);
+    (`[POST-COMPLETION ACTION] Update data:`, updateData);
 
         await base44.entities.Account.update(account.id, updateData);
 
-        // console.log(`[POST-COMPLETION ACTION] Successfully updated Account field: ${fieldToUpdate}`);
+    (`[POST-COMPLETION ACTION] Successfully updated Account field: ${fieldToUpdate}`);
 
         window.dispatchEvent(new CustomEvent('account-updated', { detail: { accountId: account.id, field: fieldToUpdate, value: valueToUpdate } }));
       } catch (error) {
-        // console.error(`[POST-COMPLETION ACTION] Error executing action:`, error);
-        // console.error(`[POST-COMPLETION ACTION] Error details:`, error.message);
+    (`[POST-COMPLETION ACTION] Error executing action:`, error);
+    (`[POST-COMPLETION ACTION] Error details:`, error.message);
       }
     }
   };
@@ -818,18 +818,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // (isActionNode is now imported from workflowNavigationUtils)
 
   const handleNext = async () => {
-    // console.log('\n\n🔵🔵🔵 ========== ACCOUNT CLASSIFICATION - HANDLE NEXT ========== 🔵🔵🔵');
-    // console.log(`📍 Current Node ID: ${currentNodeId}`);
+('\n\n🔵🔵🔵 ========== ACCOUNT CLASSIFICATION - HANDLE NEXT ========== 🔵🔵🔵');
+(`📍 Current Node ID: ${currentNodeId}`);
     const currentNode = stepMap[currentNodeId];
     if (!currentNode) {
-      // console.error('❌ Current node not found!');
+  ('❌ Current node not found!');
       return;
     }
 
-    // console.log(`📋 Step Title: ${currentNode.step_title}`);
-    // console.log(`❓ Question Type: ${currentNode.question_type}`);
-    // console.log(`📊 Selected Value:`, selectedValue);
-    // console.log(`📦 All Answers (before update):`, answers);
+(`📋 Step Title: ${currentNode.step_title}`);
+(`❓ Question Type: ${currentNode.question_type}`);
+(`📊 Selected Value:`, selectedValue);
+(`📦 All Answers (before update):`, answers);
 
     const newAnswers = { ...answers };
 
@@ -859,9 +859,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
         date_received: dateReceivedValue
       };
     } else if (currentNode.question_type === "multi_field_input") {
-      // console.log('\n📝 MULTI-FIELD INPUT VALIDATION:');
-      // console.log('  Multi-field values:', multiFieldValues);
-      // console.log('  Multi-field definitions:', currentNode.multi_fields);
+  ('\n📝 MULTI-FIELD INPUT VALIDATION:');
+  ('  Multi-field values:', multiFieldValues);
+  ('  Multi-field definitions:', currentNode.multi_fields);
 
       const errors = {};
       const multiFields = currentNode.multi_fields || [];
@@ -872,11 +872,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
           const condVis = field.conditional_visibility;
           const dependsOnValue = multiFieldValues[condVis.depends_on_field];
           isFieldVisible = String(dependsOnValue) === String(condVis.required_value);
-          // console.log(`  Field "${field.field_id}" conditional_visibility: depends_on="${condVis.depends_on_field}", required_value="${condVis.required_value}", current_value="${dependsOnValue}", visible=${isFieldVisible}`);
+      (`  Field "${field.field_id}" conditional_visibility: depends_on="${condVis.depends_on_field}", required_value="${condVis.required_value}", current_value="${dependsOnValue}", visible=${isFieldVisible}`);
         }
 
         if (!isFieldVisible) {
-          // console.log(`  Field "${field.field_id}" is hidden by conditional_visibility, skipping validation ⏭️`);
+      (`  Field "${field.field_id}" is hidden by conditional_visibility, skipping validation ⏭️`);
           return;
         }
 
@@ -886,34 +886,34 @@ export default function AccountClassification({ account, onComplete, onCancel })
           const condReq = field.conditional_required;
           const dependsOnValue = multiFieldValues[condReq.depends_on_field];
 
-          // console.log(`  Field "${field.field_id}" has conditional_required: depends_on="${condReq.depends_on_field}", required_value="${condReq.required_value}", current_value=`, dependsOnValue);
+      (`  Field "${field.field_id}" has conditional_required: depends_on="${condReq.depends_on_field}", required_value="${condReq.required_value}", current_value=`, dependsOnValue);
 
           isFieldRequired = String(dependsOnValue) === String(condReq.required_value);
-          // console.log(`  Conditional required evaluation: ${isFieldRequired}`);
+      (`  Conditional required evaluation: ${isFieldRequired}`);
         }
 
-        // console.log(`  Checking field "${field.field_id}" (${field.display_label}): visible=${isFieldVisible}, required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
+    (`  Checking field "${field.field_id}" (${field.display_label}): visible=${isFieldVisible}, required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
 
         if (isFieldRequired && !multiFieldValues[field.field_id]) {
           errors[field.field_id] = `${field.display_label} is required`;
-          // console.log(`    ❌ Required field missing!`);
+      (`    ❌ Required field missing!`);
         } else {
-          // console.log(`    ✅ Field OK`);
+      (`    ✅ Field OK`);
         }
       });
 
-      // console.log('  Validation errors:', errors);
+  ('  Validation errors:', errors);
 
       if (Object.keys(errors).length > 0) {
-        // console.log('  ❌ Validation failed, setting errors and returning');
+    ('  ❌ Validation failed, setting errors and returning');
         setMultiFieldErrors(errors);
         return;
       }
 
-      // console.log('  ✅ Validation passed');
+  ('  ✅ Validation passed');
       setMultiFieldErrors({});
       newAnswers[currentNodeId] = multiFieldValues;
-      // console.log('  Saved multi-field values to answers:', multiFieldValues);
+  ('  Saved multi-field values to answers:', multiFieldValues);
     } else if (currentNode.question_type === "address_input") {
       if (!addressValues.street || !addressValues.city || !addressValues.state ||
           !addressValues.postal_code || !addressValues.country) {
@@ -939,14 +939,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     setAnswers(newAnswers);
-    // console.log(`✅ Answers updated:`, newAnswers);
+(`✅ Answers updated:`, newAnswers);
 
     if (currentNode.post_completion_actions && currentNode.post_completion_actions.length > 0) {
       const afterStepActions = currentNode.post_completion_actions.filter(
         action => (action.execution_timing || "after_step") === "after_step"
       );
       if (afterStepActions.length > 0) {
-        // console.log(`[POST-COMPLETION ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for step: ${currentNode.step_title}`);
+    (`[POST-COMPLETION ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for step: ${currentNode.step_title}`);
         await executePostCompletionActions(afterStepActions, newAnswers);
       }
     }
@@ -955,9 +955,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
       ? history
       : [...history, currentNodeId];
     setHistory(newHistory);
-    // console.log(`📚 History updated:`, newHistory);
+(`📚 History updated:`, newHistory);
 
-    // console.log('\n🔀 ========== DETERMINING NEXT STEP ========== 🔀');
+('\n🔀 ========== DETERMINING NEXT STEP ========== 🔀');
     let nextNodeId = null;
 
     if (currentNode.question_type === "multiple_choice" &&
@@ -977,12 +977,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Multi-choice routing groups - advanced branching for multiple choice questions
     if (!nextNodeId && currentNode.question_type === "multiple_choice" &&
         currentNode.conditional_logic?.multi_choice_routing_groups?.length > 0) {
-      // console.log('🔀 [MULTI-CHOICE ROUTING GROUPS]');
+  ('🔀 [MULTI-CHOICE ROUTING GROUPS]');
       const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
-      // console.log('   Selected options:', selectedOptions);
+  ('   Selected options:', selectedOptions);
       
       for (const group of currentNode.conditional_logic.multi_choice_routing_groups) {
-        // console.log(`   📋 Evaluating group: ${group.group_name || group.group_id}`);
+    (`   📋 Evaluating group: ${group.group_name || group.group_id}`);
         let groupMatches = group.group_operator === 'AND';
         
         for (const condition of group.conditions) {
@@ -990,7 +990,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           
           if (condition.condition_type === 'selected_options') {
             conditionMet = selectedOptions.some(selectedOpt => condition.option_values?.includes(selectedOpt));
-            // console.log(`      - Selected options check: ${conditionMet}`);
+        (`      - Selected options check: ${conditionMet}`);
           } else if (condition.condition_type === 'selection_count') {
             const count = selectedOptions.length;
             switch (condition.count_operator) {
@@ -1001,10 +1001,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
               case '>=': conditionMet = count >= condition.count_value; break;
               case '<=': conditionMet = count <= condition.count_value; break;
             }
-            // console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
+        (`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
             conditionMet = evaluateSingleConditionWrapper(condition);
-            // console.log(`      - Field comparison: ${conditionMet}`);
+        (`      - Field comparison: ${conditionMet}`);
           }
           
           if (group.group_operator === 'AND') {
@@ -1017,7 +1017,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
         
         if (groupMatches) {
-          // console.log(`   ✅ Group matched! Navigating to: ${group.next_step}`);
+      (`   ✅ Group matched! Navigating to: ${group.next_step}`);
           nextNodeId = group.next_step;
           break;
         }
@@ -1025,13 +1025,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
       
       // If no groups matched, check for false_step on last evaluated group or use default
       if (!nextNodeId) {
-        // console.log('   ⚠️ No routing groups matched');
+    ('   ⚠️ No routing groups matched');
         const lastGroup = currentNode.conditional_logic.multi_choice_routing_groups[currentNode.conditional_logic.multi_choice_routing_groups.length - 1];
         if (lastGroup?.false_step) {
-          // console.log(`   → Using last group's false_step: ${lastGroup.false_step}`);
+      (`   → Using last group's false_step: ${lastGroup.false_step}`);
           nextNodeId = lastGroup.false_step;
         } else if (currentNode.conditional_logic.multi_choice_default_step) {
-          // console.log(`   → Using default step: ${currentNode.conditional_logic.multi_choice_default_step}`);
+      (`   → Using default step: ${currentNode.conditional_logic.multi_choice_default_step}`);
           nextNodeId = currentNode.conditional_logic.multi_choice_default_step;
         }
       }
@@ -1039,13 +1039,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     if (!nextNodeId && currentNode.question_type === "multiple_choice") {
       if (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step) {
-        // console.log('🔢 [COUNT-BASED BRANCHING] Detected selection count configuration');
+    ('🔢 [COUNT-BASED BRANCHING] Detected selection count configuration');
         const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
         const selectionCount = selectedOptions.length;
         const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
         const countValue = currentNode.conditional_logic.selection_count_value || 0;
 
-        // console.log(`   Selection count: ${selectionCount}, operator: ${countOperator}, target: ${countValue}`);
+    (`   Selection count: ${selectionCount}, operator: ${countOperator}, target: ${countValue}`);
 
         let countConditionMet = false;
         switch (countOperator) {
@@ -1077,141 +1077,141 @@ export default function AccountClassification({ account, onComplete, onCancel })
             countConditionMet = false;
         }
 
-        // console.log(`   Condition met: ${countConditionMet}`);
+    (`   Condition met: ${countConditionMet}`);
 
         if (countConditionMet) {
           nextNodeId = currentNode.conditional_logic.selection_count_next_step;
-          // console.log(`   → Going to TRUE path: ${nextNodeId}`);
+      (`   → Going to TRUE path: ${nextNodeId}`);
         } else {
           nextNodeId = currentNode.conditional_logic.selection_count_else_step;
-          // console.log(`   → Going to FALSE path: ${nextNodeId}`);
+      (`   → Going to FALSE path: ${nextNodeId}`);
         }
       }
     }
 
     if (!nextNodeId && (currentNode.conditional_logic?.condition_groups?.length > 0 || currentNode.conditional_logic?.conditions?.length > 0)) {
-      // console.log('\n🔍🔍🔍 CHECKING CONDITIONAL LOGIC for step:', currentNodeId);
+  ('\n🔍🔍🔍 CHECKING CONDITIONAL LOGIC for step:', currentNodeId);
       const logic = currentNode.conditional_logic;
-      // console.log('📜 Full Conditional Logic Config:', JSON.stringify(logic, null, 2));
-      // console.log('🎯 Has condition_groups:', !!logic.condition_groups?.length);
-      // console.log('🎯 Number of condition_groups:', logic.condition_groups?.length || 0);
-      // console.log('🎯 Has legacy conditions:', !!logic.conditions?.length);
-      // console.log('🎯 Trigger Field:', logic.trigger_field);
-      // console.log('🎯 Trigger Value:', logic.trigger_value);
+  ('📜 Full Conditional Logic Config:', JSON.stringify(logic, null, 2));
+  ('🎯 Has condition_groups:', !!logic.condition_groups?.length);
+  ('🎯 Number of condition_groups:', logic.condition_groups?.length || 0);
+  ('🎯 Has legacy conditions:', !!logic.conditions?.length);
+  ('🎯 Trigger Field:', logic.trigger_field);
+  ('🎯 Trigger Value:', logic.trigger_value);
 
       let shouldEvaluateAdvancedLogic = true;
       if (logic.trigger_field && logic.trigger_value) {
-        // console.log('\n⚡ TRIGGER EVALUATION:');
+    ('\n⚡ TRIGGER EVALUATION:');
         const currentAnswer = newAnswers[currentNodeId];
         const triggerAnswer = newAnswers[logic.trigger_field];
         shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
 
-        // console.log(`  🔑 Trigger Field: "${logic.trigger_field}"`);
-        // console.log(`  🎯 Expected Trigger Value: "${logic.trigger_value}"`);
-        // console.log(`  💬 Current Step Answer: "${currentAnswer}"`);
-        // console.log(`  💬 Trigger Field Answer: "${triggerAnswer}"`);
-        // console.log(`  ✅ Should Evaluate Advanced Logic: ${shouldEvaluateAdvancedLogic}`);
+    (`  🔑 Trigger Field: "${logic.trigger_field}"`);
+    (`  🎯 Expected Trigger Value: "${logic.trigger_value}"`);
+    (`  💬 Current Step Answer: "${currentAnswer}"`);
+    (`  💬 Trigger Field Answer: "${triggerAnswer}"`);
+    (`  ✅ Should Evaluate Advanced Logic: ${shouldEvaluateAdvancedLogic}`);
 
         if (!shouldEvaluateAdvancedLogic) {
-          // console.log(`  ⚠️ TRIGGER NOT MET - skipping advanced conditional logic`);
+      (`  ⚠️ TRIGGER NOT MET - skipping advanced conditional logic`);
         }
       } else {
-        // console.log('ℹ️ No trigger defined - will evaluate conditional logic');
+    ('ℹ️ No trigger defined - will evaluate conditional logic');
       }
 
       if (shouldEvaluateAdvancedLogic) {
         if (logic.condition_groups?.length > 0) {
-          // console.log('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
+      ('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
           nextNodeId = evaluateConditionalLogicWrapper(logic, newAnswers);
-          // console.log(`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
+      (`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
 
           if (nextNodeId) {
             const nextStep = stepMap[nextNodeId];
-            // console.log(`  📌 Next Step Title: "${nextStep?.step_title || 'NOT FOUND'}"`);
+        (`  📌 Next Step Title: "${nextStep?.step_title || 'NOT FOUND'}"`);
             if (!nextStep) {
-              // console.error(`  ❌❌❌ CRITICAL: Next step "${nextNodeId}" NOT FOUND in stepMap!`);
+          (`  ❌❌❌ CRITICAL: Next step "${nextNodeId}" NOT FOUND in stepMap!`);
             }
           } else {
-            // console.warn(`  ⚠️ Condition groups returned null/undefined next step`);
+        (`  ⚠️ Condition groups returned null/undefined next step`);
           }
         }
         else if (logic.conditions?.length > 0) {
-          // console.log('\n📋 Using LEGACY simple conditions logic');
+      ('\n📋 Using LEGACY simple conditions logic');
           const conditionMet = evaluateConditionalLogicWrapper(logic, newAnswers);
-          // console.log(`  Condition Met: ${conditionMet}`);
+      (`  Condition Met: ${conditionMet}`);
           if (conditionMet) {
             nextNodeId = logic.next_step;
-            // console.log(`  ➡️ Going to next_step: ${nextNodeId}`);
+        (`  ➡️ Going to next_step: ${nextNodeId}`);
           } else {
             nextNodeId = logic.else_step;
-            // console.log(`  ➡️ Going to else_step: ${nextNodeId}`);
+        (`  ➡️ Going to else_step: ${nextNodeId}`);
           }
         }
       } else {
-        // console.log('⏭️⏭️⏭️ Trigger not met, skipping conditional logic entirely');
+    ('⏭️⏭️⏭️ Trigger not met, skipping conditional logic entirely');
       }
     }
 
-    // console.log('\n🔸 Fallback Navigation Checks:');
+('\n🔸 Fallback Navigation Checks:');
     if (!nextNodeId && selectedValue && currentNode.options && currentNode.options.length > 0) {
-      // console.log('  📋 Checking option-based next_step...');
+  ('  📋 Checking option-based next_step...');
       const selectedOption = currentNode.options.find(opt =>
         opt.value === selectedValue || opt.label === selectedValue
       );
-      // console.log(`  Selected Option:`, selectedOption);
+  (`  Selected Option:`, selectedOption);
       if (selectedOption?.next_step) {
         nextNodeId = selectedOption.next_step;
-        // console.log(`  ✅ Found next_step from option: ${nextNodeId}`);
+    (`  ✅ Found next_step from option: ${nextNodeId}`);
       } else {
-        // console.log(`  ⚠️ Selected option has no next_step`);
+    (`  ⚠️ Selected option has no next_step`);
       }
     }
 
     if (!nextNodeId && currentNode.default_next_step) {
-      // console.log(`  📋 Using default_next_step: ${currentNode.default_next_step}`);
+  (`  📋 Using default_next_step: ${currentNode.default_next_step}`);
       nextNodeId = currentNode.default_next_step;
     }
 
-    // console.log(`\n🎯 FINAL NEXT NODE ID: "${nextNodeId}"`);
+(`\n🎯 FINAL NEXT NODE ID: "${nextNodeId}"`);
 
     if (nextNodeId && !stepMap[nextNodeId]) {
-      // console.error(`❌❌❌ CRITICAL ERROR: Next step "${nextNodeId}" not found in workflow stepMap!`);
-      // console.log('Available step IDs in workflow:', Object.keys(stepMap));
-      // console.warn(`Next step "${nextNodeId}" not found in workflow, showing summary`);
+  (`❌❌❌ CRITICAL ERROR: Next step "${nextNodeId}" not found in workflow stepMap!`);
+  ('Available step IDs in workflow:', Object.keys(stepMap));
+  (`Next step "${nextNodeId}" not found in workflow, showing summary`);
       nextNodeId = null;
     } else if (nextNodeId) {
       const nextStep = stepMap[nextNodeId];
-      // console.log(`✅ Next step validated - Title: "${nextStep.step_title}"`);
+  (`✅ Next step validated - Title: "${nextStep.step_title}"`);
     }
 
     if (!nextNodeId && (currentNode.question_type === "controlling_person_input" || currentNode.question_type === "beneficiary_input")) {
       if (currentNode.default_next_step && stepMap[currentNode.default_next_step]) {
-        // console.log(`  Using default_next_step for ${currentNode.question_type}: ${currentNode.default_next_step}`);
+    (`  Using default_next_step for ${currentNode.question_type}: ${currentNode.default_next_step}`);
         nextNodeId = currentNode.default_next_step;
       }
     }
 
     const uniquePath = [...new Set([...newHistory, currentNodeId])];
 
-    // console.log(`\n🏁 FINAL DECISION:`);
-    // console.log(`  Next Node ID: ${nextNodeId}`);
-    // console.log(`  Is Action Node: ${isActionNode(currentNode)}`);
+(`\n🏁 FINAL DECISION:`);
+(`  Next Node ID: ${nextNodeId}`);
+(`  Is Action Node: ${isActionNode(currentNode)}`);
 
     if (!nextNodeId || isActionNode(currentNode)) {
-      // console.log(`  🏁 Ending workflow - showing summary`);
-      // console.log(`  Completed Path:`, uniquePath);
+  (`  🏁 Ending workflow - showing summary`);
+  (`  Completed Path:`, uniquePath);
       setCompletedPath(uniquePath);
       setShowSummary(true);
-      // console.log('🔵🔵🔵 ========== END HANDLE NEXT (SUMMARY) ========== 🔵🔵🔵\n\n');
+  ('🔵🔵🔵 ========== END HANDLE NEXT (SUMMARY) ========== 🔵🔵🔵\n\n');
       return;
     }
 
-    // console.log(`  ➡️ Navigating to next step: ${nextNodeId} (${stepMap[nextNodeId]?.step_title})`);
+(`  ➡️ Navigating to next step: ${nextNodeId} (${stepMap[nextNodeId]?.step_title})`);
     setCurrentNodeId(nextNodeId);
-    // console.log('🔵🔵🔵 ========== END HANDLE NEXT (NAVIGATION) ========== 🔵🔵🔵\n\n');
+('🔵🔵🔵 ========== END HANDLE NEXT (NAVIGATION) ========== 🔵🔵🔵\n\n');
 
     const existingAnswer = newAnswers[nextNodeId];
-    // console.log(`[AccountClassification] Navigating to step ${stepMap[nextNodeId]?.step_title}, existing answer:`, existingAnswer);
+(`[AccountClassification] Navigating to step ${stepMap[nextNodeId]?.step_title}, existing answer:`, existingAnswer);
 
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       const { _address_config, ...savedAddress } = existingAnswer;
@@ -1248,7 +1248,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const handleBack = () => {
-    // console.log('[AccountClassification] handleBack called');
+('[AccountClassification] handleBack called');
 
     if (showSummary) {
       setShowSummary(false);
@@ -1269,7 +1269,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     setCurrentNodeId(previousNodeId);
 
     const previousAnswer = answers[previousNodeId];
-    // console.log(`[AccountClassification] Going back to step ${stepMap[previousNodeId]?.step_title}, answer:`, previousAnswer);
+(`[AccountClassification] Going back to step ${stepMap[previousNodeId]?.step_title}, answer:`, previousAnswer);
 
     if (previousAnswer && typeof previousAnswer === 'object' && previousAnswer._address_config) {
       const { _address_config, ...savedAddress } = previousAnswer;
@@ -1300,7 +1300,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const completeClassification = async () => {
-    // console.log('\n⚡⚡⚡ [COMPLETE CLASSIFICATION] Starting...');
+('\n⚡⚡⚡ [COMPLETE CLASSIFICATION] Starting...');
     const startTime = Date.now();
     
     const finalNode = stepMap[history[history.length - 1]] || stepMap[currentNodeId];
@@ -1327,7 +1327,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-    // console.log(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
+(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
     
     // Execute all after_workflow actions in parallel for speed
     const afterWorkflowPromises = [];
@@ -1338,7 +1338,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           action => action.execution_timing === "after_workflow"
         );
         if (afterWorkflowActions.length > 0) {
-          // console.log(`[POST-COMPLETION ACTIONS] Queueing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
+      (`[POST-COMPLETION ACTIONS] Queueing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
           afterWorkflowPromises.push(executePostCompletionActions(afterWorkflowActions, cleanedAnswers));
         }
       }
@@ -1347,7 +1347,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Wait for all after_workflow actions to complete in parallel
     if (afterWorkflowPromises.length > 0) {
       await Promise.all(afterWorkflowPromises);
-      // console.log(`[POST-COMPLETION ACTIONS] Completed ${afterWorkflowPromises.length} after_workflow action groups`);
+  (`[POST-COMPLETION ACTIONS] Completed ${afterWorkflowPromises.length} after_workflow action groups`);
     }
 
     let reportabilityStatus = "pending_review";
@@ -1356,7 +1356,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Priority 1: Use explicit result_status from workflow step configuration
     if (finalNode?.result_status) {
       reportabilityStatus = finalNode.result_status;
-      // console.log(`[CLASSIFICATION] Using result_status from workflow step: ${reportabilityStatus}`);
+  (`[CLASSIFICATION] Using result_status from workflow step: ${reportabilityStatus}`);
     } 
     // Priority 2: Infer from post-completion actions (with proper value extraction)
     else if (finalNode?.post_completion_actions?.length > 0) {
@@ -1378,7 +1378,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         
         if (extractedValue) {
           reportabilityStatus = extractedValue;
-          // console.log(`[CLASSIFICATION] Using reportability_status from post-completion action (${statusAction.value_source}): ${reportabilityStatus}`);
+      (`[CLASSIFICATION] Using reportability_status from post-completion action (${statusAction.value_source}): ${reportabilityStatus}`);
         }
       }
     }
@@ -1396,7 +1396,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         } else {
           reportabilityStatus = "reportable";
         }
-        // console.log(`[CLASSIFICATION] Inferred from text content: ${reportabilityStatus}`);
+    (`[CLASSIFICATION] Inferred from text content: ${reportabilityStatus}`);
       }
     }
 
@@ -1511,7 +1511,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             timestamp: new Date().toISOString()
           });
         } catch (error) {
-          // console.error("Error creating address change audit log:", error);
+      ("Error creating address change audit log:", error);
         }
       }
     }
@@ -1536,7 +1536,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         account_number: account.account_number,
         account_balance: account.account_balance
       }).catch(error => {
-        // console.error("Error saving classification history:", error);
+    ("Error saving classification history:", error);
       })
     );
     
@@ -1545,7 +1545,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       parallelTasks.push(
         base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id })
           .catch(error => {
-            // console.error("Error syncing controlling persons:", error);
+        ("Error syncing controlling persons:", error);
           })
       );
     }
@@ -1554,7 +1554,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     await Promise.all(parallelTasks);
     
     const endTime = Date.now();
-    // console.log(`⚡⚡⚡ [COMPLETE CLASSIFICATION] Finished in ${endTime - startTime}ms\n`);
+(`⚡⚡⚡ [COMPLETE CLASSIFICATION] Finished in ${endTime - startTime}ms\n`);
 
     // Pass redirect instruction if needed
     if (shouldRedirectToControllingPersons) {
@@ -1736,7 +1736,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
           setSelectedValue(uploadMetadata);
         } catch (error) {
-          // console.error("Error uploading file:", error);
+      ("Error uploading file:", error);
           alert("Failed to upload file. Please try again.");
         } finally {
           setUploadingFile(false);
@@ -2027,7 +2027,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     if (currentNode.question_type === "beneficiary_input") {
       const existingAnswer = answers[currentNodeId];
-      // console.log(`[AccountClassification] Rendering beneficiary_input, existing answer:`, existingAnswer);
+  (`[AccountClassification] Rendering beneficiary_input, existing answer:`, existingAnswer);
 
       return (
         <BeneficiaryInputRenderer
@@ -2036,7 +2036,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           initialBeneficiaries={existingAnswer?.draftBeneficiaries}
           savedBeneficiaries={existingAnswer?.savedBeneficiaries}
           onBeneficiariesChange={(beneficiaries) => {
-            // console.log('[AccountClassification] onBeneficiariesChange called:', beneficiaries);
+        ('[AccountClassification] onBeneficiariesChange called:', beneficiaries);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -2046,7 +2046,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }));
           }}
           onBeneficiariesAdded={async (savedBeneficiaries) => {
-            // console.log('[AccountClassification] onBeneficiariesAdded called:', savedBeneficiaries);
+        ('[AccountClassification] onBeneficiariesAdded called:', savedBeneficiaries);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -2063,7 +2063,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 });
                 refetchAccount();
               } catch (error) {
-                // console.error("Error updating beneficiaries count:", error);
+            ("Error updating beneficiaries count:", error);
               }
             }
           }}
@@ -2073,7 +2073,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     if (currentNode.question_type === "controlling_person_input") {
       const existingAnswer = answers[currentNodeId];
-      // console.log(`[AccountClassification] Rendering controlling_person_input, existing answer:`, existingAnswer);
+  (`[AccountClassification] Rendering controlling_person_input, existing answer:`, existingAnswer);
 
       return (
         <ControllingPersonInputRenderer
@@ -2081,7 +2081,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           initialPersons={existingAnswer?.draftPersons}
           savedPersons={existingAnswer?.savedPersons}
           onPersonsChange={(persons) => {
-            // console.log('[AccountClassification] onPersonsChange called:', persons);
+        ('[AccountClassification] onPersonsChange called:', persons);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -2091,7 +2091,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }));
           }}
           onControllingPersonsAdded={async (savedPersons) => {
-            // console.log('[AccountClassification] onControllingPersonsAdded called:', savedPersons);
+        ('[AccountClassification] onControllingPersonsAdded called:', savedPersons);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -2106,7 +2106,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
                 refetchAccount();
               } catch (error) {
-                // console.error("Error syncing controlling persons:", error);
+            ("Error syncing controlling persons:", error);
               }
             }
           }}
@@ -2185,79 +2185,79 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Determine reportability for summary display - use same logic as completeClassification
     let summaryReportabilityStatus = "pending_review";
     
-    // console.log('\n🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Starting reportability status determination...');
-    // console.log('  Final Node:', finalNode);
-    // console.log('  Final Node Step Title:', finalNode?.step_title);
-    // console.log('  Final Node result_status:', finalNode?.result_status);
-    // console.log('  Final Node post_completion_actions:', finalNode?.post_completion_actions);
-    // console.log('  All Answers:', answers);
+('\n🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Starting reportability status determination...');
+('  Final Node:', finalNode);
+('  Final Node Step Title:', finalNode?.step_title);
+('  Final Node result_status:', finalNode?.result_status);
+('  Final Node post_completion_actions:', finalNode?.post_completion_actions);
+('  All Answers:', answers);
     
     let valueFoundInPriority1 = false;
     
     // PRIORITY 1: Post-completion actions (what's actually being saved to the account)
     if (finalNode?.post_completion_actions?.length > 0) {
-      // console.log(`  📋 [PRIORITY 1] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
+  (`  📋 [PRIORITY 1] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
       
       const statusAction = finalNode.post_completion_actions.find(
         action => action.field_to_update === "reportability_status"
       );
       
       if (statusAction) {
-        // console.log('    Found reportability_status action:', statusAction);
+    ('    Found reportability_status action:', statusAction);
         let extractedValue = null;
         
         if (statusAction.value_source === "static_value") {
           extractedValue = statusAction.value;
-          // console.log(`    → static_value: "${extractedValue}"`);
+      (`    → static_value: "${extractedValue}"`);
         } else if (statusAction.value_source === "from_step_answer") {
           const sourceStepId = statusAction.value;
           extractedValue = answers[sourceStepId];
-          // console.log(`    → from_step_answer: step="${sourceStepId}", value="${extractedValue}"`);
+      (`    → from_step_answer: step="${sourceStepId}", value="${extractedValue}"`);
         } else if (statusAction.value_source === "from_workflow_outcome") {
-          // console.log(`    → from_workflow_outcome (not available at summary screen)`);
+      (`    → from_workflow_outcome (not available at summary screen)`);
         } else {
-          // console.log(`    → Unknown value_source: "${statusAction.value_source}"`);
+      (`    → Unknown value_source: "${statusAction.value_source}"`);
         }
         
         if (extractedValue) {
           summaryReportabilityStatus = extractedValue;
           valueFoundInPriority1 = true;
-          // console.log(`  ✅✅✅ [PRIORITY 1 - LOCKED IN] Using post-completion action value: "${summaryReportabilityStatus}" - will NOT be overwritten`);
+      (`  ✅✅✅ [PRIORITY 1 - LOCKED IN] Using post-completion action value: "${summaryReportabilityStatus}" - will NOT be overwritten`);
         } else {
-          // console.log(`  ⚠️ [PRIORITY 1] Could not extract value from post-completion action`);
+      (`  ⚠️ [PRIORITY 1] Could not extract value from post-completion action`);
         }
       } else {
-        // console.log('    ⚠️ No reportability_status action found in post-completion actions');
+    ('    ⚠️ No reportability_status action found in post-completion actions');
       }
     }
     
     // PRIORITY 2: Explicit result_status from workflow step (ONLY if PRIORITY 1 didn't find a value)
     if (!valueFoundInPriority1 && finalNode?.result_status) {
       summaryReportabilityStatus = finalNode.result_status;
-      // console.log(`  ✅ [PRIORITY 2] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
+  (`  ✅ [PRIORITY 2] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
     } else if (valueFoundInPriority1) {
-      // console.log(`  ⏭️ [PRIORITY 2] Skipping - value already found in PRIORITY 1`);
+  (`  ⏭️ [PRIORITY 2] Skipping - value already found in PRIORITY 1`);
     }
     
     // PRIORITY 3: Fallback to text-based inference only if still pending_review
     if (summaryReportabilityStatus === "pending_review" && !valueFoundInPriority1) {
-      // console.log(`  🔤 [PRIORITY 3] Using text-based inference (still pending_review)`);
+  (`  🔤 [PRIORITY 3] Using text-based inference (still pending_review)`);
       if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
           !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "reportable";
-        // console.log(`    ✅ Inferred "reportable" from step title`);
+    (`    ✅ Inferred "reportable" from step title`);
       } else if (finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "non_reportable";
-        // console.log(`    ✅ Inferred "non_reportable" from step title`);
+    (`    ✅ Inferred "non_reportable" from step title`);
       } else {
-        // console.log(`    ℹ️ No text match found, remaining as "pending_review"`);
+    (`    ℹ️ No text match found, remaining as "pending_review"`);
       }
     } else if (valueFoundInPriority1) {
-      // console.log(`  ⏭️ [PRIORITY 3] Skipping - value already found in PRIORITY 1`);
+  (`  ⏭️ [PRIORITY 3] Skipping - value already found in PRIORITY 1`);
     }
     
-    // console.log(`\n  🎯 FINAL SUMMARY STATUS: "${summaryReportabilityStatus}"`);
-    // console.log('🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Complete\n');
+(`\n  🎯 FINAL SUMMARY STATUS: "${summaryReportabilityStatus}"`);
+('🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Complete\n');
     
     const isReportable = summaryReportabilityStatus === "reportable";
     const isPending = summaryReportabilityStatus === "pending_review";
