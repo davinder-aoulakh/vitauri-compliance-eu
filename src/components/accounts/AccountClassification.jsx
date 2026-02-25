@@ -27,6 +27,7 @@ import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/workflowConditionUtils";
 import { isActionNode } from "../workflows/workflowNavigationUtils";
+import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -672,52 +673,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  const getFieldValue = (fieldPath, entityData = null) => {
-    if (fieldPath.includes('.')) {
-      const parts = fieldPath.split('.');
-      const stepAnswer = answers[parts[0]];
-      if (stepAnswer && typeof stepAnswer === 'object') {
-        return stepAnswer[parts[1]];
-      }
-      if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
-        return account?.[parts[0]]?.[parts[1]];
-      }
-      if (entityData && parts[0] === 'entity') {
-        return entityData[parts[1]];
-      }
-      return null;
-    }
-
-    if (answers[fieldPath] !== undefined) {
-      return answers[fieldPath];
-    }
-
-    if (fieldPath === '_is_pre_existing' || fieldPath === 'is_pre_existing') {
-      return account?.is_pre_existing;
-    } else if (fieldPath === '_account_holder_is_alive' || fieldPath === 'account_holder_is_alive') {
-      return account?.account_holder_is_alive;
-    } else if (fieldPath === '_account_holder_type' || fieldPath === 'account_holder_type') {
-      return account?.account_holder_type;
-    } else if (fieldPath === 'country_of_residence') {
-      return account?.country_of_residence;
-    } else if (fieldPath === 'place_of_birth') {
-      return account?.place_of_birth;
-    }
-
-    if (account?.[fieldPath] !== undefined) {
-      return account[fieldPath];
-    }
-
-    if (entityData?.[fieldPath] !== undefined) {
-      return entityData[fieldPath];
-    }
-
-    return null;
-  };
-
-  // Wrapper to maintain compatibility with existing code
-  const evaluateSingleConditionWrapper = (condition) => {
-    const getFieldValueFn = (field) => getFieldValue(field, linkedEntity);
+  // Wrapper to maintain compatibility with existing code - now supports answer overrides for state timing fix
+  const evaluateSingleConditionWrapper = (condition, answersOverride = null) => {
+    const getFieldValueFn = (field) => getFieldValueUtil(field, account, linkedEntity, answers, answersOverride);
     return evaluateSingleCondition(condition, getFieldValueFn, crsCountryMap);
   };
 
@@ -802,9 +760,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  // Wrapper to use extracted utility function
+  // Wrapper to use extracted utility function - passes currentAnswers to condition evaluator for state timing fix
   const evaluateConditionalLogicWrapper = (logic, currentAnswers) => {
-    return evaluateConditionalLogic(logic, currentAnswers, evaluateSingleConditionWrapper);
+    const conditionEvaluator = (condition) => evaluateSingleConditionWrapper(condition, currentAnswers);
+    return evaluateConditionalLogic(logic, currentAnswers, conditionEvaluator);
   };
 
   const stepMap = {};
@@ -1003,7 +962,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }
         (`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
-            conditionMet = evaluateSingleConditionWrapper(condition);
+            conditionMet = evaluateSingleConditionWrapper(condition, newAnswers);
         (`      - Field comparison: ${conditionMet}`);
           }
           
