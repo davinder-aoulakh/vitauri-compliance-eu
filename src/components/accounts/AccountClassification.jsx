@@ -136,10 +136,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
   });
 
   const evaluateTriggerConditions = (triggerConfig, accountData, entityData = null) => {
-('\n🔍 [TRIGGER EVALUATION] Starting...');
-('  Trigger Config:', triggerConfig);
-('  Account Data:', accountData);
-('  Entity Data:', entityData);
+console.log('\n🔍 [TRIGGER EVALUATION] Starting...');
+console.log('  Trigger Config:', triggerConfig);
+console.log('  Account Data:', accountData);
+console.log('  Entity Data:', entityData);
     
     if (!triggerConfig?.enabled) {
   ('  ❌ Trigger not enabled');
@@ -252,20 +252,20 @@ export default function AccountClassification({ account, onComplete, onCancel })
     let result = null;
     let currentAndGroup = [];
 
-(`\n  📊 [CONDITION EVALUATION] Processing ${conditions.length} condition(s):`);
+console.log(`\n  📊 [CONDITION EVALUATION] Processing ${conditions.length} condition(s):`);
     
     // Group conditions by AND/OR operators to properly handle precedence
     // AND has higher precedence than OR, so we evaluate AND groups first
     for (let idx = 0; idx < conditions.length; idx++) {
       const condition = conditions[idx];
-  (`\n  🔹 Condition ${idx + 1}/${conditions.length}:`);
-  (`     Field: "${condition.field}"`);
-  (`     Operator: "${condition.operator}"`);
-  (`     Expected Value: "${condition.value}"`);
-  (`     Logic Operator: "${condition.logic_operator}"`);
+console.log(`\n  🔹 Condition ${idx + 1}/${conditions.length}:`);
+console.log(`     Field: "${condition.field}"`);
+console.log(`     Operator: "${condition.operator}"`);
+console.log(`     Expected Value: "${condition.value}"`);
+console.log(`     Logic Operator: "${condition.logic_operator}"`);
       
       const fieldValue = getFieldValue(condition.field);
-  (`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
+console.log(`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
       
       // Normalize enum values for comparison
       const { fieldValue: normalizedFieldValue, comparisonValue: normalizedComparisonValue } = 
@@ -276,7 +276,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       switch (condition.operator) {
         case "equals":
           conditionMet = String(normalizedFieldValue).toLowerCase() === String(normalizedComparisonValue).toLowerCase();
-      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
+console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "not_equals":
           conditionMet = String(normalizedFieldValue).toLowerCase() !== String(normalizedComparisonValue).toLowerCase();
@@ -321,7 +321,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       (`     ⚠️ Unknown operator: ${condition.operator}`);
       }
 
-  (`     ✅ Condition Result: ${conditionMet}`);
+console.log(`     ✅ Condition Result: ${conditionMet}`);
       currentAndGroup.push(conditionMet);
 
       // Check if we need to evaluate the current AND group
@@ -350,7 +350,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' : '❌ WORKFLOW DOES NOT MATCH'}\n`);
+console.log(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' : '❌ WORKFLOW DOES NOT MATCH'}\n`);
 
     for (let idx = 0; idx < computedConditions.length; idx++) {
       const compCondition = computedConditions[idx];
@@ -426,26 +426,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return;
       }
       
-  ('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
-  ('  Available workflows:', workflows.map(w => w.workflow_name));
-  ('  Account holder type:', account?.account_holder_type);
-  ('  Linked Entity:', linkedEntity);
+console.log('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
+console.log('  Available workflows:', workflows.map(w => w.workflow_name));
+console.log('  Account holder type:', account?.account_holder_type);
+console.log('  Linked Entity:', linkedEntity);
       
       const matchingWorkflows = workflows.filter(w => {
-    (`\n  📋 Evaluating workflow: "${w.workflow_name}"`);
+console.log(`\n  📋 Evaluating workflow: "${w.workflow_name}"`);
         if (w.trigger_conditions?.enabled) {
           const matches = evaluateTriggerConditions(w.trigger_conditions, account, linkedEntity);
-      (`    Result: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
+console.log(`    Result: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
           return matches;
         }
-    (`    ⏭️ No trigger conditions`);
+console.log(`    ⏭️ No trigger conditions`);
         return false;
       });
 
       let selectedWorkflow = null;
 
       if (matchingWorkflows.length > 0) {
-    (`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, matchingWorkflows.map(w => w.workflow_name));
+console.log(`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, matchingWorkflows.map(w => w.workflow_name));
         const sortedWorkflows = matchingWorkflows.sort((a, b) => {
           const priorityA = a.trigger_conditions?.priority || 0;
           const priorityB = b.trigger_conditions?.priority || 0;
@@ -453,7 +453,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           return parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0");
         });
         selectedWorkflow = sortedWorkflows[0];
-    (`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_name}" (priority: ${selectedWorkflow.trigger_conditions?.priority || 0})`);
+console.log(`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_name}" (priority: ${selectedWorkflow.trigger_conditions?.priority || 0})`);
       } else {
     (`\n  ⚠️ No workflows matched triggers - using fallback name matching`);
         const isIndividual = account?.account_holder_type === "individual";
@@ -473,7 +473,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       if (selectedWorkflow) {
-    (`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
+console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         setWorkflow(selectedWorkflow);
         if (selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
           setCurrentNodeId(selectedWorkflow.steps[0].step_id);
