@@ -1690,8 +1690,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
   };
 
-  const renderNode = () => null; // Moved to QuestionRenderer component
-
   if (!account) {
     return (
       <div className="p-12 text-center">
