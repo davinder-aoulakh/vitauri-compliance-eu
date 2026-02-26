@@ -90,23 +90,25 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
 
   switch (condition.operator) {
     case "=":
-      if (isCountryComparison) {
+      if (isCountryField) {
         const [normalizedField, normalizedComparison] = await Promise.all([
           normalizeCountryForComparison(fieldValue),
           normalizeCountryForComparison(comparisonValue)
         ]);
         conditionMet = normalizedField === normalizedComparison;
+        console.log(`  [= with country] "${fieldValue}" (${normalizedField}) === "${comparisonValue}" (${normalizedComparison}) = ${conditionMet}`);
       } else {
         conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
       }
       break;
     case "!=":
-      if (isCountryComparison) {
+      if (isCountryField) {
         const [normalizedField, normalizedComparison] = await Promise.all([
           normalizeCountryForComparison(fieldValue),
           normalizeCountryForComparison(comparisonValue)
         ]);
         conditionMet = normalizedField !== normalizedComparison;
+        console.log(`  [!= with country] "${fieldValue}" (${normalizedField}) !== "${comparisonValue}" (${normalizedComparison}) = ${conditionMet}`);
       } else {
         conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
       }
