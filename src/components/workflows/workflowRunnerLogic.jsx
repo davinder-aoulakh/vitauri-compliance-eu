@@ -11,12 +11,15 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
   const fieldAnswer = getFieldValue(condition.field, allAnswers);
   console.log(`    Field Answer for "${condition.field}":`, fieldAnswer);
   console.log(`    Field Answer Type:`, typeof fieldAnswer);
+  console.log(`    Field Answer (stringified):`, JSON.stringify(fieldAnswer));
   
   let comparisonValue = condition.value;
   if (condition.value_type === 'field_reference') {
     console.log(`    Value Type is field_reference, looking up: ${condition.value}`);
     comparisonValue = getFieldValue(condition.value, allAnswers);
     console.log(`    Resolved field reference value:`, comparisonValue);
+    console.log(`    Resolved field reference type:`, typeof comparisonValue);
+    console.log(`    Resolved field reference (stringified):`, JSON.stringify(comparisonValue));
   } else {
     console.log(`    Value Type is static, using value: ${comparisonValue}`);
   }
@@ -52,11 +55,13 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
         if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
           met = fieldAnswer !== (comparisonValue === 'true');
         } else {
-          // Normalize country values for comparison (case-insensitive, trim whitespace)
+          // Normalize values for comparison (case-insensitive, trim whitespace)
           const normalizedField = String(fieldAnswer || '').trim().toLowerCase();
           const normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
           met = normalizedField !== normalizedComparison;
-          console.log(`    [!= OPERATOR] Normalized comparison: "${normalizedField}" !== "${normalizedComparison}" = ${met}`);
+          console.log(`    [!= OPERATOR] RAW VALUES - Field: "${fieldAnswer}", Comparison: "${comparisonValue}"`);
+          console.log(`    [!= OPERATOR] NORMALIZED - Field: "${normalizedField}", Comparison: "${normalizedComparison}"`);
+          console.log(`    [!= OPERATOR] RESULT: "${normalizedField}" !== "${normalizedComparison}" = ${met}`);
         }
       }
       break;
@@ -96,16 +101,33 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
       }
       break;
     case 'is_crs':
-      console.log('    [IS_CRS OPERATOR] - checking fieldAnswer:', fieldAnswer);
-      if (fieldAnswer) {
+      console.log('    [IS_CRS OPERATOR] - RAW fieldAnswer:', fieldAnswer);
+      console.log('    [IS_CRS OPERATOR] - fieldAnswer type:', typeof fieldAnswer);
+      console.log('    [IS_CRS OPERATOR] - fieldAnswer stringified:', JSON.stringify(fieldAnswer));
+      
+      // If fieldAnswer is an object (like address), try to extract country
+      let countryValue = fieldAnswer;
+      if (typeof fieldAnswer === 'object' && fieldAnswer !== null && !Array.isArray(fieldAnswer)) {
+        countryValue = fieldAnswer.country || fieldAnswer.Country || fieldAnswer;
+        console.log('    [IS_CRS] Extracted country from object:', countryValue);
+      }
+      
+      if (countryValue && typeof countryValue === 'string') {
         try {
+          // Normalize for CRS lookup
+          const normalizedCountry = countryValue.trim();
+          console.log('    [IS_CRS] Looking up country:', normalizedCountry);
+          
           const crsCountries = await base44.entities.CrsCountryInfo.filter({
             $or: [
-              { country_name: fieldAnswer },
-              { country_code: fieldAnswer }
+              { country_name: normalizedCountry },
+              { country_code: normalizedCountry }
             ]
           });
-          console.log('    [IS_CRS] CRS Countries found:', crsCountries);
+          console.log('    [IS_CRS] CRS Countries found:', crsCountries.length);
+          if (crsCountries.length > 0) {
+            console.log('    [IS_CRS] First match:', crsCountries[0]);
+          }
           met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
           console.log('    [IS_CRS] Result - met:', met);
         } catch (error) {
@@ -113,7 +135,7 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
           met = false;
         }
       } else {
-        console.log('    [IS_CRS] No fieldAnswer provided, met = false');
+        console.log('    [IS_CRS] No valid country value found, met = false');
         met = false;
       }
       break;
