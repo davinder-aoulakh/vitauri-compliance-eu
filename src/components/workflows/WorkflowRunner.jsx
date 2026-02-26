@@ -1726,57 +1726,52 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const canProceed = () => {
-    if (currentStep.question_type === 'info' || currentStep.question_type === 'result') {
-      return true;
-    }
-    if (!currentStep.required) {
-      return true;
-    }
     const answer = answers[currentStep.step_id];
     
+    if (currentStep.question_type === 'info' || currentStep.question_type === 'result') return true;
+    if (!currentStep.required) return true;
     if (currentStep.question_type === 'address_input') {
       if (!answer || typeof answer !== 'object') return false;
       return !!(answer.street && answer.city && answer.state && answer.postal_code && answer.country);
     }
-
-    // Special validation for file_upload with date_received
     if (currentStep.question_type === 'file_upload') {
       const fileConfig = currentStep.file_upload_config || {};
-      const requireDateReceived = fileConfig.require_date_received || false;
-      
       if (!answer) return false;
-      
-      // Handle both old format (array) and new format (object with files + date_received)
       const files = answer.files || answer;
       const hasFiles = Array.isArray(files) && files.length > 0;
-      
       if (!hasFiles) return false;
-      
-      // If date is required, check it exists and is not empty
-      if (requireDateReceived) {
+      if (fileConfig.require_date_received) {
         return !!(answer.date_received && answer.date_received.trim());
       }
-      
       return true;
     }
-
     if (currentStep.question_type === 'beneficiary_input') {
       return answer?.savedBeneficiaries && answer.savedBeneficiaries.length > 0;
     }
-
     if (currentStep.question_type === 'controlling_person_input') {
       return answer?.savedPersons && answer.savedPersons.length > 0;
     }
-
     if (currentStep.question_type === 'multi_field_input') {
       if (!answer || typeof answer !== 'object') return false;
-      const requiredFields = currentStep.multi_fields?.filter(f => f.is_required) || [];
-      return requiredFields.every(field => {
+      const requiredVisibleFields = (currentStep.multi_fields || []).filter(field => {
+        if (!field.is_required) return false;
+        if (!field.conditional_visibility) return true;
+        const dependsOnField = field.conditional_visibility.depends_on_field;
+        const requiredValue = field.conditional_visibility.required_value?.toLowerCase();
+        const dependentValue = answer[dependsOnField];
+        let normalizedValue = dependentValue;
+        if (typeof dependentValue === 'boolean') {
+          normalizedValue = dependentValue ? 'yes' : 'no';
+        } else if (typeof dependentValue === 'string') {
+          normalizedValue = dependentValue.toLowerCase();
+        }
+        return normalizedValue === requiredValue;
+      });
+      return requiredVisibleFields.every(field => {
         const value = answer[field.field_id];
         return value !== undefined && value !== null && value !== '';
       });
     }
-    
     return answer !== undefined && answer !== null && answer !== '';
   };
 
