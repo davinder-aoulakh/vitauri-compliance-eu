@@ -36,15 +36,39 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
         if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
           met = fieldAnswer === (comparisonValue === 'true');
         } else {
-          // Normalize string values for comparison (case-insensitive, trim whitespace)
-          if (typeof fieldAnswer === 'string' && typeof comparisonValue === 'string') {
-            const normalizedField = fieldAnswer.trim().toLowerCase();
-            const normalizedComparison = comparisonValue.trim().toLowerCase();
-            met = normalizedField === normalizedComparison;
-            console.log(`    [= OPERATOR] Normalized comparison: "${normalizedField}" === "${normalizedComparison}" = ${met}`);
-          } else {
-            met = fieldAnswer === comparisonValue;
+          // Special handling for country comparisons - normalize to country codes
+          let normalizedField = String(fieldAnswer || '').trim().toLowerCase();
+          let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
+          
+          // Check if we're comparing countries (both are strings)
+          if (fieldAnswer && comparisonValue && (typeof fieldAnswer === 'string' && typeof comparisonValue === 'string')) {
+            try {
+              // Try to resolve both to country codes
+              const [fieldCountry, comparisonCountry] = await Promise.all([
+                base44.entities.CrsCountryInfo.filter({
+                  $or: [
+                    { country_name: fieldAnswer.trim() },
+                    { country_code: fieldAnswer.trim() }
+                  ]
+                }).then(countries => countries.length > 0 ? countries[0].country_code : fieldAnswer),
+                base44.entities.CrsCountryInfo.filter({
+                  $or: [
+                    { country_name: comparisonValue.trim() },
+                    { country_code: comparisonValue.trim() }
+                  ]
+                }).then(countries => countries.length > 0 ? countries[0].country_code : comparisonValue)
+              ]);
+              
+              normalizedField = fieldCountry.trim().toLowerCase();
+              normalizedComparison = comparisonCountry.trim().toLowerCase();
+              console.log(`    [= OPERATOR] COUNTRY CODES - Field: "${fieldCountry}", Comparison: "${comparisonCountry}"`);
+            } catch (error) {
+              console.log(`    [= OPERATOR] Error resolving country codes, using raw values:`, error);
+            }
           }
+          
+          met = normalizedField === normalizedComparison;
+          console.log(`    [= OPERATOR] Normalized comparison: "${normalizedField}" === "${normalizedComparison}" = ${met}`);
         }
       }
       break;
@@ -55,11 +79,40 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
         if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
           met = fieldAnswer !== (comparisonValue === 'true');
         } else {
-          // Normalize values for comparison (case-insensitive, trim whitespace)
-          const normalizedField = String(fieldAnswer || '').trim().toLowerCase();
-          const normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
-          met = normalizedField !== normalizedComparison;
+          // Special handling for country comparisons - normalize to country codes
+          let normalizedField = String(fieldAnswer || '').trim().toLowerCase();
+          let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
+          
           console.log(`    [!= OPERATOR] RAW VALUES - Field: "${fieldAnswer}", Comparison: "${comparisonValue}"`);
+          
+          // Check if we're comparing countries (either value looks like a country name or code)
+          if (fieldAnswer && comparisonValue && (typeof fieldAnswer === 'string' && typeof comparisonValue === 'string')) {
+            try {
+              // Try to resolve both to country codes
+              const [fieldCountry, comparisonCountry] = await Promise.all([
+                base44.entities.CrsCountryInfo.filter({
+                  $or: [
+                    { country_name: fieldAnswer.trim() },
+                    { country_code: fieldAnswer.trim() }
+                  ]
+                }).then(countries => countries.length > 0 ? countries[0].country_code : fieldAnswer),
+                base44.entities.CrsCountryInfo.filter({
+                  $or: [
+                    { country_name: comparisonValue.trim() },
+                    { country_code: comparisonValue.trim() }
+                  ]
+                }).then(countries => countries.length > 0 ? countries[0].country_code : comparisonValue)
+              ]);
+              
+              normalizedField = fieldCountry.trim().toLowerCase();
+              normalizedComparison = comparisonCountry.trim().toLowerCase();
+              console.log(`    [!= OPERATOR] COUNTRY CODES - Field: "${fieldCountry}", Comparison: "${comparisonCountry}"`);
+            } catch (error) {
+              console.log(`    [!= OPERATOR] Error resolving country codes, using raw values:`, error);
+            }
+          }
+          
+          met = normalizedField !== normalizedComparison;
           console.log(`    [!= OPERATOR] NORMALIZED - Field: "${normalizedField}", Comparison: "${normalizedComparison}"`);
           console.log(`    [!= OPERATOR] RESULT: "${normalizedField}" !== "${normalizedComparison}" = ${met}`);
         }
