@@ -645,10 +645,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return await evalCondition(condition, getFieldValue, allAnswers);
   };
 
-  const evaluateSingleCondition = async (condition, allAnswers) => {
-    return await evalCondition(condition, getFieldValue, allAnswers);
-  };
-
   const evaluateConditionalLogic = async (logic, currentAnswer, allAnswers) => {
     return await evalConditionalLogic(logic, currentAnswer, allAnswers, getFieldValue, workflow);
   };
