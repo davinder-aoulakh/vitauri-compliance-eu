@@ -638,7 +638,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const getFieldValue = (fieldPath, allAnswers) => {
-    return getFieldValueUtil(fieldPath, allAnswers, initialData);
+    return getFieldValueUtil(fieldPath, allAnswers, initialData, workflow);
   };
 
   const evaluateSingleCondition = async (condition, allAnswers) => {
