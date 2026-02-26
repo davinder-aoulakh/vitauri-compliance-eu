@@ -8,9 +8,9 @@
  * @param {Object} condition - The condition to evaluate
  * @param {Function} getFieldValue - Function to retrieve field values
  * @param {Object} crsCountryMap - Map of country codes to CRS info
- * @returns {boolean} Whether the condition is met
+ * @returns {Promise<boolean>} Whether the condition is met
  */
-export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap) => {
+export const evaluateSingleCondition = async (condition, getFieldValue, crsCountryMap) => {
   let fieldValue = getFieldValue(condition.field);
   let comparisonValue = condition.value;
   
@@ -42,27 +42,45 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
 
   let conditionMet = false;
 
-  const normalizeCountryForComparison = (val) => {
+  const normalizeCountryForComparison = async (val) => {
     if (!val) return '';
-    const valLower = String(val).toLowerCase();
+    const valStr = String(val).trim();
     
-    // First, try to find by country name
+    try {
+      // Use async database lookup to resolve country name or code to standardized code
+      const { base44 } = await import("@/api/base44Client");
+      const countries = await base44.entities.CrsCountryInfo.filter({
+        $or: [
+          { country_name: valStr },
+          { country_code: valStr }
+        ]
+      });
+      
+      if (countries.length > 0) {
+        const code = countries[0].country_code.toLowerCase();
+        console.log(`    Country normalization: "${val}" → "${code}" (via DB lookup)`);
+        return code;
+      }
+    } catch (error) {
+      console.log(`    Country normalization error:`, error);
+    }
+    
+    // Fallback to map-based lookup
+    const valLower = valStr.toLowerCase();
     let countryInfo = crsCountryMap[valLower];
     
-    // If not found, try to find by country code
     if (!countryInfo) {
       countryInfo = Object.values(crsCountryMap).find(
         c => c.code?.toLowerCase() === valLower
       );
     }
     
-    // Return normalized code if found, otherwise return original
     if (countryInfo?.code) {
-      console.log(`    Country normalization: "${val}" → "${countryInfo.code.toLowerCase()}"`);
+      console.log(`    Country normalization: "${val}" → "${countryInfo.code.toLowerCase()}" (via map)`);
       return countryInfo.code.toLowerCase();
     }
     
-    console.log(`    Country normalization: "${val}" → "${valLower}" (no match in CRS map)`);
+    console.log(`    Country normalization: "${val}" → "${valLower}" (no match)`);
     return valLower;
   };
 
@@ -74,14 +92,22 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
   switch (condition.operator) {
     case "=":
       if (isCountryComparison) {
-        conditionMet = normalizeCountryForComparison(fieldValue) === normalizeCountryForComparison(comparisonValue);
+        const [normalizedField, normalizedComparison] = await Promise.all([
+          normalizeCountryForComparison(fieldValue),
+          normalizeCountryForComparison(comparisonValue)
+        ]);
+        conditionMet = normalizedField === normalizedComparison;
       } else {
         conditionMet = String(fieldValue || '').toLowerCase() === String(comparisonValue || '').toLowerCase();
       }
       break;
     case "!=":
       if (isCountryComparison) {
-        conditionMet = normalizeCountryForComparison(fieldValue) !== normalizeCountryForComparison(comparisonValue);
+        const [normalizedField, normalizedComparison] = await Promise.all([
+          normalizeCountryForComparison(fieldValue),
+          normalizeCountryForComparison(comparisonValue)
+        ]);
+        conditionMet = normalizedField !== normalizedComparison;
       } else {
         conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
       }
@@ -132,9 +158,9 @@ export const evaluateSingleCondition = (condition, getFieldValue, crsCountryMap)
  * @param {Object} logic - The conditional logic configuration
  * @param {Object} currentAnswers - Current workflow answers
  * @param {Function} evaluateSingleConditionFn - Function to evaluate individual conditions
- * @returns {string|boolean} Next step ID or boolean result
+ * @returns {Promise<string|boolean>} Next step ID or boolean result
  */
-export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleConditionFn) => {
+export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSingleConditionFn) => {
   if (logic?.condition_groups && logic.condition_groups.length > 0) {
     console.log('\n🔷🔷🔷 [CONDITION GROUPS] Starting evaluation...');
     console.log('  Total Groups:', logic.condition_groups.length);
@@ -158,7 +184,7 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
       for (let j = 0; j < group.conditions.length; j++) {
         const condition = group.conditions[j];
         console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
-        const conditionMet = evaluateSingleConditionFn(condition);
+        const conditionMet = await evaluateSingleConditionFn(condition);
 
         if (group.group_operator === 'AND') {
           groupResult = groupResult && conditionMet;
@@ -218,8 +244,9 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
 
   let result = true;
 
-  logic.conditions.forEach((condition, idx) => {
-    const conditionMet = evaluateSingleConditionFn(condition);
+  for (let idx = 0; idx < logic.conditions.length; idx++) {
+    const condition = logic.conditions[idx];
+    const conditionMet = await evaluateSingleConditionFn(condition);
 
     if (idx === 0) {
       result = conditionMet;
@@ -231,7 +258,7 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
         result = result || conditionMet;
       }
     }
-  });
+  }
 
   return result;
 };
