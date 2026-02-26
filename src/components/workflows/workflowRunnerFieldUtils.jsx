@@ -14,16 +14,30 @@ export const getFieldValue = (fieldPath, allAnswers, initialData) => {
     hasControllingPerson: !!initialData?.controlling_person
   });
   
-  // First check if it's a step answer reference with sub-field (e.g., "step_id.sub_field")
-  if (fieldPath.includes('.')) {
-    const [stepId, subField] = fieldPath.split('.');
+  // First check if it's a step answer reference with sub-field (e.g., "step_id.sub_field" or "Step Name — Sub Field")
+  // Handle both period (.) and em dash (—) as separators
+  const dotIndex = fieldPath.indexOf('.');
+  const dashIndex = fieldPath.indexOf('—');
+  
+  if (dotIndex !== -1 || dashIndex !== -1) {
+    let stepId, subField;
+    
+    if (dashIndex !== -1) {
+      // Em dash separator (from UI display)
+      [stepId, subField] = fieldPath.split('—').map(s => s.trim());
+      console.log(`    [getFieldValue] Em dash detected - stepId: "${stepId}", subField: "${subField}"`);
+    } else {
+      // Period separator (from code)
+      [stepId, subField] = fieldPath.split('.');
+      console.log(`    [getFieldValue] Dot detected - stepId: "${stepId}", subField: "${subField}"`);
+    }
+    
     const stepAnswer = allAnswers[stepId];
-    console.log(`    [getFieldValue] Dot detected - stepId: "${stepId}", subField: "${subField}"`);
     console.log(`    [getFieldValue] Step answer for "${stepId}":`, JSON.stringify(stepAnswer));
     
     if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
       const value = stepAnswer[subField];
-      console.log(`    [getFieldValue] ✅ Found "${stepId}.${subField}":`, value, `(type: ${typeof value})`);
+      console.log(`    [getFieldValue] ✅ Found "${stepId}${dashIndex !== -1 ? '—' : '.'}${subField}":`, value, `(type: ${typeof value})`);
       return value;
     } else {
       console.log(`    [getFieldValue] ⚠️ Step answer for "${stepId}" is not an object or doesn't exist`);
