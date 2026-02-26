@@ -37,12 +37,19 @@ export const getFieldValue = (fieldPath, allAnswers, initialData, workflow) => {
     // It could be either the step_id directly or the step_title
     let actualStepId = stepIdentifier;
     
-    // If workflow is provided, try to find step by title
+    // If workflow is provided, try to find step by title first
     if (workflow?.steps) {
       const stepByTitle = workflow.steps.find(s => s.step_title === stepIdentifier);
       if (stepByTitle) {
         actualStepId = stepByTitle.step_id;
         console.log(`    [getFieldValue] Resolved step title "${stepIdentifier}" → step_id "${actualStepId}"`);
+      } else {
+        // If not found by title, check if stepIdentifier is already a step_id
+        const stepById = workflow.steps.find(s => s.step_id === stepIdentifier);
+        if (stepById) {
+          console.log(`    [getFieldValue] Using stepIdentifier "${stepIdentifier}" as step_id directly`);
+          actualStepId = stepIdentifier;
+        }
       }
     }
     
