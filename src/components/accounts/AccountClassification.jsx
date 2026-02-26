@@ -761,9 +761,9 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
   };
 
   // Wrapper to use extracted utility function - passes currentAnswers to condition evaluator for state timing fix
-  const evaluateConditionalLogicWrapper = (logic, currentAnswers) => {
+  const evaluateConditionalLogicWrapper = async (logic, currentAnswers) => {
     const conditionEvaluator = (condition) => evaluateSingleConditionWrapper(condition, currentAnswers);
-    return evaluateConditionalLogic(logic, currentAnswers, conditionEvaluator);
+    return await evaluateConditionalLogic(logic, currentAnswers, conditionEvaluator);
   };
 
   const stepMap = {};
@@ -962,7 +962,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
             }
         (`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
-            conditionMet = evaluateSingleConditionWrapper(condition, newAnswers);
+            conditionMet = await evaluateSingleConditionWrapper(condition, newAnswers);
         (`      - Field comparison: ${conditionMet}`);
           }
           
@@ -1081,7 +1081,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
       if (shouldEvaluateAdvancedLogic) {
         if (logic.condition_groups?.length > 0) {
       ('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
-          nextNodeId = evaluateConditionalLogicWrapper(logic, newAnswers);
+          nextNodeId = await evaluateConditionalLogicWrapper(logic, newAnswers);
       (`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
 
           if (nextNodeId) {
@@ -1096,7 +1096,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         }
         else if (logic.conditions?.length > 0) {
       ('\n📋 Using LEGACY simple conditions logic');
-          const conditionMet = evaluateConditionalLogicWrapper(logic, newAnswers);
+          const conditionMet = await evaluateConditionalLogicWrapper(logic, newAnswers);
       (`  Condition Met: ${conditionMet}`);
           if (conditionMet) {
             nextNodeId = logic.next_step;
