@@ -249,24 +249,21 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       groupResults.push({ group, result: groupResult });
     }
 
-    // Find first TRUE group
-    console.log('\n🏁 [FINAL DECISION] Evaluating all group results...');
-    for (let i = 0; i < groupResults.length; i++) {
-      const { group, result } = groupResults[i];
-      console.log(`  Group ${i + 1} (${group.group_name}): ${result}`);
-      if (result) {
-        console.log(`  ✅ First TRUE group found - using true_step: ${group.true_step}`);
-        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-        return group.true_step;
-      }
+    // Use FIRST group's result to determine routing
+    console.log('\n🏁 [FINAL DECISION] Using first group to determine routing...');
+    if (groupResults.length > 0) {
+      const { group, result } = groupResults[0];
+      const nextStep = result ? group.true_step : group.false_step;
+      console.log(`  Group 1 (${group.group_name}): ${result}`);
+      console.log(`  ${result ? '✅ TRUE' : '❌ FALSE'} - using ${result ? 'true' : 'false'}_step: ${nextStep}`);
+      console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
+      return nextStep;
     }
 
-    // No groups were TRUE - use last group's false_step as fallback
-    const lastGroup = groupResults[groupResults.length - 1]?.group;
-    const fallbackStep = lastGroup?.false_step || logic.overall_false_step;
-    console.log(`  ❌ No TRUE groups - using last group's false_step: ${fallbackStep}`);
+    // Fallback if no groups exist
+    console.log(`  ⚠️ No condition groups found - using overall_false_step`);
     console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-    return fallbackStep;
+    return logic.overall_false_step;
   }
 
   // Legacy conditions evaluation
