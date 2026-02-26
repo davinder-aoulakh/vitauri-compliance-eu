@@ -142,8 +142,6 @@ export const evaluateConditionalLogic = (logic, currentAnswers, evaluateSingleCo
     
     const groupResults = [];
 
-    const groupResults = [];
-
     for (let i = 0; i < logic.condition_groups.length; i++) {
       const group = logic.condition_groups[i];
       console.log(`\n📋 [GROUP ${i + 1}] "${group.group_name || group.group_id}"`);
