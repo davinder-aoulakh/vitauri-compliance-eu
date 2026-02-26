@@ -2623,22 +2623,22 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
 
       <div className="flex items-center gap-2 flex-wrap">
         {history.map((stepId, idx) => {
-          const step = stepMap[stepId];
+        const step = stepMap[stepId];
 
-          return (
-            <React.Fragment key={stepId}>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-green-50 border-green-200">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-green-600">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-xs font-medium whitespace-nowrap text-green-700">
-                  {step?.step_title?.substring(0, 15) || `Step ${idx + 1}`}
-                  {step?.step_title?.length > 15 && '...'}
-                </span>
+        return (
+          <div key={stepId} className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-green-50 border-green-200">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-green-600">
+                <Check className="w-4 h-4 text-white" />
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            </React.Fragment>
-          );
+              <span className="text-xs font-medium whitespace-nowrap text-green-700">
+                {step?.step_title?.substring(0, 15) || `Step ${idx + 1}`}
+                {step?.step_title?.length > 15 && '...'}
+              </span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          </div>
+        );
         })}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all bg-indigo-50 border-indigo-300">
           <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
