@@ -214,7 +214,19 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       console.log('  Conditions:', group.conditions?.length || 0);
 
       if (!group.conditions || group.conditions.length === 0) {
-        groupResults.push({ group, result: false });
+        groupResults.push({ group, result: false, skipped: true });
+        continue;
+      }
+
+      // Check first condition to see if this group is applicable
+      const firstCondition = group.conditions[0];
+      console.log(`  [First Condition Check]`);
+      const firstConditionMet = await evaluateSingleConditionFn(firstCondition);
+      
+      // For AND groups, if first condition is false, skip entire group
+      if (!firstConditionMet && group.group_operator === 'AND') {
+        console.log(`  ⏭️ First condition false with AND operator - skipping this group`);
+        groupResults.push({ group, result: false, skipped: true });
         continue;
       }
 
@@ -246,13 +258,22 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       console.log(`  → True Step: ${group.true_step}`);
       console.log(`  → False Step: ${group.false_step}`);
       
-      groupResults.push({ group, result: groupResult });
+      groupResults.push({ group, result: groupResult, skipped: false });
+      
+      // If first condition matched and we evaluated all conditions, use this group's routing
+      if (firstConditionMet && group.group_operator === 'AND') {
+        const nextStep = groupResult ? group.true_step : group.false_step;
+        console.log(`  🎯 First condition matched - using this group's ${groupResult ? 'TRUE' : 'FALSE'} step: ${nextStep}`);
+        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
+        return nextStep;
+      }
     }
 
-    // Find first TRUE group
+    // If no group matched via first condition logic, find first TRUE group
     console.log('\n🏁 [FINAL DECISION] Evaluating all group results...');
     for (let i = 0; i < groupResults.length; i++) {
-      const { group, result } = groupResults[i];
+      const { group, result, skipped } = groupResults[i];
+      if (skipped) continue;
       console.log(`  Group ${i + 1} (${group.group_name}): ${result}`);
       if (result) {
         console.log(`  ✅ First TRUE group found - using true_step: ${group.true_step}`);
