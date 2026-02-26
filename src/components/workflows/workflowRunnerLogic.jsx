@@ -33,7 +33,15 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
         if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
           met = fieldAnswer === (comparisonValue === 'true');
         } else {
-          met = fieldAnswer === comparisonValue;
+          // Normalize string values for comparison (case-insensitive, trim whitespace)
+          if (typeof fieldAnswer === 'string' && typeof comparisonValue === 'string') {
+            const normalizedField = fieldAnswer.trim().toLowerCase();
+            const normalizedComparison = comparisonValue.trim().toLowerCase();
+            met = normalizedField === normalizedComparison;
+            console.log(`    [= OPERATOR] Normalized comparison: "${normalizedField}" === "${normalizedComparison}" = ${met}`);
+          } else {
+            met = fieldAnswer === comparisonValue;
+          }
         }
       }
       break;
@@ -44,7 +52,11 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
         if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
           met = fieldAnswer !== (comparisonValue === 'true');
         } else {
-          met = fieldAnswer !== comparisonValue;
+          // Normalize country values for comparison (case-insensitive, trim whitespace)
+          const normalizedField = String(fieldAnswer || '').trim().toLowerCase();
+          const normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
+          met = normalizedField !== normalizedComparison;
+          console.log(`    [!= OPERATOR] Normalized comparison: "${normalizedField}" !== "${normalizedComparison}" = ${met}`);
         }
       }
       break;
