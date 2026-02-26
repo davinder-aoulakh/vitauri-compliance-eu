@@ -6,7 +6,7 @@
 /**
  * Evaluates a single condition in a workflow
  * @param {Object} condition - The condition to evaluate
- * @param {Function} getFieldValue - Function to retrieve field values
+ * @param {Function} getFieldValue - Function to retrieve field values (must already be bound with workflow context)
  * @param {Object} crsCountryMap - Map of country codes to CRS info
  * @returns {Promise<boolean>} Whether the condition is met
  */
