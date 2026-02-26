@@ -2,7 +2,7 @@
  * Utility function to retrieve field values from workflow context
  * Supports step answers, account data, entity data, and controlling person data
  */
-export const getFieldValue = (fieldPath, allAnswers, initialData) => {
+export const getFieldValue = (fieldPath, allAnswers, initialData, workflow) => {
   if (!fieldPath) return undefined;
   
   console.log(`    [getFieldValue] 🔍 Looking up field path: "${fieldPath}"`);
@@ -11,7 +11,8 @@ export const getFieldValue = (fieldPath, allAnswers, initialData) => {
     hasInitialData: !!initialData,
     hasAccount: !!initialData?.account,
     hasEntity: !!initialData?.entity,
-    hasControllingPerson: !!initialData?.controlling_person
+    hasControllingPerson: !!initialData?.controlling_person,
+    hasWorkflow: !!workflow
   });
   
   // First check if it's a step answer reference with sub-field (e.g., "step_id.sub_field" or "Step Name — Sub Field")
@@ -20,27 +21,40 @@ export const getFieldValue = (fieldPath, allAnswers, initialData) => {
   const dashIndex = fieldPath.indexOf('—');
   
   if (dotIndex !== -1 || dashIndex !== -1) {
-    let stepId, subField;
+    let stepIdentifier, subField;
     
     if (dashIndex !== -1) {
       // Em dash separator (from UI display)
-      [stepId, subField] = fieldPath.split('—').map(s => s.trim());
-      console.log(`    [getFieldValue] Em dash detected - stepId: "${stepId}", subField: "${subField}"`);
+      [stepIdentifier, subField] = fieldPath.split('—').map(s => s.trim());
+      console.log(`    [getFieldValue] Em dash detected - stepIdentifier: "${stepIdentifier}", subField: "${subField}"`);
     } else {
       // Period separator (from code)
-      [stepId, subField] = fieldPath.split('.');
-      console.log(`    [getFieldValue] Dot detected - stepId: "${stepId}", subField: "${subField}"`);
+      [stepIdentifier, subField] = fieldPath.split('.');
+      console.log(`    [getFieldValue] Dot detected - stepIdentifier: "${stepIdentifier}", subField: "${subField}"`);
     }
     
-    const stepAnswer = allAnswers[stepId];
-    console.log(`    [getFieldValue] Step answer for "${stepId}":`, JSON.stringify(stepAnswer));
+    // Try to resolve stepIdentifier to actual step ID
+    // It could be either the step_id directly or the step_title
+    let actualStepId = stepIdentifier;
+    
+    // If workflow is provided, try to find step by title
+    if (workflow?.steps) {
+      const stepByTitle = workflow.steps.find(s => s.step_title === stepIdentifier);
+      if (stepByTitle) {
+        actualStepId = stepByTitle.step_id;
+        console.log(`    [getFieldValue] Resolved step title "${stepIdentifier}" → step_id "${actualStepId}"`);
+      }
+    }
+    
+    const stepAnswer = allAnswers[actualStepId];
+    console.log(`    [getFieldValue] Step answer for "${actualStepId}":`, JSON.stringify(stepAnswer));
     
     if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
       const value = stepAnswer[subField];
-      console.log(`    [getFieldValue] ✅ Found "${stepId}${dashIndex !== -1 ? '—' : '.'}${subField}":`, value, `(type: ${typeof value})`);
+      console.log(`    [getFieldValue] ✅ Found "${actualStepId}${dashIndex !== -1 ? '—' : '.'}${subField}":`, value, `(type: ${typeof value})`);
       return value;
     } else {
-      console.log(`    [getFieldValue] ⚠️ Step answer for "${stepId}" is not an object or doesn't exist`);
+      console.log(`    [getFieldValue] ⚠️ Step answer for "${actualStepId}" is not an object or doesn't exist`);
     }
   }
   
