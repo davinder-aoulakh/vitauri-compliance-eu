@@ -24,6 +24,7 @@ import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
 import MultiFieldRenderer from "./MultiFieldRenderer";
 import CountrySelect from "../shared/CountrySelect";
+import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -637,24 +638,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const getFieldValue = (fieldPath, allAnswers) => {
-    if (!fieldPath) return undefined;
-    
-    if (fieldPath.includes('.')) {
-      const [stepId, subField] = fieldPath.split('.');
-      const stepAnswer = allAnswers[stepId];
-      
-      if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
-        const value = stepAnswer[subField];
-        console.log(`getFieldValue("${fieldPath}") - stepAnswer[${subField}]:`, value);
-        return value;
-      }
-      console.log(`getFieldValue("${fieldPath}") - stepAnswer not an object or undefined:`, stepAnswer);
-      return undefined;
-    }
-    
-    const value = allAnswers[fieldPath];
-    console.log(`getFieldValue("${fieldPath}") - direct lookup:`, value);
-    return value;
+    return getFieldValueUtil(fieldPath, allAnswers, initialData);
   };
 
   const evaluateSingleCondition = async (condition, allAnswers) => {
