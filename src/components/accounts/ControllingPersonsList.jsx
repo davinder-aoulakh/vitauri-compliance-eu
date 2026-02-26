@@ -36,6 +36,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historyPerson, setHistoryPerson] = useState(null);
+  const [entity, setEntity] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: controllingPersons = [], isLoading } = useQuery({
@@ -55,6 +56,19 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     staleTime: 0, // Always fetch fresh data
     cacheTime: 0 // Don't cache workflow data
   });
+
+  // Fetch entity data for workflow conditional logic
+  useEffect(() => {
+    if (account?.entity_id) {
+      base44.entities.Entity.filter({ id: account.entity_id })
+        .then(entities => {
+          if (entities.length > 0) {
+            setEntity(entities[0]);
+          }
+        })
+        .catch(err => console.error('Error fetching entity:', err));
+    }
+  }, [account?.entity_id]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ControllingPerson.create({
@@ -523,7 +537,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
             </DialogHeader>
             <WorkflowRunner
               workflow={workflows[0]}
-              initialData={{ controlling_person: classifyingPerson, account }}
+              initialData={{ controlling_person: classifyingPerson, account, entity }}
               onComplete={handleClassificationComplete}
               onCancel={() => setShowClassification(false)}
             />
