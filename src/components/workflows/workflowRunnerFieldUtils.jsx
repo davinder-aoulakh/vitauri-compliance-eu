@@ -5,17 +5,28 @@
 export const getFieldValue = (fieldPath, allAnswers, initialData) => {
   if (!fieldPath) return undefined;
   
-  console.log(`    [getFieldValue] Looking up field path: "${fieldPath}"`);
+  console.log(`    [getFieldValue] 🔍 Looking up field path: "${fieldPath}"`);
+  console.log(`    [getFieldValue] Available data sources:`, {
+    hasAllAnswers: !!allAnswers,
+    hasInitialData: !!initialData,
+    hasAccount: !!initialData?.account,
+    hasEntity: !!initialData?.entity,
+    hasControllingPerson: !!initialData?.controlling_person
+  });
   
   // First check if it's a step answer reference with sub-field (e.g., "step_id.sub_field")
   if (fieldPath.includes('.')) {
     const [stepId, subField] = fieldPath.split('.');
     const stepAnswer = allAnswers[stepId];
+    console.log(`    [getFieldValue] Dot detected - stepId: "${stepId}", subField: "${subField}"`);
+    console.log(`    [getFieldValue] Step answer for "${stepId}":`, JSON.stringify(stepAnswer));
     
     if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
       const value = stepAnswer[subField];
-      console.log(`    [getFieldValue] Step answer "${stepId}.${subField}":`, value);
+      console.log(`    [getFieldValue] ✅ Found "${stepId}.${subField}":`, value, `(type: ${typeof value})`);
       return value;
+    } else {
+      console.log(`    [getFieldValue] ⚠️ Step answer for "${stepId}" is not an object or doesn't exist`);
     }
   }
   
@@ -71,6 +82,8 @@ export const getFieldValue = (fieldPath, allAnswers, initialData) => {
   
   // Check Entity data (from initialData.entity)
   if (initialData?.entity) {
+    console.log(`    [getFieldValue] Checking entity data for "${fieldPath}"...`);
+    console.log(`    [getFieldValue] Entity object:`, JSON.stringify(initialData.entity));
     // Handle nested field paths
     if (fieldPath.includes('.')) {
       const parts = fieldPath.split('.');
@@ -80,17 +93,18 @@ export const getFieldValue = (fieldPath, allAnswers, initialData) => {
         if (value === undefined) break;
       }
       if (value !== undefined) {
-        console.log(`    [getFieldValue] Entity nested field "${fieldPath}":`, value);
+        console.log(`    [getFieldValue] ✅ Entity nested field "${fieldPath}":`, value, `(type: ${typeof value})`);
         return value;
       }
     }
     // Handle direct entity field
     if (initialData.entity[fieldPath] !== undefined) {
-      console.log(`    [getFieldValue] Entity field "${fieldPath}":`, initialData.entity[fieldPath]);
+      console.log(`    [getFieldValue] ✅ Entity direct field "${fieldPath}":`, initialData.entity[fieldPath], `(type: ${typeof initialData.entity[fieldPath]})`);
       return initialData.entity[fieldPath];
     }
   }
   
-  console.log(`    [getFieldValue] Field "${fieldPath}" not found in any data source`);
+  console.log(`    [getFieldValue] ❌ Field "${fieldPath}" not found in any data source!`);
+  console.log(`    [getFieldValue] Returning: undefined`);
   return undefined;
 };
