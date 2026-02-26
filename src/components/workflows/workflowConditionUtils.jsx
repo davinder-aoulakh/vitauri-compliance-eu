@@ -136,12 +136,50 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
       conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
       break;
     case "is_crs":
-      const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
-      conditionMet = countryLookup?.isCrs === true;
+      if (fieldValue && typeof fieldValue === 'string') {
+        try {
+          const countries = await (async () => {
+            const { base44 } = await import("@/api/base44Client");
+            return await base44.entities.CrsCountryInfo.filter({
+              $or: [
+                { country_name: fieldValue.trim() },
+                { country_code: fieldValue.trim() }
+              ]
+            });
+          })();
+          conditionMet = countries.length > 0 && countries[0].is_crs_country === true;
+          console.log(`  [is_crs] Country "${fieldValue}" → is_crs=${conditionMet}`);
+        } catch (error) {
+          console.log(`  [is_crs] Error checking CRS status, fallback to map`);
+          const countryLookup = crsCountryMap[String(fieldValue || '').toLowerCase()];
+          conditionMet = countryLookup?.isCrs === true;
+        }
+      } else {
+        conditionMet = false;
+      }
       break;
     case "is_not_crs":
-      const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
-      conditionMet = countryLookupNot?.isCrs === false;
+      if (fieldValue && typeof fieldValue === 'string') {
+        try {
+          const countries = await (async () => {
+            const { base44 } = await import("@/api/base44Client");
+            return await base44.entities.CrsCountryInfo.filter({
+              $or: [
+                { country_name: fieldValue.trim() },
+                { country_code: fieldValue.trim() }
+              ]
+            });
+          })();
+          conditionMet = countries.length === 0 || countries[0].is_crs_country === false;
+          console.log(`  [is_not_crs] Country "${fieldValue}" → is_not_crs=${conditionMet}`);
+        } catch (error) {
+          console.log(`  [is_not_crs] Error checking CRS status, fallback to map`);
+          const countryLookupNot = crsCountryMap[String(fieldValue || '').toLowerCase()];
+          conditionMet = countryLookupNot?.isCrs === false;
+        }
+      } else {
+        conditionMet = true;
+      }
       break;
     default:
       conditionMet = false;
