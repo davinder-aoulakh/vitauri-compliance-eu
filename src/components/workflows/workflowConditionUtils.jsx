@@ -84,10 +84,9 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
     return valLower;
   };
 
-  const isCountryComparison = (
-    condition.field?.toLowerCase().includes('country') ||
-    condition.value?.toLowerCase().includes('country')
-  );
+  // Check if we're comparing countries by checking if field name contains 'country'
+  // This helps determine if we should normalize values as country codes
+  const isCountryField = condition.field?.toLowerCase().includes('country');
 
   switch (condition.operator) {
     case "=":
