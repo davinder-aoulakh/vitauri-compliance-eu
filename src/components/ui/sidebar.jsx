@@ -424,7 +424,6 @@ const sidebarMenuButtonVariants = cva(
 
 const SidebarMenuButton = React.forwardRef(function SidebarMenuButton(
   { asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props },
-  // fixed
   ref
 ) {
   const Comp = asChild ? Slot : "button"
