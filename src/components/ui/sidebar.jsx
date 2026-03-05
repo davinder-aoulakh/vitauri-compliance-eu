@@ -31,7 +31,6 @@ function useSidebar() {
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
-
   return context
 }
 
@@ -59,7 +58,6 @@ const SidebarProvider = React.forwardRef((
     } else {
       _setOpen(openState)
     }
-
     document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
   }, [setOpenProp, open])
 
@@ -79,7 +77,6 @@ const SidebarProvider = React.forwardRef((
         toggleSidebar()
       }
     }
-
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleSidebar])
@@ -100,13 +97,11 @@ const SidebarProvider = React.forwardRef((
     (<SidebarContext.Provider value={contextValue}>
       <TooltipProvider delayDuration={0}>
         <div
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style
-            }
-          }
+          style={{
+            "--sidebar-width": SIDEBAR_WIDTH,
+            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+            ...style
+          }}
           className={cn(
             "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
             className
@@ -155,11 +150,7 @@ const Sidebar = React.forwardRef((
           data-sidebar="sidebar"
           data-mobile="true"
           className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE
-            }
-          }
+          style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE }}
           side={side}>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -453,9 +444,7 @@ const SidebarMenuButton = React.forwardRef(function SidebarMenuButton(
   }
 
   if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    }
+    tooltip = { children: tooltip }
   }
 
   return (
@@ -528,11 +517,7 @@ const SidebarMenuSkeleton = React.forwardRef(({ className, showIcon = false, ...
       <Skeleton
         className="h-4 max-w-[--skeleton-width] flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width
-          }
-        } />
+        style={{ "--skeleton-width": width }} />
     </div>)
   );
 })
