@@ -259,14 +259,6 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       console.log(`  → False Step: ${group.false_step}`);
       
       groupResults.push({ group, result: groupResult, skipped: false });
-      
-      // If first condition matched and we evaluated all conditions, use this group's routing
-      if (firstConditionMet && group.group_operator === 'AND') {
-        const nextStep = groupResult ? group.true_step : group.false_step;
-        console.log(`  🎯 First condition matched - using this group's ${groupResult ? 'TRUE' : 'FALSE'} step: ${nextStep}`);
-        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-        return nextStep;
-      }
     }
 
     // If no group matched via first condition logic, find first TRUE group
