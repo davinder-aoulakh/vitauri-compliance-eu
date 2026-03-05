@@ -501,7 +501,7 @@ const SidebarMenuSubButton = React.forwardRef(function SidebarMenuSubButton(
     />
   )
 })
-SidebarMenuSubButton.displayName = "SidebarMenuSubButton" // cache-bust-3
+SidebarMenuSubButton.displayName = "SidebarMenuSubButton" // cache-bust-4
 
 export {
   Sidebar,
