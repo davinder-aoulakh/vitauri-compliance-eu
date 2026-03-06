@@ -1,11 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
-// Only backup configuration/reference entities - operational data (Accounts, etc.) is too large
 const ENTITY_NAMES = [
-  'Tenant', 'Entity', 'Workflow', 'WorkflowVersion',
-  'CRSReport', 'ReferencedData', 'CrsCountryInfo',
-  'DashboardConfiguration', 'FormConfiguration',
-  'JurisdictionConfig', 'CustomValidationRule', 'PlatformSettings'
+  'Tenant', 'Entity', 'Workflow', 'CRSReport',
+  'ReferencedData', 'CrsCountryInfo', 'DashboardConfiguration',
+  'FormConfiguration', 'JurisdictionConfig', 'CustomValidationRule', 'PlatformSettings'
 ];
 
 Deno.serve(async (req) => {
@@ -23,24 +21,29 @@ Deno.serve(async (req) => {
     const backup = {
       backup_date: new Date().toISOString(),
       backed_up_by: user.email,
-      note: 'Configuration and reference data backup. Operational data (Accounts, ControllingPersons, Beneficiaries, etc.) must be exported separately.',
       entities: {},
       entity_counts: {}
     };
 
-    for (const name of ENTITY_NAMES) {
-      try {
-        const records = await base44.asServiceRole.entities[name].list('-created_date', 1000);
-        backup.entities[name] = records;
-        backup.entity_counts[name] = records.length;
-      } catch {
+    const results = await Promise.allSettled(
+      ENTITY_NAMES.map(async (name) => {
+        const records = await base44.asServiceRole.entities[name].list('-created_date', 100);
+        return { name, records };
+      })
+    );
+
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        backup.entities[r.value.name] = r.value.records;
+        backup.entity_counts[r.value.name] = r.value.records.length;
+      } else {
+        const name = ENTITY_NAMES[results.indexOf(r)];
         backup.entities[name] = [];
         backup.entity_counts[name] = 0;
       }
     }
 
-    const jsonStr = JSON.stringify(backup);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
     const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
 
     return Response.json({
