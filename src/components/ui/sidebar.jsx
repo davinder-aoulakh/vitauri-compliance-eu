@@ -324,15 +324,44 @@ const SidebarGroupContent = React.forwardRef(function SidebarGroupContent({ clas
 })
 SidebarGroupContent.displayName = "SidebarGroupContent"
 
-const SidebarMenu = React.forwardRef(function SidebarMenu({ className, ...props }, ref) {
+const SidebarMenu = React.forwardRef(function SidebarMenu({ className, onKeyDown, ...props }, ref) {
+  const handleKeyDown = React.useCallback((e) => {
+    const menu = e.currentTarget
+    const items = Array.from(menu.querySelectorAll('[data-sidebar="menu-button"]:not([disabled])'))
+    const idx = items.indexOf(document.activeElement)
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      const next = items[(idx + 1) % items.length]
+      next?.focus()
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      const prev = items[(idx - 1 + items.length) % items.length]
+      prev?.focus()
+    } else if (e.key === "Home") {
+      e.preventDefault()
+      items[0]?.focus()
+    } else if (e.key === "End") {
+      e.preventDefault()
+      items[items.length - 1]?.focus()
+    }
+    onKeyDown?.(e)
+  }, [onKeyDown])
+
   return (
-    <ul ref={ref} data-sidebar="menu" className={cn("flex w-full min-w-0 flex-col gap-1", className)} {...props} />
+    <ul
+      ref={ref}
+      data-sidebar="menu"
+      role="menu"
+      className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+      onKeyDown={handleKeyDown}
+      {...props}
+    />
   )
 })
 SidebarMenu.displayName = "SidebarMenu"
 
 const SidebarMenuItem = React.forwardRef(function SidebarMenuItem({ className, ...props }, ref) {
-  return <li ref={ref} data-sidebar="menu-item" className={cn("group/menu-item relative", className)} {...props} />
+  return <li ref={ref} data-sidebar="menu-item" role="menuitem" className={cn("group/menu-item relative", className)} {...props} />
 })
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
@@ -359,7 +388,7 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef(function SidebarMenuButton(
-  { asChild = false, isActive = false, variant = "default", size = "default", tooltip, className,id, ...props },
+  { asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, id, ...props },
   ref
 ) {
   const Comp = asChild ? Slot : "button"
@@ -368,6 +397,7 @@ const SidebarMenuButton = React.forwardRef(function SidebarMenuButton(
   const button = (
     <Comp
       ref={ref}
+      id={id}
       data-sidebar="menu-button"
       data-size={size}
       data-active={isActive}
