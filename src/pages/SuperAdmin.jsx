@@ -78,32 +78,8 @@ export default function SuperAdminDashboard() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
-      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
-                <Shield className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">
-                  Super Admin Console
-                </h1>
-                <p className="text-indigo-200">
-                  System-wide management and configuration
-                </p>
-              </div>
-            </div>
-          </div>
-          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-sm px-4 py-2">
-            <Shield className="w-4 h-4 mr-2" />
-            Administrator Access
-          </Badge>
-        </div>
-
+  const dashboardContent = (
+    <div className="space-y-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
