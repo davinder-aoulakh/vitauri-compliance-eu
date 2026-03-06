@@ -73,6 +73,7 @@ import JurisdictionOverrides from "../components/workflows/JurisdictionOverrides
 import FormulaBuilder from "../components/workflows/FormulaBuilder"; // New import
 import IntegrationManager from "../components/workflows/IntegrationManager"; // New import
 import WorkflowTriggerConfig from "../components/workflows/WorkflowTriggerConfig";
+import GlobalVersionHistoryPanel from "../components/workflows/GlobalVersionHistoryPanel";
 import { Zap } from "lucide-react";
 
 export default function WorkflowBuilder() {
