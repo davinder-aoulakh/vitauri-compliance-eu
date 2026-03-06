@@ -1,16 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
+// Only backup configuration/reference entities - operational data (Accounts, etc.) is too large
 const ENTITY_NAMES = [
   'Tenant', 'Entity', 'Workflow', 'WorkflowVersion',
   'CRSReport', 'ReferencedData', 'CrsCountryInfo',
   'DashboardConfiguration', 'FormConfiguration',
   'JurisdictionConfig', 'CustomValidationRule', 'PlatformSettings'
-];
-
-// Heavier entities fetched with limit to avoid timeout
-const LARGE_ENTITY_NAMES = [
-  'Account', 'Beneficiary', 'ControllingPerson',
-  'EntityClassificationHistory', 'AccountClassificationHistory'
 ];
 
 Deno.serve(async (req) => {
@@ -28,28 +23,14 @@ Deno.serve(async (req) => {
     const backup = {
       backup_date: new Date().toISOString(),
       backed_up_by: user.email,
+      note: 'Configuration and reference data backup. Operational data (Accounts, ControllingPersons, Beneficiaries, etc.) must be exported separately.',
       entities: {},
       entity_counts: {}
     };
 
-    // Fetch smaller entities in parallel
-    const smallResults = await Promise.allSettled(
-      ENTITY_NAMES.map(async (name) => {
-        const records = await base44.asServiceRole.entities[name].list('-created_date', 500);
-        return { name, records };
-      })
-    );
-    for (const r of smallResults) {
-      if (r.status === 'fulfilled') {
-        backup.entities[r.value.name] = r.value.records;
-        backup.entity_counts[r.value.name] = r.value.records.length;
-      }
-    }
-
-    // Fetch larger entities sequentially with lower limit
-    for (const name of LARGE_ENTITY_NAMES) {
+    for (const name of ENTITY_NAMES) {
       try {
-        const records = await base44.asServiceRole.entities[name].list('-created_date', 200);
+        const records = await base44.asServiceRole.entities[name].list('-created_date', 1000);
         backup.entities[name] = records;
         backup.entity_counts[name] = records.length;
       } catch {
@@ -58,7 +39,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const jsonStr = JSON.stringify(backup, null, 2);
+    const jsonStr = JSON.stringify(backup);
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
 
