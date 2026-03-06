@@ -19,11 +19,37 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
     }
 
+    // Parse optional params: mode = 'full' | 'table', entity = specific entity name
+    const body = await req.json().catch(() => ({}));
+    const mode = body.mode || 'full'; // 'full' = entire DB, 'table' = single entity
+    const targetEntity = body.entity || null;
+
+    // Single-table mode
+    if (mode === 'table' && targetEntity) {
+      if (!ENTITIES.includes(targetEntity)) {
+        return Response.json({ error: `Unknown entity: ${targetEntity}` }, { status: 400 });
+      }
+      const records = await base44.asServiceRole.entities[targetEntity].list();
+      return Response.json({
+        metadata: {
+          exported_at: new Date().toISOString(),
+          exported_by: user.email,
+          mode: 'table',
+          entity: targetEntity,
+          total_records: records.length
+        },
+        entity: targetEntity,
+        records: records || []
+      });
+    }
+
+    // Full database mode
     const backup = {
       metadata: {
         exported_at: new Date().toISOString(),
         exported_by: user.email,
         app_version: '1.0',
+        mode: 'full',
         entity_count: ENTITIES.length
       },
       entities: {}
