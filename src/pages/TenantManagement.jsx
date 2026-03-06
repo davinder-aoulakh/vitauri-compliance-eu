@@ -323,6 +323,10 @@ export default function TenantManagement() {
         </Card>
       </div>
 
+          </TabsContent>
+        </Tabs>
+      </div>
+
       {/* Tenant Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
