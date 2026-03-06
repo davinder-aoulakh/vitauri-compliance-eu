@@ -46,16 +46,10 @@ Deno.serve(async (req) => {
     const jsonStr = JSON.stringify(backup);
     const filename = `backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     const formData = new FormData();
-    formData.append('file', new Blob([jsonStr], { type: 'application/json' }), filename);
+    const fileBlob = new Blob([jsonStr], { type: 'application/json' });
+    formData.append('file', fileBlob, filename);
 
-    // Use fetch directly to upload as multipart form
-    const appId = Deno.env.get('BASE44_APP_ID');
-    const uploadResp = await fetch(`https://api.base44.com/api/apps/${appId}/files/upload`, {
-      method: 'POST',
-      headers: { 'X-API-Key': req.headers.get('X-API-Key') || '' },
-      body: formData
-    });
-    const uploadResult = await uploadResp.json();
+    const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: formData });
 
     return Response.json({
       file_url: uploadResult.file_url,
