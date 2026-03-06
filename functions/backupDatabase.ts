@@ -25,13 +25,19 @@ Deno.serve(async (req) => {
 
     const backup = { backup_date: new Date().toISOString(), entities: {}, entity_counts: {} };
 
-    for (const entityName of ENTITY_NAMES) {
-      try {
-        const records = await base44.asServiceRole.entities[entityName].list();
-        backup.entities[entityName] = records;
-        backup.entity_counts[entityName] = records.length;
-      } catch (err) {
-        // Entity may not exist or have no records — skip silently
+    const results = await Promise.allSettled(
+      ENTITY_NAMES.map(async (entityName) => {
+        const records = await base44.asServiceRole.entities[entityName].list('-created_date', 5000);
+        return { entityName, records };
+      })
+    );
+
+    for (const result of results) {
+      const entityName = result.value?.entityName || ENTITY_NAMES[results.indexOf(result)];
+      if (result.status === 'fulfilled') {
+        backup.entities[entityName] = result.value.records;
+        backup.entity_counts[entityName] = result.value.records.length;
+      } else {
         backup.entities[entityName] = [];
         backup.entity_counts[entityName] = 0;
       }
