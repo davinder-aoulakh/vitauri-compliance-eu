@@ -16,6 +16,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import BackupManager from "@/components/superadmin/BackupManager";
 
 export default function SuperAdminDashboard() {
   const [user, setUser] = useState(null);
@@ -168,6 +170,23 @@ export default function SuperAdminDashboard() {
           />
         </div>
 
+        {/* Tabs: Overview + Backup */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="bg-white/10 backdrop-blur-sm">
+            <TabsTrigger value="overview" className="text-white data-[state=active]:bg-white/20">
+              <Activity className="w-4 h-4 mr-2" /> Overview
+            </TabsTrigger>
+            <TabsTrigger value="backup" className="text-white data-[state=active]:bg-white/20">
+              <Database className="w-4 h-4 mr-2" /> Backup & Restore
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="backup">
+            <BackupManager />
+          </TabsContent>
+
+          <TabsContent value="overview" className="space-y-6">
+
         {/* Recent Activity */}
         <Card className="border-0 shadow-2xl bg-white/10 backdrop-blur-sm border border-white/20">
           <CardHeader className="border-b border-white/10">
@@ -240,6 +259,9 @@ export default function SuperAdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
