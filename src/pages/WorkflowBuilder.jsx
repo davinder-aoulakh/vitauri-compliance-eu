@@ -46,6 +46,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import WorkflowForm from "../components/superadmin/WorkflowForm";
 import WorkflowVisualizer from "../components/workflows/WorkflowVisualizer";
 import WorkflowVersionHistory from "../components/workflows/WorkflowVersionHistory";
+
+// Helper: capture a workflow snapshot
+async function captureWorkflowSnapshot(workflow, eventType, userEmail, description = "") {
+  try {
+    await base44.entities.WorkflowVersion.create({
+      workflow_id: workflow.id,
+      workflow_name: workflow.workflow_name,
+      workflow_type: workflow.workflow_type,
+      version: workflow.version || "1.0",
+      event_type: eventType,
+      snapshot: { ...workflow },
+      captured_by: userEmail,
+      captured_date: new Date().toISOString(),
+      description
+    });
+  } catch (err) {
+    console.error("Failed to capture workflow snapshot:", err);
+  }
+}
 import WorkflowTestRunner from "../components/workflows/WorkflowTestRunner";
 import WorkflowDragDropBuilder from "../components/workflows/WorkflowDragDropBuilder"; // New import
 import ComponentLibrary from "../components/workflows/ComponentLibrary"; // New import
@@ -110,11 +129,14 @@ export default function WorkflowBuilder() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Workflow.update(id, data),
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries(['workflows']);
+      // Capture a snapshot after every save
+      const updatedWorkflow = { ...variables.data, id: variables.id };
+      await captureWorkflowSnapshot(updatedWorkflow, "saved", user?.email || "", variables.description || "");
       setShowForm(false);
-      setShowDragDropBuilder(false); // New: Close builder on success
-      setShowJurisdictionOverrides(false); // New: Close jurisdiction overrides on success
+      setShowDragDropBuilder(false);
+      setShowJurisdictionOverrides(false);
       setSelectedWorkflow(null);
       setShowVersionHistory(false);
     }
@@ -201,15 +223,15 @@ export default function WorkflowBuilder() {
         changes_description: "Workflow published"
       });
 
-      updateMutation.mutate({
-        id: workflow.id,
-        data: {
-          ...workflow,
-          status: "published",
-          published_date: new Date().toISOString().split('T')[0],
-          change_log: changeLog
-        }
-      });
+      const publishedData = {
+        ...workflow,
+        status: "published",
+        published_date: new Date().toISOString().split('T')[0],
+        change_log: changeLog
+      };
+      // Capture published snapshot before update mutation (which also captures "saved")
+      await captureWorkflowSnapshot({ ...publishedData, id: workflow.id }, "published", user.email, "Workflow published");
+      updateMutation.mutate({ id: workflow.id, data: publishedData, description: "Workflow published" });
     }
   };
 
