@@ -321,7 +321,6 @@ export default function TenantManagement() {
             )}
           </CardContent>
         </Card>
-
           </TabsContent>
         </Tabs>
       </div>
