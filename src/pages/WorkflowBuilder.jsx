@@ -419,7 +419,7 @@ export default function WorkflowBuilder() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-5 bg-white/10 backdrop-blur-sm">
             <TabsTrigger value="workflows" className="text-white data-[state=active]:bg-white/20">
               <GitBranch className="w-4 h-4 mr-2" />
               Workflows
@@ -435,6 +435,10 @@ export default function WorkflowBuilder() {
             <TabsTrigger value="analytics" className="text-white data-[state=active]:bg-white/20">
               <BarChart3 className="w-4 h-4 mr-2" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="versionhistory" className="text-white data-[state=active]:bg-white/20">
+              <History className="w-4 h-4 mr-2" />
+              Version History
             </TabsTrigger>
           </TabsList>
 
@@ -643,6 +647,10 @@ export default function WorkflowBuilder() {
           <TabsContent value="analytics">
             <WorkflowAnalyticsDashboard />
           </TabsContent>
+
+          <TabsContent value="versionhistory">
+            <GlobalVersionHistoryPanel workflows={workflows} user={user} />
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -715,10 +723,9 @@ export default function WorkflowBuilder() {
             </DialogTitle>
           </DialogHeader>
           <WorkflowVersionHistory
-            workflows={selectedWorkflowForVersions ? getWorkflowVersions(selectedWorkflowForVersions.workflow_name) : []}
-            currentWorkflowId={selectedWorkflowForVersions?.id}
-            onViewVersion={handleViewFlow}
-            onRestoreVersion={handleRestoreVersion}
+            workflowId={selectedWorkflowForVersions?.id}
+            workflowName={selectedWorkflowForVersions?.workflow_name}
+            onRestored={() => setShowVersionHistory(false)}
           />
         </DialogContent>
       </Dialog>
