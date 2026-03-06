@@ -2,13 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 const ENTITY_NAMES = [
   'Tenant', 'Entity', 'Account', 'Workflow', 'WorkflowVersion',
-  'AuditLog', 'CRSReport', 'Beneficiary', 'ControllingPerson',
+  'CRSReport', 'Beneficiary', 'ControllingPerson',
   'ReferencedData', 'CrsCountryInfo', 'DashboardConfiguration',
   'FormConfiguration', 'JurisdictionConfig', 'CustomValidationRule',
-  'WorkflowComponent', 'WorkflowAnalytics', 'DatabaseBackup',
   'EntityClassificationHistory', 'AccountClassificationHistory',
-  'ControllingPersonClassificationHistory', 'AutoClassificationRule',
-  'RolePermission', 'PlatformSettings', 'DashboardTemplate'
+  'PlatformSettings'
 ];
 
 Deno.serve(async (req) => {
