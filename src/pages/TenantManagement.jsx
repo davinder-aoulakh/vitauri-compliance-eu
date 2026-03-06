@@ -12,12 +12,14 @@ import {
   Clock,
   XCircle,
   Mail,
-  MapPin
+  MapPin,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -34,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TenantForm from "../components/superadmin/TenantForm";
+import TenantHealthDashboard from "../components/superadmin/TenantHealthDashboard";
 
 export default function TenantManagement() {
   const [user, setUser] = useState(null);
