@@ -157,6 +157,22 @@ export default function TenantManagement() {
           </Button>
         </div>
 
+        <Tabs defaultValue="tenants" className="space-y-6">
+          <TabsList className="bg-white/10 backdrop-blur-sm">
+            <TabsTrigger value="tenants" className="text-white data-[state=active]:bg-white/20 gap-2">
+              <Building2 className="w-4 h-4" /> Tenants
+            </TabsTrigger>
+            <TabsTrigger value="health" className="text-white data-[state=active]:bg-white/20 gap-2">
+              <Activity className="w-4 h-4" /> Health Monitor
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="health">
+            <TenantHealthDashboard />
+          </TabsContent>
+
+          <TabsContent value="tenants" className="space-y-6">
+
         {/* Search */}
         <Card className="border-0 shadow-xl bg-white/10 backdrop-blur-sm border border-white/20">
           <CardContent className="p-6">
