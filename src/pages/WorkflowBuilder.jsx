@@ -172,6 +172,7 @@ export default function WorkflowBuilder() {
   };
 
   const handleViewVersions = (workflow) => {
+    setSelectedWorkflow(workflow);
     setSelectedWorkflowForVersions(workflow);
     setShowVersionHistory(true);
   };
@@ -210,6 +211,13 @@ export default function WorkflowBuilder() {
           change_log: changeLog
         }
       });
+
+      // Auto-snapshot on publish (fire-and-forget)
+      base44.functions.invoke('saveWorkflowVersion', {
+        workflow_id: workflow.id,
+        change_summary: 'Workflow published',
+        version_label: 'major'
+      }).catch(err => console.warn('Version snapshot failed:', err));
     }
   };
 
@@ -689,14 +697,16 @@ export default function WorkflowBuilder() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Version History: {selectedWorkflowForVersions?.workflow_name}
+              Version History: {selectedWorkflow?.workflow_name}
             </DialogTitle>
           </DialogHeader>
           <WorkflowVersionHistory
-            workflows={selectedWorkflowForVersions ? getWorkflowVersions(selectedWorkflowForVersions.workflow_name) : []}
-            currentWorkflowId={selectedWorkflowForVersions?.id}
-            onViewVersion={handleViewFlow}
-            onRestoreVersion={handleRestoreVersion}
+            workflowId={selectedWorkflow?.id}
+            workflowName={selectedWorkflow?.workflow_name}
+            onViewSnapshot={(snapshot) => {
+              setSelectedWorkflow(snapshot);
+              setShowVisualizer(true);
+            }}
           />
         </DialogContent>
       </Dialog>

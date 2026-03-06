@@ -63,9 +63,9 @@ import ReferencedDataManagement from './pages/ReferencedDataManagement';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Setup from './pages/Setup';
-import SuperAdmin from './pages/SuperAdmin';
 import TenantManagement from './pages/TenantManagement';
 import UserManagement from './pages/UserManagement';
+import SuperAdmin from './pages/SuperAdmin';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import __Layout from './Layout.jsx';
 
@@ -87,9 +87,9 @@ export const PAGES = {
     "Reports": Reports,
     "Settings": Settings,
     "Setup": Setup,
-    "SuperAdmin": SuperAdmin,
     "TenantManagement": TenantManagement,
     "UserManagement": UserManagement,
+    "SuperAdmin": SuperAdmin,
     "WorkflowBuilder": WorkflowBuilder,
 }
 
