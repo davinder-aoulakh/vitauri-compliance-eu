@@ -10,28 +10,58 @@ const ENTITIES = [
   'ControllingPersonClassificationHistory', 'RolePermission', 'PlatformSettings'
 ];
 
+async function getRetentionDays(base44) {
+  try {
+    const settings = await base44.asServiceRole.entities.PlatformSettings.filter({ setting_key: 'backup_retention_days' });
+    return settings[0]?.setting_value?.days || 90;
+  } catch {
+    return 90;
+  }
+}
+
+async function purgeExpiredBackups(base44) {
+  try {
+    const allBackups = await base44.asServiceRole.entities.BackupStorage.list();
+    const now = new Date();
+    const expired = allBackups.filter(b => b.expires_at && new Date(b.expires_at) < now);
+    for (const b of expired) {
+      await base44.asServiceRole.entities.BackupStorage.delete(b.id);
+    }
+    console.log(`[ScheduledBackup] Purged ${expired.length} expired backup records.`);
+  } catch (e) {
+    console.error('[ScheduledBackup] Purge failed:', e.message);
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Allow both scheduled (no user) and manual invocation (super admin only)
-    let calledByUser = false;
+    let exportedBy = 'scheduled';
+    let backupType = 'scheduled';
     try {
       const user = await base44.auth.me();
       if (user && user.app_role !== 'super_admin') {
         return Response.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
       }
-      calledByUser = true;
+      if (user) {
+        exportedBy = user.email;
+        backupType = 'adhoc';
+      }
     } catch {
-      // Called by scheduler — no user session, that's fine
+      // Called by scheduler — no user session
     }
 
     const exportedAt = new Date().toISOString();
+    const retentionDays = await getRetentionDays(base44);
+    const expiresAt = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
+
     const backup = {
       metadata: {
         exported_at: exportedAt,
-        exported_by: calledByUser ? 'manual' : 'scheduled',
+        exported_by: exportedBy,
         app_version: '1.0',
+        backup_type: backupType,
         entity_count: ENTITIES.length
       },
       entities: {}
@@ -59,26 +89,45 @@ Deno.serve(async (req) => {
 
     backup.metadata.total_records = totalRecords;
 
-    // Store backup record in PlatformSettings for audit trail
+    // Upload backup to file storage
+    const fileName = `crs_${backupType}_backup_${exportedAt.replace(/[:.]/g, '-')}.json`;
+    const fileBlob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+
+    let fileUrl = null;
     try {
-      await base44.asServiceRole.entities.PlatformSettings.create({
-        setting_key: 'scheduled_backup_log',
-        setting_value: {
-          exported_at: exportedAt,
-          exported_by: calledByUser ? 'manual_adhoc' : 'scheduled_daily',
-          total_records: totalRecords,
-          entity_count: ENTITIES.length
-        }
-      });
-    } catch {
-      // Non-fatal — log entry creation failure should not block the backup
+      const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file: fileBlob });
+      fileUrl = uploadRes.file_url;
+      console.log(`[ScheduledBackup] File stored at: ${fileUrl}`);
+    } catch (e) {
+      console.error('[ScheduledBackup] File upload failed:', e.message);
     }
 
-    console.log(`[ScheduledBackup] Completed at ${exportedAt} — ${totalRecords} records across ${ENTITIES.length} entities.`);
+    // Log to BackupStorage entity
+    try {
+      await base44.asServiceRole.entities.BackupStorage.create({
+        backup_type: backupType,
+        file_url: fileUrl,
+        file_name: fileName,
+        total_records: totalRecords,
+        entity_count: ENTITIES.length,
+        exported_by: exportedBy,
+        exported_at: exportedAt,
+        expires_at: expiresAt,
+        status: 'completed'
+      });
+    } catch (e) {
+      console.error('[ScheduledBackup] BackupStorage log failed:', e.message);
+    }
+
+    // Purge expired backups
+    await purgeExpiredBackups(base44);
+
+    console.log(`[ScheduledBackup] Completed at ${exportedAt} — ${totalRecords} records across ${ENTITIES.length} entities. Type: ${backupType}`);
 
     return Response.json({
       success: true,
-      metadata: backup.metadata,
+      metadata: { ...backup.metadata, total_records: totalRecords },
+      file_url: fileUrl,
       backup
     });
   } catch (error) {
