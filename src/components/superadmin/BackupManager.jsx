@@ -445,6 +445,78 @@ function RestorePanel() {
           </div>
         )}
 
+        {/* ── Preview Summary ─────────────────────────────────────────────── */}
+        {backupFileData && (
+          <div className="border border-indigo-500/30 rounded-lg overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-indigo-600/20 hover:bg-indigo-600/30 transition-colors text-left"
+              onClick={() => setPreviewExpanded(p => !p)}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Eye className="w-4 h-4 text-indigo-300" />
+                Preview Restore
+                <span className="text-xs font-normal text-indigo-300">
+                  — {selectedEntities.length} table{selectedEntities.length !== 1 ? 's' : ''} selected,{' '}
+                  {selectedEntities.reduce((sum, e) => sum + (backupFileData.entities[e]?.length || 0), 0).toLocaleString()} records total
+                </span>
+              </span>
+              {previewExpanded
+                ? <ChevronUp className="w-4 h-4 text-indigo-300" />
+                : <ChevronDown className="w-4 h-4 text-indigo-300" />}
+            </button>
+
+            {previewExpanded && (
+              <div className="bg-white/5 p-4 space-y-3">
+                {/* Summary stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Tables in backup', value: availableEntities.length },
+                    { label: 'Tables selected', value: selectedEntities.length },
+                    { label: 'Total records', value: selectedEntities.reduce((sum, e) => sum + (backupFileData.entities[e]?.length || 0), 0).toLocaleString() },
+                  ].map(s => (
+                    <div key={s.label} className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
+                      <p className="text-lg font-bold text-white">{s.value}</p>
+                      <p className="text-xs text-indigo-300 mt-0.5">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Per-entity breakdown */}
+                <div className="max-h-52 overflow-y-auto space-y-1">
+                  {availableEntities.map(entity => {
+                    const count = backupFileData.entities[entity]?.length || 0;
+                    const selected = selectedEntities.includes(entity);
+                    return (
+                      <div
+                        key={entity}
+                        className={`flex items-center justify-between text-xs px-3 py-1.5 rounded ${
+                          selected ? 'bg-indigo-600/20 border border-indigo-500/30' : 'opacity-40'
+                        }`}
+                      >
+                        <span className="text-indigo-200 flex items-center gap-1.5">
+                          {selected
+                            ? <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            : <span className="w-3 h-3 rounded-full border border-white/20 inline-block" />}
+                          {entity}
+                        </span>
+                        <span className={`font-mono font-semibold ${selected ? 'text-emerald-400' : 'text-indigo-500'}`}>
+                          {count.toLocaleString()}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Backup provenance */}
+                <div className="text-xs text-indigo-400 border-t border-white/10 pt-3 space-y-1">
+                  <p>Exported: <span className="text-indigo-200">{backupFileMeta ? format(new Date(backupFileMeta.exported_at), "MMM d, yyyy h:mm a") : '—'}</span></p>
+                  <p>By: <span className="text-indigo-200">{backupFileMeta?.exported_by}</span></p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {restoreProgress > 0 && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-indigo-200">
