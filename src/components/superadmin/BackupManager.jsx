@@ -559,12 +559,16 @@ export default function BackupManager() {
           <TabsTrigger value="restore" className="text-white data-[state=active]:bg-white/20 gap-2">
             <Upload className="w-4 h-4" /> Restore
           </TabsTrigger>
+          <TabsTrigger value="history" className="text-white data-[state=active]:bg-white/20 gap-2">
+            <History className="w-4 h-4" /> Backup History
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scheduled"><ScheduledBackupPanel /></TabsContent>
         <TabsContent value="export-full"><FullExportPanel /></TabsContent>
         <TabsContent value="export-table"><TableExportPanel /></TabsContent>
         <TabsContent value="restore"><RestorePanel /></TabsContent>
+        <TabsContent value="history"><BackupHistoryPanel /></TabsContent>
       </Tabs>
     </div>
   );
