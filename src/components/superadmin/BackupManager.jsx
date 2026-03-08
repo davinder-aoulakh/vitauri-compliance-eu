@@ -295,6 +295,7 @@ function RestorePanel() {
   const [selectedEntities, setSelectedEntities] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState(null);
+  const [previewExpanded, setPreviewExpanded] = useState(true);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
