@@ -21,9 +21,11 @@ import {
   Trash2,
   CalendarClock,
   Table2,
-  PlayCircle
+  PlayCircle,
+  History
 } from "lucide-react";
 import { format } from "date-fns";
+import BackupHistoryPanel from "./BackupHistoryPanel";
 
 const ALL_ENTITIES = [
   'Tenant', 'Entity', 'Account', 'ControllingPerson', 'Beneficiary',
