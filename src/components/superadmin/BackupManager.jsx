@@ -22,7 +22,10 @@ import {
   CalendarClock,
   Table2,
   PlayCircle,
-  History
+  History,
+  Eye,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { format } from "date-fns";
 import BackupHistoryPanel from "./BackupHistoryPanel";
