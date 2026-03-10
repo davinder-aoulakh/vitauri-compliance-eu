@@ -28,7 +28,7 @@ import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/workflowConditionUtils";
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
-
+import { evaluateComputedComparison } from "../workflows/workflowPrefillUtils";
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
   const [answers, setAnswers] = useState({});
