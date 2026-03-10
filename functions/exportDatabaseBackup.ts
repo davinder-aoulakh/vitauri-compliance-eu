@@ -42,14 +42,15 @@ Deno.serve(async (req) => {
       if (!ENTITIES.includes(targetEntity)) {
         return Response.json({ error: `Unknown entity: ${targetEntity}` }, { status: 400 });
       }
-      const records = await base44.asServiceRole.entities[targetEntity].list();
+      const records = await base44.asServiceRole.entities[targetEntity].list('-created_date', 10000, { data_env: dataEnv });
       const backup = {
         metadata: {
           exported_at: exportedAt,
           exported_by: user.email,
           mode: 'table',
           entity: targetEntity,
-          total_records: records.length
+          total_records: records.length,
+          data_env: dataEnv
         },
         entity: targetEntity,
         records: records || []
@@ -105,7 +106,7 @@ Deno.serve(async (req) => {
     const results = await Promise.allSettled(
       ENTITIES.map(async (entityName) => {
         try {
-          const records = await base44.asServiceRole.entities[entityName].list();
+          const records = await base44.asServiceRole.entities[entityName].list('-created_date', 10000, { data_env: dataEnv });
           return { entityName, records: records || [] };
         } catch {
           return { entityName, records: [] };
