@@ -626,6 +626,11 @@ function RestorePanel() {
                 <p><strong>Exported:</strong> {backupFileMeta ? format(new Date(backupFileMeta.exported_at), "MMM d, yyyy h:mm a") : '-'}</p>
                 <p><strong>By:</strong> {backupFileMeta?.exported_by}</p>
                 <p><strong>Tables:</strong> {selectedEntities.join(', ')}</p>
+                <p><strong>Target Database:</strong>{' '}
+                  <span className={dbEnv === 'prod' ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'}>
+                    {dbEnv === 'prod' ? '🟢 Production' : '🧪 Test'}
+                  </span>
+                </p>
               </div>
               <Alert className="bg-red-50 border-red-200">
                 <Trash2 className="w-4 h-4 text-red-600" />
