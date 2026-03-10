@@ -413,11 +413,13 @@ function RestorePanel() {
           setBackupFileData(syntheticFull);
           setBackupFileMeta(syntheticFull.metadata);
           setSelectedEntities([parsed.entity]);
+          runPreflight(syntheticFull);
         } else if (parsed.entities && parsed.metadata) {
           // Full backup
           setBackupFileData(parsed);
           setBackupFileMeta(parsed.metadata);
           setSelectedEntities(ALL_ENTITIES.filter(e => parsed.entities[e]?.length > 0));
+          runPreflight(parsed);
         } else {
           setMessage({ type: 'error', text: 'Invalid backup file. Please select a valid CRS backup JSON.' });
         }
