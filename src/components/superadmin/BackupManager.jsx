@@ -341,6 +341,53 @@ function RestorePanel() {
   const [preflightExpanded, setPreflightExpanded] = useState(true);
   const fileInputRef = useRef(null);
 
+  // Run pre-flight schema validation
+  const runPreflight = async (parsedData) => {
+    setPreflight({ running: true, results: [] });
+    const results = [];
+    const entities = Object.keys(parsedData.entities);
+
+    for (const entityName of entities) {
+      const records = parsedData.entities[entityName];
+      if (!records?.length) continue;
+
+      try {
+        const schema = await base44.entities[entityName]?.schema?.();
+        if (!schema?.properties) {
+          results.push({ entity: entityName, status: 'unknown', issues: ['Could not load current schema for comparison'] });
+          continue;
+        }
+
+        const currentFields = new Set(Object.keys(schema.properties));
+        const backupFields = new Set(Object.keys(records[0]));
+
+        // Remove built-in fields from comparison
+        const builtIn = new Set(['id', 'created_date', 'updated_date', 'created_by', 'created_by_id', 'is_sample']);
+        builtIn.forEach(f => { currentFields.delete(f); backupFields.delete(f); });
+
+        const missingInSchema = [...backupFields].filter(f => !currentFields.has(f) && !builtIn.has(f));
+        const missingInBackup = [...currentFields].filter(f => !backupFields.has(f));
+
+        const issues = [];
+        if (missingInSchema.length > 0)
+          issues.push(`Extra fields in backup (not in current schema): ${missingInSchema.join(', ')}`);
+        if (missingInBackup.length > 0)
+          issues.push(`Fields in current schema missing from backup: ${missingInBackup.join(', ')}`);
+
+        results.push({
+          entity: entityName,
+          recordCount: records.length,
+          status: issues.length === 0 ? 'ok' : 'warn',
+          issues
+        });
+      } catch {
+        results.push({ entity: entityName, status: 'unknown', issues: ['Schema check failed'] });
+      }
+    }
+
+    setPreflight({ running: false, results });
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -349,6 +396,7 @@ function RestorePanel() {
     setBackupFileData(null);
     setBackupFileMeta(null);
     setSelectedEntities([]);
+    setPreflight(null);
 
     const reader = new FileReader();
     reader.onload = (ev) => {
