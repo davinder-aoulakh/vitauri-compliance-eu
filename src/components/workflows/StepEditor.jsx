@@ -855,47 +855,137 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
               const selectedMappedField = filteredMappedFields.find(f => f.value === editedStep.mapped_field.field_name);
               const isCountryField = selectedMappedField?.isCountry;
               const dropdownOptions = getSuggestedValuesForField(editedStep.mapped_field.entity_type, editedStep.mapped_field.field_name, referencedData);
-              if (isCountryField) {
-                return (
-                  <div>
-                    <Select value={editedStep.mapped_field?.prefill_config?.prefill_type || ""} onValueChange={(value) => handleMappedFieldChange("prefill_config", value ? { prefill_type: value, match_values: [] } : null)}>
-                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select pre-fill rule..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={null}>No Pre-fill Rule</SelectItem>
-                        <SelectItem value="country_crs">YES if CRS Country, NO otherwise 🌍</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                );
-              } else if (dropdownOptions && dropdownOptions.length > 0) {
-                return (
-                  <div className="space-y-3">
-                    <Select value={editedStep.mapped_field?.prefill_config?.prefill_type || ""} onValueChange={(value) => handleMappedFieldChange("prefill_config", value ? { prefill_type: value, match_values: [] } : null)}>
-                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select pre-fill rule..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={null}>No Pre-fill Rule</SelectItem>
-                        <SelectItem value="enum_match">YES if field value matches specific options</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {editedStep.mapped_field?.prefill_config?.prefill_type === "enum_match" && (
-                      <div className="space-y-2 max-h-48 overflow-y-auto p-3 bg-white rounded border">
-                        {dropdownOptions.map((opt, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <Checkbox id={`prefill-opt-${idx}`} checked={editedStep.mapped_field?.prefill_config?.match_values?.includes(opt.value) || false}
-                              onCheckedChange={(checked) => {
-                                const currentValues = editedStep.mapped_field?.prefill_config?.match_values || [];
-                                handleMappedFieldChange("prefill_config", { ...editedStep.mapped_field.prefill_config, match_values: checked ? [...currentValues, opt.value] : currentValues.filter(v => v !== opt.value) });
-                              }} />
-                            <Label htmlFor={`prefill-opt-${idx}`} className="text-xs cursor-pointer">{opt.label}</Label>
-                          </div>
-                        ))}
+              const prefillType = editedStep.mapped_field?.prefill_config?.prefill_type;
+
+              // Get numeric fields for computed comparison
+              const numericFields = (() => {
+                let schema;
+                switch (editedStep.mapped_field.entity_type) {
+                  case "Account": schema = ACCOUNT_FIELDS_SCHEMA; break;
+                  case "Entity": schema = ENTITY_FIELDS_SCHEMA; break;
+                  default: schema = ACCOUNT_FIELDS_SCHEMA;
+                }
+                return schema.filter(f => f.type === 'number');
+              })();
+
+              const handlePrefillTypeChange = (value) => {
+                if (!value) {
+                  handleMappedFieldChange("prefill_config", null);
+                } else if (value === 'computed_comparison') {
+                  handleMappedFieldChange("prefill_config", {
+                    prefill_type: 'computed_comparison',
+                    field_one: '',
+                    computation_operator: 'add',
+                    field_two: '',
+                    comparison_operator: 'greater_than',
+                    threshold_value: 0,
+                    prefill_if_true: true
+                  });
+                } else {
+                  handleMappedFieldChange("prefill_config", { prefill_type: value, match_values: [] });
+                }
+              };
+
+              const updateComputedConfig = (key, value) => {
+                handleMappedFieldChange("prefill_config", { ...editedStep.mapped_field.prefill_config, [key]: value });
+              };
+
+              return (
+                <div className="space-y-3">
+                  <Select value={prefillType || ""} onValueChange={handlePrefillTypeChange}>
+                    <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select pre-fill rule..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>No Pre-fill Rule</SelectItem>
+                      {isCountryField && <SelectItem value="country_crs">YES if CRS Country, NO otherwise 🌍</SelectItem>}
+                      {dropdownOptions && dropdownOptions.length > 0 && <SelectItem value="enum_match">YES if field value matches specific options</SelectItem>}
+                      <SelectItem value="computed_comparison">YES/NO based on computed field comparison ∑</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {prefillType === "enum_match" && dropdownOptions && (
+                    <div className="space-y-2 max-h-48 overflow-y-auto p-3 bg-white rounded border">
+                      {dropdownOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Checkbox id={`prefill-opt-${idx}`} checked={editedStep.mapped_field?.prefill_config?.match_values?.includes(opt.value) || false}
+                            onCheckedChange={(checked) => {
+                              const currentValues = editedStep.mapped_field?.prefill_config?.match_values || [];
+                              handleMappedFieldChange("prefill_config", { ...editedStep.mapped_field.prefill_config, match_values: checked ? [...currentValues, opt.value] : currentValues.filter(v => v !== opt.value) });
+                            }} />
+                          <Label htmlFor={`prefill-opt-${idx}`} className="text-xs cursor-pointer">{opt.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {prefillType === "computed_comparison" && (
+                    <div className="space-y-3 p-3 bg-white rounded border border-emerald-300">
+                      <p className="text-xs text-slate-600 font-medium">Compute: Field 1 [operation] Field 2, then compare result to threshold</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-xs">Field 1</Label>
+                          <Select value={editedStep.mapped_field.prefill_config?.field_one || ""} onValueChange={(v) => updateComputedConfig('field_one', v)}>
+                            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {numericFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Operation</Label>
+                          <Select value={editedStep.mapped_field.prefill_config?.computation_operator || "add"} onValueChange={(v) => updateComputedConfig('computation_operator', v)}>
+                            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="add">Add (+)</SelectItem>
+                              <SelectItem value="subtract">Subtract (-)</SelectItem>
+                              <SelectItem value="multiply">Multiply (×)</SelectItem>
+                              <SelectItem value="divide">Divide (÷)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Field 2</Label>
+                          <Select value={editedStep.mapped_field.prefill_config?.field_two || ""} onValueChange={(v) => updateComputedConfig('field_two', v)}>
+                            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {numericFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              } else {
-                return <p className="text-xs text-slate-500 italic">Pre-fill rules are only available for dropdown/enum fields</p>;
-              }
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Comparison</Label>
+                          <Select value={editedStep.mapped_field.prefill_config?.comparison_operator || "greater_than"} onValueChange={(v) => updateComputedConfig('comparison_operator', v)}>
+                            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="greater_than">Greater Than (&gt;)</SelectItem>
+                              <SelectItem value="less_than">Less Than (&lt;)</SelectItem>
+                              <SelectItem value="equals">Equals (=)</SelectItem>
+                              <SelectItem value="greater_than_or_equal">Greater or Equal (≥)</SelectItem>
+                              <SelectItem value="less_than_or_equal">Less or Equal (≤)</SelectItem>
+                              <SelectItem value="not_equals">Not Equals (≠)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Threshold Value</Label>
+                          <Input type="number" value={editedStep.mapped_field.prefill_config?.threshold_value ?? 0} onChange={(e) => updateComputedConfig('threshold_value', Number(e.target.value))} className="h-8 text-xs mt-1" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">When condition is TRUE, pre-fill answer as:</Label>
+                        <Select value={String(editedStep.mapped_field.prefill_config?.prefill_if_true !== false)} onValueChange={(v) => updateComputedConfig('prefill_if_true', v === 'true')}>
+                          <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">YES (condition true → pre-fill YES)</SelectItem>
+                            <SelectItem value="false">NO (condition true → pre-fill NO)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
             })()}
           </div>
         )}
