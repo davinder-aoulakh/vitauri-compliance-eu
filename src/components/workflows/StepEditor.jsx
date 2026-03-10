@@ -296,6 +296,7 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
       if (editedStep.question_type === 'address_input') return field.type === 'object' && (field.value === 'current_address' || field.value === 'account_holder_address' || field.value === 'address');
       if (editedStep.question_type === 'yes_no') {
         if (field.isCountry) return true;
+        if (field.type === 'number') return true;
         const hasDropdownOptions = getSuggestedValuesForField(editedStep.mapped_field.entity_type, field.value, referencedData);
         if (hasDropdownOptions && hasDropdownOptions.length > 0) return true;
       }
