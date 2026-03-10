@@ -107,7 +107,9 @@ Deno.serve(async (req) => {
     const results = await Promise.allSettled(
       ENTITIES.map(async (entityName) => {
         try {
-          const records = await base44.asServiceRole.entities[entityName].list('-created_date', 10000, { data_env: dataEnv });
+          const records = dataEnv === 'dev'
+            ? await base44.asServiceRole.entities[entityName].list('-created_date', 10000, { data_env: 'dev' })
+            : await base44.asServiceRole.entities[entityName].list('-created_date', 10000);
           return { entityName, records: records || [] };
         } catch {
           return { entityName, records: [] };
