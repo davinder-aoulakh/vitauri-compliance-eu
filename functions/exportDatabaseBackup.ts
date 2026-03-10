@@ -42,7 +42,9 @@ Deno.serve(async (req) => {
       if (!ENTITIES.includes(targetEntity)) {
         return Response.json({ error: `Unknown entity: ${targetEntity}` }, { status: 400 });
       }
-      const records = await base44.asServiceRole.entities[targetEntity].list('-created_date', 10000, { data_env: dataEnv });
+      const records = dataEnv === 'dev'
+        ? await base44.asServiceRole.entities[targetEntity].list('-created_date', 10000, { data_env: 'dev' })
+        : await base44.asServiceRole.entities[targetEntity].list('-created_date', 10000);
       const backup = {
         metadata: {
           exported_at: exportedAt,
