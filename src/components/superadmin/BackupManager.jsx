@@ -244,12 +244,13 @@ function ScheduledBackupPanel() {
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState(null);
   const [lastRun, setLastRun] = useState(null);
+  const [dbEnv, setDbEnv] = useState('prod');
 
   const handleAdhoc = async () => {
     setRunning(true);
     setMessage(null);
     try {
-      const response = await base44.functions.invoke('scheduledDailyBackup', {});
+      const response = await base44.functions.invoke('scheduledDailyBackup', { data_env: dbEnv });
       const { metadata } = response.data;
       setLastRun(metadata);
       setMessage({ type: 'success', text: `Ad-hoc backup completed — ${metadata.total_records} records across ${metadata.entity_count} entities.` });
