@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
 
     // Upload to file storage
     const fileName = `crs_full_backup_${exportedAt.replace(/[:.]/g, '-')}.json`;
-    const fileBlob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const fileBlob = new File([JSON.stringify(backup, null, 2)], fileName, { type: 'application/json' });
 
     let fileUrl = null;
     try {
