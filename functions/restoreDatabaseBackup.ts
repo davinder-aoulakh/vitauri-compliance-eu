@@ -44,9 +44,9 @@ Deno.serve(async (req) => {
 
       try {
         // Fetch existing records and delete them
-        const existing = await base44.asServiceRole.entities[entityName].list();
+        const existing = await base44.asServiceRole.entities[entityName].list('-created_date', 10000, { data_env: dataEnv });
         for (const record of existing) {
-          await base44.asServiceRole.entities[entityName].delete(record.id);
+          await base44.asServiceRole.entities[entityName].delete(record.id, { data_env: dataEnv });
         }
 
         // Re-insert records from backup in batches of 50
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
             const { created_date, updated_date, created_by_id, entity_name, app_id, ...data } = record;
             return data;
           });
-          await base44.asServiceRole.entities[entityName].bulkCreate(batch);
+          await base44.asServiceRole.entities[entityName].bulkCreate(batch, { data_env: dataEnv });
         }
 
         report.success.push({ entity: entityName, records_restored: records.length });

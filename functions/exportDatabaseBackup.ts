@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
         exported_by: user.email,
         app_version: '1.0',
         mode: 'full',
-        entity_count: ENTITIES.length
+        entity_count: ENTITIES.length,
+        data_env: dataEnv
       },
       entities: {}
     };
