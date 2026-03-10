@@ -337,6 +337,8 @@ function RestorePanel() {
   const [message, setMessage] = useState(null);
   const [previewExpanded, setPreviewExpanded] = useState(true);
   const [dbEnv, setDbEnv] = useState('prod');
+  const [preflight, setPreflight] = useState(null); // null | { running, results }
+  const [preflightExpanded, setPreflightExpanded] = useState(true);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
