@@ -40,6 +40,40 @@ const ALL_ENTITIES = [
   'ControllingPersonClassificationHistory', 'RolePermission', 'PlatformSettings'
 ];
 
+// ─── DB ENV SELECTOR ──────────────────────────────────────────────────────────
+function DbEnvSelector({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-indigo-300 font-semibold uppercase tracking-wide">Database:</span>
+      <div className="flex rounded-lg overflow-hidden border border-white/20">
+        {[
+          { label: '🟢 Production', val: 'prod' },
+          { label: '🧪 Test', val: 'dev' },
+        ].map(({ label, val }) => (
+          <button
+            key={val}
+            onClick={() => onChange(val)}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              value === val
+                ? val === 'prod'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-amber-500 text-white'
+                : 'bg-white/5 text-indigo-300 hover:bg-white/10'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {value === 'dev' && (
+        <span className="text-xs text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded">
+          Test DB
+        </span>
+      )}
+    </div>
+  );
+}
+
 function StatusMessage({ message }) {
   if (!message) return null;
   const cls = message.type === 'success' ? 'bg-green-900/30 border-green-500/40' :
