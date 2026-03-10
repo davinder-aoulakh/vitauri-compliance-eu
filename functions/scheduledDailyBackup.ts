@@ -37,6 +37,9 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    const body = await req.json().catch(() => ({}));
+    const dataEnv = body.data_env === 'dev' ? 'dev' : 'prod';
+
     let exportedBy = 'scheduled';
     let backupType = 'scheduled';
     try {
@@ -62,7 +65,8 @@ Deno.serve(async (req) => {
         exported_by: exportedBy,
         app_version: '1.0',
         backup_type: backupType,
-        entity_count: ENTITIES.length
+        entity_count: ENTITIES.length,
+        data_env: dataEnv
       },
       entities: {}
     };
@@ -70,7 +74,9 @@ Deno.serve(async (req) => {
     const results = await Promise.allSettled(
       ENTITIES.map(async (entityName) => {
         try {
-          const records = await base44.asServiceRole.entities[entityName].list();
+          const records = dataEnv === 'dev'
+            ? await base44.asServiceRole.entities[entityName].list('-created_date', 10000, { data_env: 'dev' })
+            : await base44.asServiceRole.entities[entityName].list('-created_date', 10000);
           return { entityName, records: records || [] };
         } catch {
           return { entityName, records: [] };
