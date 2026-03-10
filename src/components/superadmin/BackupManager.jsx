@@ -334,6 +334,7 @@ function RestorePanel() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState(null);
   const [previewExpanded, setPreviewExpanded] = useState(true);
+  const [dbEnv, setDbEnv] = useState('prod');
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
@@ -385,7 +386,8 @@ function RestorePanel() {
       setRestoreProgress(30);
       const response = await base44.functions.invoke('restoreDatabaseBackup', {
         backup: backupFileData,
-        entities_to_restore: selectedEntities
+        entities_to_restore: selectedEntities,
+        data_env: dbEnv
       });
       setRestoreProgress(90);
       const { report, summary } = response.data;
