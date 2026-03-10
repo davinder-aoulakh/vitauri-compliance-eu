@@ -540,9 +540,9 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
                 }
               } else if (prefillType === 'enum_match') {
                 const matchValues = step.mapped_field.prefill_config.match_values || [];
-                const isMatch = matchValues.includes(String(fieldValue));
-                preFillAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
-            (`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
+                preFillAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
+              } else if (prefillType === 'computed_comparison') {
+                preFillAnswers[step.step_id] = evaluateComputedComparison(step.mapped_field.prefill_config, currentAccount);
               }
             }
             else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
