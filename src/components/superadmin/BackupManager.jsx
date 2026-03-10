@@ -273,6 +273,7 @@ function ScheduledBackupPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-5">
+        <DbEnvSelector value={dbEnv} onChange={setDbEnv} />
         {/* Schedule info */}
         <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
