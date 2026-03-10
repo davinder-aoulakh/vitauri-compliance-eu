@@ -26,6 +26,7 @@ import MultiFieldRenderer from "./MultiFieldRenderer";
 import CountrySelect from "../shared/CountrySelect";
 import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
+import { computePrefillAnswers } from "./workflowPrefillUtils";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -45,98 +46,26 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
 
   const handleAnswer = (stepId, answer) => {
-    console.log('\n📝 [HANDLE ANSWER CALLED]');
-    console.log('   Step ID:', stepId);
-    console.log('   New answer:', answer);
-    console.log('   Previous answers:', answers);
-    
-    setAnswers(prev => {
-      const updated = { ...prev, [stepId]: answer };
-      console.log('   Updated answers:', updated);
-      return updated;
-    });
+    setAnswers(prev => ({ ...prev, [stepId]: answer }));
   };
 
   useEffect(() => {
     const loadMappedEntityData = async () => {
       if (!workflow || (!accountId && !entityId)) return;
-
-      let entityType = null;
-      let entityData = null;
-      let id = null;
-
-      if (accountId) {
-        entityType = "Account";
-        id = accountId;
-        const accounts = await base44.entities.Account.filter({ id: accountId });
-        entityData = accounts[0];
-      } else if (entityId) {
-        entityType = "Entity";
-        id = entityId;
-        const entities = await base44.entities.Entity.filter({ id: entityId });
-        entityData = entities[0];
-      }
-
+      let entityType = accountId ? "Account" : "Entity";
+      let id = accountId || entityId;
+      const records = accountId
+        ? await base44.entities.Account.filter({ id: accountId })
+        : await base44.entities.Entity.filter({ id: entityId });
+      const entityData = records[0];
       if (entityData) {
         setMappedEntityData(entityData);
         setMappedEntityType(entityType);
         setMappedEntityId(id);
-        
-        const initialAnswers = {};
-        
-        for (const step of workflow.steps) {
-          if (step.mapped_field && step.mapped_field.entity_type === entityType && step.mapped_field.field_name) {
-            const fieldName = step.mapped_field.field_name;
-            let fieldValue = entityData[fieldName];
-            console.log(`[PREFILL - WorkflowRunner] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}", question_type="${step.question_type}"`);
-
-            if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
-              if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
-                const prefillType = step.mapped_field.prefill_config.prefill_type;
-                
-                if (prefillType === 'country_crs') {
-                  try {
-                    const crsCountries = await base44.entities.CrsCountryInfo.filter({
-                      $or: [
-                        { country_name: fieldValue },
-                        { country_code: fieldValue }
-                      ]
-                    });
-                    const isCrsCountry = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
-                    initialAnswers[step.step_id] = isCrsCountry ? 'YES' : 'NO';
-                    console.log(`[PREFILL] country_crs: ${fieldValue} -> ${isCrsCountry ? 'YES' : 'NO'}`);
-                  } catch (error) {
-                    console.error("Error checking CRS status for pre-fill:", error);
-                  }
-                } else if (prefillType === 'enum_match') {
-                  const matchValues = step.mapped_field.prefill_config.match_values || [];
-                  const isMatch = matchValues.includes(String(fieldValue));
-                  initialAnswers[step.step_id] = isMatch ? 'YES' : 'NO';
-                  console.log(`[PREFILL] enum_match: fieldValue="${fieldValue}", matchValues=${JSON.stringify(matchValues)}, isMatch=${isMatch} -> ${isMatch ? 'YES' : 'NO'}`);
-                }
-              } 
-              else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
-                initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-                console.log(`[PREFILL] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
-              } else if (step.question_type === 'single_choice') {
-                // Pre-fill dropdown with entity field value
-                initialAnswers[step.step_id] = String(fieldValue);
-                console.log(`[PREFILL] Single choice pre-filled with: ${fieldValue}`);
-              } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
-                initialAnswers[step.step_id] = fieldValue;
-              } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {
-                initialAnswers[step.step_id] = fieldValue;
-              } else {
-                initialAnswers[step.step_id] = String(fieldValue);
-              }
-            }
-          }
-        }
-        
+        const initialAnswers = await computePrefillAnswers(workflow, entityData, entityType);
         setAnswers(prev => ({ ...prev, ...initialAnswers }));
       }
     };
-
     loadMappedEntityData();
   }, [workflow, accountId, entityId]);
 
