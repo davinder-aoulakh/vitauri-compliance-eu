@@ -95,6 +95,7 @@ function FullExportPanel() {
   const [progress, setProgress] = useState(0);
   const [lastMeta, setLastMeta] = useState(null);
   const [message, setMessage] = useState(null);
+  const [dbEnv, setDbEnv] = useState('prod');
 
   const handleExport = async () => {
     setExporting(true);
@@ -102,7 +103,7 @@ function FullExportPanel() {
     setMessage(null);
     try {
       setProgress(50);
-      const response = await base44.functions.invoke('exportDatabaseBackup', { mode: 'full' });
+      const response = await base44.functions.invoke('exportDatabaseBackup', { mode: 'full', data_env: dbEnv });
       setProgress(80);
       const backup = response.data;
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -137,6 +138,7 @@ function FullExportPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
+        <DbEnvSelector value={dbEnv} onChange={setDbEnv} />
         <div className="bg-white/5 rounded-lg p-4 max-h-48 overflow-y-auto space-y-1.5 border border-white/10">
           {ALL_ENTITIES.map(e => (
             <div key={e} className="flex items-center justify-between text-xs">
