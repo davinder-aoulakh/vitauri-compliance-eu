@@ -90,14 +90,21 @@ export default function BackupHistoryPanel() {
     }
   };
 
-  const handleDownload = (backup) => {
-    if (backup.file_url) {
+  const handleDownload = async (backup) => {
+    if (!backup.file_url) return;
+    try {
+      const response = await fetch(backup.file_url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = backup.file_url;
+      a.href = url;
       a.download = backup.file_name || `backup_${backup.exported_at}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(backup.file_url, "_blank");
     }
   };
 
