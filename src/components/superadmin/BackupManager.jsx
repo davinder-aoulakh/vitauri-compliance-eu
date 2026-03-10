@@ -174,14 +174,15 @@ function FullExportPanel() {
 
 // ─── INDIVIDUAL TABLE EXPORT ──────────────────────────────────────────────────
 function TableExportPanel() {
-  const [downloading, setDownloading] = useState(null); // entity name being downloaded
+  const [downloading, setDownloading] = useState(null);
   const [message, setMessage] = useState(null);
+  const [dbEnv, setDbEnv] = useState('prod');
 
   const handleTableExport = async (entityName) => {
     setDownloading(entityName);
     setMessage(null);
     try {
-      const response = await base44.functions.invoke('exportDatabaseBackup', { mode: 'table', entity: entityName });
+      const response = await base44.functions.invoke('exportDatabaseBackup', { mode: 'table', entity: entityName, data_env: dbEnv });
       const data = response.data;
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -212,6 +213,7 @@ function TableExportPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
+        <DbEnvSelector value={dbEnv} onChange={setDbEnv} />
         <StatusMessage message={message} />
         <div className="space-y-1.5 max-h-80 overflow-y-auto">
           {ALL_ENTITIES.map(entity => (
