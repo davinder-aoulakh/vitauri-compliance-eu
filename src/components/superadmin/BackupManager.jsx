@@ -540,6 +540,70 @@ function RestorePanel() {
           </div>
         )}
 
+        {/* ── Pre-flight Validation ───────────────────────────────────────── */}
+        {preflight && (
+          <div className="border border-white/20 rounded-lg overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/10 transition-colors text-left"
+              onClick={() => setPreflightExpanded(p => !p)}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                {preflight.running ? (
+                  <RefreshCw className="w-4 h-4 text-indigo-300 animate-spin" />
+                ) : preflight.results.some(r => r.status === 'warn') ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                )}
+                Pre-flight Schema Check
+                {!preflight.running && (
+                  <span className="text-xs font-normal text-indigo-300">
+                    — {preflight.results.filter(r => r.status === 'ok').length} ok,{' '}
+                    {preflight.results.filter(r => r.status === 'warn').length} warnings,{' '}
+                    {preflight.results.filter(r => r.status === 'unknown').length} unknown
+                  </span>
+                )}
+              </span>
+              {preflightExpanded ? <ChevronUp className="w-4 h-4 text-indigo-300" /> : <ChevronDown className="w-4 h-4 text-indigo-300" />}
+            </button>
+
+            {preflightExpanded && (
+              <div className="bg-white/5 p-4 space-y-2 max-h-72 overflow-y-auto">
+                {preflight.running ? (
+                  <p className="text-xs text-indigo-300 text-center py-4">Checking schemas...</p>
+                ) : preflight.results.length === 0 ? (
+                  <p className="text-xs text-indigo-300 text-center py-4">No entities to check.</p>
+                ) : (
+                  preflight.results.map(r => (
+                    <div key={r.entity} className={`rounded-lg px-3 py-2 border text-xs space-y-1 ${
+                      r.status === 'ok'
+                        ? 'bg-emerald-900/20 border-emerald-500/30'
+                        : r.status === 'warn'
+                        ? 'bg-amber-900/20 border-amber-500/30'
+                        : 'bg-slate-900/30 border-white/10'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {r.status === 'ok'
+                          ? <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                          : r.status === 'warn'
+                          ? <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                          : <span className="w-3 h-3 rounded-full border border-white/30 shrink-0 inline-block" />}
+                        <span className="font-semibold text-white">{r.entity}</span>
+                        {r.recordCount !== undefined && (
+                          <span className="text-indigo-400 ml-auto">{r.recordCount} records</span>
+                        )}
+                      </div>
+                      {r.issues.map((issue, i) => (
+                        <p key={i} className="text-amber-300 pl-5">{issue}</p>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Preview Summary ─────────────────────────────────────────────── */}
         {backupFileData && (
           <div className="border border-indigo-500/30 rounded-lg overflow-hidden">
