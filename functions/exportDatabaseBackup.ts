@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || 'full';
     const targetEntity = body.entity || null;
+    const dataEnv = body.data_env === 'dev' ? 'dev' : 'prod';
 
     const exportedAt = new Date().toISOString();
     const retentionDays = await getRetentionDays(base44);

@@ -20,7 +20,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
     }
 
-    const { backup, entities_to_restore } = await req.json();
+    const { backup, entities_to_restore, data_env } = await req.json();
+    const dataEnv = data_env === 'dev' ? 'dev' : 'prod';
 
     if (!backup || !backup.entities) {
       return Response.json({ error: 'Invalid backup file format' }, { status: 400 });
