@@ -427,6 +427,7 @@ function RestorePanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
+        <DbEnvSelector value={dbEnv} onChange={setDbEnv} />
         {/* File drop zone */}
         <div
           className="border-2 border-dashed border-white/20 rounded-lg p-6 text-center cursor-pointer hover:border-white/40 hover:bg-white/5 transition-all"
