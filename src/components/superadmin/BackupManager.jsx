@@ -183,6 +183,7 @@ function FullExportPanel() {
       </CardHeader>
       <CardContent className="p-6 space-y-4">
         <DbEnvSelector value={dbEnv} onChange={setDbEnv} />
+        <PasswordField value={password} onChange={setPassword} />
         <div className="bg-white/5 rounded-lg p-4 max-h-48 overflow-y-auto space-y-1.5 border border-white/10">
           {ALL_ENTITIES.map(e => (
             <div key={e} className="flex items-center justify-between text-xs">
