@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
         
-        if (currentUser.user_role !== 'tenant_admin' && currentUser.user_role !== 'super_admin') {
+        if (currentUser.app_role !== 'tenant_admin' && currentUser.app_role !== 'super_admin') {
             return Response.json({ error: 'Only administrators can invite users' }, { status: 403 });
         }
 
