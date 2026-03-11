@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   Download,
   Upload,
@@ -25,7 +26,9 @@ import {
   History,
   Eye,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Lock,
+  LockOpen
 } from "lucide-react";
 import { format } from "date-fns";
 import BackupHistoryPanel from "./BackupHistoryPanel";
