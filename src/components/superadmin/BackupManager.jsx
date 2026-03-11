@@ -567,7 +567,14 @@ function RestorePanel() {
           onClick={() => fileInputRef.current?.click()}
         >
           <FileJson className="w-8 h-8 mx-auto mb-2 text-indigo-300" />
-          {backupFileMeta ? (
+          {encryptedRawFile && !backupFileMeta ? (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-amber-300 flex items-center justify-center gap-2">
+                <Lock className="w-4 h-4" /> Encrypted file loaded
+              </p>
+              <p className="text-xs text-indigo-400">Enter password below to decrypt</p>
+            </div>
+          ) : backupFileMeta ? (
             <div className="space-y-1">
               <p className="text-sm font-medium text-white">Backup loaded
                 {backupFileMeta.mode === 'table' && (
