@@ -444,6 +444,46 @@ function RestorePanel() {
     setPreflight({ running: false, results });
   };
 
+  const handleDecryptAndLoad = async (rawString) => {
+    setDecryptError(null);
+    if (!restorePassword) {
+      setDecryptError('This file is encrypted. Enter the decryption password.');
+      return;
+    }
+    try {
+      const decrypted = await decryptBackup(rawString, restorePassword);
+      parseAndSetBackup(decrypted);
+      setEncryptedRawFile(null);
+    } catch {
+      setDecryptError('Incorrect password or corrupted file. Please try again.');
+    }
+  };
+
+  const parseAndSetBackup = (rawString) => {
+    try {
+      const parsed = JSON.parse(rawString);
+      if (parsed.entity && parsed.records) {
+        const syntheticFull = {
+          metadata: { ...parsed.metadata, mode: 'table', entity: parsed.entity },
+          entities: { [parsed.entity]: parsed.records }
+        };
+        setBackupFileData(syntheticFull);
+        setBackupFileMeta(syntheticFull.metadata);
+        setSelectedEntities([parsed.entity]);
+        runPreflight(syntheticFull);
+      } else if (parsed.entities && parsed.metadata) {
+        setBackupFileData(parsed);
+        setBackupFileMeta(parsed.metadata);
+        setSelectedEntities(ALL_ENTITIES.filter(e => parsed.entities[e]?.length > 0));
+        runPreflight(parsed);
+      } else {
+        setMessage({ type: 'error', text: 'Invalid backup file. Please select a valid CRS backup JSON.' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to parse file. Make sure it is a valid JSON backup.' });
+    }
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -453,6 +493,8 @@ function RestorePanel() {
     setBackupFileMeta(null);
     setSelectedEntities([]);
     setPreflight(null);
+    setEncryptedRawFile(null);
+    setDecryptError(null);
 
     const reader = new FileReader();
     reader.onload = (ev) => {
