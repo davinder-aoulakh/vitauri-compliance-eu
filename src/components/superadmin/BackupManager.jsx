@@ -587,6 +587,32 @@ function RestorePanel() {
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
         </div>
 
+        {/* Encrypted file: show decrypt prompt */}
+        {encryptedRawFile && (
+          <div className="border border-amber-500/40 rounded-lg p-4 space-y-3 bg-amber-900/20">
+            <p className="text-xs font-semibold text-amber-300 flex items-center gap-2">
+              <Lock className="w-4 h-4" /> Encrypted Backup Detected
+            </p>
+            <PasswordField
+              value={restorePassword}
+              onChange={setRestorePassword}
+              label="Decryption password"
+            />
+            {decryptError && (
+              <p className="text-xs text-red-300 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {decryptError}
+              </p>
+            )}
+            <Button
+              size="sm"
+              onClick={() => handleDecryptAndLoad(encryptedRawFile)}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white gap-2"
+            >
+              <LockOpen className="w-4 h-4" /> Decrypt & Load
+            </Button>
+          </div>
+        )}
+
         {/* Entity selection */}
         {backupFileData && (
           <div className="space-y-2">
