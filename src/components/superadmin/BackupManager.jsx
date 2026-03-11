@@ -222,6 +222,7 @@ function TableExportPanel() {
   const [downloading, setDownloading] = useState(null);
   const [message, setMessage] = useState(null);
   const [dbEnv, setDbEnv] = useState('prod');
+  const [password, setPassword] = useState('');
 
   const handleTableExport = async (entityName) => {
     setDownloading(entityName);
@@ -229,16 +230,22 @@ function TableExportPanel() {
     try {
       const response = await base44.functions.invoke('exportDatabaseBackup', { mode: 'table', entity: entityName, data_env: dbEnv });
       const data = response.data;
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      let fileContent = JSON.stringify(data, null, 2);
+      let fileName = `crs_${entityName}_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+      if (password) {
+        fileContent = await encryptBackup(fileContent, password);
+        fileName = fileName.replace('.json', '.enc.json');
+      }
+      const blob = new Blob([fileContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crs_${entityName}_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
       a.remove();
-      setMessage({ type: 'success', text: `${entityName} exported — ${data.metadata.total_records} records.` });
+      setMessage({ type: 'success', text: `${entityName} exported${password ? ' (encrypted)' : ''} — ${data.metadata.total_records} records.` });
     } catch (err) {
       setMessage({ type: 'error', text: `Failed to export ${entityName}: ` + (err.response?.data?.error || err.message) });
     } finally {
