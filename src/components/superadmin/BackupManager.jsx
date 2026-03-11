@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import BackupHistoryPanel from "./BackupHistoryPanel";
+import { encryptBackup, decryptBackup, isEncryptedBackup } from "./backupCrypto";
 
 const ALL_ENTITIES = [
   'Tenant', 'Entity', 'Account', 'ControllingPerson', 'Beneficiary',
