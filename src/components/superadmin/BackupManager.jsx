@@ -588,7 +588,7 @@ function RestorePanel() {
           ) : (
             <div>
               <p className="text-sm text-indigo-200">Click to select backup file</p>
-              <p className="text-xs text-indigo-400 mt-1">Full DB or single-table .json</p>
+              <p className="text-xs text-indigo-400 mt-1">Full DB, single-table, or encrypted .json</p>
             </div>
           )}
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
