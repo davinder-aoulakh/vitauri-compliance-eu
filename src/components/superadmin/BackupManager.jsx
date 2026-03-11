@@ -132,6 +132,7 @@ function FullExportPanel() {
   const [lastMeta, setLastMeta] = useState(null);
   const [message, setMessage] = useState(null);
   const [dbEnv, setDbEnv] = useState('prod');
+  const [password, setPassword] = useState('');
 
   const handleExport = async () => {
     setExporting(true);
@@ -140,20 +141,27 @@ function FullExportPanel() {
     try {
       setProgress(50);
       const response = await base44.functions.invoke('exportDatabaseBackup', { mode: 'full', data_env: dbEnv });
-      setProgress(80);
+      setProgress(70);
       const backup = response.data;
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      let fileContent = JSON.stringify(backup, null, 2);
+      let fileName = `crs_full_backup_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+      if (password) {
+        fileContent = await encryptBackup(fileContent, password);
+        fileName = fileName.replace('.json', '.enc.json');
+      }
+      setProgress(90);
+      const blob = new Blob([fileContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crs_full_backup_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
       a.remove();
       setLastMeta(backup.metadata);
       setProgress(100);
-      setMessage({ type: 'success', text: `Full backup downloaded — ${backup.metadata.total_records} records across ${Object.keys(backup.entities).length} entities.` });
+      setMessage({ type: 'success', text: `Full backup downloaded${password ? ' (encrypted)' : ''} — ${backup.metadata.total_records} records across ${Object.keys(backup.entities).length} entities.` });
     } catch (err) {
       setMessage({ type: 'error', text: 'Export failed: ' + (err.response?.data?.error || err.message) });
     } finally {
