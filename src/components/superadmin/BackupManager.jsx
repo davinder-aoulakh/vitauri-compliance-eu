@@ -498,31 +498,12 @@ function RestorePanel() {
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      try {
-        const parsed = JSON.parse(ev.target.result);
-
-        // Support both full backup and single-table backup
-        if (parsed.entity && parsed.records) {
-          // Single-table backup
-          const syntheticFull = {
-            metadata: { ...parsed.metadata, mode: 'table', entity: parsed.entity },
-            entities: { [parsed.entity]: parsed.records }
-          };
-          setBackupFileData(syntheticFull);
-          setBackupFileMeta(syntheticFull.metadata);
-          setSelectedEntities([parsed.entity]);
-          runPreflight(syntheticFull);
-        } else if (parsed.entities && parsed.metadata) {
-          // Full backup
-          setBackupFileData(parsed);
-          setBackupFileMeta(parsed.metadata);
-          setSelectedEntities(ALL_ENTITIES.filter(e => parsed.entities[e]?.length > 0));
-          runPreflight(parsed);
-        } else {
-          setMessage({ type: 'error', text: 'Invalid backup file. Please select a valid CRS backup JSON.' });
-        }
-      } catch {
-        setMessage({ type: 'error', text: 'Failed to parse file. Make sure it is a valid JSON backup.' });
+      const raw = ev.target.result;
+      if (isEncryptedBackup(raw)) {
+        setEncryptedRawFile(raw);
+        setDecryptError('This file is encrypted. Enter the decryption password and click "Decrypt & Load".');
+      } else {
+        parseAndSetBackup(raw);
       }
     };
     reader.readAsText(file);
