@@ -78,6 +78,38 @@ function DbEnvSelector({ value, onChange }) {
   );
 }
 
+function PasswordField({ value, onChange, label = "Encrypt with password (optional)" }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-semibold text-indigo-200 uppercase tracking-wide flex items-center gap-1.5">
+        <Lock className="w-3 h-3" /> {label}
+      </label>
+      <div className="relative">
+        <Input
+          type={show ? "text" : "password"}
+          placeholder="Leave blank to skip encryption"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="bg-white/5 border-white/20 text-white placeholder:text-indigo-400 pr-16 text-sm"
+        />
+        <button
+          type="button"
+          onClick={() => setShow(s => !s)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-white transition-colors text-xs px-1"
+        >
+          {show ? "Hide" : "Show"}
+        </button>
+      </div>
+      {value && (
+        <p className="text-xs text-amber-300 flex items-center gap-1">
+          <Lock className="w-3 h-3" /> File will be AES-256 encrypted — keep this password safe.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function StatusMessage({ message }) {
   if (!message) return null;
   const cls = message.type === 'success' ? 'bg-green-900/30 border-green-500/40' :
