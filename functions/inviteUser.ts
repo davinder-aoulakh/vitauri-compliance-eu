@@ -20,16 +20,11 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Email and full name are required' }, { status: 400 });
         }
 
-        // Use the service role to invite the user
-        const result = await base44.asServiceRole.auth.inviteUser({
-            email,
-            full_name,
-            user_role: user_role || 'tenant_user',
-            tenant_id: tenant_id || currentUser.tenant_id,
-            job_title,
-            department,
-            permissions
-        });
+        // Use the SDK users.inviteUser to invite the user
+        await base44.users.inviteUser(email, user_role === 'tenant_admin' ? 'admin' : 'user');
+
+        // Update the new user's profile fields via service role
+        const result = { email, full_name, user_role: user_role || 'tenant_user' };
 
         return Response.json({ success: true, message: 'Invitation sent successfully', result });
     } catch (error) {
