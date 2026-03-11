@@ -266,6 +266,7 @@ function TableExportPanel() {
       </CardHeader>
       <CardContent className="p-6 space-y-4">
         <DbEnvSelector value={dbEnv} onChange={setDbEnv} />
+        <PasswordField value={password} onChange={setPassword} />
         <StatusMessage message={message} />
         <div className="space-y-1.5 max-h-80 overflow-y-auto">
           {ALL_ENTITIES.map(entity => (
