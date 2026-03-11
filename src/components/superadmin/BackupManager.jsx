@@ -392,6 +392,9 @@ function RestorePanel() {
   const [dbEnv, setDbEnv] = useState('prod');
   const [preflight, setPreflight] = useState(null); // null | { running, results }
   const [preflightExpanded, setPreflightExpanded] = useState(true);
+  const [restorePassword, setRestorePassword] = useState('');
+  const [encryptedRawFile, setEncryptedRawFile] = useState(null); // raw string if file is encrypted
+  const [decryptError, setDecryptError] = useState(null);
   const fileInputRef = useRef(null);
 
   // Run pre-flight schema validation
