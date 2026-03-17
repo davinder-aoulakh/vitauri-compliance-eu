@@ -193,9 +193,10 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   // ── Download template with real entity data ────────────────────────────────
   const downloadTemplate = () => {
     const headers = Object.keys(labelToField);
+    const selectedEntities = entities.filter(e => selectedEntityIds.includes(e.id));
 
     // Build example rows using real entity IDs if available
-    const exampleRows = entities.slice(0, 3).map((entity, i) => {
+    const exampleRows = selectedEntities.slice(0, 3).map((entity, i) => {
       const examples = [
         `2017-06-15,${entity.id},ACC-00${i+1},depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,`,
         `2019-03-22,${entity.id},ACC-00${i+4},custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890`,
@@ -212,7 +213,7 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
     }
 
     // Add entity reference sheet as comments at the top
-    const entityRef = entities.map(e => `# Entity: ${e.entity_name} | ID: ${e.id}`).join('\n');
+    const entityRef = selectedEntities.map(e => `# Entity: ${e.entity_name} | ID: ${e.id}`).join('\n');
     const content = `${entityRef}\n${headers.join(',')}\n${exampleRows.join('\n')}`;
 
     const blob = new Blob([content], { type: 'text/csv' });
