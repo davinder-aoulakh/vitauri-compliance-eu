@@ -89,7 +89,7 @@ function FieldGuide() {
         className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-          <Info className="w-4 h-4 text-indigo-500" /> Field Reference Guide
+          <Info className="w-4 h-4 text-indigo-500" /> 📋 Field Reference Guide — What goes in each column?
         </span>
         {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
       </button>
