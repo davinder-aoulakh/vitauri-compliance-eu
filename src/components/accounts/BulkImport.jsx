@@ -484,24 +484,47 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {/* Entity reference */}
+              {/* Entity selector */}
               {entities.length > 0 && (
-                <Alert className="bg-indigo-50 border-indigo-200">
-                  <Info className="w-4 h-4 text-indigo-600" />
-                  <AlertDescription className="text-sm text-indigo-900">
-                    <strong>Your entities will be pre-filled in the template:</strong>
-                    <div className="mt-2 space-y-1">
-                      {entities.map(e => (
-                        <div key={e.id} className="flex items-center gap-2 text-xs">
-                          <Badge variant="outline" className="font-mono text-xs">{e.id.slice(-8)}</Badge>
-                          <span className="text-indigo-800 font-medium">{e.entity_name}</span>
-                        </div>
-                      ))}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-700">Select entities to include in the template:</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedEntityIds(entities.map(e => e.id))} className="text-xs text-indigo-600 hover:underline">Select all</button>
+                      <span className="text-slate-300">|</span>
+                      <button onClick={() => setSelectedEntityIds([])} className="text-xs text-slate-500 hover:underline">Clear</button>
                     </div>
-                  </AlertDescription>
-                </Alert>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                    {entities.map(e => (
+                      <label key={e.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedEntityIds.includes(e.id)}
+                          onChange={() => setSelectedEntityIds(prev =>
+                            prev.includes(e.id) ? prev.filter(id => id !== e.id) : [...prev, e.id]
+                          )}
+                          className="rounded border-slate-300 text-indigo-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{e.entity_name}</p>
+                          <p className="text-xs text-slate-400 font-mono">{e.id}</p>
+                        </div>
+                        {selectedEntityIds.includes(e.id) && (
+                          <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-xs shrink-0">included</Badge>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500">{selectedEntityIds.length} of {entities.length} entities selected — example rows will use their real IDs.</p>
+                </div>
               )}
-              <Button onClick={downloadTemplate} variant="outline" className="w-full border-2 border-indigo-200 hover:bg-indigo-50 h-12">
+              <Button
+                onClick={downloadTemplate}
+                disabled={selectedEntityIds.length === 0}
+                variant="outline"
+                className="w-full border-2 border-indigo-200 hover:bg-indigo-50 h-12 disabled:opacity-50"
+              >
                 <FileSpreadsheet className="w-5 h-5 mr-2 text-indigo-600" />
                 Download accounts_import_template.csv
               </Button>
