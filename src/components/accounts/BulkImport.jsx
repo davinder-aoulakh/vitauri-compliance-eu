@@ -57,7 +57,7 @@ function StepIndicator({ currentStep }) {
 
 // ── Collapsible field guide ────────────────────────────────────────────────────
 function FieldGuide() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const fields = [
     { name: "Account Creation Date", format: "YYYY-MM-DD", required: false, note: "e.g. 2017-06-15" },
     { name: "Entity ID", format: "Text (UUID)", required: true, note: "Copy from the Entity ID column in the template" },
@@ -130,6 +130,7 @@ function FieldGuide() {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   const [step, setStep] = useState(1);
+  const [selectedEntityIds, setSelectedEntityIds] = useState(() => entities.map(e => e.id));
   const [file, setFile] = useState(null);
   const [parsedRows, setParsedRows] = useState([]);
   const [validationErrors, setValidationErrors] = useState([]);
