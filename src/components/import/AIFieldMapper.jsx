@@ -96,16 +96,78 @@ export default function AIFieldMapper({
 
   const targetFields = importType === "Account" ? ACCOUNT_FIELDS : ENTITY_FIELDS;
 
+  // Rule-based instant mapping applied before AI
+  const buildInstantMappings = () => {
+    const instant = {};
+    const RULES = {
+      // exact key matches (lowercased, stripped)
+      'entity id *': 'entity_id', 'entity id': 'entity_id',
+      'account number *': 'account_number', 'account number': 'account_number',
+      'account opening date *': 'account_creation_date', 'account opening date': 'account_creation_date',
+      'account type *': 'account_type', 'account type': 'account_type',
+      'account holder type *': 'account_holder_type', 'account holder type': 'account_holder_type',
+      'first name': 'first_name',
+      'last name': 'last_name',
+      'account holder name (entity)': 'account_holder_name',
+      'date of birth': 'date_of_birth',
+      'place of birth': 'place_of_birth',
+      'pre-existing account': 'is_pre_existing',
+      'account holder alive': 'account_holder_is_alive',
+      'deceased during period': 'account_holder_deceased_during_period',
+      'account closed during period': 'account_closed_during_period',
+      'acct holder address - street': 'account_holder_street',
+      'acct holder address - city': 'account_holder_city',
+      'acct holder address - state': 'account_holder_state',
+      'acct holder address - postal code': 'account_holder_postal_code',
+      'acct holder address - country': 'account_holder_country',
+      'current address - street': 'current_street',
+      'current address - city': 'current_city',
+      'current address - state': 'current_state',
+      'current address - postal code': 'current_postal_code',
+      'current address - country': 'current_country',
+      'country of residence': 'country_of_residence',
+      'current email address *': 'current_email', 'current email address': 'current_email',
+      'current phone number *': 'current_phone', 'current phone number': 'current_phone',
+      'entity classification': 'entity_classification',
+      'year-end cash value': 'year_end_cash_value',
+      'year-end currency': 'year_end_cash_value_currency',
+      'gross payments': 'gross_payments',
+      'gross payments currency': 'gross_payments_currency',
+      'reporting year': 'reporting_year',
+      'us person indicator': 'us_person_indic',
+      'self certification obtained': 'self_certification_obtained',
+      'self certification date': 'self_certification_date',
+      'account status': 'status',
+      'tax residency 1 - country': 'tax_residency_1_country',
+      'tax residency 1 - tin': 'tax_residency_1_tin',
+      'tax residency 2 - country': 'tax_residency_2_country',
+      'tax residency 2 - tin': 'tax_residency_2_tin',
+    };
+    csvHeaders.forEach(header => {
+      const key = header.toLowerCase().trim();
+      if (RULES[key]) instant[header] = RULES[key];
+    });
+    return instant;
+  };
+
   useEffect(() => {
     if (csvHeaders.length > 0 && sampleData.length > 0) {
-      analyzeAndSuggestMappings();
+      // Apply instant mappings immediately so UI is usable right away
+      const instant = buildInstantMappings();
+      if (Object.keys(instant).length > 0) {
+        setMappings(instant);
+        const conf = {};
+        Object.keys(instant).forEach(h => { conf[h] = 95; });
+        setConfidence(conf);
+      }
+      analyzeAndSuggestMappings(instant);
     }
   }, [csvHeaders, sampleData]);
 
-  const analyzeAndSuggestMappings = async () => {
+  const analyzeAndSuggestMappings = async (existingMappings = {}) => {
     setIsAnalyzing(true);
     try {
-      const sampleRows = sampleData.slice(0, 5).map(row => {
+      const sampleRows = sampleData.slice(0, 3).map(row => {
         const obj = {};
         csvHeaders.forEach((header, idx) => {
           obj[header] = row[idx] || "";
