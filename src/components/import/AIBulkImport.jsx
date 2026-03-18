@@ -681,11 +681,96 @@ export default function AIBulkImport({
                 Download Template
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Button onClick={downloadTemplate} variant="outline" className="w-full">
+            <CardContent className="space-y-4">
+              {/* Entity selector — Account imports only */}
+              {importType === "Account" && entities && entities.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-700">Select entities to include in template:</p>
+                    <div className="flex gap-2 text-xs">
+                      <button onClick={() => setSelectedEntityIds(entities.map(e => e.id))} className="text-indigo-600 hover:underline">All</button>
+                      <span className="text-slate-300">|</span>
+                      <button onClick={() => setSelectedEntityIds([])} className="text-slate-500 hover:underline">None</button>
+                    </div>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-44 overflow-y-auto">
+                    {entities.map(e => (
+                      <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedEntityIds.includes(e.id)}
+                          onChange={() => setSelectedEntityIds(prev =>
+                            prev.includes(e.id) ? prev.filter(id => id !== e.id) : [...prev, e.id]
+                          )}
+                          className="rounded border-slate-300 text-indigo-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{e.entity_name}</p>
+                          <p className="text-xs text-slate-400 font-mono">{e.id}</p>
+                        </div>
+                        {selectedEntityIds.includes(e.id) && (
+                          <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 shrink-0 text-xs">included</Badge>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500">{selectedEntityIds.length} of {entities.length} selected — their real IDs will appear as example rows.</p>
+                </div>
+              )}
+
+              <Button
+                onClick={downloadTemplate}
+                disabled={importType === "Account" && selectedEntityIds.length === 0 && entities?.length > 0}
+                variant="outline"
+                className="w-full"
+              >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Download {importType} Template
               </Button>
+
+              {/* Field Guide */}
+              {importType === "Account" && (
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left"
+                    onClick={() => setShowFieldGuide(p => !p)}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold text-indigo-800">
+                      <Info className="w-4 h-4" />
+                      📋 Field Reference Guide — What goes in each column?
+                    </span>
+                    <span className="text-indigo-600 text-xs">{showFieldGuide ? 'Hide ▲' : 'Show ▼'}</span>
+                  </button>
+                  {showFieldGuide && (
+                    <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 sticky top-0">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-700">Column</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-700">Format / Values</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-700">Required</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-700">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {FIELD_GUIDE.map((f, i) => (
+                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                              <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">{f.col}</td>
+                              <td className="px-3 py-2 text-slate-600 font-mono">{f.format}</td>
+                              <td className="px-3 py-2">
+                                {f.required
+                                  ? <span className="text-red-600 font-semibold">Yes</span>
+                                  : <span className="text-slate-400">No</span>}
+                              </td>
+                              <td className="px-3 py-2 text-slate-500">{f.notes}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
