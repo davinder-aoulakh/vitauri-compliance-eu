@@ -195,24 +195,40 @@ export default function AIDataCleaner({
       });
       
       // Check for required fields
-      const requiredFields = importType === 'Account' 
-        ? ['entity_id', 'account_number', 'account_holder_type', 'account_holder_name']
-        : ['entity_name', 'entity_type', 'country_of_incorporation'];
-      
-      requiredFields.forEach(field => {
-        const csvCol = Object.entries(mappings).find(([_, f]) => f === field)?.[0];
-        if (csvCol && !row[csvCol]?.trim()) {
-          issues.push({
-            row: rowNum,
-            column: csvCol,
-            field: field,
-            value: '',
-            type: 'missing_required',
-            message: `Missing required field: ${field}`,
-            severity: 'error'
+      if (importType === 'Account') {
+        const baseRequired = ['entity_id', 'account_number', 'account_holder_type'];
+        baseRequired.forEach(field => {
+          const csvCol = Object.entries(mappings).find(([_, f]) => f === field)?.[0];
+          if (csvCol && !row[csvCol]?.trim()) {
+            issues.push({ row: rowNum, column: csvCol, field, value: '', type: 'missing_required', message: `Missing required field: ${field}`, severity: 'error' });
+          }
+        });
+
+        // Determine holder type from the row to apply conditional required checks
+        const holderTypeCol = Object.entries(mappings).find(([_, f]) => f === 'account_holder_type')?.[0];
+        const holderType = holderTypeCol ? (row[holderTypeCol] || '').toLowerCase().trim() : '';
+
+        if (holderType === 'entity') {
+          const col = Object.entries(mappings).find(([_, f]) => f === 'account_holder_name')?.[0];
+          if (col && !row[col]?.trim()) {
+            issues.push({ row: rowNum, column: col, field: 'account_holder_name', value: '', type: 'missing_required', message: 'Missing required field: account_holder_name (required for entity holders)', severity: 'error' });
+          }
+        } else if (holderType === 'individual') {
+          ['first_name', 'last_name'].forEach(field => {
+            const col = Object.entries(mappings).find(([_, f]) => f === field)?.[0];
+            if (col && !row[col]?.trim()) {
+              issues.push({ row: rowNum, column: col, field, value: '', type: 'missing_required', message: `Missing required field: ${field} (required for individual holders)`, severity: 'error' });
+            }
           });
         }
-      });
+      } else {
+        ['entity_name', 'entity_type', 'country_of_incorporation'].forEach(field => {
+          const csvCol = Object.entries(mappings).find(([_, f]) => f === field)?.[0];
+          if (csvCol && !row[csvCol]?.trim()) {
+            issues.push({ row: rowNum, column: csvCol, field, value: '', type: 'missing_required', message: `Missing required field: ${field}`, severity: 'error' });
+          }
+        });
+      }
     });
     
     return issues;
