@@ -84,49 +84,292 @@ export default function AIBulkImport({
   const [user, setUser] = useState(null);
   const [uploadedFileUrl, setUploadedFileUrl] = useState(null);
 
-  const downloadTemplate = () => {
-    let csvContent;
+  const downloadTemplate = async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'CRS Platform';
+    workbook.created = new Date();
+
     const selectedEntities = (entities || []).filter(e => selectedEntityIds.includes(e.id));
 
+    const styleHeader = (cell, required = false) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: required ? 'FF1E3A5F' : 'FF334155' } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      cell.border = { bottom: { style: 'medium', color: { argb: 'FF4F46E5' } } };
+    };
+
     if (importType === "Account") {
-      const headers = [
-        "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Entity Type", "Account Holder Type", 
-        "Account Holder Name (Entity Only)", "First Name (Individual Only)", "Last Name (Individual Only)",
-        "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive", "Deceased During Period", "Account Closed During Period",
-        "Death Certificate Requested", "Death Certificate Requested Date", "Death Certificate Received", "Death Certificate Received Date",
-        "Will/Inheritance Requested", "Will/Inheritance Requested Date", "Will/Inheritance Received", "Will/Inheritance Received Date",
-        "Legacy of Deceased Settled", "Legacy Settlement Date",
-        "Entity Managed by Fiduciary Trust", "Entity Managed by Asset Manager", "Gross Income from Financial Assets",
-        "Account Holder Address Street", "Account Holder Address City", "Account Holder Address State", "Account Holder Address Postal Code", "Account Holder Address Country",
-        "Current Address Street", "Current Address City", "Current Address State", "Current Address Postal Code", "Current Address Country",
-        "Country of Residence", "Current Email Address", "Current Phone Number",
-        "Entity Classification", "Year-end Cash Value", "Year-end Currency", "Gross Payments", "Gross Payments Currency",
-        "Reporting Year", "US Person Indicator", "Self Certification Obtained", "Self Certification Date",
-        "Account Status", "Tax Residency 1 Country", "Tax Residency 1 TIN", "Tax Residency 2 Country", "Tax Residency 2 TIN"
+      // ── Sheet 2: Entity Reference ────────────────────────────────────────────
+      const entitySheet = workbook.addWorksheet('Entity Reference', {
+        properties: { tabColor: { argb: 'FF4F46E5' } }
+      });
+      entitySheet.columns = [
+        { key: 'name', width: 42 },
+        { key: 'id', width: 42 },
+        { key: 'country', width: 24 },
+        { key: 'type', width: 18 },
       ];
+      ['Entity Name', 'Entity ID (use this in Accounts Data tab)', 'Country', 'Type'].forEach((text, i) => {
+        const cell = entitySheet.getRow(1).getCell(i + 1);
+        cell.value = text;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        cell.alignment = { vertical: 'middle' };
+        cell.border = { bottom: { style: 'medium', color: { argb: 'FF3730A3' } } };
+      });
+      entitySheet.getRow(1).height = 28;
+      (selectedEntities.length > 0 ? selectedEntities : []).forEach((e, i) => {
+        const row = entitySheet.addRow([e.entity_name, e.id, e.country_of_incorporation || '', e.entity_type || '']);
+        row.eachCell(cell => {
+          cell.alignment = { vertical: 'middle' };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFF0F4FF' : 'FFFFFFFF' } };
+        });
+        row.height = 20;
+      });
+      entitySheet.views = [{ state: 'frozen', ySplit: 1 }];
 
-      // Entity reference comments
-      const entityRef = selectedEntities.length > 0
-        ? selectedEntities.map(e => `# Entity: ${e.entity_name} | ID: ${e.id}`).join('\n') + '\n'
-        : '# PASTE_ENTITY_ID from your RFI Entities list\n';
-
-      // Example rows — one per selected entity (up to 3)
-      const exampleRows = (selectedEntities.length > 0 ? selectedEntities.slice(0, 3) : [null]).map((entity, i) => {
-        const entityId = entity?.id || 'PASTE_ENTITY_ID_HERE';
-        return `${entityId},ACC-00${i+1},2020-01-15,depository,,individual,,John,Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
+      // ── Sheet 1: Accounts Data ───────────────────────────────────────────────
+      const dataSheet = workbook.addWorksheet('Accounts Data', {
+        properties: { tabColor: { argb: 'FF10B981' } }
       });
 
-      csvContent = entityRef + headers.join(',') + '\n' + exampleRows.join('\n');
+      const columns = [
+        // col 1
+        { header: 'Entity ID *', key: 'entity_id', width: 38, required: true, note: 'Select from dropdown — IDs are from the "Entity Reference" tab' },
+        // col 2
+        { header: 'Entity Name (auto-ref)', key: 'entity_name_ref', width: 30, required: false, note: 'For your reference only — not imported into the system' },
+        // col 3
+        { header: 'Account Number *', key: 'account_number', width: 22, required: true, note: 'Unique account identifier per entity' },
+        // col 4
+        { header: 'Account Opening Date *', key: 'account_creation_date', width: 24, required: true, note: 'Format: YYYY-MM-DD e.g. 2020-01-15' },
+        // col 5
+        { header: 'Account Type *', key: 'account_type', width: 26, required: true, note: 'Select from dropdown: depository | custodial | equity_debt_interest | cash_value_insurance | annuity' },
+        // col 6
+        { header: 'Account Holder Type *', key: 'account_holder_type', width: 24, required: true, note: 'Select from dropdown: individual | entity' },
+        // col 7
+        { header: 'First Name', key: 'first_name', width: 18, required: false, note: 'Required if Account Holder Type = individual' },
+        // col 8
+        { header: 'Last Name', key: 'last_name', width: 18, required: false, note: 'Required if Account Holder Type = individual' },
+        // col 9
+        { header: 'Account Holder Name (Entity)', key: 'account_holder_name', width: 30, required: false, note: 'Required if Account Holder Type = entity' },
+        // col 10
+        { header: 'Date of Birth', key: 'date_of_birth', width: 18, required: false, note: 'YYYY-MM-DD — Required for individuals' },
+        // col 11
+        { header: 'Place of Birth', key: 'place_of_birth', width: 20, required: false, note: 'Country name' },
+        // col 12
+        { header: 'Pre-existing Account', key: 'is_pre_existing', width: 22, required: false, note: 'true | false — account opened before Dec 31, 2015?' },
+        // col 13
+        { header: 'Account Holder Alive', key: 'account_holder_is_alive', width: 22, required: false, note: 'true | false' },
+        // col 14
+        { header: 'Deceased During Period', key: 'deceased_during_period', width: 24, required: false, note: 'true | false' },
+        // col 15
+        { header: 'Account Closed During Period', key: 'account_closed_during_period', width: 28, required: false, note: 'true | false' },
+        // col 16-20: Account Holder Address
+        { header: 'Acct Holder Address - Street', key: 'ah_street', width: 28, required: false, note: '' },
+        { header: 'Acct Holder Address - City', key: 'ah_city', width: 22, required: false, note: '' },
+        { header: 'Acct Holder Address - State', key: 'ah_state', width: 20, required: false, note: '' },
+        { header: 'Acct Holder Address - Postal Code', key: 'ah_postal', width: 26, required: false, note: '' },
+        { header: 'Acct Holder Address - Country', key: 'ah_country', width: 24, required: false, note: '' },
+        // col 21-25: Current Address
+        { header: 'Current Address - Street', key: 'curr_street', width: 26, required: false, note: '' },
+        { header: 'Current Address - City', key: 'curr_city', width: 20, required: false, note: '' },
+        { header: 'Current Address - State', key: 'curr_state', width: 20, required: false, note: '' },
+        { header: 'Current Address - Postal Code', key: 'curr_postal', width: 24, required: false, note: '' },
+        { header: 'Current Address - Country', key: 'curr_country', width: 22, required: false, note: '' },
+        // col 26
+        { header: 'Country of Residence', key: 'country_of_residence', width: 22, required: false, note: '' },
+        // col 27
+        { header: 'Current Email Address *', key: 'current_email', width: 28, required: true, note: 'Valid email format e.g. john@example.com' },
+        // col 28
+        { header: 'Current Phone Number *', key: 'current_phone', width: 22, required: true, note: 'e.g. +12125551234' },
+        // col 29
+        { header: 'Entity Classification', key: 'entity_classification', width: 26, required: false, note: 'Select from dropdown: financial_institution | active_nfe | passive_nfe | not_applicable' },
+        // col 30
+        { header: 'Year-end Cash Value', key: 'year_end_cash_value', width: 22, required: false, note: 'Number e.g. 50000' },
+        // col 31
+        { header: 'Year-end Currency', key: 'year_end_currency', width: 20, required: false, note: 'ISO code e.g. USD, AUD, GBP' },
+        // col 32
+        { header: 'Gross Payments', key: 'gross_payments', width: 18, required: false, note: 'Number' },
+        // col 33
+        { header: 'Gross Payments Currency', key: 'gross_payments_currency', width: 24, required: false, note: 'ISO code' },
+        // col 34
+        { header: 'Reporting Year', key: 'reporting_year', width: 18, required: false, note: 'YYYY e.g. 2024' },
+        // col 35
+        { header: 'US Person Indicator', key: 'us_person_indic', width: 22, required: false, note: 'true | false (FATCA flag)' },
+        // col 36
+        { header: 'Self Certification Obtained', key: 'self_cert_obtained', width: 28, required: false, note: 'true | false' },
+        // col 37
+        { header: 'Self Certification Date', key: 'self_cert_date', width: 24, required: false, note: 'YYYY-MM-DD' },
+        // col 38
+        { header: 'Account Status', key: 'status', width: 18, required: false, note: 'Select from dropdown: active | closed | dormant — defaults to active' },
+        // col 39-42: Tax Residencies
+        { header: 'Tax Residency 1 - Country', key: 'tax1_country', width: 26, required: false, note: 'Country name' },
+        { header: 'Tax Residency 1 - TIN', key: 'tax1_tin', width: 22, required: false, note: 'Tax identification number' },
+        { header: 'Tax Residency 2 - Country', key: 'tax2_country', width: 26, required: false, note: '' },
+        { header: 'Tax Residency 2 - TIN', key: 'tax2_tin', width: 22, required: false, note: '' },
+      ];
+
+      dataSheet.columns = columns.map(c => ({ key: c.key, width: c.width }));
+      const headerRow = dataSheet.getRow(1);
+      columns.forEach((col, i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.value = col.header;
+        styleHeader(cell, col.required);
+        if (col.note) cell.note = { texts: [{ text: col.note }] };
+      });
+      headerRow.height = 28;
+      dataSheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }];
+
+      // Example rows
+      const examples = (selectedEntities.length > 0 ? selectedEntities.slice(0, 3) : [null]).map((entity, i) => ({
+        entity_id: entity?.id || 'PASTE_ENTITY_ID',
+        entity_name_ref: entity?.entity_name || 'See Entity Reference tab',
+        account_number: `ACC-00${i + 1}`,
+        account_creation_date: '2020-01-15',
+        account_type: 'depository',
+        account_holder_type: 'individual',
+        first_name: ['John', 'Jane', 'Robert'][i] || 'John',
+        last_name: ['Smith', 'Doe', 'Johnson'][i] || 'Smith',
+        account_holder_name: '',
+        date_of_birth: ['1985-06-15', '1990-03-22', '1978-11-08'][i] || '1985-06-15',
+        place_of_birth: ['United States', 'United Kingdom', 'Australia'][i] || 'United States',
+        is_pre_existing: 'false', account_holder_is_alive: 'true',
+        deceased_during_period: 'false', account_closed_during_period: 'false',
+        ah_street: '123 Main St', ah_city: ['New York', 'London', 'Sydney'][i] || 'New York',
+        ah_state: ['NY', '', 'NSW'][i] || '', ah_postal: ['10001', 'SW1A 1AA', '2000'][i] || '10001',
+        ah_country: ['United States', 'United Kingdom', 'Australia'][i] || 'United States',
+        curr_street: '123 Main St', curr_city: ['New York', 'London', 'Sydney'][i] || 'New York',
+        curr_state: ['NY', '', 'NSW'][i] || '', curr_postal: ['10001', 'SW1A 1AA', '2000'][i] || '10001',
+        curr_country: ['United States', 'United Kingdom', 'Australia'][i] || 'United States',
+        country_of_residence: ['United States', 'United Kingdom', 'Australia'][i] || 'United States',
+        current_email: [`john@example.com`, `jane@example.com`, `robert@example.com`][i],
+        current_phone: ['+12125551234', '+442075551234', '+61298765432'][i],
+        entity_classification: 'not_applicable',
+        year_end_cash_value: [50000, 75000, 120000][i],
+        year_end_currency: ['USD', 'GBP', 'AUD'][i],
+        gross_payments: [5000, 10000, 15000][i],
+        gross_payments_currency: ['USD', 'GBP', 'AUD'][i],
+        reporting_year: '2024',
+        us_person_indic: 'false', self_cert_obtained: 'false', self_cert_date: '',
+        status: 'active',
+        tax1_country: ['United States', 'United Kingdom', 'Australia'][i] || '',
+        tax1_tin: ['123-45-6789', 'AB123456C', '123456789'][i] || '',
+        tax2_country: '', tax2_tin: '',
+      }));
+
+      examples.forEach((data, i) => {
+        const rowValues = columns.map(c => data[c.key] ?? '');
+        const row = dataSheet.addRow(rowValues);
+        row.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFF8FAFC' : 'FFFFFFFF' } };
+          cell.alignment = { vertical: 'middle' };
+        });
+        row.height = 20;
+      });
+
+      // ── Data Validations ─────────────────────────────────────────────────────
+      const MAX_ROW = 502;
+      for (let row = 2; row <= MAX_ROW; row++) {
+        // Entity ID dropdown from Entity Reference tab col B
+        if (selectedEntities.length > 0) {
+          dataSheet.getCell(row, 1).dataValidation = {
+            type: 'list', allowBlank: false,
+            formulae: [`'Entity Reference'!$B$2:$B$${selectedEntities.length + 1}`],
+            showErrorMessage: true, errorTitle: 'Invalid Entity ID',
+            error: 'Select a valid Entity ID from the dropdown (sourced from the Entity Reference tab)'
+          };
+        }
+        // Account Type
+        dataSheet.getCell(row, 5).dataValidation = {
+          type: 'list', allowBlank: true,
+          formulae: ['"depository,custodial,equity_debt_interest,cash_value_insurance,annuity"'],
+          showErrorMessage: true, errorTitle: 'Invalid Account Type',
+          error: 'Must be one of: depository, custodial, equity_debt_interest, cash_value_insurance, annuity'
+        };
+        // Account Holder Type
+        dataSheet.getCell(row, 6).dataValidation = {
+          type: 'list', allowBlank: true, formulae: ['"individual,entity"'],
+          showErrorMessage: true, errorTitle: 'Invalid Holder Type', error: 'Must be: individual or entity'
+        };
+        // Boolean fields: 12,13,14,15,35,36
+        [12, 13, 14, 15, 35, 36].forEach(col => {
+          dataSheet.getCell(row, col).dataValidation = { type: 'list', allowBlank: true, formulae: ['"true,false"'] };
+        });
+        // Entity Classification col 29
+        dataSheet.getCell(row, 29).dataValidation = {
+          type: 'list', allowBlank: true,
+          formulae: ['"financial_institution,active_nfe,passive_nfe,not_applicable"']
+        };
+        // Account Status col 38
+        dataSheet.getCell(row, 38).dataValidation = {
+          type: 'list', allowBlank: true, formulae: ['"active,closed,dormant"']
+        };
+      }
+
+      // ── Sheet 3: Field Guide ─────────────────────────────────────────────────
+      const guideSheet = workbook.addWorksheet('Field Guide', {
+        properties: { tabColor: { argb: 'FFF59E0B' } }
+      });
+      guideSheet.columns = [
+        { key: 'col', width: 35 }, { key: 'format', width: 55 },
+        { key: 'required', width: 12 }, { key: 'notes', width: 55 },
+      ];
+      const guideHeaderRow = guideSheet.getRow(1);
+      ['Column Name', 'Format / Allowed Values', 'Required?', 'Notes & Tips'].forEach((text, i) => {
+        const cell = guideHeaderRow.getCell(i + 1);
+        cell.value = text;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF59E0B' } };
+        cell.font = { bold: true, color: { argb: 'FF1C1917' }, size: 11 };
+        cell.alignment = { vertical: 'middle' };
+      });
+      guideHeaderRow.height = 25;
+      FIELD_GUIDE.forEach((f, i) => {
+        const row = guideSheet.addRow([f.col, f.format, f.required ? '✓ Yes' : 'No', f.notes]);
+        row.getCell(1).font = { bold: true };
+        row.getCell(3).font = { color: { argb: f.required ? 'FFDC2626' : 'FF64748B' } };
+        row.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFFEF3C7' : 'FFFFFFFF' } };
+          cell.alignment = { vertical: 'middle', wrapText: true };
+        });
+        row.height = 18;
+      });
+      guideSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
     } else {
-      const headers = ["Entity Name", "Entity Type", "Country of Incorporation", "Tax ID", "GIIN", "Street Address", "City", "State/Province", "Postal Code", "Country"];
-      csvContent = headers.join(',') + '\nACME Corp,corporation,United States,12-3456789,ABCDEF.00000.SL.840,123 Business Ave,New York,NY,10001,United States';
+      // ── Entity Template ──────────────────────────────────────────────────────
+      const sheet = workbook.addWorksheet('Entities Data', { properties: { tabColor: { argb: 'FF10B981' } } });
+      const cols = [
+        { header: 'Entity Name *', key: 'entity_name', width: 35, required: true },
+        { header: 'Entity Type *', key: 'entity_type', width: 22, required: true },
+        { header: 'Country of Incorporation *', key: 'country_of_incorporation', width: 28, required: true },
+        { header: 'Tax ID', key: 'tax_id', width: 18, required: false },
+        { header: 'GIIN', key: 'giin', width: 22, required: false },
+        { header: 'Street Address', key: 'street', width: 30, required: false },
+        { header: 'City', key: 'city', width: 20, required: false },
+        { header: 'State/Province', key: 'state', width: 18, required: false },
+        { header: 'Postal Code', key: 'postal_code', width: 15, required: false },
+        { header: 'Country', key: 'country', width: 20, required: false },
+      ];
+      sheet.columns = cols.map(c => ({ key: c.key, width: c.width }));
+      const hRow = sheet.getRow(1);
+      cols.forEach((col, i) => { styleHeader(hRow.getCell(i + 1), col.required); hRow.getCell(i + 1).value = col.header; });
+      hRow.height = 25;
+      const exRow = sheet.addRow(['ACME Corp', 'corporation', 'United States', '12-3456789', 'ABCDEF.00000.SL.840', '123 Business Ave', 'New York', 'NY', '10001', 'United States']);
+      exRow.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } }; });
+      for (let row = 2; row <= 502; row++) {
+        sheet.getCell(row, 2).dataValidation = { type: 'list', allowBlank: true, formulae: ['"corporation,trust,partnership,fund,branch,other"'] };
+      }
+      sheet.views = [{ state: 'frozen', ySplit: 1 }];
     }
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+
+    // Generate and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${importType.toLowerCase()}_import_template.csv`;
+    a.download = `${importType.toLowerCase()}_import_template.xlsx`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
