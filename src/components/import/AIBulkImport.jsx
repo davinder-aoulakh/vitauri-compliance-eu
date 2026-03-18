@@ -29,6 +29,38 @@ const STEPS = [
   { id: 'import', label: 'Import' }
 ];
 
+const FIELD_GUIDE = [
+  { col: "Entity ID", format: "Text (ID)", required: true, notes: "Exact ID of the RFI Entity this account belongs to" },
+  { col: "Account Number", format: "Text", required: true, notes: "Unique account identifier" },
+  { col: "Account Opening Date", format: "YYYY-MM-DD", required: true, notes: "e.g. 2020-01-15" },
+  { col: "Account Type", format: "depository | custodial | equity_debt_interest | cash_value_insurance | annuity", required: true, notes: "Must be one of these exact values" },
+  { col: "Account Holder Type", format: "individual | entity", required: true, notes: "Determines which fields are required" },
+  { col: "First Name (Individual Only)", format: "Text", required: false, notes: "Required if Account Holder Type = individual" },
+  { col: "Last Name (Individual Only)", format: "Text", required: false, notes: "Required if Account Holder Type = individual" },
+  { col: "Account Holder Name (Entity Only)", format: "Text", required: false, notes: "Required if Account Holder Type = entity" },
+  { col: "Date of Birth", format: "YYYY-MM-DD", required: false, notes: "Required for individuals" },
+  { col: "Place of Birth", format: "Country name", required: false, notes: "Country of birth for individuals" },
+  { col: "Pre-existing Account", format: "true | false", required: false, notes: "Account existed before Dec 31, 2015" },
+  { col: "Account Holder Alive", format: "true | false", required: false, notes: "" },
+  { col: "Deceased During Period", format: "true | false", required: false, notes: "" },
+  { col: "Account Closed During Period", format: "true | false", required: false, notes: "" },
+  { col: "Entity Classification", format: "financial_institution | active_nfe | passive_nfe | not_applicable", required: false, notes: "For entity account holders" },
+  { col: "Year-end Cash Value", format: "Number", required: false, notes: "e.g. 50000" },
+  { col: "Year-end Currency", format: "ISO code", required: false, notes: "e.g. USD, AUD, GBP" },
+  { col: "Gross Payments", format: "Number", required: false, notes: "" },
+  { col: "Gross Payments Currency", format: "ISO code", required: false, notes: "" },
+  { col: "Reporting Year", format: "YYYY", required: false, notes: "e.g. 2024" },
+  { col: "Current Email Address", format: "Email", required: true, notes: "Valid email format" },
+  { col: "Current Phone Number", format: "Text", required: true, notes: "e.g. +12125551234" },
+  { col: "Country of Residence", format: "Country name", required: false, notes: "" },
+  { col: "Account Status", format: "active | closed | dormant", required: false, notes: "Defaults to active" },
+  { col: "Tax Residency 1 Country", format: "Country name", required: false, notes: "Primary tax residency country" },
+  { col: "Tax Residency 1 TIN", format: "Text", required: false, notes: "Tax identification number" },
+  { col: "US Person Indicator", format: "true | false", required: false, notes: "FATCA US indicia flag" },
+  { col: "Self Certification Obtained", format: "true | false", required: false, notes: "" },
+  { col: "Self Certification Date", format: "YYYY-MM-DD", required: false, notes: "" },
+];
+
 export default function AIBulkImport({ 
   tenant, 
   entities, 
@@ -37,6 +69,8 @@ export default function AIBulkImport({
   onCancel 
 }) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [selectedEntityIds, setSelectedEntityIds] = useState(() => (entities || []).map(e => e.id));
+  const [showFieldGuide, setShowFieldGuide] = useState(true);
   const [file, setFile] = useState(null);
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [csvData, setCsvData] = useState([]);
