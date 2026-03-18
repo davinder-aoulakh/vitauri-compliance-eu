@@ -417,7 +417,7 @@ Return JSON:
       <div className="flex justify-end gap-3 pt-4">
         <Button
           onClick={() => onMappingComplete(mappings, aiSuggestions?.data_quality_issues || [])}
-          disabled={!isComplete || isAnalyzing}
+          disabled={!isComplete}
           className="bg-indigo-600 hover:bg-indigo-700 text-white"
         >
           {isComplete ? (
