@@ -178,33 +178,25 @@ export default function AIFieldMapper({
       const targetFieldsList = targetFields.map(f => `${f.name} (${f.label}${f.required ? ", required" : ""})`).join("\n");
 
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a data mapping expert. Analyze these CSV headers and sample data, then suggest the best mapping to target fields.
+        prompt: `You are a data mapping expert for a financial compliance platform. Map CSV headers to target fields.
 
 CSV Headers: ${csvHeaders.join(", ")}
-
-Sample Data (first 5 rows):
-${JSON.stringify(sampleRows, null, 2)}
+Sample Data (first 3 rows): ${JSON.stringify(sampleRows, null, 2)}
 
 Target Fields for ${importType}:
 ${targetFieldsList}
 
-For each CSV header, suggest:
-1. The best matching target field name (use exact field name from target list)
-2. A confidence score (0-100)
-3. Any data quality issues you notice
+CRITICAL MAPPING RULES:
+- "First Name" → MUST map to "first_name" (NOT account_holder_name)
+- "Last Name" → MUST map to "last_name" (NOT account_holder_name)
+- "Account Holder Name (Entity)" → MUST map to "account_holder_name" (only for entity account holders)
+- "Entity Name (auto-ref)" → map to null (skip, reference only)
+- first_name and last_name are for individual account holders; account_holder_name is for entity account holders
 
-Return JSON format:
+Return JSON:
 {
-  "mappings": {
-    "csv_header_name": {
-      "target_field": "field_name or null if no match",
-      "confidence": 85,
-      "reason": "brief explanation"
-    }
-  },
-  "data_quality_issues": [
-    {"header": "column_name", "issue": "description", "severity": "warning|error"}
-  ]
+  "mappings": { "csv_header": { "target_field": "field_name or null", "confidence": 85, "reason": "brief" } },
+  "data_quality_issues": [{"header": "col", "issue": "description", "severity": "warning|error"}]
 }`,
         response_json_schema: {
           type: "object",
