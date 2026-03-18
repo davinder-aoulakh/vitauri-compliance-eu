@@ -228,18 +228,17 @@ Return JSON:
       });
 
       if (response?.mappings) {
-        const newMappings = {};
+        const newMappings = { ...existingMappings };
         const newConfidence = {};
-        const newSuggestions = {};
-
         Object.entries(response.mappings).forEach(([csvHeader, mapping]) => {
           if (mapping.target_field) {
             newMappings[csvHeader] = mapping.target_field;
             newConfidence[csvHeader] = mapping.confidence;
-            newSuggestions[csvHeader] = mapping;
+          } else {
+            // AI said skip — respect it unless we had a high-confidence instant match
+            if (!existingMappings[csvHeader]) delete newMappings[csvHeader];
           }
         });
-
         setMappings(newMappings);
         setConfidence(newConfidence);
         setAiSuggestions(response);
