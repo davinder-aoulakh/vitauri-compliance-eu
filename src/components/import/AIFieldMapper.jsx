@@ -310,7 +310,7 @@ Return JSON:
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={analyzeAndSuggestMappings}
+              onClick={() => analyzeAndSuggestMappings(buildInstantMappings())}
               disabled={isAnalyzing}
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isAnalyzing ? 'animate-spin' : ''}`} />
