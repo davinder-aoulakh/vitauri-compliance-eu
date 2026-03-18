@@ -1050,20 +1050,20 @@ export default function AIBulkImport({
             <CardContent>
               <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50 transition-all">
                 <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="csv-upload"
+                 type="file"
+                 accept=".csv,.xlsx,.xls"
+                 onChange={handleFileChange}
+                 className="hidden"
+                 id="csv-upload"
                 />
                 <label htmlFor="csv-upload" className="cursor-pointer">
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                  <p className="text-sm font-medium text-slate-700 mb-1">
-                    Click to select CSV file
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    The AI will analyze your data and suggest field mappings
-                  </p>
+                 <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                 <p className="text-sm font-medium text-slate-700 mb-1">
+                   Click to select your file
+                 </p>
+                 <p className="text-xs text-slate-500">
+                   Accepts .xlsx (recommended) or .csv — AI will map fields automatically
+                 </p>
                 </label>
               </div>
             </CardContent>
