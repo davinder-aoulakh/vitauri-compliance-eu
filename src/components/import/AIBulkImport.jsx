@@ -100,128 +100,113 @@ export default function AIBulkImport({
     };
 
     if (importType === "Account") {
-      // ── Sheet 2: Entity Reference ────────────────────────────────────────────
-      const entitySheet = workbook.addWorksheet('Entity Reference', {
-        properties: { tabColor: { argb: 'FF4F46E5' } }
-      });
-      entitySheet.columns = [
-        { key: 'name', width: 42 },
-        { key: 'id', width: 42 },
-        { key: 'country', width: 24 },
-        { key: 'type', width: 18 },
-      ];
-      ['Entity Name', 'Entity ID (use this in Accounts Data tab)', 'Country', 'Type'].forEach((text, i) => {
-        const cell = entitySheet.getRow(1).getCell(i + 1);
-        cell.value = text;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-        cell.alignment = { vertical: 'middle' };
-        cell.border = { bottom: { style: 'medium', color: { argb: 'FF3730A3' } } };
-      });
-      entitySheet.getRow(1).height = 28;
-      (selectedEntities.length > 0 ? selectedEntities : []).forEach((e, i) => {
-        const row = entitySheet.addRow([e.entity_name, e.id, e.country_of_incorporation || '', e.entity_type || '']);
-        row.eachCell(cell => {
-          cell.alignment = { vertical: 'middle' };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFF0F4FF' : 'FFFFFFFF' } };
-        });
-        row.height = 20;
-      });
-      entitySheet.views = [{ state: 'frozen', ySplit: 1 }];
+      // Fetch existing tenant accounts for the Export tab
+      let existingAccounts = [];
+      try {
+        existingAccounts = await base44.entities.Account.filter({ tenant_id: tenant.id });
+      } catch (e) { console.error('Could not fetch accounts for export:', e); }
 
-      // ── Sheet 1: Accounts Data ───────────────────────────────────────────────
-      const dataSheet = workbook.addWorksheet('Accounts Data', {
-        properties: { tabColor: { argb: 'FF10B981' } }
-      });
+      // Build entity lookup map for name resolution
+      const entityMap = {};
+      (entities || []).forEach(e => { entityMap[e.id] = e.entity_name; });
 
+      // ── Column definitions (shared across Data, Example and Export sheets) ───
       const columns = [
-        // col 1
         { header: 'Entity ID *', key: 'entity_id', width: 38, required: true, note: 'Select from dropdown — IDs are from the "Entity Reference" tab' },
-        // col 2
         { header: 'Entity Name (auto-ref)', key: 'entity_name_ref', width: 30, required: false, note: 'For your reference only — not imported into the system' },
-        // col 3
         { header: 'Account Number *', key: 'account_number', width: 22, required: true, note: 'Unique account identifier per entity' },
-        // col 4
         { header: 'Account Opening Date *', key: 'account_creation_date', width: 24, required: true, note: 'Format: YYYY-MM-DD e.g. 2020-01-15' },
-        // col 5
         { header: 'Account Type *', key: 'account_type', width: 26, required: true, note: 'Select from dropdown: depository | custodial | equity_debt_interest | cash_value_insurance | annuity' },
-        // col 6
         { header: 'Account Holder Type *', key: 'account_holder_type', width: 24, required: true, note: 'Select from dropdown: individual | entity' },
-        // col 7
         { header: 'First Name', key: 'first_name', width: 18, required: false, note: 'Required if Account Holder Type = individual' },
-        // col 8
         { header: 'Last Name', key: 'last_name', width: 18, required: false, note: 'Required if Account Holder Type = individual' },
-        // col 9
         { header: 'Account Holder Name (Entity)', key: 'account_holder_name', width: 30, required: false, note: 'Required if Account Holder Type = entity' },
-        // col 10
         { header: 'Date of Birth', key: 'date_of_birth', width: 18, required: false, note: 'YYYY-MM-DD — Required for individuals' },
-        // col 11
         { header: 'Place of Birth', key: 'place_of_birth', width: 20, required: false, note: 'Country name' },
-        // col 12
         { header: 'Pre-existing Account', key: 'is_pre_existing', width: 22, required: false, note: 'true | false — account opened before Dec 31, 2015?' },
-        // col 13
         { header: 'Account Holder Alive', key: 'account_holder_is_alive', width: 22, required: false, note: 'true | false' },
-        // col 14
         { header: 'Deceased During Period', key: 'deceased_during_period', width: 24, required: false, note: 'true | false' },
-        // col 15
         { header: 'Account Closed During Period', key: 'account_closed_during_period', width: 28, required: false, note: 'true | false' },
-        // col 16-20: Account Holder Address
         { header: 'Acct Holder Address - Street', key: 'ah_street', width: 28, required: false, note: '' },
         { header: 'Acct Holder Address - City', key: 'ah_city', width: 22, required: false, note: '' },
         { header: 'Acct Holder Address - State', key: 'ah_state', width: 20, required: false, note: '' },
         { header: 'Acct Holder Address - Postal Code', key: 'ah_postal', width: 26, required: false, note: '' },
         { header: 'Acct Holder Address - Country', key: 'ah_country', width: 24, required: false, note: '' },
-        // col 21-25: Current Address
         { header: 'Current Address - Street', key: 'curr_street', width: 26, required: false, note: '' },
         { header: 'Current Address - City', key: 'curr_city', width: 20, required: false, note: '' },
         { header: 'Current Address - State', key: 'curr_state', width: 20, required: false, note: '' },
         { header: 'Current Address - Postal Code', key: 'curr_postal', width: 24, required: false, note: '' },
         { header: 'Current Address - Country', key: 'curr_country', width: 22, required: false, note: '' },
-        // col 26
         { header: 'Country of Residence', key: 'country_of_residence', width: 22, required: false, note: '' },
-        // col 27
         { header: 'Current Email Address *', key: 'current_email', width: 28, required: true, note: 'Valid email format e.g. john@example.com' },
-        // col 28
         { header: 'Current Phone Number *', key: 'current_phone', width: 22, required: true, note: 'e.g. +12125551234' },
-        // col 29
         { header: 'Entity Classification', key: 'entity_classification', width: 26, required: false, note: 'Select from dropdown: financial_institution | active_nfe | passive_nfe | not_applicable' },
-        // col 30
         { header: 'Year-end Cash Value', key: 'year_end_cash_value', width: 22, required: false, note: 'Number e.g. 50000' },
-        // col 31
         { header: 'Year-end Currency', key: 'year_end_currency', width: 20, required: false, note: 'ISO code e.g. USD, AUD, GBP' },
-        // col 32
         { header: 'Gross Payments', key: 'gross_payments', width: 18, required: false, note: 'Number' },
-        // col 33
         { header: 'Gross Payments Currency', key: 'gross_payments_currency', width: 24, required: false, note: 'ISO code' },
-        // col 34
         { header: 'Reporting Year', key: 'reporting_year', width: 18, required: false, note: 'YYYY e.g. 2024' },
-        // col 35
         { header: 'US Person Indicator', key: 'us_person_indic', width: 22, required: false, note: 'true | false (FATCA flag)' },
-        // col 36
         { header: 'Self Certification Obtained', key: 'self_cert_obtained', width: 28, required: false, note: 'true | false' },
-        // col 37
         { header: 'Self Certification Date', key: 'self_cert_date', width: 24, required: false, note: 'YYYY-MM-DD' },
-        // col 38
         { header: 'Account Status', key: 'status', width: 18, required: false, note: 'Select from dropdown: active | closed | dormant — defaults to active' },
-        // col 39-42: Tax Residencies
         { header: 'Tax Residency 1 - Country', key: 'tax1_country', width: 26, required: false, note: 'Country name' },
         { header: 'Tax Residency 1 - TIN', key: 'tax1_tin', width: 22, required: false, note: 'Tax identification number' },
         { header: 'Tax Residency 2 - Country', key: 'tax2_country', width: 26, required: false, note: '' },
         { header: 'Tax Residency 2 - TIN', key: 'tax2_tin', width: 22, required: false, note: '' },
       ];
 
-      dataSheet.columns = columns.map(c => ({ key: c.key, width: c.width }));
-      const headerRow = dataSheet.getRow(1);
-      columns.forEach((col, i) => {
-        const cell = headerRow.getCell(i + 1);
-        cell.value = col.header;
-        styleHeader(cell, col.required);
-        if (col.note) cell.note = { texts: [{ text: col.note }] };
-      });
-      headerRow.height = 28;
-      dataSheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }];
+      const applyDataValidations = (sheet, maxRow, entityCount) => {
+        for (let row = 2; row <= maxRow; row++) {
+          if (entityCount > 0) {
+            sheet.getCell(row, 1).dataValidation = {
+              type: 'list', allowBlank: false,
+              formulae: [`'Entity Reference'!$B$2:$B$${entityCount + 1}`],
+              showErrorMessage: true, errorTitle: 'Invalid Entity ID',
+              error: 'Select a valid Entity ID from the dropdown (sourced from the Entity Reference tab)'
+            };
+          }
+          sheet.getCell(row, 5).dataValidation = { type: 'list', allowBlank: true, formulae: ['"depository,custodial,equity_debt_interest,cash_value_insurance,annuity"'] };
+          sheet.getCell(row, 6).dataValidation = { type: 'list', allowBlank: true, formulae: ['"individual,entity"'] };
+          [12, 13, 14, 15, 35, 36].forEach(col => {
+            sheet.getCell(row, col).dataValidation = { type: 'list', allowBlank: true, formulae: ['"true,false"'] };
+          });
+          sheet.getCell(row, 29).dataValidation = { type: 'list', allowBlank: true, formulae: ['"financial_institution,active_nfe,passive_nfe,not_applicable"'] };
+          sheet.getCell(row, 38).dataValidation = { type: 'list', allowBlank: true, formulae: ['"active,closed,dormant"'] };
+        }
+      };
 
-      // Example rows
+      const writeHeaderRow = (sheet) => {
+        sheet.columns = columns.map(c => ({ key: c.key, width: c.width }));
+        const headerRow = sheet.getRow(1);
+        columns.forEach((col, i) => {
+          const cell = headerRow.getCell(i + 1);
+          cell.value = col.header;
+          styleHeader(cell, col.required);
+          if (col.note) cell.note = { texts: [{ text: col.note }] };
+        });
+        headerRow.height = 28;
+        sheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }];
+      };
+
+      const writeDataRow = (sheet, data, i, bgOdd = 'FFF8FAFC') => {
+        const rowValues = columns.map(c => data[c.key] ?? '');
+        const row = sheet.addRow(rowValues);
+        row.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? bgOdd : 'FFFFFFFF' } };
+          cell.alignment = { vertical: 'middle' };
+        });
+        row.height = 20;
+      };
+
+      // ── Sheet 1: Accounts Data (empty, ready for input) ──────────────────────
+      const dataSheet = workbook.addWorksheet('Accounts Data', { properties: { tabColor: { argb: 'FF10B981' } } });
+      writeHeaderRow(dataSheet);
+      applyDataValidations(dataSheet, 502, selectedEntities.length);
+
+      // ── Sheet 2: Example (sample data rows) ─────────────────────────────────
+      const exampleSheet = workbook.addWorksheet('Example', { properties: { tabColor: { argb: 'FF6366F1' } } });
+      writeHeaderRow(exampleSheet);
       const examples = (selectedEntities.length > 0 ? selectedEntities.slice(0, 3) : [null]).map((entity, i) => ({
         entity_id: entity?.id || 'PASTE_ENTITY_ID',
         entity_name_ref: entity?.entity_name || 'See Entity Reference tab',
@@ -257,60 +242,92 @@ export default function AIBulkImport({
         tax1_tin: ['123-45-6789', 'AB123456C', '123456789'][i] || '',
         tax2_country: '', tax2_tin: '',
       }));
+      examples.forEach((data, i) => writeDataRow(exampleSheet, data, i));
 
-      examples.forEach((data, i) => {
-        const rowValues = columns.map(c => data[c.key] ?? '');
-        const row = dataSheet.addRow(rowValues);
-        row.eachCell({ includeEmpty: true }, cell => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFF8FAFC' : 'FFFFFFFF' } };
+      // ── Sheet 3: Export (live tenant account data) ───────────────────────────
+      const exportSheet = workbook.addWorksheet('Export', { properties: { tabColor: { argb: 'FF0EA5E9' } } });
+      writeHeaderRow(exportSheet);
+      // Add "Generated" note in A1 comment
+      exportSheet.getRow(1).getCell(1).note = { texts: [{ text: `Exported ${existingAccounts.length} accounts on ${new Date().toLocaleDateString()}` }] };
+      existingAccounts.forEach((acct, i) => {
+        const data = {
+          entity_id: acct.entity_id || '',
+          entity_name_ref: entityMap[acct.entity_id] || '',
+          account_number: acct.account_number || '',
+          account_creation_date: acct.account_creation_date || '',
+          account_type: acct.account_type || '',
+          account_holder_type: acct.account_holder_type || '',
+          first_name: acct.first_name || '',
+          last_name: acct.last_name || '',
+          account_holder_name: acct.account_holder_name || '',
+          date_of_birth: acct.date_of_birth || '',
+          place_of_birth: acct.place_of_birth || '',
+          is_pre_existing: String(acct.is_pre_existing ?? ''),
+          account_holder_is_alive: String(acct.account_holder_is_alive ?? ''),
+          deceased_during_period: String(acct.account_holder_deceased_during_period ?? ''),
+          account_closed_during_period: String(acct.account_closed_during_period ?? ''),
+          ah_street: acct.account_holder_address?.street || '',
+          ah_city: acct.account_holder_address?.city || '',
+          ah_state: acct.account_holder_address?.state || '',
+          ah_postal: acct.account_holder_address?.postal_code || '',
+          ah_country: acct.account_holder_address?.country || '',
+          curr_street: acct.current_address?.street || '',
+          curr_city: acct.current_address?.city || '',
+          curr_state: acct.current_address?.state || '',
+          curr_postal: acct.current_address?.postal_code || '',
+          curr_country: acct.current_address?.country || '',
+          country_of_residence: acct.country_of_residence || '',
+          current_email: acct.current_email || '',
+          current_phone: acct.current_phone || '',
+          entity_classification: acct.entity_classification || '',
+          year_end_cash_value: acct.year_end_cash_value ?? '',
+          year_end_currency: acct.year_end_cash_value_currency || '',
+          gross_payments: acct.gross_payments ?? '',
+          gross_payments_currency: acct.gross_payments_currency || '',
+          reporting_year: acct.reporting_year || '',
+          us_person_indic: String(acct.us_person_indic ?? ''),
+          self_cert_obtained: String(acct.self_certification_obtained ?? ''),
+          self_cert_date: acct.self_certification_date || '',
+          status: acct.status || 'active',
+          tax1_country: acct.tax_residencies?.[0]?.country || '',
+          tax1_tin: acct.tax_residencies?.[0]?.tin || '',
+          tax2_country: acct.tax_residencies?.[1]?.country || '',
+          tax2_tin: acct.tax_residencies?.[1]?.tin || '',
+        };
+        writeDataRow(exportSheet, data, i, 'FFE0F2FE');
+      });
+      if (existingAccounts.length === 0) {
+        const row = exportSheet.addRow(['No accounts found for this tenant']);
+        row.getCell(1).font = { italic: true, color: { argb: 'FF94A3B8' } };
+      }
+
+      // ── Sheet 4: Entity Reference ─────────────────────────────────────────────
+      const entitySheet = workbook.addWorksheet('Entity Reference', { properties: { tabColor: { argb: 'FF4F46E5' } } });
+      entitySheet.columns = [
+        { key: 'name', width: 42 }, { key: 'id', width: 42 },
+        { key: 'country', width: 24 }, { key: 'type', width: 18 },
+      ];
+      ['Entity Name', 'Entity ID (use this in Accounts Data tab)', 'Country', 'Type'].forEach((text, i) => {
+        const cell = entitySheet.getRow(1).getCell(i + 1);
+        cell.value = text;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        cell.alignment = { vertical: 'middle' };
+        cell.border = { bottom: { style: 'medium', color: { argb: 'FF3730A3' } } };
+      });
+      entitySheet.getRow(1).height = 28;
+      selectedEntities.forEach((e, i) => {
+        const row = entitySheet.addRow([e.entity_name, e.id, e.country_of_incorporation || '', e.entity_type || '']);
+        row.eachCell(cell => {
           cell.alignment = { vertical: 'middle' };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFF0F4FF' : 'FFFFFFFF' } };
         });
         row.height = 20;
       });
+      entitySheet.views = [{ state: 'frozen', ySplit: 1 }];
 
-      // ── Data Validations ─────────────────────────────────────────────────────
-      const MAX_ROW = 502;
-      for (let row = 2; row <= MAX_ROW; row++) {
-        // Entity ID dropdown from Entity Reference tab col B
-        if (selectedEntities.length > 0) {
-          dataSheet.getCell(row, 1).dataValidation = {
-            type: 'list', allowBlank: false,
-            formulae: [`'Entity Reference'!$B$2:$B$${selectedEntities.length + 1}`],
-            showErrorMessage: true, errorTitle: 'Invalid Entity ID',
-            error: 'Select a valid Entity ID from the dropdown (sourced from the Entity Reference tab)'
-          };
-        }
-        // Account Type
-        dataSheet.getCell(row, 5).dataValidation = {
-          type: 'list', allowBlank: true,
-          formulae: ['"depository,custodial,equity_debt_interest,cash_value_insurance,annuity"'],
-          showErrorMessage: true, errorTitle: 'Invalid Account Type',
-          error: 'Must be one of: depository, custodial, equity_debt_interest, cash_value_insurance, annuity'
-        };
-        // Account Holder Type
-        dataSheet.getCell(row, 6).dataValidation = {
-          type: 'list', allowBlank: true, formulae: ['"individual,entity"'],
-          showErrorMessage: true, errorTitle: 'Invalid Holder Type', error: 'Must be: individual or entity'
-        };
-        // Boolean fields: 12,13,14,15,35,36
-        [12, 13, 14, 15, 35, 36].forEach(col => {
-          dataSheet.getCell(row, col).dataValidation = { type: 'list', allowBlank: true, formulae: ['"true,false"'] };
-        });
-        // Entity Classification col 29
-        dataSheet.getCell(row, 29).dataValidation = {
-          type: 'list', allowBlank: true,
-          formulae: ['"financial_institution,active_nfe,passive_nfe,not_applicable"']
-        };
-        // Account Status col 38
-        dataSheet.getCell(row, 38).dataValidation = {
-          type: 'list', allowBlank: true, formulae: ['"active,closed,dormant"']
-        };
-      }
-
-      // ── Sheet 3: Field Guide ─────────────────────────────────────────────────
-      const guideSheet = workbook.addWorksheet('Field Guide', {
-        properties: { tabColor: { argb: 'FFF59E0B' } }
-      });
+      // ── Sheet 5: Field Guide ─────────────────────────────────────────────────
+      const guideSheet = workbook.addWorksheet('Field Guide', { properties: { tabColor: { argb: 'FFF59E0B' } } });
       guideSheet.columns = [
         { key: 'col', width: 35 }, { key: 'format', width: 55 },
         { key: 'required', width: 12 }, { key: 'notes', width: 55 },
