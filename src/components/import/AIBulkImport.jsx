@@ -988,10 +988,10 @@ export default function AIBulkImport({
                 onClick={downloadTemplate}
                 disabled={importType === "Account" && selectedEntityIds.length === 0 && entities?.length > 0}
                 variant="outline"
-                className="w-full"
+                className="w-full border-2 border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-semibold"
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Download {importType} Template
+                Download {importType} Template (.xlsx with dropdowns)
               </Button>
 
               {/* Field Guide */}
