@@ -380,64 +380,87 @@ export default function AIBulkImport({
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
     
-    if (!selectedFile.name.endsWith('.csv')) {
-      setErrors(['Please select a CSV file']);
+    const isExcel = selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls');
+    const isCsv = selectedFile.name.endsWith('.csv');
+    
+    if (!isExcel && !isCsv) {
+      setErrors(['Please select a CSV or Excel (.xlsx) file']);
       return;
     }
     
     setFile(selectedFile);
     setErrors([]);
     
-    // Upload CSV file first for audit trail
+    // Audit trail upload
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-      
       const { file_url } = await base44.integrations.Core.UploadFile({ file: selectedFile });
       setUploadedFileUrl(file_url);
-      
-      // Create audit log entry for bulk import initiation
       await base44.entities.AuditLog.create({
-        tenant_id: tenant.id,
-        action_type: "bulk_import_initiated",
-        actor_email: currentUser.email,
-        actor_role: currentUser.user_role,
-        target_entity_type: importType,
-        target_entity_name: selectedFile.name,
-        file_url: file_url,
-        changes: {
-          file_name: selectedFile.name,
-          file_size: selectedFile.size,
-          import_type: importType
-        },
+        tenant_id: tenant.id, action_type: "bulk_import_initiated",
+        actor_email: currentUser.email, actor_role: currentUser.user_role,
+        target_entity_type: importType, target_entity_name: selectedFile.name,
+        file_url, changes: { file_name: selectedFile.name, file_size: selectedFile.size, import_type: importType },
         timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error("Error uploading file or creating audit log:", error);
     }
-    
-    // Parse CSV
-    const text = await selectedFile.text();
-    const lines = text.split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
-      setErrors(['File must have at least a header row and one data row']);
-      return;
-    }
-    
-    const headers = parseCSVLine(lines[0]);
-    const data = lines.slice(1).map(line => {
-      const values = parseCSVLine(line);
-      const row = {};
-      headers.forEach((h, i) => {
-        row[h] = values[i] || '';
+
+    let headers = [], data = [];
+
+    if (isExcel) {
+      // Parse Excel — read the first sheet whose name contains "Data" or the first sheet
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+
+      // Pick the data sheet: prefer "Accounts Data" / "Entities Data", fallback to first
+      let sheet = workbook.worksheets.find(s => s.name.toLowerCase().includes('data')) || workbook.worksheets[0];
+      
+      const rows = [];
+      sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        const values = [];
+        row.eachCell({ includeEmpty: true }, cell => {
+          let v = cell.value;
+          // ExcelJS returns rich text objects for some cells
+          if (v && typeof v === 'object' && v.richText) v = v.richText.map(r => r.text).join('');
+          else if (v && typeof v === 'object' && v.text) v = v.text;
+          else if (v instanceof Date) v = v.toISOString().split('T')[0];
+          values.push(v == null ? '' : String(v));
+        });
+        rows.push(values);
       });
-      return row;
-    });
+
+      if (rows.length < 2) { setErrors(['No data rows found in the Excel file']); return; }
+      headers = rows[0];
+      data = rows.slice(1).filter(r => r.some(v => v !== '')).map(values => {
+        const row = {};
+        headers.forEach((h, i) => { row[h] = values[i] || ''; });
+        return row;
+      });
+      // Filter out the "Entity Name (auto-ref)" helper column — not a real import field
+      headers = headers.filter(h => h !== 'Entity Name (auto-ref)');
+      data = data.map(r => { const copy = { ...r }; delete copy['Entity Name (auto-ref)']; return copy; });
+    } else {
+      // Parse CSV
+      const text = await selectedFile.text();
+      const lines = text.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'));
+      if (lines.length < 2) { setErrors(['File must have at least a header row and one data row']); return; }
+      headers = parseCSVLine(lines[0]);
+      data = lines.slice(1).map(line => {
+        const values = parseCSVLine(line);
+        const row = {};
+        headers.forEach((h, i) => { row[h] = values[i] || ''; });
+        return row;
+      });
+    }
     
     setCsvHeaders(headers);
     setCsvData(data);
-    setCurrentStep(1); // Move to mapping step
+    setCurrentStep(1);
   };
 
   const parseCSVLine = (line) => {
