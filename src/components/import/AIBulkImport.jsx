@@ -85,10 +85,11 @@ export default function AIBulkImport({
   const [uploadedFileUrl, setUploadedFileUrl] = useState(null);
 
   const downloadTemplate = () => {
-    let headers, example;
-    
+    let csvContent;
+    const selectedEntities = (entities || []).filter(e => selectedEntityIds.includes(e.id));
+
     if (importType === "Account") {
-      headers = [
+      const headers = [
         "Entity ID", "Account Number", "Account Opening Date", "Account Type", "Account Holder Entity Type", "Account Holder Type", 
         "Account Holder Name (Entity Only)", "First Name (Individual Only)", "Last Name (Individual Only)",
         "Date of Birth", "Place of Birth", "Pre-existing Account", "Account Holder Alive", "Deceased During Period", "Account Closed During Period",
@@ -103,17 +104,25 @@ export default function AIBulkImport({
         "Reporting Year", "US Person Indicator", "Self Certification Obtained", "Self Certification Date",
         "Account Status", "Tax Residency 1 Country", "Tax Residency 1 TIN", "Tax Residency 2 Country", "Tax Residency 2 TIN"
       ];
-      example = `${entities[0]?.id || 'ENTITY_ID'},ACC-001,2020-01-15,depository,,individual,,John,Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
+
+      // Entity reference comments
+      const entityRef = selectedEntities.length > 0
+        ? selectedEntities.map(e => `# Entity: ${e.entity_name} | ID: ${e.id}`).join('\n') + '\n'
+        : '# PASTE_ENTITY_ID from your RFI Entities list\n';
+
+      // Example rows — one per selected entity (up to 3)
+      const exampleRows = (selectedEntities.length > 0 ? selectedEntities.slice(0, 3) : [null]).map((entity, i) => {
+        const entityId = entity?.id || 'PASTE_ENTITY_ID_HERE';
+        return `${entityId},ACC-00${i+1},2020-01-15,depository,,individual,,John,Smith,1985-06-15,United States,false,true,false,false,false,,false,,false,,false,,false,,false,false,false,123 Main St,New York,NY,10001,United States,456 Current Ave,New York,NY,10002,United States,United States,john@example.com,+12125551234,not_applicable,50000,USD,5000,USD,2024,false,false,,active,United States,123-45-6789,,`;
+      });
+
+      csvContent = entityRef + headers.join(',') + '\n' + exampleRows.join('\n');
     } else {
-      headers = [
-        "Entity Name", "Entity Type", "Country of Incorporation", "Tax ID", "GIIN",
-        "Street Address", "City", "State/Province", "Postal Code", "Country"
-      ];
-      example = `ACME Corp,corporation,United States,12-3456789,ABCDEF.00000.SL.840,123 Business Ave,New York,NY,10001,United States`;
+      const headers = ["Entity Name", "Entity Type", "Country of Incorporation", "Tax ID", "GIIN", "Street Address", "City", "State/Province", "Postal Code", "Country"];
+      csvContent = headers.join(',') + '\nACME Corp,corporation,United States,12-3456789,ABCDEF.00000.SL.840,123 Business Ave,New York,NY,10001,United States';
     }
     
-    const template = `${headers.join(',')}\n${example}`;
-    const blob = new Blob([template], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
