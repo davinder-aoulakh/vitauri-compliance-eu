@@ -82,6 +82,20 @@ export default function ActivityPage() {
     }
   });
 
+  const { data: userEntityAccess = [] } = useQuery({
+    queryKey: ['user-entity-access', user?.id],
+    queryFn: () => base44.entities.UserEntityAccess.filter({ user_id: user.id, tenant_id: user.tenant_id }),
+    enabled: !!user?.id && !isAdmin
+  });
+
+  const { data: accessibleAccounts = [] } = useQuery({
+    queryKey: ['accounts-for-activity', user?.tenant_id],
+    queryFn: () => base44.entities.Account.filter({ tenant_id: user.tenant_id }),
+    enabled: !!user?.tenant_id && !isAdmin
+  });
+
+  const hasEntityAccess = userEntityAccess.length > 0;
+
   const handleRefresh = () => {
     refetch();
   };
