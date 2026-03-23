@@ -350,6 +350,15 @@ export default function UserManagement() {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit User
                               </DropdownMenuItem>
+                              {u.app_role !== 'tenant_admin' && (
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedUser(u);
+                                  setShowAccessManager(true);
+                                }}>
+                                  <Building2 className="w-4 h-4 mr-2" />
+                                  Manage Entity Access
+                                </DropdownMenuItem>
+                              )}
                               {u.id !== user.id && (
                                 <DropdownMenuItem
                                   onClick={() => handleDelete(u.id)}
@@ -383,6 +392,24 @@ export default function UserManagement() {
             onComplete={handleInviteComplete}
             onCancel={() => setShowInviteForm(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Entity Access Manager Dialog */}
+      <Dialog open={showAccessManager} onOpenChange={setShowAccessManager}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Manage Entity Access: {selectedUser?.full_name || selectedUser?.email}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <EntityAccessManager
+              targetUser={selectedUser}
+              tenant={tenant}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
