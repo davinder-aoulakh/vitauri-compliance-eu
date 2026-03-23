@@ -60,7 +60,17 @@ export default function Dashboard() {
     }
   };
 
-  const { data: entities = [] } = useQuery({
+  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+
+  const { data: userEntityAccess = [] } = useQuery({
+    queryKey: ['user-entity-access', user?.id],
+    queryFn: () => base44.entities.UserEntityAccess.filter({ user_id: user.id, tenant_id: user.tenant_id }),
+    enabled: !!user?.id && !isAdmin
+  });
+
+  const accessibleEntityIds = isAdmin ? null : new Set(userEntityAccess.map(r => r.rfi_entity_id));
+
+  const { data: allEntities = [] } = useQuery({
     queryKey: ['entities', user?.tenant_id],
     queryFn: () => user?.tenant_id 
       ? base44.entities.Entity.filter({ tenant_id: user.tenant_id })
@@ -68,7 +78,9 @@ export default function Dashboard() {
     enabled: !!user?.tenant_id
   });
 
-  const { data: accounts = [] } = useQuery({
+  const entities = isAdmin ? allEntities : allEntities.filter(e => accessibleEntityIds?.has(e.id));
+
+  const { data: allAccounts = [] } = useQuery({
     queryKey: ['accounts', user?.tenant_id, selectedEntityId],
     queryFn: () => {
       if (!user?.tenant_id) return [];
@@ -78,6 +90,8 @@ export default function Dashboard() {
     },
     enabled: !!user?.tenant_id
   });
+
+  const accounts = isAdmin ? allAccounts : allAccounts.filter(a => accessibleEntityIds?.has(a.entity_id));
 
   const { data: reports = [] } = useQuery({
     queryKey: ['reports', user?.tenant_id, selectedEntityId],

@@ -433,10 +433,24 @@ export default function ActivityPage() {
     toast.success(`Exported ${filteredLogs.length} activity records`);
   };
 
+  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (user && !isAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Shield className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+          <h2 className="text-xl font-semibold text-slate-700 mb-2">Access Restricted</h2>
+          <p className="text-slate-500">The Activity Log is only available to administrators.</p>
+        </div>
       </div>
     );
   }
