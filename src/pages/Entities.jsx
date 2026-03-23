@@ -347,8 +347,8 @@ export default function EntitiesPage() {
                   Entities ({filteredEntities.length})
                 </CardTitle>
                 <CardDescription>
-                  {entities.filter(e => e.rfi_status === "reporting_fi").length} Reporting FIs, {" "}
-                  {entities.filter(e => e.rfi_status === "pending_classification").length} Pending Classification
+                  {accessibleEntities.filter(e => e.rfi_status === "reporting_fi").length} Reporting FIs, {" "}
+                  {accessibleEntities.filter(e => e.rfi_status === "pending_classification").length} Pending Classification
                 </CardDescription>
               </div>
             </div>

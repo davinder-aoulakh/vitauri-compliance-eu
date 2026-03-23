@@ -455,9 +455,9 @@ export default function AccountsPage() {
     }
   };
 
-  const filteredAccounts = accounts.filter(account => {
-    // Access control: non-admin users only see accounts for entities they have access to
-    if (!isAdmin && !entityAccessMap[account.entity_id]) return false;
+  const accessibleAccounts = isAdmin ? accounts : accounts.filter(a => !!entityAccessMap[a.entity_id]);
+
+  const filteredAccounts = accessibleAccounts.filter(account => {
 
     const matchesSearch = account.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          account.account_number?.toLowerCase().includes(searchTerm.toLowerCase());
