@@ -448,7 +448,7 @@ export default function ActivityPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Shield className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+          <ShieldIcon className="w-16 h-16 mx-auto mb-4 text-slate-300" />
           <h2 className="text-xl font-semibold text-slate-700 mb-2">Access Restricted</h2>
           <p className="text-slate-500">The Activity Log is only available to administrators.</p>
         </div>
