@@ -216,7 +216,9 @@ export default function EntitiesPage() {
     }
   };
 
-  const filteredEntities = entities.filter(entity => {
+  const accessibleEntities = isAdmin ? entities : entities.filter(e => !!entityAccessMap[e.id]);
+
+  const filteredEntities = accessibleEntities.filter(entity => {
     const matchesSearch = entity.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          entity.country_of_incorporation.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || entity.rfi_status === statusFilter;
@@ -459,38 +461,42 @@ export default function EntitiesPage() {
                                 <History className="w-4 h-4 mr-2" />
                                 View History
                               </DropdownMenuItem>
-                              {entity.rfi_status === "pending_classification" && (
-                                <DropdownMenuItem onClick={() => handleClassify(entity)}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Classify Entity
-                                </DropdownMenuItem>
+                              {(isAdmin || entityAccessMap[entity.id] === 'edit') && (
+                                <>
+                                  {entity.rfi_status === "pending_classification" && (
+                                    <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      Classify Entity
+                                    </DropdownMenuItem>
+                                  )}
+                                  {entity.classification_completed_date && (
+                                    <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      Re-classify Entity
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
+                                    <DropdownMenuItem onClick={() => {
+                                      setSelectedEntity(entity);
+                                      setShowAIClassifier(true);
+                                    }}>
+                                      <Brain className="w-4 h-4 mr-2" />
+                                      AI Classification Help
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => handleEdit(entity)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDelete(entity.id)}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </>
                               )}
-                              {entity.classification_completed_date && (
-                                <DropdownMenuItem onClick={() => handleClassify(entity)}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Re-classify Entity
-                                </DropdownMenuItem>
-                              )}
-                              {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
-                                <DropdownMenuItem onClick={() => {
-                                  setSelectedEntity(entity);
-                                  setShowAIClassifier(true);
-                                }}>
-                                  <Brain className="w-4 h-4 mr-2" />
-                                  AI Classification Help
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => handleEdit(entity)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDelete(entity.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
