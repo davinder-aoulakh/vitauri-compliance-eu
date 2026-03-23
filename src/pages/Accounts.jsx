@@ -907,44 +907,48 @@ export default function AccountsPage() {
                                       View History
                                     </DropdownMenuItem>
                                     
-                                    {account.reportability_status === "pending_review" && (
-                                      <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Classify Account
-                                      </DropdownMenuItem>
+                                    {(isAdmin || entityAccessMap[account.entity_id] === 'edit') && (
+                                      <>
+                                        {account.reportability_status === "pending_review" && (
+                                          <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                            <Eye className="w-4 h-4 mr-2" />
+                                            Classify Account
+                                          </DropdownMenuItem>
+                                        )}
+                                        {account.reportability_status !== "pending_review" && (
+                                          <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                            <Eye className="w-4 h-4 mr-2" />
+                                            Re-classify Account
+                                          </DropdownMenuItem>
+                                        )}
+                                        
+                                        {account.account_holder_type === "entity" && (
+                                          <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>
+                                            <Users className="w-4 h-4 mr-2" />
+                                            {isPassiveNFE ? "Manage Controlling Persons ⚠️" : "Controlling Persons"}
+                                          </DropdownMenuItem>
+                                        )}
+                                        
+                                        {account.account_holder_type === "individual" && account.account_holder_is_alive === false && (
+                                          <DropdownMenuItem onClick={() => handleManageBeneficiaries(account)}>
+                                            <HeartHandshake className="w-4 h-4 mr-2" />
+                                            Manage Beneficiaries
+                                          </DropdownMenuItem>
+                                        )}
+                                        
+                                        <DropdownMenuItem onClick={() => handleEdit(account)}>
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Edit Account
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          onClick={() => handleDelete(account.id)}
+                                          className="text-red-600"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </>
                                     )}
-                                    {account.reportability_status !== "pending_review" && (
-                                      <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Re-classify Account
-                                      </DropdownMenuItem>
-                                    )}
-                                    
-                                    {account.account_holder_type === "entity" && (
-                                      <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>
-                                        <Users className="w-4 h-4 mr-2" />
-                                        {isPassiveNFE ? "Manage Controlling Persons ⚠️" : "Controlling Persons"}
-                                      </DropdownMenuItem>
-                                    )}
-                                    
-                                    {account.account_holder_type === "individual" && account.account_holder_is_alive === false && (
-                                      <DropdownMenuItem onClick={() => handleManageBeneficiaries(account)}>
-                                        <HeartHandshake className="w-4 h-4 mr-2" />
-                                        Manage Beneficiaries
-                                      </DropdownMenuItem>
-                                    )}
-                                    
-                                    <DropdownMenuItem onClick={() => handleEdit(account)}>
-                                      <Edit className="w-4 h-4 mr-2" />
-                                      Edit Account
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleDelete(account.id)}
-                                      className="text-red-600"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>

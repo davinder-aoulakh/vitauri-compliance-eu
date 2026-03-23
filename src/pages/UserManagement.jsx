@@ -37,12 +37,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import InviteUserForm from "../components/users/InviteUserForm.jsx";
 import EditUserForm from "../components/users/EditUserForm.jsx";
 import RolePermissionsManager from "../components/users/RolePermissionsManager.jsx";
+import EntityAccessManager from "../components/users/EntityAccessManager.jsx";
 
 export default function UserManagement() {
   const [user, setUser] = useState(null);
   const [tenant, setTenant] = useState(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showAccessManager, setShowAccessManager] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
