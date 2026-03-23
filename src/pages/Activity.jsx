@@ -82,6 +82,8 @@ export default function ActivityPage() {
     }
   });
 
+  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
     queryFn: () => base44.entities.UserEntityAccess.filter({ user_id: user.id, tenant_id: user.tenant_id }),
