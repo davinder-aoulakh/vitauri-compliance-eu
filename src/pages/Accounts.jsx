@@ -455,6 +455,7 @@ export default function AccountsPage() {
     }
   };
 
+  const accessibleEntities = isAdmin ? entities : entities.filter(e => !!entityAccessMap[e.id]);
   const accessibleAccounts = isAdmin ? accounts : accounts.filter(a => !!entityAccessMap[a.entity_id]);
 
   const filteredAccounts = accessibleAccounts.filter(account => {
@@ -1152,7 +1153,7 @@ export default function AccountsPage() {
           </DialogHeader>
           <AIBulkImport 
             tenant={tenant}
-            entities={entities}
+            entities={accessibleEntities}
             importType="Account"
             onComplete={() => {
               setShowBulkImport(false);
