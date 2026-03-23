@@ -116,13 +116,15 @@ export default function ReportsPage() {
 
   const entities = isAdmin ? allEntities : allEntities.filter(e => accessibleEntityIds?.has(e.id));
 
-  const { data: allAccounts = [] } = useQuery({
+  const { data: allAccountsRaw = [] } = useQuery({
     queryKey: ['all-accounts', user?.tenant_id],
     queryFn: () => user?.tenant_id 
       ? base44.entities.Account.filter({ tenant_id: user.tenant_id })
       : [],
     enabled: !!user?.tenant_id
   });
+
+  const allAccounts = isAdmin ? allAccountsRaw : allAccountsRaw.filter(a => accessibleEntityIds?.has(a.entity_id));
 
   const { data: allControllingPersons = [] } = useQuery({
     queryKey: ['all-controlling-persons', user?.tenant_id],
