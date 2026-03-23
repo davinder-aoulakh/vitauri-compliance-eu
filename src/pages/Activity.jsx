@@ -461,8 +461,6 @@ export default function ActivityPage() {
     toast.success(`Exported ${filteredLogs.length} activity records`);
   };
 
-  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
