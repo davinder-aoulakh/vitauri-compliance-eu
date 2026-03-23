@@ -253,39 +253,39 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
         break;
       case 'custom_account_filter':
         const customAccountFilter = config.customFilter || {};
-        let filteredAccounts = [...accounts];
+        let customFilteredAccounts = [...accountsData];
         
         if (customAccountFilter.status && customAccountFilter.status !== 'all') {
-          filteredAccounts = filteredAccounts.filter(a => a.reportability_status === customAccountFilter.status);
+          customFilteredAccounts = customFilteredAccounts.filter(a => a.reportability_status === customAccountFilter.status);
         }
         if (customAccountFilter.account_type && customAccountFilter.account_type !== 'all') {
-          filteredAccounts = filteredAccounts.filter(a => a.account_type === customAccountFilter.account_type);
+          customFilteredAccounts = customFilteredAccounts.filter(a => a.account_type === customAccountFilter.account_type);
         }
         if (customAccountFilter.account_holder_type && customAccountFilter.account_holder_type !== 'all') {
-          filteredAccounts = filteredAccounts.filter(a => a.account_holder_type === customAccountFilter.account_holder_type);
+          customFilteredAccounts = customFilteredAccounts.filter(a => a.account_holder_type === customAccountFilter.account_holder_type);
         }
         
-        value = filteredAccounts.length;
+        value = customFilteredAccounts.length;
         icon = <Wallet className="w-6 h-6 text-indigo-600" />;
         iconBgColor = 'bg-indigo-100';
-        if (!subDescription) subDescription = `${accounts.length} total accounts`;
+        if (!subDescription) subDescription = `${accountsData.length} total accounts`;
         drilldownUrl = createPageUrl("Accounts");
         break;
       case 'custom_entity_filter':
         const customEntityFilter = config.customFilter || {};
-        let filteredEntities = [...entities];
+        let customFilteredEntities = [...entitiesData];
         
         if (customEntityFilter.rfi_status && customEntityFilter.rfi_status !== 'all') {
-          filteredEntities = filteredEntities.filter(e => e.rfi_status === customEntityFilter.rfi_status);
+          customFilteredEntities = customFilteredEntities.filter(e => e.rfi_status === customEntityFilter.rfi_status);
         }
         if (customEntityFilter.entity_type && customEntityFilter.entity_type !== 'all') {
-          filteredEntities = filteredEntities.filter(e => e.entity_type === customEntityFilter.entity_type);
+          customFilteredEntities = customFilteredEntities.filter(e => e.entity_type === customEntityFilter.entity_type);
         }
         
-        value = filteredEntities.length;
+        value = customFilteredEntities.length;
         icon = <Building2 className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
-        if (!subDescription) subDescription = `${entities.length} total entities`;
+        if (!subDescription) subDescription = `${entitiesData.length} total entities`;
         drilldownUrl = createPageUrl("Entities");
         break;
     }
