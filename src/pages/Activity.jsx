@@ -45,7 +45,8 @@ import {
   Shield,
   UserMinus,
   Archive,
-  XCircle
+  XCircle,
+  Shield as ShieldIcon
 } from "lucide-react";
 import { auditLog } from "@/components/utils/auditLogger";
 import moment from "moment";
