@@ -47,7 +47,7 @@ import { createPageUrl } from "@/utils";
 
 const COLORS = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-export default function WidgetPreview({ widget, tenantId, selectedEntityId }) {
+export default function WidgetPreview({ widget, tenantId, selectedEntityId, accessibleEntityIds }) {
   const config = widget.config || {};
   const [isRefreshing, setIsRefreshing] = useState(false);
 

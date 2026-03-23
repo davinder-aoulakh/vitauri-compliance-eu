@@ -294,7 +294,7 @@ export default function Dashboard() {
                   gridColumn: `span ${widget.position?.w || 6}`
                 }}
               >
-                <WidgetPreview widget={widget} tenantId={user.tenant_id} selectedEntityId={selectedEntityId} />
+                <WidgetPreview widget={widget} tenantId={user.tenant_id} selectedEntityId={selectedEntityId} accessibleEntityIds={accessibleEntityIds} />
               </div>
             ))}
           </div>
