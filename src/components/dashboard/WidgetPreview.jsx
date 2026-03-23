@@ -114,6 +114,16 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     staleTime: refreshInterval > 0 ? refreshInterval / 2 : 30000
   });
 
+  // Apply entity access filtering for non-admin users
+  const filteredAccounts = accessibleEntityIds ? accounts.filter(a => accessibleEntityIds.has(a.entity_id)) : accounts;
+  const filteredEntities = accessibleEntityIds ? entities.filter(e => accessibleEntityIds.has(e.id)) : entities;
+  const filteredReports = accessibleEntityIds ? reports.filter(r => accessibleEntityIds.has(r.entity_id)) : reports;
+
+  // Use filtered data throughout
+  const accountsData = filteredAccounts;
+  const entitiesData = filteredEntities;
+  const reportsData = filteredReports;
+
   const isAnyFetching = accountsFetching || entitiesFetching || logsFetching || reportsFetching || isRefreshing;
 
   // Refresh indicator component
