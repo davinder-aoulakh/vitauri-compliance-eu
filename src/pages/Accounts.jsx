@@ -144,6 +144,19 @@ export default function AccountsPage() {
     enabled: !!selectedAccount?.id && showHistory
   });
 
+  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+
+  const { data: userEntityAccess = [] } = useQuery({
+    queryKey: ['user-entity-access', user?.id],
+    queryFn: () => base44.entities.UserEntityAccess.filter({ user_id: user.id, tenant_id: user.tenant_id }),
+    enabled: !!user?.id && !isAdmin
+  });
+
+  const entityAccessMap = userEntityAccess.reduce((map, r) => {
+    map[r.rfi_entity_id] = r.permission_level;
+    return map;
+  }, {});
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Account.create({ ...data, tenant_id: user.tenant_id }),
     onSuccess: async (newAccount) => {
