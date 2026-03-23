@@ -5,13 +5,15 @@ import { Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
-export default function EntityClassificationWidget({ tenantId }) {
-  const { data: entities = [], isLoading } = useQuery({
+export default function EntityClassificationWidget({ tenantId, accessibleEntityIds }) {
+  const { data: allEntities = [], isLoading } = useQuery({
     queryKey: ['entity-classification-widget', tenantId],
     queryFn: () => base44.entities.Entity.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
     staleTime: 30000
   });
+
+  const entities = accessibleEntityIds ? allEntities.filter(e => accessibleEntityIds.has(e.id)) : allEntities;
 
   if (isLoading) {
     return (

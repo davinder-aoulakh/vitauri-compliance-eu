@@ -934,7 +934,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     return (
       <Card className="h-full">
         <CardContent className="p-6">
-          <EntityClassificationWidget tenantId={tenantId} />
+          <EntityClassificationWidget tenantId={tenantId} accessibleEntityIds={accessibleEntityIds} />
         </CardContent>
       </Card>
     );
