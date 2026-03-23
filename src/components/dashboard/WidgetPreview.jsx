@@ -355,18 +355,18 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     let chartData = [];
 
     if (dataSource === 'reportability') {
-      const reportable = accounts.filter(a => a.reportability_status === 'reportable').length;
-      const nonReportable = accounts.filter(a => a.reportability_status === 'non_reportable').length;
-      const pending = accounts.filter(a => a.reportability_status === 'pending_review').length;
+      const reportable = accountsData.filter(a => a.reportability_status === 'reportable').length;
+      const nonReportable = accountsData.filter(a => a.reportability_status === 'non_reportable').length;
+      const pending = accountsData.filter(a => a.reportability_status === 'pending_review').length;
       chartData = [
         { name: 'Reportable', value: reportable },
         { name: 'Non-Reportable', value: nonReportable },
         { name: 'Pending', value: pending }
       ].filter(d => d.value > 0);
     } else if (dataSource === 'entity_classification') {
-      const reporting = entities.filter(e => e.rfi_status === 'reporting_fi').length;
-      const nonReporting = entities.filter(e => e.rfi_status === 'non_reporting_fi').length;
-      const pending = entities.filter(e => e.rfi_status === 'pending_classification').length;
+      const reporting = entitiesData.filter(e => e.rfi_status === 'reporting_fi').length;
+      const nonReporting = entitiesData.filter(e => e.rfi_status === 'non_reporting_fi').length;
+      const pending = entitiesData.filter(e => e.rfi_status === 'pending_classification').length;
       chartData = [
         { name: 'Reporting FI', value: reporting },
         { name: 'Non-Reporting FI', value: nonReporting },
@@ -414,7 +414,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
     if (dataSource === 'account_types') {
       const typeCount = {};
-      accounts.forEach(a => {
+      accountsData.forEach(a => {
         const type = a.account_type || 'Unknown';
         typeCount[type] = (typeCount[type] || 0) + 1;
       });
@@ -493,7 +493,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     const filterStatus = config.filter_status;
     const sortBy = config.sortBy || 'created_date';
     
-    let filteredEntities = [...entities];
+    let filteredEntities = [...entitiesData];
     
     // Apply status filter
     if (filterStatus && filterStatus !== 'all') {
@@ -555,7 +555,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     const filterStatus = config.filter_status;
     const sortBy = config.sortBy || 'created_date';
     
-    let filteredAccounts = [...accounts];
+    let filteredAccounts = [...accountsData];
     
     // Apply status filter
     if (filterStatus && filterStatus !== 'all') {
@@ -613,10 +613,10 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
   // Compliance Summary Widget
   if (widget.widget_type === 'compliance_summary') {
-    const totalEntities = entities.length;
-    const classifiedEntities = entities.filter(e => e.rfi_status !== 'pending_classification').length;
-    const totalAccounts = accounts.length;
-    const classifiedAccounts = accounts.filter(a => a.reportability_status !== 'pending_review').length;
+    const totalEntities = entitiesData.length;
+    const classifiedEntities = entitiesData.filter(e => e.rfi_status !== 'pending_classification').length;
+    const totalAccounts = accountsData.length;
+    const classifiedAccounts = accountsData.filter(a => a.reportability_status !== 'pending_review').length;
 
     // Calculate percentage based on config or default to entity classification
     const metricType = config.metricType || 'entity_classification';
@@ -700,10 +700,10 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
   // Reportability Breakdown Widget
   if (widget.widget_type === 'reportability_breakdown') {
-    const reportable = accounts.filter(a => a.reportability_status === 'reportable').length;
-    const nonReportable = accounts.filter(a => a.reportability_status === 'non_reportable').length;
-    const pending = accounts.filter(a => a.reportability_status === 'pending_review').length;
-    const excluded = accounts.filter(a => a.reportability_status === 'excluded').length;
+    const reportable = accountsData.filter(a => a.reportability_status === 'reportable').length;
+    const nonReportable = accountsData.filter(a => a.reportability_status === 'non_reportable').length;
+    const pending = accountsData.filter(a => a.reportability_status === 'pending_review').length;
+    const excluded = accountsData.filter(a => a.reportability_status === 'excluded').length;
 
     return (
       <Card>
@@ -767,8 +767,8 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
   // Pending Tasks Widget
   if (widget.widget_type === 'pending_tasks') {
-    const pendingAccounts = accounts.filter(a => a.reportability_status === 'pending_review');
-    const pendingEntities = entities.filter(e => e.rfi_status === 'pending_classification');
+    const pendingAccounts = accountsData.filter(a => a.reportability_status === 'pending_review');
+    const pendingEntities = entitiesData.filter(e => e.rfi_status === 'pending_classification');
     const taskType = config.taskType;
 
     // If specific task type is configured, show only that
@@ -850,7 +850,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
     // Self certification missing
     if (taskType === 'self_certification_missing') {
-      const missingCertCount = accounts.filter(a => !a.self_certification_obtained && a.reportability_status === 'reportable').length;
+      const missingCertCount = accountsData.filter(a => !a.self_certification_obtained && a.reportability_status === 'reportable').length;
       return (
         <Card className="h-full">
           <CardContent className="p-4">
@@ -987,7 +987,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
       // Generate data based on source
       let data = [];
-      const totalItems = dataSource.includes('accounts') ? accounts.length : entities.length;
+      const totalItems = dataSource.includes('accounts') ? accountsData.length : entitiesData.length;
       
       periods.forEach((period, idx) => {
         let value = 0;
@@ -999,12 +999,12 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
             value = Math.floor((totalItems / periods.length) * (idx + 1) + Math.random() * 3);
             break;
           case 'reportable_trend':
-            const reportableCount = accounts.filter(a => a.reportability_status === 'reportable').length;
+            const reportableCount = accountsData.filter(a => a.reportability_status === 'reportable').length;
             value = Math.floor((reportableCount / periods.length) * (idx + 1) + Math.random() * 2);
             break;
           case 'classification_progress':
-            const classifiedCount = entities.filter(e => e.rfi_status !== 'pending_classification').length;
-            value = Math.floor((classifiedCount / Math.max(entities.length, 1)) * 100 * ((idx + 1) / periods.length));
+            const classifiedCount = entitiesData.filter(e => e.rfi_status !== 'pending_classification').length;
+            value = Math.floor((classifiedCount / Math.max(entitiesData.length, 1)) * 100 * ((idx + 1) / periods.length));
             break;
         }
         data.push({ name: period, value: Math.max(0, value) });
