@@ -89,8 +89,21 @@ export default function ActivityPage() {
   // Get unique users for filter
   const uniqueUsers = [...new Set(auditLogs.map(log => log.actor_email))].filter(Boolean);
 
+  // For non-admins: scope logs to accessible entities/accounts
+  const accessibleEntityIds = new Set(userEntityAccess.map(a => a.rfi_entity_id));
+  const accessibleAccountIds = new Set(
+    accessibleAccounts.filter(a => accessibleEntityIds.has(a.entity_id)).map(a => a.id)
+  );
+
+  const scopedLogs = isAdmin ? auditLogs : auditLogs.filter(log => {
+    if (!log.target_entity_type) return false;
+    if (log.target_entity_type === 'Entity') return accessibleEntityIds.has(log.target_entity_id);
+    if (log.target_entity_type === 'Account') return accessibleAccountIds.has(log.target_entity_id);
+    return false;
+  });
+
   // Filter logs
-  const filteredLogs = auditLogs.filter(log => {
+  const filteredLogs = scopedLogs.filter(log => {
     // Search filter
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm || 
