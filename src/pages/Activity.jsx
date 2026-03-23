@@ -515,7 +515,7 @@ export default function ActivityPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Total Events</p>
-                <p className="text-2xl font-bold text-slate-900">{auditLogs.length}</p>
+                <p className="text-2xl font-bold text-slate-900">{scopedLogs.length}</p>
               </div>
               <ActivityIcon className="w-8 h-8 text-indigo-600" />
             </div>
@@ -549,7 +549,7 @@ export default function ActivityPage() {
               <div>
                 <p className="text-sm text-slate-600">Today</p>
                 <p className="text-2xl font-bold text-slate-900">
-                  {auditLogs.filter(log => moment(log.timestamp).isSame(moment(), 'day')).length}
+                  {scopedLogs.filter(log => moment(log.timestamp).isSame(moment(), 'day')).length}
                 </p>
               </div>
               <Calendar className="w-8 h-8 text-purple-600" />
