@@ -61,6 +61,40 @@ const FIELD_GUIDE = [
   { col: "Self Certification Date", format: "YYYY-MM-DD", required: false, notes: "" },
 ];
 
+const FI_TYPE_TEMPLATES = {
+  custodial_institution: {
+    label: "Custodial Institution",
+    accountTypeValidation: '"custodial,equity_debt_interest"',
+    accountTypeNote: 'Select from dropdown: custodial | equity_debt_interest',
+    exampleAccountType: 'custodial',
+  },
+  depository_institution: {
+    label: "Depository Institution",
+    accountTypeValidation: '"depository"',
+    accountTypeNote: 'Select from dropdown: depository',
+    exampleAccountType: 'depository',
+  },
+  investment_entity: {
+    label: "Investment Entity",
+    accountTypeValidation: '"custodial,equity_debt_interest,depository"',
+    accountTypeNote: 'Select from dropdown: custodial | equity_debt_interest | depository',
+    exampleAccountType: 'custodial',
+  },
+  specified_insurance_company: {
+    label: "Specified Insurance Company",
+    accountTypeValidation: '"cash_value_insurance,annuity"',
+    accountTypeNote: 'Select from dropdown: cash_value_insurance | annuity',
+    exampleAccountType: 'cash_value_insurance',
+  },
+};
+
+const GENERIC_FI_CONFIG = {
+  label: "All FI Types",
+  accountTypeValidation: '"depository,custodial,equity_debt_interest,cash_value_insurance,annuity"',
+  accountTypeNote: 'Select from dropdown: depository | custodial | equity_debt_interest | cash_value_insurance | annuity',
+  exampleAccountType: 'depository',
+};
+
 export default function AIBulkImport({ 
   tenant, 
   entities, 
@@ -70,7 +104,7 @@ export default function AIBulkImport({
 }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedEntityIds, setSelectedEntityIds] = useState(() => (entities || []).map(e => e.id));
-  const [showFieldGuide, setShowFieldGuide] = useState(true);
+  const [showFieldGuide, setShowFieldGuide] = useState(false);
   const [file, setFile] = useState(null);
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [csvData, setCsvData] = useState([]);
@@ -91,6 +125,11 @@ export default function AIBulkImport({
     workbook.created = new Date();
 
     const selectedEntities = (entities || []).filter(e => selectedEntityIds.includes(e.id));
+
+    // Detect fi_type from selected entities to use appropriate template
+    const selectedFiTypes = [...new Set(selectedEntities.map(e => e.fi_type).filter(Boolean))];
+    const detectedFiType = selectedFiTypes.length === 1 ? selectedFiTypes[0] : null;
+    const ftConfig = (detectedFiType && FI_TYPE_TEMPLATES[detectedFiType]) || GENERIC_FI_CONFIG;
 
     const styleHeader = (cell, required = false) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: required ? 'FF1E3A5F' : 'FF334155' } };
@@ -116,7 +155,7 @@ export default function AIBulkImport({
         { header: 'Entity Name (auto-ref)', key: 'entity_name_ref', width: 30, required: false, note: 'For your reference only — not imported into the system' },
         { header: 'Account Number *', key: 'account_number', width: 22, required: true, note: 'Unique account identifier per entity' },
         { header: 'Account Opening Date *', key: 'account_creation_date', width: 24, required: true, note: 'Format: YYYY-MM-DD e.g. 2020-01-15' },
-        { header: 'Account Type *', key: 'account_type', width: 26, required: true, note: 'Select from dropdown: depository | custodial | equity_debt_interest | cash_value_insurance | annuity' },
+        { header: 'Account Type *', key: 'account_type', width: 26, required: true, note: ftConfig.accountTypeNote },
         { header: 'Account Holder Type *', key: 'account_holder_type', width: 24, required: true, note: 'Select from dropdown: individual | entity' },
         { header: 'First Name', key: 'first_name', width: 18, required: false, note: 'Required if Account Holder Type = individual' },
         { header: 'Last Name', key: 'last_name', width: 18, required: false, note: 'Required if Account Holder Type = individual' },
@@ -166,7 +205,7 @@ export default function AIBulkImport({
               error: 'Select a valid Entity ID from the dropdown (sourced from the Entity Reference tab)'
             };
           }
-          sheet.getCell(row, 5).dataValidation = { type: 'list', allowBlank: true, formulae: ['"depository,custodial,equity_debt_interest,cash_value_insurance,annuity"'] };
+          sheet.getCell(row, 5).dataValidation = { type: 'list', allowBlank: true, formulae: [ftConfig.accountTypeValidation] };
           sheet.getCell(row, 6).dataValidation = { type: 'list', allowBlank: true, formulae: ['"individual,entity"'] };
           [12, 13, 14, 15, 35, 36].forEach(col => {
             sheet.getCell(row, col).dataValidation = { type: 'list', allowBlank: true, formulae: ['"true,false"'] };
@@ -212,7 +251,7 @@ export default function AIBulkImport({
         entity_name_ref: entity?.entity_name || 'See Entity Reference tab',
         account_number: `ACC-00${i + 1}`,
         account_creation_date: '2020-01-15',
-        account_type: 'depository',
+        account_type: ftConfig.exampleAccountType,
         account_holder_type: 'individual',
         first_name: ['John', 'Jane', 'Robert'][i] || 'John',
         last_name: ['Smith', 'Doe', 'Johnson'][i] || 'Smith',
@@ -305,9 +344,9 @@ export default function AIBulkImport({
       const entitySheet = workbook.addWorksheet('Entity Reference', { properties: { tabColor: { argb: 'FF4F46E5' } } });
       entitySheet.columns = [
         { key: 'name', width: 42 }, { key: 'id', width: 42 },
-        { key: 'country', width: 24 }, { key: 'type', width: 18 },
+        { key: 'country', width: 24 }, { key: 'fi_type', width: 28 },
       ];
-      ['Entity Name', 'Entity ID (use this in Accounts Data tab)', 'Country', 'Type'].forEach((text, i) => {
+      ['Entity Name', 'Entity ID (use this in Accounts Data tab)', 'Country', 'FI Type'].forEach((text, i) => {
         const cell = entitySheet.getRow(1).getCell(i + 1);
         cell.value = text;
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
@@ -317,7 +356,8 @@ export default function AIBulkImport({
       });
       entitySheet.getRow(1).height = 28;
       selectedEntities.forEach((e, i) => {
-        const row = entitySheet.addRow([e.entity_name, e.id, e.country_of_incorporation || '', e.entity_type || '']);
+        const fiTypeLabel = (e.fi_type && FI_TYPE_TEMPLATES[e.fi_type]) ? FI_TYPE_TEMPLATES[e.fi_type].label : (e.fi_type || '');
+        const row = entitySheet.addRow([e.entity_name, e.id, e.country_of_incorporation || '', fiTypeLabel]);
         row.eachCell(cell => {
           cell.alignment = { vertical: 'middle' };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFF0F4FF' : 'FFFFFFFF' } };
@@ -990,6 +1030,11 @@ export default function AIBulkImport({
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-800 truncate">{e.entity_name}</p>
                           <p className="text-xs text-slate-400 font-mono">{e.id}</p>
+                          {e.fi_type && (
+                            <span className="inline-block mt-0.5 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5">
+                              {FI_TYPE_TEMPLATES[e.fi_type]?.label || e.fi_type}
+                            </span>
+                          )}
                         </div>
                         {selectedEntityIds.includes(e.id) && (
                           <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 shrink-0 text-xs">included</Badge>
@@ -998,6 +1043,22 @@ export default function AIBulkImport({
                     ))}
                   </div>
                   <p className="text-xs text-slate-500">{selectedEntityIds.length} of {entities.length} selected — their real IDs will appear as example rows.</p>
+                  {(() => {
+                    const selEnts = (entities || []).filter(e => selectedEntityIds.includes(e.id));
+                    const fiTypes = [...new Set(selEnts.map(e => e.fi_type).filter(Boolean))];
+                    if (fiTypes.length > 1) return (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mt-1">
+                        ⚠ Multiple FI types selected — a generic template will be generated. Select entities of the same FI type for a tailored template.
+                      </p>
+                    );
+                    const tplLabel = fiTypes.length === 1 && FI_TYPE_TEMPLATES[fiTypes[0]] ? FI_TYPE_TEMPLATES[fiTypes[0]].label : null;
+                    if (tplLabel) return (
+                      <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1.5 mt-1">
+                        ✓ Template type: <strong>{tplLabel}</strong>
+                      </p>
+                    );
+                    return null;
+                  })()}
                 </div>
               )}
 
