@@ -161,8 +161,8 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     let iconBgColor = 'bg-indigo-100';
     let drilldownUrl = null;
 
-    const reportingFIs = entities.filter(e => e.rfi_status === 'reporting_fi').length;
-    const pendingReviewCount = accounts.filter(a => a.reportability_status === 'pending_review').length;
+    const reportingFIs = entitiesData.filter(e => e.rfi_status === 'reporting_fi').length;
+    const pendingReviewCount = accountsData.filter(a => a.reportability_status === 'pending_review').length;
 
     // Show refresh indicator in stats card
 
