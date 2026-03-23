@@ -472,7 +472,7 @@ export default function AccountsPage() {
   });
 
   const uniqueCountries = [...new Set(
-    accounts.flatMap(a => [
+    accessibleAccounts.flatMap(a => [
       a.account_holder_address?.country,
       ...(a.tax_residencies || []).map(r => r.country)
     ]).filter(Boolean)
@@ -624,7 +624,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Total Accounts</p>
-                      <p className="text-2xl font-bold text-slate-900">{accounts.length}</p>
+                      <p className="text-2xl font-bold text-slate-900">{accessibleAccounts.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -639,7 +639,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Reportable</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accounts.filter(a => a.reportability_status === "reportable").length}
+                        {accessibleAccounts.filter(a => a.reportability_status === "reportable").length}
                       </p>
                     </div>
                   </div>
@@ -655,7 +655,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Pending Review</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accounts.filter(a => a.reportability_status === "pending_review").length}
+                        {accessibleAccounts.filter(a => a.reportability_status === "pending_review").length}
                       </p>
                     </div>
                   </div>
@@ -671,7 +671,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Non-Reportable</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accounts.filter(a => a.reportability_status === "non_reportable").length}
+                        {accessibleAccounts.filter(a => a.reportability_status === "non_reportable").length}
                       </p>
                     </div>
                   </div>
@@ -766,8 +766,8 @@ export default function AccountsPage() {
                       Accounts ({filteredAccounts.length})
                     </CardTitle>
                     <CardDescription>
-                      {accounts.filter(a => a.reportability_status === "reportable").length} Reportable, {" "}
-                      {accounts.filter(a => a.reportability_status === "pending_review").length} Pending Review
+                      {accessibleAccounts.filter(a => a.reportability_status === "reportable").length} Reportable, {" "}
+                      {accessibleAccounts.filter(a => a.reportability_status === "pending_review").length} Pending Review
                     </CardDescription>
                   </div>
                 </div>
