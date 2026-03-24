@@ -11,7 +11,8 @@ import {
   Activity,
   ArrowRight,
   TrendingUp,
-  Database
+  Database,
+  FileSpreadsheet
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -180,10 +181,17 @@ export default function SuperAdminDashboard() {
             <TabsTrigger value="backup" className="text-white data-[state=active]:bg-white/20">
               <Database className="w-4 h-4 mr-2" /> Backup & Restore
             </TabsTrigger>
+            <TabsTrigger value="fi-templates" className="text-white data-[state=active]:bg-white/20">
+              <FileSpreadsheet className="w-4 h-4 mr-2" /> FI Templates
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="backup">
             <BackupManager />
+          </TabsContent>
+
+          <TabsContent value="fi-templates">
+            <FITypeTemplateManager />
           </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
