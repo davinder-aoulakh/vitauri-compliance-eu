@@ -391,6 +391,9 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
               <p className="font-semibold text-slate-900">{entity.entity_name}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-xs">{fiTypeLabel}</Badge>
+                {dbTemplate?.column_definitions && (
+                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">Custom Template</Badge>
+                )}
                 {entity.country_of_incorporation && (
                   <span className="text-xs text-slate-400">{entity.country_of_incorporation}</span>
                 )}
