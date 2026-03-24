@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackupManager from "@/components/superadmin/BackupManager";
+import FITypeTemplateManager from "@/components/superadmin/FITypeTemplateManager";
 
 export default function SuperAdminDashboard() {
   const [user, setUser] = useState(null);

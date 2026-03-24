@@ -52,3 +52,33 @@ export const GENERIC_FI_CONFIG = {
 export function getFiTypeConfig(fiType) {
   return FI_TYPE_TEMPLATES[fiType] || GENERIC_FI_CONFIG;
 }
+
+/**
+ * Fetch DB overrides and merge with hardcoded defaults.
+ * Returns a map keyed by fi_type.
+ * Usage: const configs = await getEffectiveFiTypeConfigs(base44);
+ */
+export async function getEffectiveFiTypeConfigs(base44Client) {
+  try {
+    const dbTemplates = await base44Client.entities.FITypeTemplate.filter({ is_active: true });
+    const merged = { ...FI_TYPE_TEMPLATES };
+    dbTemplates.forEach(db => {
+      if (merged[db.fi_type]) {
+        merged[db.fi_type] = {
+          ...merged[db.fi_type],
+          label: db.label || merged[db.fi_type].label,
+          allowedAccountTypes: db.allowed_account_types?.length ? db.allowed_account_types : merged[db.fi_type].allowedAccountTypes,
+          accountTypeNote: db.account_type_note || merged[db.fi_type].accountTypeNote,
+          exampleAccountType: db.example_account_type || merged[db.fi_type].exampleAccountType,
+          customColumns: db.custom_columns || [],
+          accountTypeValidation: db.allowed_account_types?.length
+            ? `"${db.allowed_account_types.join(",")}"`
+            : merged[db.fi_type].accountTypeValidation,
+        };
+      }
+    });
+    return merged;
+  } catch {
+    return FI_TYPE_TEMPLATES;
+  }
+}
