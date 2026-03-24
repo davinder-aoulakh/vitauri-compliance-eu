@@ -53,7 +53,7 @@ import EntityForm from "../components/entities/EntityForm";
 import EntityClassification from "../components/entities/EntityClassification";
 import ClassificationHistory from "../components/entities/ClassificationHistory";
 import EntityDetails from "../components/entities/EntityDetails";
-import AIBulkImport from "../components/import/AIBulkImport";
+import AIBulkImport from "../components/import/AIBulkImport.jsx";
 import AIClassificationAssistant from "../components/ai/AIClassificationAssistant";
 import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
