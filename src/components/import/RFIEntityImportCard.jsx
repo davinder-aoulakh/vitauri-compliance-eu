@@ -104,114 +104,68 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     workbook.creator = "CRS Platform";
     workbook.created = new Date();
 
-    const columns = [
-      { header: "Account Number *", key: "account_number", width: 22, required: true, note: "Unique account identifier" },
-      { header: "Account Opening Date *", key: "account_creation_date", width: 24, required: true, note: "Format: YYYY-MM-DD e.g. 2020-01-15" },
-      { header: "Account Type *", key: "account_type", width: 26, required: true, note: ftConfig.accountTypeNote },
-      { header: "Account Holder Type *", key: "account_holder_type", width: 24, required: true, note: "Select from dropdown: individual | entity" },
-      { header: "First Name", key: "first_name", width: 18, required: false, note: "Required if Account Holder Type = individual" },
-      { header: "Last Name", key: "last_name", width: 18, required: false, note: "Required if Account Holder Type = individual" },
-      { header: "Account Holder Name (Entity)", key: "account_holder_name", width: 30, required: false, note: "Required if Account Holder Type = entity" },
-      { header: "Date of Birth", key: "date_of_birth", width: 18, required: false, note: "YYYY-MM-DD" },
-      { header: "Place of Birth", key: "place_of_birth", width: 20, required: false, note: "Country name" },
-      { header: "Pre-existing Account", key: "is_pre_existing", width: 22, required: false, note: "true | false" },
-      { header: "Account Holder Alive", key: "account_holder_is_alive", width: 22, required: false, note: "true | false" },
-      { header: "Deceased During Period", key: "deceased_during_period", width: 24, required: false, note: "true | false" },
-      { header: "Account Closed During Period", key: "account_closed_during_period", width: 28, required: false, note: "true | false" },
-      { header: "Acct Holder Address - Street", key: "ah_street", width: 28, required: false, note: "" },
-      { header: "Acct Holder Address - City", key: "ah_city", width: 22, required: false, note: "" },
-      { header: "Acct Holder Address - Country", key: "ah_country", width: 24, required: false, note: "" },
-      { header: "Country of Residence", key: "country_of_residence", width: 22, required: false, note: "" },
-      { header: "Current Email Address *", key: "current_email", width: 28, required: true, note: "Valid email format" },
-      { header: "Current Phone Number *", key: "current_phone", width: 22, required: true, note: "e.g. +12125551234" },
-      { header: "Entity Classification", key: "entity_classification", width: 26, required: false, note: "financial_institution | active_nfe | passive_nfe | not_applicable" },
-      { header: "Year-end Cash Value", key: "year_end_cash_value", width: 22, required: false, note: "Number" },
-      { header: "Year-end Currency", key: "year_end_currency", width: 20, required: false, note: "ISO code e.g. USD, AUD" },
-      { header: "Gross Payments", key: "gross_payments", width: 18, required: false, note: "Number" },
-      { header: "Gross Payments Currency", key: "gross_payments_currency", width: 24, required: false, note: "ISO code" },
-      { header: "Reporting Year", key: "reporting_year", width: 18, required: false, note: "YYYY e.g. 2024" },
-      { header: "US Person Indicator", key: "us_person_indic", width: 22, required: false, note: "true | false" },
-      { header: "Self Certification Obtained", key: "self_cert_obtained", width: 28, required: false, note: "true | false" },
-      { header: "Self Certification Date", key: "self_cert_date", width: 24, required: false, note: "YYYY-MM-DD" },
-      { header: "Account Status", key: "status", width: 18, required: false, note: "active | closed | dormant" },
-      { header: "Tax Residency 1 - Country", key: "tax1_country", width: 26, required: false, note: "Country name" },
-      { header: "Tax Residency 1 - TIN", key: "tax1_tin", width: 22, required: false, note: "Tax identification number" },
-      { header: "Tax Residency 2 - Country", key: "tax2_country", width: 26, required: false, note: "" },
-      { header: "Tax Residency 2 - TIN", key: "tax2_tin", width: 22, required: false, note: "" },
-    ];
+    // Use dynamic columns from DB template if available, else defaults
+    const columns = getColumnsForFiType(effectiveConfig);
 
-    // ── Sheet 1: Accounts Data ───────────────────────────────────────────────
+    // ── Sheet 1: Accounts Data
     const dataSheet = workbook.addWorksheet("Accounts Data", { properties: { tabColor: { argb: "FF10B981" } } });
-    dataSheet.columns = columns.map(c => ({ key: c.key, width: c.width }));
+    dataSheet.columns = columns.map(c => ({ key: c.key, width: c.width || 20 }));
     const headerRow = dataSheet.getRow(1);
     columns.forEach((col, i) => {
       const cell = headerRow.getCell(i + 1);
-      cell.value = col.header;
+      cell.value = col.required ? `${col.header} *` : col.header;
       styleHeader(cell, col.required);
       if (col.note) cell.note = { texts: [{ text: col.note }] };
     });
     headerRow.height = 28;
     dataSheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    // Apply dropdowns
+    // Apply dropdowns from column definitions
     for (let row = 2; row <= 502; row++) {
-      dataSheet.getCell(row, 3).dataValidation = { type: "list", allowBlank: true, formulae: [ftConfig.accountTypeValidation] };
-      dataSheet.getCell(row, 4).dataValidation = { type: "list", allowBlank: true, formulae: ['"individual,entity"'] };
-      [10, 11, 12, 13].forEach(col => {
-        dataSheet.getCell(row, col).dataValidation = { type: "list", allowBlank: true, formulae: ['"true,false"'] };
+      columns.forEach((col, colIdx) => {
+        if (col.validation_values?.length) {
+          dataSheet.getCell(row, colIdx + 1).dataValidation = {
+            type: "list", allowBlank: true,
+            formulae: [`"${col.validation_values.join(",")}"`],
+          };
+        }
       });
-      dataSheet.getCell(row, 20).dataValidation = { type: "list", allowBlank: true, formulae: ['"financial_institution,active_nfe,passive_nfe,not_applicable"'] };
-      dataSheet.getCell(row, 29).dataValidation = { type: "list", allowBlank: true, formulae: ['"active,closed,dormant"'] };
     }
 
-    // ── Sheet 2: Example ─────────────────────────────────────────────────────
+    // ── Sheet 2: Example
     const exampleSheet = workbook.addWorksheet("Example", { properties: { tabColor: { argb: "FF6366F1" } } });
-    exampleSheet.columns = columns.map(c => ({ key: c.key, width: c.width }));
+    exampleSheet.columns = columns.map(c => ({ key: c.key, width: c.width || 20 }));
     const exHeaderRow = exampleSheet.getRow(1);
     columns.forEach((col, i) => {
       const cell = exHeaderRow.getCell(i + 1);
-      cell.value = col.header;
+      cell.value = col.required ? `${col.header} *` : col.header;
       styleHeader(cell, col.required);
     });
     exHeaderRow.height = 28;
-    const exRow = exampleSheet.addRow({
-      account_number: "ACC-001",
-      account_creation_date: "2020-01-15",
-      account_type: ftConfig.exampleAccountType,
-      account_holder_type: "individual",
-      first_name: "John", last_name: "Smith",
-      account_holder_name: "",
-      date_of_birth: "1985-06-15", place_of_birth: "United States",
-      is_pre_existing: "false", account_holder_is_alive: "true",
-      deceased_during_period: "false", account_closed_during_period: "false",
-      ah_street: "123 Main St", ah_city: "New York", ah_country: "United States",
-      country_of_residence: "United States",
-      current_email: "john@example.com", current_phone: "+12125551234",
-      entity_classification: "not_applicable",
-      year_end_cash_value: 50000, year_end_currency: "USD",
-      gross_payments: 5000, gross_payments_currency: "USD",
-      reporting_year: "2024",
-      us_person_indic: "false", self_cert_obtained: "false", self_cert_date: "",
-      status: "active",
-      tax1_country: "United States", tax1_tin: "123-45-6789",
-      tax2_country: "", tax2_tin: "",
-    });
+
+    // Use example_row from DB if available, else build from column example_value fields
+    const exampleRowData = dbTemplate?.example_row || {};
+    if (!dbTemplate?.example_row) {
+      columns.forEach(col => { exampleRowData[col.key] = col.example_value || ""; });
+    }
+    const exRow = exampleSheet.addRow(exampleRowData);
     exRow.eachCell(cell => {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
     });
 
-    // ── Sheet 3: Entity Info ─────────────────────────────────────────────────
+    // ── Sheet 3: Entity Info
     const infoSheet = workbook.addWorksheet("Entity Info", { properties: { tabColor: { argb: "FF4F46E5" } } });
     infoSheet.columns = [{ key: "key", width: 30 }, { key: "value", width: 50 }];
     [
       ["Entity Name", entity.entity_name],
       ["Entity ID", entity.id],
-      ["FI Type", ftConfig.label],
+      ["FI Type", effectiveConfig.label],
       ["Country", entity.country_of_incorporation || ""],
       ["Template Generated", new Date().toLocaleDateString()],
       ["", ""],
       ["NOTE", `All accounts in this file will be imported for: ${entity.entity_name}`],
-      ["NOTE", `Account Type must be one of: ${ftConfig.allowedAccountTypes.join(", ")}`],
+      ["NOTE", `Account Type must be one of: ${effectiveConfig.allowedAccountTypes.join(", ")}`],
+      ...(dbTemplate?.column_definitions ? [["NOTE", "This template uses a custom column structure defined by your Super Admin."]] : []),
     ].forEach(([k, v], i) => {
       const row = infoSheet.addRow([k, v]);
       row.getCell(1).font = { bold: true };
