@@ -58,8 +58,38 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   const [results, setResults] = useState(null);
   const [errors, setErrors] = useState([]);
   const [uploadedFileUrl, setUploadedFileUrl] = useState(null);
+  const [dbTemplate, setDbTemplate] = useState(null);
+  const [templateLoaded, setTemplateLoaded] = useState(false);
 
   const ftConfig = getFiTypeConfig(entity.fi_type);
+
+  // Load DB template override once on mount
+  React.useEffect(() => {
+    base44.entities.FITypeTemplate.filter({ fi_type: entity.fi_type, is_active: true })
+      .then(results => {
+        if (results?.[0]) setDbTemplate(results[0]);
+      })
+      .catch(() => {})
+      .finally(() => setTemplateLoaded(true));
+  }, [entity.fi_type]);
+
+  // Build effective config merging DB override with hardcoded defaults
+  const effectiveConfig = React.useMemo(() => {
+    if (dbTemplate) {
+      return {
+        ...ftConfig,
+        label: dbTemplate.label || ftConfig.label,
+        allowedAccountTypes: dbTemplate.allowed_account_types?.length ? dbTemplate.allowed_account_types : ftConfig.allowedAccountTypes,
+        accountTypeNote: dbTemplate.account_type_note || ftConfig.accountTypeNote,
+        exampleAccountType: dbTemplate.example_account_type || ftConfig.exampleAccountType,
+        accountTypeValidation: dbTemplate.allowed_account_types?.length
+          ? `"${dbTemplate.allowed_account_types.join(",")}"`
+          : ftConfig.accountTypeValidation,
+        columnDefinitions: dbTemplate.column_definitions || null,
+      };
+    }
+    return { ...ftConfig, columnDefinitions: null };
+  }, [ftConfig, dbTemplate]);
 
   const styleHeader = (cell, required = false) => {
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: required ? "FF1E3A5F" : "FF334155" } };
