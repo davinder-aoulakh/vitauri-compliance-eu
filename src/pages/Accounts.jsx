@@ -585,10 +585,7 @@ export default function AccountsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className={`grid w-full max-w-2xl ${
-                  (tenant?.enabled_features?.ai_data_validator !== false && tenant?.enabled_features?.ai_jurisdiction_advisor !== false) ? 'grid-cols-4' :
-                  ((tenant?.enabled_features?.ai_data_validator === false && tenant?.enabled_features?.ai_jurisdiction_advisor === false) ? 'grid-cols-2' : 'grid-cols-3')
-                }`}>
+                <TabsList className="flex flex-wrap w-full max-w-3xl gap-1">
                   <TabsTrigger value="accounts">
                     <Wallet className="w-4 h-4 mr-2" />
                     Accounts
@@ -614,6 +611,10 @@ export default function AccountsPage() {
                       CRS Advisor
                     </TabsTrigger>
                   )}
+                  <TabsTrigger value="export">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </TabsTrigger>
                 </TabsList>
 
           <TabsContent value="accounts" className="space-y-6">
