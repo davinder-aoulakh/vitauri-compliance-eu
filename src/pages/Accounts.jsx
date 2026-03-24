@@ -69,6 +69,7 @@ import AIJurisdictionAdvisor from "../components/ai/AIJurisdictionAdvisor";
 import BulkUpdateForm from "../components/accounts/BulkUpdateForm";
 import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
+import AccountExport from "../components/accounts/AccountExport";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
