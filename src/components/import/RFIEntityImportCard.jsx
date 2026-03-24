@@ -13,6 +13,7 @@ import {
 import AIFieldMapper from "./AIFieldMapper";
 import AIDataCleaner from "./AIDataCleaner";
 import { getFiTypeConfig, FI_TYPE_TEMPLATES } from "@/lib/fiTypeTemplates";
+import { getColumnsForFiType } from "@/components/superadmin/FITypeTemplateManager";
 
 const STEPS = [
   { id: "upload", label: "Upload File" },
