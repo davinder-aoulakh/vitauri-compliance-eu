@@ -373,7 +373,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     setMappings({}); setCleanedData(null); setResults(null); setErrors([]);
   };
 
-  const fiTypeLabel = ftConfig.label;
+  const fiTypeLabel = effectiveConfig.label;
   const hasResult = !!results;
   const resultColor = hasResult
     ? (results.failed === 0 ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50")
