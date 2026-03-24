@@ -994,6 +994,15 @@ export default function AccountsPage() {
               <AIJurisdictionAdvisor initialJurisdiction={tenant?.jurisdiction} />
             </TabsContent>
           )}
+
+          <TabsContent value="export">
+            <AccountExport
+              accounts={accessibleAccounts}
+              entities={entities}
+              accessibleEntityIds={isAdmin ? null : new Set(userEntityAccess.map(r => r.rfi_entity_id))}
+              isAdmin={isAdmin}
+            />
+          </TabsContent>
         </Tabs>
       </div>
 
