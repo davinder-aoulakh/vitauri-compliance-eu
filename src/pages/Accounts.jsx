@@ -61,7 +61,7 @@ import AccountClassification from "../components/accounts/AccountClassification"
 import AccountClassificationHistory from "../components/accounts/AccountClassificationHistory";
 import ControllingPersonsList from "../components/accounts/ControllingPersonsList";
 import BeneficiaryManager from "../components/accounts/BeneficiaryManager";
-import AIBulkImport from "../components/import/AIBulkImport";
+import AIBulkImport from "@/components/import/AIBulkImport";
 import ComplianceFlags from "../components/accounts/ComplianceFlags";
 import { suggestWorkflows } from "../components/workflows/WorkflowTriggerEvaluator";
 import AIDataValidator from "../components/ai/AIDataValidator";
