@@ -15,8 +15,8 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Only administrators can invite users' }, { status: 403 });
         }
 
-        const { email, full_name, app_role, job_title, department } = await req.json();
-        const tenant_id = currentUser.tenant_id;
+        const { email, full_name, app_role, job_title, department, tenant_id } = await req.json();
+        //const tenant_id = currentUser.tenant_id;
 
         // 3. Validate required fields
         if (!email || !full_name || !app_role) {
