@@ -49,7 +49,8 @@ Deno.serve(async (req) => {
         // 6. Send the platform invitation email via Base44 auth
         // Note: The calling user (currentUser) must have Base44 platform role 'admin'
         // for this call to succeed. The second param is the platform-level role.
-        await base44.auth.inviteUser(email, 'user');
+        // await base44.auth.inviteUser(email, 'user');
+        await base44.asServiceRole.auth.inviteUser(email, 'user');
 
         return Response.json({
             success: true,
