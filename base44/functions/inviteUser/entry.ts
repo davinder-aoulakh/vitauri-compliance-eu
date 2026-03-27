@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
         // 5. Create the user record in the database immediately with all custom fields
         // This stores the profile data before the user accepts the invite
-        const newUserRecord = await base44.asServiceRole.entities.User.create({
+      /*  const newUserRecord = await base44.asServiceRole.entities.User.create({
             email,
             full_name: full_name,
             display_name: full_name,
@@ -46,10 +46,19 @@ Deno.serve(async (req) => {
             tenant_id,
             app_role,
             invite_status: 'pending'
-        });
+        });  */
 
         // 6. Send the platform invitation email via Base44
-        await base44.users.inviteUser(email, 'user');
+        // await base44.users.inviteUser(email, 'user');
+
+        await base44.users.inviteUser(email, app_role, {
+    full_name,
+    display_name: full_name,
+    job_title,
+    department,
+    tenant_id,
+    invite_status: 'pending'
+});
 
         return Response.json({
             success: true,
