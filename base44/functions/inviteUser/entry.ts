@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
         }
 
         const { email, full_name, app_role, job_title, department, tenant_id } = await req.json();
+
+        console.log(req.json())
         //const tenant_id = currentUser.tenant_id;
 
         // 3. Validate required fields
