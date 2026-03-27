@@ -1,0 +1,51 @@
+{
+  "name": "PendingInvite",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "Email address of the invited user"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Full name to set on the user record"
+    },
+    "app_role": {
+      "type": "string",
+      "enum": [
+        "super_admin",
+        "tenant_admin",
+        "tenant_supervisor",
+        "tenant_user"
+      ],
+      "description": "App role to assign to the user"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "Job title to set on the user record"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department to set on the user record"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant the user belongs to"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "applied",
+        "expired"
+      ],
+      "default": "pending",
+      "description": "Status of this pending invite"
+    }
+  },
+  "required": [
+    "email",
+    "tenant_id",
+    "app_role"
+  ]
+}

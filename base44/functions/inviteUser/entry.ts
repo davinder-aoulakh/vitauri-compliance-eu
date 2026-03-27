@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
         const body = await req.json();
         const { email, full_name, app_role, job_title, department, tenant_id } = body;
 
-        // 2. Initialize SDK client (after body is parsed)
+        // 2. Initialize SDK client
         const base44 = createClientFromRequest(req);
 
         // 3. Authenticate the calling user
@@ -29,31 +29,30 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Inviting admin is not assigned to a tenant' }, { status: 400 });
         }
 
-        // 6. Check for duplicate email within this tenant
+        // 6. Check for duplicate — either already in this tenant, or a pending invite exists
         const existingUsers = await base44.asServiceRole.entities.User.filter({ email, tenant_id });
         if (existingUsers && existingUsers.length > 0) {
             return Response.json({ error: `A user with email '${email}' already exists in this organization.` }, { status: 409 });
         }
 
-        // 7. Send the platform invitation — this creates the User record in the platform
-        await base44.users.inviteUser(email, 'user');
-
-        // 8. Find the newly created user record and update it with all custom fields
-        // Wait briefly for the platform to create the user record
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        const newUsers = await base44.asServiceRole.entities.User.filter({ email });
-        if (newUsers && newUsers.length > 0) {
-            const newUser = newUsers[0];
-            await base44.asServiceRole.entities.User.update(newUser.id, {
-                display_name: full_name,
-                app_role,
-                job_title: job_title || '',
-                department: department || '',
-                tenant_id,
-                invite_status: 'pending'
-            });
+        const existingInvites = await base44.asServiceRole.entities.PendingInvite.filter({ email, tenant_id });
+        if (existingInvites && existingInvites.length > 0) {
+            return Response.json({ error: `An invitation for '${email}' is already pending.` }, { status: 409 });
         }
+
+        // 7. Store invite details in PendingInvite so the onUserCreated automation can apply them
+        await base44.asServiceRole.entities.PendingInvite.create({
+            email,
+            display_name: full_name,
+            app_role,
+            job_title: job_title || '',
+            department: department || '',
+            tenant_id,
+            status: 'pending'
+        });
+
+        // 8. Send the platform invitation
+        await base44.users.inviteUser(email, 'user');
 
         return Response.json({
             success: true,
