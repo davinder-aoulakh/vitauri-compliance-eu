@@ -31,10 +31,10 @@ export default function Setup() {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       
-      // Load all users for super admin
+      // Load all users for super admin via backend function
       if (currentUser.app_role === "super_admin") {
-        const users = await base44.asServiceRole.entities.User.list();
-        setAllUsers(users);
+        const response = await base44.functions.invoke('listAllUsers', {});
+        setAllUsers(response.data?.users || []);
       }
     } catch (error) {
       console.error("Error loading user:", error);
@@ -165,15 +165,15 @@ export default function Setup() {
     setMessage(null);
 
     try {
-      const updateData = { app_role: selectedRole };
-      
-      // For super_admin, remove tenant_id
-      if (selectedRole === "super_admin") {
-        updateData.tenant_id = null;
+      const response = await base44.functions.invoke('updateUserRole', {
+        userId: selectedUserId,
+        role: selectedRole
+      });
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
       }
 
-      await base44.asServiceRole.entities.User.update(selectedUserId, updateData);
-      
       setMessage({ 
         type: "success", 
         text: "User role updated successfully! Reloading..." 
@@ -241,7 +241,7 @@ export default function Setup() {
                   "bg-green-100 text-green-800 border-green-300"
                 }`}
               >
-                {user?.user_role?.replace("_", " ") || "user"}
+                {user?.app_role?.replace(/_/g, " ") || "user"}
               </Badge>
             </div>
             {user?.tenant_id && (
