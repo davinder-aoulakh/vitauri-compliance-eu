@@ -21,7 +21,8 @@ Deno.serve(async (req) => {
         }
 
         // Use the SDK users.inviteUser to invite the user
-        await base44.users.inviteUser(email, user_role === 'tenant_admin' ? 'admin' : 'user');
+        // await base44.users.inviteUser(email, user_role === 'tenant_admin' ? 'admin' : 'user');
+        await base44.auth.inviteUser(email, user_role === 'tenant_admin' ? 'admin' : 'user');
 
         // Update the new user's profile fields via service role
         const result = { email, full_name, user_role: user_role || 'tenant_user' };
