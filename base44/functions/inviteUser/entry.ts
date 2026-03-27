@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
         // This stores the profile data before the user accepts the invite
         const newUserRecord = await base44.asServiceRole.entities.User.create({
             email,
+            full_name: full_name,
             display_name: full_name,
             job_title: job_title || '',
             department: department || '',
