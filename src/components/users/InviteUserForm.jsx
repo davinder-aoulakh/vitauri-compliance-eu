@@ -42,7 +42,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
       const response = await base44.functions.invoke('inviteUser', {
         email: formData.email,
         full_name: formData.full_name,
-        user_role: formData.user_role,
+        app_role: formData.user_role,
         tenant_id: tenant?.id,
         job_title: formData.job_title,
         department: formData.department
