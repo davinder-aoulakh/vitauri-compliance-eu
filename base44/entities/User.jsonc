@@ -1,0 +1,137 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the tenant this user belongs to (null for super_admin)"
+    },
+    "app_role": {
+      "type": "string",
+      "enum": [
+        "super_admin",
+        "tenant_admin",
+        "tenant_supervisor",
+        "tenant_user"
+      ],
+      "default": "tenant_user",
+      "description": "User's role in the application"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "User's job title"
+    },
+    "department": {
+      "type": "string",
+      "description": "User's department"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Custom display name for the user"
+    },
+    "invite_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted"
+      ],
+      "default": "pending",
+      "description": "Status of the user's invitation"
+    },
+    "accessibility_preferences": {
+      "type": "object",
+      "properties": {
+        "fontSize": {
+          "type": "string",
+          "enum": [
+            "small",
+            "medium",
+            "large",
+            "xlarge"
+          ],
+          "default": "medium"
+        },
+        "highContrast": {
+          "type": "boolean",
+          "default": false
+        },
+        "reducedMotion": {
+          "type": "boolean",
+          "default": false
+        },
+        "keyboardNavigation": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "appearance_preferences": {
+      "type": "object",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "default": "light"
+        },
+        "layoutDensity": {
+          "type": "string",
+          "enum": [
+            "compact",
+            "comfortable",
+            "spacious"
+          ],
+          "default": "comfortable"
+        },
+        "accentColor": {
+          "type": "string",
+          "default": "#4f46e5"
+        }
+      }
+    },
+    "general_preferences": {
+      "type": "object",
+      "properties": {
+        "emailNotifications": {
+          "type": "boolean",
+          "default": true
+        },
+        "inAppNotifications": {
+          "type": "boolean",
+          "default": true
+        },
+        "workflowNotifications": {
+          "type": "boolean",
+          "default": true
+        },
+        "reportNotifications": {
+          "type": "boolean",
+          "default": true
+        },
+        "defaultLandingPage": {
+          "type": "string",
+          "default": "Dashboard"
+        },
+        "language": {
+          "type": "string",
+          "default": "en"
+        },
+        "dateFormat": {
+          "type": "string",
+          "default": "MM/DD/YYYY"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "UTC"
+        },
+        "emailEventConfig": {
+          "type": "object",
+          "description": "Email notification configuration per event type"
+        }
+      }
+    },
+    "jurisdiction_overrides": {
+      "type": "object",
+      "description": "Super admin only - jurisdiction-specific CRS configuration overrides"
+    }
+  },
+  "required": []
+}

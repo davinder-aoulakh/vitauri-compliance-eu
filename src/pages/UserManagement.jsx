@@ -329,9 +329,15 @@ export default function UserManagement() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Active
-                          </Badge>
+                         {u.invite_status === 'pending' ? (
+                           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                             Pending
+                           </Badge>
+                         ) : (
+                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                             Active
+                           </Badge>
+                         )}
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-slate-600">
