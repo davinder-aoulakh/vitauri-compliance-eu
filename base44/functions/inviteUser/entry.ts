@@ -2,25 +2,25 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
     try {
+        // 1. Parse the body FIRST before SDK consumes the request
+        const body = await req.json();
+        const { email, full_name, app_role, job_title, department, tenant_id } = body;
+
+        // 2. Initialize SDK client (after body is parsed)
         const base44 = createClientFromRequest(req);
 
-        // 1. Authenticate the calling user
+        // 3. Authenticate the calling user
         const currentUser = await base44.auth.me();
         if (!currentUser) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // 2. Authorize: only tenant_admin or super_admin can invite users
+        // 4. Authorize: only tenant_admin or super_admin can invite users
         if (currentUser.app_role !== 'tenant_admin' && currentUser.app_role !== 'super_admin') {
             return Response.json({ error: 'Only administrators can invite users' }, { status: 403 });
         }
 
-        const { email, full_name, app_role, job_title, department, tenant_id } = await req.json();
-
-        console.log(req.json())
-        //const tenant_id = currentUser.tenant_id;
-
-        // 3. Validate required fields
+        // 5. Validate required fields
         if (!email || !full_name || !app_role) {
             return Response.json({ error: 'Email, full name, and role are required' }, { status: 400 });
         }
@@ -29,47 +29,43 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Inviting admin is not assigned to a tenant' }, { status: 400 });
         }
 
-        // 4. Check for duplicate email within this tenant
+        // 6. Check for duplicate email within this tenant
         const existingUsers = await base44.asServiceRole.entities.User.filter({ email, tenant_id });
         if (existingUsers && existingUsers.length > 0) {
             return Response.json({ error: `A user with email '${email}' already exists in this organization.` }, { status: 409 });
         }
 
-        // 5. Create the user record in the database immediately with all custom fields
-        // This stores the profile data before the user accepts the invite
-      /*  const newUserRecord = await base44.asServiceRole.entities.User.create({
-            email,
-            full_name: full_name,
-            display_name: full_name,
-            job_title: job_title || '',
-            department: department || '',
-            tenant_id,
-            app_role,
-            invite_status: 'pending'
-        });  */
+        // 7. Send the platform invitation — this creates the User record in the platform
+        await base44.users.inviteUser(email, 'user');
 
-        // 6. Send the platform invitation email via Base44
-        // await base44.users.inviteUser(email, 'user');
+        // 8. Find the newly created user record and update it with all custom fields
+        // Wait briefly for the platform to create the user record
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-        await base44.users.inviteUser(email, app_role, {
-    full_name,
-    display_name: full_name,
-    job_title,
-    department,
-    tenant_id,
-    invite_status: 'pending'
-});
+        const newUsers = await base44.asServiceRole.entities.User.filter({ email });
+        if (newUsers && newUsers.length > 0) {
+            const newUser = newUsers[0];
+            await base44.asServiceRole.entities.User.update(newUser.id, {
+                display_name: full_name,
+                app_role,
+                job_title: job_title || '',
+                department: department || '',
+                tenant_id,
+                invite_status: 'pending'
+            });
+        }
 
         return Response.json({
             success: true,
-            message: 'Invitation sent successfully. User record created with pending status.',
+            message: 'Invitation sent successfully.',
             user: {
-                id: newUserRecord.id,
                 email,
                 display_name: full_name,
                 app_role,
-                invite_status: 'pending',
-                tenant_id
+                job_title: job_title || '',
+                department: department || '',
+                tenant_id,
+                invite_status: 'pending'
             }
         });
 
@@ -81,8 +77,7 @@ Deno.serve(async (req) => {
         }
 
         return Response.json({
-            error: error.message || 'Failed to send invitation',
-            hint: 'Ensure the inviting admin has the Base44 platform-level "admin" role.'
+            error: error.message || 'Failed to send invitation'
         }, { status: 500 });
     }
 });
