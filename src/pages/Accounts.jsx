@@ -587,7 +587,7 @@ export default function AccountsPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="border-b border-slate-200 bg-white rounded-t-xl shadow-sm">
-            <TabsList className="flex h-auto bg-transparent p-0 gap-0 overflow-x-auto scrollbar-none">
+            <TabsList className="flex h-auto bg-transparent p-0 gap-0 overflow-x-auto scrollbar-none w-full justify-start">
               <TabsTrigger
                 value="accounts"
                 className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
