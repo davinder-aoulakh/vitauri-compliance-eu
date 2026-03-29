@@ -586,37 +586,54 @@ export default function AccountsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="flex flex-wrap w-full max-w-3xl gap-1">
-                  <TabsTrigger value="accounts">
-                    <Wallet className="w-4 h-4 mr-2" />
-                    Accounts
-                  </TabsTrigger>
-                  <TabsTrigger value="compliance" className="relative">
-                    <Flag className="w-4 h-4 mr-2" />
-                    Compliance
-                    {complianceIssuesCount > 0 && (
-                      <Badge className="ml-2 bg-amber-500 text-white border-0 px-2 py-0 text-xs">
-                        {complianceIssuesCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  {(tenant?.enabled_features?.ai_data_validator !== false) && (
-                    <TabsTrigger value="ai-validator">
-                      <Brain className="w-4 h-4 mr-2" />
-                      AI Validator
-                    </TabsTrigger>
-                  )}
-                  {(tenant?.enabled_features?.ai_jurisdiction_advisor !== false) && (
-                    <TabsTrigger value="jurisdiction">
-                      <Globe className="w-4 h-4 mr-2" />
-                      CRS Advisor
-                    </TabsTrigger>
-                  )}
-                  <TabsTrigger value="export">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </TabsTrigger>
-                </TabsList>
+          <div className="border-b border-slate-200 bg-white rounded-t-xl shadow-sm">
+            <TabsList className="flex h-auto bg-transparent p-0 gap-0 overflow-x-auto scrollbar-none">
+              <TabsTrigger
+                value="accounts"
+                className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
+              >
+                <Wallet className="w-4 h-4" />
+                Accounts
+              </TabsTrigger>
+              <TabsTrigger
+                value="compliance"
+                className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
+              >
+                <Flag className="w-4 h-4" />
+                Compliance
+                {complianceIssuesCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-semibold">
+                    {complianceIssuesCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              {(tenant?.enabled_features?.ai_data_validator !== false) && (
+                <TabsTrigger
+                  value="ai-validator"
+                  className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
+                >
+                  <Brain className="w-4 h-4" />
+                  AI Validator
+                </TabsTrigger>
+              )}
+              {(tenant?.enabled_features?.ai_jurisdiction_advisor !== false) && (
+                <TabsTrigger
+                  value="jurisdiction"
+                  className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
+                >
+                  <Globe className="w-4 h-4" />
+                  CRS Advisor
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="export"
+                className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="accounts" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
