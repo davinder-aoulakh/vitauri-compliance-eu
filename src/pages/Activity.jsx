@@ -75,14 +75,20 @@ export default function ActivityPage() {
   };
 
   const { data: auditLogs = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['audit-logs'],
+    queryKey: ['audit-logs', user?.tenant_id],
     queryFn: async () => {
-      const logs = await base44.entities.AuditLog.list('-timestamp', 500);
-      return logs;
-    }
+      if (!user) return [];
+      // Super admins can see all logs; tenant users only see their own tenant's logs
+      if (user.app_role === 'super_admin') {
+        return await base44.entities.AuditLog.list('-timestamp', 500);
+      }
+      return await base44.entities.AuditLog.filter({ tenant_id: user.tenant_id }, '-timestamp', 500);
+    },
+    enabled: !!user
   });
 
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+  const isSuperAdmin = user?.app_role === 'super_admin';
 
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
