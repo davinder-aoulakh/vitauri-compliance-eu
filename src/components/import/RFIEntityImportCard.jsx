@@ -628,10 +628,34 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         account[targetField] = parseBool(value);
       } else if (targetField === "entity_id" || targetField === "entity_name_ref") {
         // skip — entity_id is set from entity prop, entity_name_ref is display-only
+      } else if (targetField === "status") {
+        // Normalize status to lowercase
+        account[targetField] = String(value).toLowerCase().trim();
+      } else if (targetField === "account_type") {
+        // Normalize account_type labels to enum values
+        const typeMap = {
+          "depository account": "depository",
+          "custodial account": "custodial",
+          "equity interest in investment entity": "equity_debt_interest",
+          "debt interest in investment entity": "equity_debt_interest",
+          "equity or debt interest in investment entity": "equity_debt_interest",
+          "equity or debt interest": "equity_debt_interest",
+          "cash value insurance": "cash_value_insurance",
+          "cash value insurance or annuity contract": "cash_value_insurance",
+          "annuity contract": "annuity",
+          "annuity": "annuity",
+        };
+        const normalized = typeMap[String(value).toLowerCase().trim()] || String(value).toLowerCase().trim();
+        account[targetField] = normalized;
       } else {
         account[targetField] = value;
       }
     });
+
+    // Normalize account_holder_type to lowercase
+    if (account.account_holder_type) {
+      account.account_holder_type = String(account.account_holder_type).toLowerCase().trim();
+    }
 
     if (account.account_holder_type === "individual" && account.first_name && account.last_name) {
       account.account_holder_name = `${account.first_name} ${account.last_name}`.trim();
