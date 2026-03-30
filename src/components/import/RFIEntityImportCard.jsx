@@ -130,21 +130,28 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     };
 
     const COUNTRY_NAME_KEYS = new Set([
-      "place_of_birth", "country_of_incorporation", "ah_country", "country_of_residence",
+      "place_of_birth", "country_of_incorporation",
+      "ah_original_country", "ah_current_country", "ah_country_of_residence",
       "tax1_country", "tax2_country",
       ...[1,2,3,4].flatMap(n => [
         `cp${n}_place_of_birth`, `cp${n}_country_of_residence`,
-        `cp${n}_address_country`, `cp${n}_tax_country`,
+        `cp${n}_address_country`, `cp${n}_tax1_country`, `cp${n}_tax2_country`,
       ]),
     ]);
 
     const CODE_TO_NAME_KEY = {
       country_of_incorporation_code: "country_of_incorporation",
+      ah_original_country_code: "ah_original_country",
+      ah_current_country_code: "ah_current_country",
+      ah_country_of_residence_code: "ah_country_of_residence",
+      tax1_country_code: "tax1_country",
+      tax2_country_code: "tax2_country",
       ...Object.fromEntries([1,2,3,4].flatMap(n => [
         [`cp${n}_place_of_birth_code`, `cp${n}_place_of_birth`],
         [`cp${n}_country_of_residence_code`, `cp${n}_country_of_residence`],
         [`cp${n}_address_country_code`, `cp${n}_address_country`],
-        [`cp${n}_tax_country_code`, `cp${n}_tax_country`],
+        [`cp${n}_tax1_country_code`, `cp${n}_tax1_country`],
+        [`cp${n}_tax2_country_code`, `cp${n}_tax2_country`],
       ])),
     };
 
@@ -190,10 +197,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       acct_holder_address_unchanged: "boolean",
       us_person_indic: "boolean",
       self_cert_obtained: "boolean",
+      self_cert_requested: "boolean",
       self_certification_obtained: "boolean",
+      entity_managed_by_fiduciary_trust: "boolean",
+      entity_managed_by_asset_manager: "boolean",
       ...Object.fromEntries([1,2,3,4].flatMap(n => [
-        [`cp${n}_control_type`,       "control_types"],
-        [`cp${n}_self_cert_obtained`, "boolean"],
+        [`cp${n}_control_type`,          "control_types"],
+        [`cp${n}_self_cert_obtained`,    "boolean"],
+        [`cp${n}_self_cert_requested`,   "boolean"],
       ])),
     };
 
@@ -257,8 +268,9 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       ]);
       // Fields only relevant for entity holders → grey out when type = "individual"
       const ENTITY_ONLY_KEYS = new Set([
-        "account_holder_name", "date_of_incorporation", "country_of_incorporation",
-        "country_of_incorporation_code", "type_of_financial_institution",
+        "account_holder_entity_type", "account_holder_name",
+        "date_of_incorporation", "country_of_incorporation", "country_of_incorporation_code",
+        "type_of_financial_institution",
         "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
         "gross_income_from_financial_assets", "entity_classification",
       ]);
@@ -496,13 +508,19 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
 
   const convertToAccount = (row) => {
     const account = { tenant_id: tenant.id, entity_id: entity.id, reportability_status: "pending_review", status: "active" };
-    // Flat CP data extracted per person slot
     const cpData = { 1: {}, 2: {}, 3: {}, 4: {} };
+
+    // Extra boolean fields from new template
+    const EXTRA_BOOL_FIELDS = new Set([
+      ...BOOL_FIELDS,
+      "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
+      "self_cert_requested",
+    ]);
 
     Object.entries(mappings).forEach(([csvCol, targetField]) => {
       if (!targetField) return;
       const value = row[csvCol];
-      if (!value && value !== 0) return;
+      if (value === null || value === undefined || value === "") return;
 
       // Controlling person fields: cp1_first_name, cp2_control_type, etc.
       const cpMatch = targetField.match(/^cp(\d)_(.+)$/);
@@ -513,18 +531,56 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         return;
       }
 
-      if (targetField.startsWith("tax_residency")) {
+      // Tax residency shorthand: tax1_country, tax1_tin, tax2_country, tax2_tin
+      if (targetField === "tax1_country" || targetField === "tax1_country_code") {
         if (!account.tax_residencies) account.tax_residencies = [];
-        const match = targetField.match(/tax_residency_(\d+)_(country|tin)/);
-        if (match) {
-          const idx = parseInt(match[1]) - 1;
-          if (!account.tax_residencies[idx]) account.tax_residencies[idx] = {};
-          account.tax_residencies[idx][match[2]] = value;
-        }
-      } else if (["year_end_cash_value", "gross_payments"].includes(targetField)) {
+        if (!account.tax_residencies[0]) account.tax_residencies[0] = {};
+        if (targetField === "tax1_country") account.tax_residencies[0].country = value;
+        return;
+      }
+      if (targetField === "tax1_tin") {
+        if (!account.tax_residencies) account.tax_residencies = [];
+        if (!account.tax_residencies[0]) account.tax_residencies[0] = {};
+        account.tax_residencies[0].tin = value;
+        return;
+      }
+      if (targetField === "tax2_country" || targetField === "tax2_country_code") {
+        if (!account.tax_residencies) account.tax_residencies = [];
+        if (!account.tax_residencies[1]) account.tax_residencies[1] = {};
+        if (targetField === "tax2_country") account.tax_residencies[1].country = value;
+        return;
+      }
+      if (targetField === "tax2_tin") {
+        if (!account.tax_residencies) account.tax_residencies = [];
+        if (!account.tax_residencies[1]) account.tax_residencies[1] = {};
+        account.tax_residencies[1].tin = value;
+        return;
+      }
+
+      // Address fields mapping to nested account_holder_address / current_address
+      if (targetField.startsWith("ah_original_") || targetField.startsWith("ah_current_") || targetField === "ah_country_of_residence") {
+        // Map to account_holder_address (original) and current_address fields
+        if (targetField === "ah_original_street") { account.account_holder_address = { ...(account.account_holder_address || {}), street: value }; return; }
+        if (targetField === "ah_original_city")   { account.account_holder_address = { ...(account.account_holder_address || {}), city: value }; return; }
+        if (targetField === "ah_original_state")  { account.account_holder_address = { ...(account.account_holder_address || {}), state: value }; return; }
+        if (targetField === "ah_original_postal_code") { account.account_holder_address = { ...(account.account_holder_address || {}), postal_code: value }; return; }
+        if (targetField === "ah_original_country") { account.account_holder_address = { ...(account.account_holder_address || {}), country: value }; return; }
+        if (targetField === "ah_current_street") { account.current_address = { ...(account.current_address || {}), street: value }; return; }
+        if (targetField === "ah_current_city")   { account.current_address = { ...(account.current_address || {}), city: value }; return; }
+        if (targetField === "ah_current_state")  { account.current_address = { ...(account.current_address || {}), state: value }; return; }
+        if (targetField === "ah_current_postal_code") { account.current_address = { ...(account.current_address || {}), postal_code: value }; return; }
+        if (targetField === "ah_current_country") { account.current_address = { ...(account.current_address || {}), country: value }; return; }
+        if (targetField === "ah_country_of_residence") { account.country_of_residence = value; return; }
+        // Skip auto-fill code columns
+        return;
+      }
+
+      if (["year_end_cash_value", "gross_payments"].includes(targetField)) {
         account[targetField] = parseFloat(String(value).replace(/[,$]/g, "")) || 0;
-      } else if (BOOL_FIELDS.has(targetField)) {
+      } else if (EXTRA_BOOL_FIELDS.has(targetField)) {
         account[targetField] = parseBool(value);
+      } else if (targetField === "entity_id" || targetField === "entity_name_ref") {
+        // skip — entity_id is set from entity prop, entity_name_ref is display-only
       } else {
         account[targetField] = value;
       }
@@ -539,7 +595,10 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     const controllingPersons = [];
     for (let n = 1; n <= 4; n++) {
       const cp = cpData[n];
-      if (!cp.first_name && !cp.last_name) continue; // skip empty slots
+      if (!cp.first_name && !cp.last_name) continue;
+      const tax_residencies = [];
+      if (cp.tax1_country) tax_residencies.push({ country: cp.tax1_country, tin: cp.tin || "" });
+      if (cp.tax2_country) tax_residencies.push({ country: cp.tax2_country, tin: cp.tin2 || "" });
       const cpRecord = {
         tenant_id: tenant.id,
         first_name: cp.first_name || "",
@@ -547,17 +606,22 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         full_name: `${cp.first_name || ""} ${cp.last_name || ""}`.trim(),
         date_of_birth: cp.date_of_birth || null,
         place_of_birth: cp.place_of_birth || null,
+        place_of_birth_code: cp.place_of_birth_code || null,
         country_of_residence: cp.country_of_residence || null,
+        country_of_residence_code: cp.country_of_residence_code || null,
         address: {
           street: cp.street || "",
           city: cp.city || "",
+          state: cp.state || "",
+          postal_code: cp.postal_code || "",
           country: cp.address_country || "",
         },
-        tax_residencies: cp.tax_country ? [{ country: cp.tax_country, tin: cp.tin || "" }] : [],
+        tax_residencies,
         control_type: cp.control_type || null,
         ownership_percentage: cp.ownership_percentage ? parseFloat(cp.ownership_percentage) || null : null,
         self_certification_obtained: cp.self_cert_obtained ? parseBool(cp.self_cert_obtained) : false,
         self_certification_receipt_date: cp.self_cert_date || null,
+        self_certification_request_date: cp.self_cert_request_date || null,
       };
       controllingPersons.push(cpRecord);
     }
