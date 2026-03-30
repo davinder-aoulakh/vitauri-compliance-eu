@@ -341,23 +341,31 @@ export default function FITypeTemplateManager() {
         if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
           dataSheet.addConditionalFormatting({
             ref: sqRef,
-            rules: [{
-              type: "expression",
-              priority: 1,
-              formulae: [`$${ahtLetter}2="entity"`],
-              style: { fill: greyFill, font: greyFont },
-            }],
+            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="entity"`], style: { fill: greyFill, font: greyFont } }],
           });
+          for (let r = 2; r <= 502; r++) {
+            dataSheet.getCell(r, colIdx + 1).dataValidation = {
+              type: "custom", allowBlank: true,
+              formulae: [`NOT($${ahtLetter}${r}="entity")`],
+              showErrorMessage: true, errorStyle: "stop",
+              errorTitle: "Not applicable",
+              error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
+            };
+          }
         } else if (ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key)) {
           dataSheet.addConditionalFormatting({
             ref: sqRef,
-            rules: [{
-              type: "expression",
-              priority: 1,
-              formulae: [`$${ahtLetter}2="individual"`],
-              style: { fill: greyFill, font: greyFont },
-            }],
+            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="individual"`], style: { fill: greyFill, font: greyFont } }],
           });
+          for (let r = 2; r <= 502; r++) {
+            dataSheet.getCell(r, colIdx + 1).dataValidation = {
+              type: "custom", allowBlank: true,
+              formulae: [`NOT($${ahtLetter}${r}="individual")`],
+              showErrorMessage: true, errorStyle: "stop",
+              errorTitle: "Not applicable",
+              error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
+            };
+          }
         }
       });
     }

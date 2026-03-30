@@ -265,35 +265,43 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       // CP fields → grey out when type = "individual"
       const CP_KEY_PREFIX_RE = /^cp\d_/;
 
-      const greyFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1D5DB" } }; // gray-300
-      const greyFont = { color: { argb: "FF9CA3AF" }, italic: true };                         // gray-400
+      const greyFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1D5DB" } };
+      const greyFont = { color: { argb: "FF9CA3AF" }, italic: true };
 
       columns.forEach((col, colIdx) => {
         const excelColLetter = colLetter(colIdx + 1);
         const sqRef = `${excelColLetter}2:${excelColLetter}502`;
 
         if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
-          // Grey when account_holder_type = "entity"
+          // Grey out + block input when type = "entity"
           dataSheet.addConditionalFormatting({
             ref: sqRef,
-            rules: [{
-              type: "expression",
-              priority: 1,
-              formulae: [`$${ahtLetter}2="entity"`],
-              style: { fill: greyFill, font: greyFont },
-            }],
+            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="entity"`], style: { fill: greyFill, font: greyFont } }],
           });
+          for (let r = 2; r <= 502; r++) {
+            dataSheet.getCell(r, colIdx + 1).dataValidation = {
+              type: "custom", allowBlank: true,
+              formulae: [`NOT($${ahtLetter}${r}="entity")`],
+              showErrorMessage: true, errorStyle: "stop",
+              errorTitle: "Not applicable",
+              error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
+            };
+          }
         } else if (ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key)) {
-          // Grey when account_holder_type = "individual"
+          // Grey out + block input when type = "individual"
           dataSheet.addConditionalFormatting({
             ref: sqRef,
-            rules: [{
-              type: "expression",
-              priority: 1,
-              formulae: [`$${ahtLetter}2="individual"`],
-              style: { fill: greyFill, font: greyFont },
-            }],
+            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="individual"`], style: { fill: greyFill, font: greyFont } }],
           });
+          for (let r = 2; r <= 502; r++) {
+            dataSheet.getCell(r, colIdx + 1).dataValidation = {
+              type: "custom", allowBlank: true,
+              formulae: [`NOT($${ahtLetter}${r}="individual")`],
+              showErrorMessage: true, errorStyle: "stop",
+              errorTitle: "Not applicable",
+              error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
+            };
+          }
         }
       });
     }
