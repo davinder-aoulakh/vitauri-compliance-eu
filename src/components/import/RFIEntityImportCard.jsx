@@ -273,7 +273,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         const sqRef = `${excelColLetter}2:${excelColLetter}502`;
 
         if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
-          // Grey out + block input when type = "entity"
+          // Black fill + block input when type = "entity"
+          // Formula references first row of range with absolute col, relative row (ExcelJS requirement)
           dataSheet.addConditionalFormatting({
             ref: sqRef,
             rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="entity"`], style: { fill: greyFill, font: greyFont } }],
@@ -281,14 +282,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           for (let r = 2; r <= 502; r++) {
             dataSheet.getCell(r, colIdx + 1).dataValidation = {
               type: "custom", allowBlank: true,
-              formulae: [`NOT($${ahtLetter}${r}="entity")`],
+              formulae: [`$${ahtLetter}${r}<>"entity"`],
               showErrorMessage: true, errorStyle: "stop",
               errorTitle: "Not applicable",
               error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
             };
           }
         } else if (ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key)) {
-          // Grey out + block input when type = "individual"
+          // Black fill + block input when type = "individual"
           dataSheet.addConditionalFormatting({
             ref: sqRef,
             rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="individual"`], style: { fill: greyFill, font: greyFont } }],
@@ -296,7 +297,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           for (let r = 2; r <= 502; r++) {
             dataSheet.getCell(r, colIdx + 1).dataValidation = {
               type: "custom", allowBlank: true,
-              formulae: [`NOT($${ahtLetter}${r}="individual")`],
+              formulae: [`$${ahtLetter}${r}<>"individual"`],
               showErrorMessage: true, errorStyle: "stop",
               errorTitle: "Not applicable",
               error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
