@@ -245,67 +245,52 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     }
 
-    // ── Conditional Formatting: Grey out fields based on Account Holder Type
+    // ── Static black fill for restricted columns + data validation to block input
+    // ExcelJS conditional formatting has unreliable cross-column expression support,
+    // so we statically pre-fill restricted cells black and rely on data validation for enforcement.
+    const INDIVIDUAL_ONLY_KEYS = new Set([
+      "first_name", "last_name", "date_of_birth", "place_of_birth",
+      "account_holder_is_alive", "account_holder_deceased_during_period",
+    ]);
+    const ENTITY_ONLY_KEYS = new Set([
+      "account_holder_name", "date_of_incorporation", "country_of_incorporation",
+      "country_of_incorporation_code", "type_of_financial_institution",
+      "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
+      "gross_income_from_financial_assets", "entity_classification",
+    ]);
+    const CP_KEY_PREFIX_RE = /^cp\d_/;
+
     const ahtColIdx = colIndexMap["account_holder_type"];
-    if (ahtColIdx) {
-      const ahtLetter = colLetter(ahtColIdx);
+    const ahtLetter = ahtColIdx ? colLetter(ahtColIdx) : null;
 
-      // Fields only relevant for individuals → grey out when type = "entity"
-      const INDIVIDUAL_ONLY_KEYS = new Set([
-        "first_name", "last_name", "date_of_birth", "place_of_birth",
-        "account_holder_is_alive", "account_holder_deceased_during_period",
-      ]);
-      // Fields only relevant for entity holders → grey out when type = "individual"
-      const ENTITY_ONLY_KEYS = new Set([
-        "account_holder_name", "date_of_incorporation", "country_of_incorporation",
-        "country_of_incorporation_code", "type_of_financial_institution",
-        "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
-        "gross_income_from_financial_assets", "entity_classification",
-      ]);
-      // CP fields → grey out when type = "individual"
-      const CP_KEY_PREFIX_RE = /^cp\d_/;
+    const blackFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+    const blackFont = { color: { argb: "FF000000" } }; // black text so nothing is visible
 
-      const greyFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
-      const greyFont = { color: { argb: "FFFFFFFF" }, italic: true };
+    columns.forEach((col, colIdx) => {
+      const isIndividualOnly = INDIVIDUAL_ONLY_KEYS.has(col.key);
+      const isEntityOnly = ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key);
 
-      columns.forEach((col, colIdx) => {
-        const excelColLetter = colLetter(colIdx + 1);
-        const sqRef = `${excelColLetter}2:${excelColLetter}502`;
+      if (!isIndividualOnly && !isEntityOnly) return;
 
-        if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
-          // Black fill + block input when type = "entity"
-          // Formula references first row of range with absolute col, relative row (ExcelJS requirement)
-          dataSheet.addConditionalFormatting({
-            ref: sqRef,
-            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="entity"`], style: { fill: greyFill, font: greyFont } }],
-          });
-          for (let r = 2; r <= 502; r++) {
-            dataSheet.getCell(r, colIdx + 1).dataValidation = {
-              type: "custom", allowBlank: true,
-              formulae: [`$${ahtLetter}${r}<>"entity"`],
-              showErrorMessage: true, errorStyle: "stop",
-              errorTitle: "Not applicable",
-              error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
-            };
-          }
-        } else if (ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key)) {
-          // Black fill + block input when type = "individual"
-          dataSheet.addConditionalFormatting({
-            ref: sqRef,
-            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="individual"`], style: { fill: greyFill, font: greyFont } }],
-          });
-          for (let r = 2; r <= 502; r++) {
-            dataSheet.getCell(r, colIdx + 1).dataValidation = {
-              type: "custom", allowBlank: true,
-              formulae: [`$${ahtLetter}${r}<>"individual"`],
-              showErrorMessage: true, errorStyle: "stop",
-              errorTitle: "Not applicable",
-              error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
-            };
-          }
+      for (let r = 2; r <= 502; r++) {
+        const cell = dataSheet.getCell(r, colIdx + 1);
+        // Static black fill — always applied (user sees black until they type the right holder type)
+        cell.fill = blackFill;
+        cell.font = blackFont;
+
+        if (ahtLetter) {
+          cell.dataValidation = {
+            type: "custom", allowBlank: true,
+            formulae: [isIndividualOnly ? `$${ahtLetter}${r}<>"entity"` : `$${ahtLetter}${r}<>"individual"`],
+            showErrorMessage: true, errorStyle: "stop",
+            errorTitle: "Not applicable",
+            error: isIndividualOnly
+              ? `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`
+              : `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
+          };
         }
-      });
-    }
+      }
+    });
 
     // ── Sheet 2: Example
     const exampleSheet = workbook.addWorksheet("Example", { properties: { tabColor: { argb: "FF6366F1" } } });
