@@ -104,13 +104,20 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     workbook.creator = "CRS Platform";
     workbook.created = new Date();
 
-    // Fetch country data for Referenced Data sheet
-    const crsCountries = await base44.entities.CrsCountryInfo.list("-country_name", 300);
+    // Fetch country and currency data for Referenced Data sheet
+    const [crsCountries, currencyRecords] = await Promise.all([
+      base44.entities.CrsCountryInfo.list("-country_name", 300),
+      base44.entities.ReferencedData.filter({ entity_name: "Global", field_name: "currency" }, "order", 300),
+    ]);
     const countryData = crsCountries
       .map(c => ({ name: c.country_name, code: c.country_code }))
       .filter(c => c.name && c.code)
       .sort((a, b) => a.name.localeCompare(b.name));
     const refDataRows = countryData.length;
+    const currencyCodes = currencyRecords
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(c => c.value)
+      .filter(Boolean);
 
     // Use dynamic columns from DB template if available, else defaults
     const columns = getColumnsForFiType(effectiveConfig);
@@ -199,6 +206,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       sectionStartRow += section.values.length + 2;
     });
 
+    // Currency columns — validated against column F of Referenced Data sheet
+    const CURRENCY_KEYS = new Set([
+      "year_end_currency", "year_end_cash_value_currency", "gross_payments_currency",
+    ]);
+
     // Map from column key -> dropdown section key
     const COL_DROPDOWN_SECTION = {
       account_type:                  "account_types",
@@ -251,6 +263,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
             cell.value = { formula: `IFERROR(VLOOKUP(${colLetter(nameColIdx)}${row},'Referenced Data'!$A$2:$B$${refDataRows + 1},2,FALSE),"")` };
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
           }
+        } else if (CURRENCY_KEYS.has(col.key) && currencyCodes.length) {
+          cell.dataValidation = {
+            type: "list", allowBlank: true,
+            formulae: [`'Referenced Data'!$F$2:$F$${currencyCodes.length + 1}`],
+            showErrorMessage: false,
+          };
         } else if (COUNTRY_NAME_KEYS.has(col.key)) {
           cell.dataValidation = {
             type: "list", allowBlank: true,
@@ -379,22 +397,32 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     });
 
-    // ── Sheet 4: Referenced Data (country lookup + all dropdown legends)
+    // ── Sheet 4: Referenced Data (country lookup + dropdown legends + currencies)
     const refSheet = workbook.addWorksheet("Referenced Data", { properties: { tabColor: { argb: "FFCBD5E1" } } });
     refSheet.columns = [
       { key: "col_a", width: 40 },
       { key: "col_b", width: 14 },
       { key: "col_c", width: 4 },
       { key: "col_d", width: 50 },
+      { key: "col_e", width: 4 },
+      { key: "col_f", width: 16 },
     ];
     const refHeader = refSheet.getRow(1);
     refHeader.getCell(1).value = "Country Name";
     refHeader.getCell(2).value = "Country Code";
     refHeader.getCell(4).value = "Dropdown Reference Values";
-    [1, 2, 4].forEach(c => styleHeader(refHeader.getCell(c), false));
+    refHeader.getCell(6).value = "Currency Codes";
+    [1, 2, 4, 6].forEach(c => styleHeader(refHeader.getCell(c), false));
     refHeader.height = 24;
     refSheet.views = [{ state: "frozen", ySplit: 1 }];
     refSheet.addRows(countryData.map(c => [c.name, c.code]));
+
+    // Write currency codes into column F (col 6)
+    currencyCodes.forEach((code, i) => {
+      const cell = refSheet.getCell(i + 2, 6);
+      cell.value = code;
+      cell.font = { size: 9 };
+    });
 
     // Write dropdown sections into column D
     let dRow = refDataRows + 3;
