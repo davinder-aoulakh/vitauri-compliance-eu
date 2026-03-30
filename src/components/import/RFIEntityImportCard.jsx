@@ -104,8 +104,49 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     workbook.creator = "CRS Platform";
     workbook.created = new Date();
 
+    // Fetch country data for Referenced Data sheet
+    const crsCountries = await base44.entities.CrsCountryInfo.list("-country_name", 300);
+    const countryData = crsCountries
+      .map(c => ({ name: c.country_name, code: c.country_code }))
+      .filter(c => c.name && c.code)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const refDataRows = countryData.length;
+
     // Use dynamic columns from DB template if available, else defaults
     const columns = getColumnsForFiType(effectiveConfig);
+
+    // Build column index map for VLOOKUP references
+    const colIndexMap = {};
+    columns.forEach((col, i) => { colIndexMap[col.key] = i + 1; });
+
+    const colLetter = (idx) => {
+      let letter = "";
+      while (idx > 0) {
+        const rem = (idx - 1) % 26;
+        letter = String.fromCharCode(65 + rem) + letter;
+        idx = Math.floor((idx - 1) / 26);
+      }
+      return letter;
+    };
+
+    const COUNTRY_NAME_KEYS = new Set([
+      "place_of_birth", "country_of_incorporation", "ah_country", "country_of_residence",
+      "tax1_country", "tax2_country",
+      ...[1,2,3,4].flatMap(n => [
+        `cp${n}_place_of_birth`, `cp${n}_country_of_residence`,
+        `cp${n}_address_country`, `cp${n}_tax_country`,
+      ]),
+    ]);
+
+    const CODE_TO_NAME_KEY = {
+      country_of_incorporation_code: "country_of_incorporation",
+      ...Object.fromEntries([1,2,3,4].flatMap(n => [
+        [`cp${n}_place_of_birth_code`, `cp${n}_place_of_birth`],
+        [`cp${n}_country_of_residence_code`, `cp${n}_country_of_residence`],
+        [`cp${n}_address_country_code`, `cp${n}_address_country`],
+        [`cp${n}_tax_country_code`, `cp${n}_tax_country`],
+      ])),
+    };
 
     // ── Sheet 1: Accounts Data
     const dataSheet = workbook.addWorksheet("Accounts Data", { properties: { tabColor: { argb: "FF10B981" } } });
@@ -120,11 +161,25 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     headerRow.height = 28;
     dataSheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    // Apply dropdowns from column definitions
+    // Apply dropdowns, country dropdowns from ref sheet, and VLOOKUP formulas
     for (let row = 2; row <= 502; row++) {
       columns.forEach((col, colIdx) => {
-        if (col.validation_values?.length) {
-          dataSheet.getCell(row, colIdx + 1).dataValidation = {
+        const cell = dataSheet.getCell(row, colIdx + 1);
+        if (CODE_TO_NAME_KEY[col.key]) {
+          const nameKey = CODE_TO_NAME_KEY[col.key];
+          const nameColIdx = colIndexMap[nameKey];
+          if (nameColIdx) {
+            cell.value = { formula: `IFERROR(VLOOKUP(${colLetter(nameColIdx)}${row},'Referenced Data'!$A$2:$B$${refDataRows + 1},2,FALSE),"")` };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+          }
+        } else if (COUNTRY_NAME_KEYS.has(col.key)) {
+          cell.dataValidation = {
+            type: "list", allowBlank: true,
+            formulae: [`'Referenced Data'!$A$2:$A$${refDataRows + 1}`],
+            showErrorMessage: false,
+          };
+        } else if (col.validation_values?.length) {
+          cell.dataValidation = {
             type: "list", allowBlank: true,
             formulae: [`"${col.validation_values.join(",")}"`],
           };
@@ -143,7 +198,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     });
     exHeaderRow.height = 28;
 
-    // Use example_row from DB if available, else build from column example_value fields
     const exampleRowData = dbTemplate?.example_row || {};
     if (!dbTemplate?.example_row) {
       columns.forEach(col => { exampleRowData[col.key] = col.example_value || ""; });
@@ -173,6 +227,17 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF" } };
       });
     });
+
+    // ── Sheet 4: Referenced Data (country lookup + dropdown legend)
+    const refSheet = workbook.addWorksheet("Referenced Data", { properties: { tabColor: { argb: "FFCBD5E1" } } });
+    refSheet.columns = [{ key: "name", width: 35 }, { key: "code", width: 12 }];
+    const refHeader = refSheet.getRow(1);
+    refHeader.getCell(1).value = "Country Name";
+    refHeader.getCell(2).value = "Country Code";
+    [1, 2].forEach(c => styleHeader(refHeader.getCell(c), false));
+    refHeader.height = 24;
+    refSheet.views = [{ state: "frozen", ySplit: 1 }];
+    refSheet.addRows(countryData.map(c => [c.name, c.code]));
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
