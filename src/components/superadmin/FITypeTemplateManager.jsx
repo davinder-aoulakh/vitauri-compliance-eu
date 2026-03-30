@@ -314,6 +314,54 @@ export default function FITypeTemplateManager() {
       });
     }
 
+    // ── Conditional Formatting: Grey out fields based on Account Holder Type
+    const ahtColIdx = colIndexMap["account_holder_type"];
+    if (ahtColIdx) {
+      const ahtLetter = colLetter(ahtColIdx);
+
+      const INDIVIDUAL_ONLY_KEYS = new Set([
+        "first_name", "last_name", "date_of_birth", "place_of_birth",
+        "account_holder_is_alive", "account_holder_deceased_during_period",
+      ]);
+      const ENTITY_ONLY_KEYS = new Set([
+        "account_holder_name", "date_of_incorporation", "country_of_incorporation",
+        "country_of_incorporation_code", "type_of_financial_institution",
+        "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
+        "gross_income_from_financial_assets", "entity_classification",
+      ]);
+      const CP_KEY_PREFIX_RE = /^cp\d_/;
+
+      const greyFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1D5DB" } };
+      const greyFont = { color: { argb: "FF9CA3AF" }, italic: true };
+
+      columns.forEach((col, colIdx) => {
+        const excelColLetter = colLetter(colIdx + 1);
+        const sqRef = `${excelColLetter}2:${excelColLetter}502`;
+
+        if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
+          dataSheet.addConditionalFormatting({
+            ref: sqRef,
+            rules: [{
+              type: "expression",
+              priority: 1,
+              formulae: [`$${ahtLetter}2="entity"`],
+              style: { fill: greyFill, font: greyFont },
+            }],
+          });
+        } else if (ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key)) {
+          dataSheet.addConditionalFormatting({
+            ref: sqRef,
+            rules: [{
+              type: "expression",
+              priority: 1,
+              formulae: [`$${ahtLetter}2="individual"`],
+              style: { fill: greyFill, font: greyFont },
+            }],
+          });
+        }
+      });
+    }
+
     // Sheet 2: Example
     const exampleSheet = workbook.addWorksheet("Example", { properties: { tabColor: { argb: "FF6366F1" } } });
     exampleSheet.columns = columns.map(c => ({ key: c.key, width: c.width || 20 }));
