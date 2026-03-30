@@ -89,23 +89,9 @@ export default function EntitiesPage() {
       setUser(currentUser);
       
       if (currentUser.tenant_id) {
-        const tenants = await base44.entities.Tenant.list();
-        const userTenant = tenants.find(t => t.id === currentUser.tenant_id);
-        setTenant(userTenant);
-
-        // Add sample data for re-classification testing if not exists
-        const existingEntities = await base44.entities.Entity.filter({ tenant_id: currentUser.tenant_id });
-        if (!existingEntities.some(e => e.entity_name === "ACME Old Entity")) {
-          await base44.entities.Entity.create({
-            tenant_id: currentUser.tenant_id,
-            entity_name: "ACME Old Entity",
-            entity_type: "corporation",
-            country_of_incorporation: "United Kingdom",
-            rfi_status: "reporting_fi",
-            fi_type: "investment_entity",
-            classification_completed_date: "2024-01-15"
-          });
-        }
+      const tenants = await base44.entities.Tenant.list();
+      const userTenant = tenants.find(t => t.id === currentUser.tenant_id);
+      setTenant(userTenant);
       }
     } catch (error) {
       console.error("Error loading user:", error);
@@ -280,16 +266,7 @@ export default function EntitiesPage() {
               <PlayCircle className="w-4 h-4" />
               Page Tour
             </Button>
-            {(tenant?.enabled_features?.ai_bulk_import !== false) && (
-              <Button 
-                onClick={() => setShowBulkImport(true)}
-                variant="outline"
-                className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                AI Import
-              </Button>
-            )}
+
             <Button 
               onClick={() => {
                 setSelectedEntity(null);
