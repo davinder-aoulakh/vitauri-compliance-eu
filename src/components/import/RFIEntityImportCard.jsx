@@ -278,11 +278,33 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     setCurrentStep(3);
   };
 
+  const BOOL_FIELDS = new Set([
+    "is_pre_existing", "account_holder_is_alive", "account_holder_deceased_during_period",
+    "account_closed_during_period", "us_person_indic", "self_certification_obtained",
+    "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
+  ]);
+
+  const parseBool = (v) => ["true", "yes", "1", "y"].includes(String(v).toLowerCase().trim());
+
   const convertToAccount = (row) => {
     const account = { tenant_id: tenant.id, entity_id: entity.id, reportability_status: "pending_review", status: "active" };
+    // Flat CP data extracted per person slot
+    const cpData = { 1: {}, 2: {}, 3: {}, 4: {} };
+
     Object.entries(mappings).forEach(([csvCol, targetField]) => {
       if (!targetField) return;
       const value = row[csvCol];
+      if (!value && value !== 0) return;
+
+      // Controlling person fields: cp1_first_name, cp2_control_type, etc.
+      const cpMatch = targetField.match(/^cp(\d)_(.+)$/);
+      if (cpMatch) {
+        const idx = parseInt(cpMatch[1]);
+        const field = cpMatch[2];
+        if (cpData[idx]) cpData[idx][field] = value;
+        return;
+      }
+
       if (targetField.startsWith("tax_residency")) {
         if (!account.tax_residencies) account.tax_residencies = [];
         const match = targetField.match(/tax_residency_(\d+)_(country|tin)/);
@@ -293,18 +315,46 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         }
       } else if (["year_end_cash_value", "gross_payments"].includes(targetField)) {
         account[targetField] = parseFloat(String(value).replace(/[,$]/g, "")) || 0;
-      } else if (["is_pre_existing", "account_holder_is_alive", "account_holder_deceased_during_period",
-        "account_closed_during_period", "us_person_indic", "self_certification_obtained"].includes(targetField)) {
-        account[targetField] = ["true", "yes", "1", "y"].includes(String(value).toLowerCase().trim());
+      } else if (BOOL_FIELDS.has(targetField)) {
+        account[targetField] = parseBool(value);
       } else {
         account[targetField] = value;
       }
     });
+
     if (account.account_holder_type === "individual" && account.first_name && account.last_name) {
       account.account_holder_name = `${account.first_name} ${account.last_name}`.trim();
     }
     if (account.tax_residencies) account.tax_residencies = account.tax_residencies.filter(t => t?.country);
-    return account;
+
+    // Build controlling person objects from flat cp data
+    const controllingPersons = [];
+    for (let n = 1; n <= 4; n++) {
+      const cp = cpData[n];
+      if (!cp.first_name && !cp.last_name) continue; // skip empty slots
+      const cpRecord = {
+        tenant_id: tenant.id,
+        first_name: cp.first_name || "",
+        last_name: cp.last_name || "",
+        full_name: `${cp.first_name || ""} ${cp.last_name || ""}`.trim(),
+        date_of_birth: cp.date_of_birth || null,
+        place_of_birth: cp.place_of_birth || null,
+        country_of_residence: cp.country_of_residence || null,
+        address: {
+          street: cp.street || "",
+          city: cp.city || "",
+          country: cp.address_country || "",
+        },
+        tax_residencies: cp.tax_country ? [{ country: cp.tax_country, tin: cp.tin || "" }] : [],
+        control_type: cp.control_type || null,
+        ownership_percentage: cp.ownership_percentage ? parseFloat(cp.ownership_percentage) || null : null,
+        self_certification_obtained: cp.self_cert_obtained ? parseBool(cp.self_cert_obtained) : false,
+        self_certification_receipt_date: cp.self_cert_date || null,
+      };
+      controllingPersons.push(cpRecord);
+    }
+
+    return { account, controllingPersons };
   };
 
   const validateRecord = (record) => {
@@ -336,7 +386,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       for (let i = 0; i < dataToImport.length; i++) {
         const rowData = dataToImport[i];
         try {
-          const record = convertToAccount(rowData);
+          const { account: record, controllingPersons } = convertToAccount(rowData);
           const recordName = record.account_holder_name || `Row ${i + 2}`;
           const validationErrors = validateRecord(record);
           if (validationErrors.length > 0) {
@@ -345,13 +395,20 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
             continue;
           }
           const existing = existingMap.get(record.account_number);
+          let savedAccountId;
           if (existing) {
             await base44.entities.Account.update(existing.id, record);
+            savedAccountId = existing.id;
             updated.push({ row: i + 2, name: recordName });
           } else {
             const newRecord = await base44.entities.Account.create(record);
+            savedAccountId = newRecord.id;
             try { await base44.functions.invoke("autoClassifyAccount", { accountId: newRecord.id, event_type: "created" }); } catch (e) { }
             imported.push({ row: i + 2, name: recordName });
+          }
+          // Create controlling person records linked to this account
+          for (const cp of controllingPersons) {
+            await base44.entities.ControllingPerson.create({ ...cp, account_id: savedAccountId });
           }
         } catch (err) {
           failed.push({ row: i + 2, name: `Row ${i + 2}`, error: err.message, type: "database" });

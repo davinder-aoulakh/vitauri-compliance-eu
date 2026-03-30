@@ -470,8 +470,38 @@ export function getColumnsForFiType(config) {
   return getDefaultColumns(config);
 }
 
+const CP_CONTROL_TYPES = [
+  "legal_person_ownership", "legal_person_other_means", "legal_person_senior_managing_official",
+  "trust_settlor", "trust_trustee", "trust_protector", "trust_beneficiary", "trust_other",
+  "legal_arrangement_settlor_equivalent", "legal_arrangement_trustee_equivalent",
+  "legal_arrangement_protector_equivalent", "legal_arrangement_beneficiary_equivalent",
+  "legal_arrangement_other_equivalent"
+];
+
+function cpColumns(n) {
+  const p = `cp${n}`;
+  const label = `Controlling Person ${n}`;
+  return [
+    { header: `${label} - First Name`, key: `${p}_first_name`, width: 22, required: false, note: `First name of controlling person ${n}`, validation_values: null, example_value: n === 1 ? "Jane" : "" },
+    { header: `${label} - Last Name`, key: `${p}_last_name`, width: 22, required: false, note: `Last name of controlling person ${n}`, validation_values: null, example_value: n === 1 ? "Doe" : "" },
+    { header: `${label} - Date of Birth`, key: `${p}_date_of_birth`, width: 20, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: n === 1 ? "1970-03-22" : "" },
+    { header: `${label} - Place of Birth`, key: `${p}_place_of_birth`, width: 22, required: false, note: "Country name", validation_values: null, example_value: n === 1 ? "United Kingdom" : "" },
+    { header: `${label} - Country of Residence`, key: `${p}_country_of_residence`, width: 26, required: false, note: "Country name", validation_values: null, example_value: n === 1 ? "Australia" : "" },
+    { header: `${label} - Address Street`, key: `${p}_street`, width: 26, required: false, note: "", validation_values: null, example_value: n === 1 ? "45 Queen St" : "" },
+    { header: `${label} - Address City`, key: `${p}_city`, width: 20, required: false, note: "", validation_values: null, example_value: n === 1 ? "Sydney" : "" },
+    { header: `${label} - Address Country`, key: `${p}_address_country`, width: 22, required: false, note: "", validation_values: null, example_value: n === 1 ? "Australia" : "" },
+    { header: `${label} - Tax Residency Country`, key: `${p}_tax_country`, width: 26, required: false, note: "Country name", validation_values: null, example_value: n === 1 ? "Australia" : "" },
+    { header: `${label} - TIN`, key: `${p}_tin`, width: 20, required: false, note: "Tax identification number", validation_values: null, example_value: n === 1 ? "987654321" : "" },
+    { header: `${label} - Control Type`, key: `${p}_control_type`, width: 30, required: false, note: "Type of control exercised", validation_values: CP_CONTROL_TYPES, example_value: n === 1 ? "legal_person_ownership" : "" },
+    { header: `${label} - Ownership %`, key: `${p}_ownership_percentage`, width: 20, required: false, note: "e.g. 25.5", validation_values: null, example_value: n === 1 ? "25" : "" },
+    { header: `${label} - Self Cert Obtained`, key: `${p}_self_cert_obtained`, width: 24, required: false, note: "true | false", validation_values: ["true", "false"], example_value: n === 1 ? "true" : "" },
+    { header: `${label} - Self Cert Date`, key: `${p}_self_cert_date`, width: 22, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: n === 1 ? "2024-01-15" : "" },
+  ];
+}
+
 function getDefaultColumns(config) {
   return [
+    // ── Account holder core fields
     { header: "Account Number", key: "account_number", width: 22, required: true, note: "Unique account identifier", validation_values: null, example_value: "ACC-001" },
     { header: "Account Opening Date", key: "account_creation_date", width: 24, required: true, note: "Format: YYYY-MM-DD e.g. 2020-01-15", validation_values: null, example_value: "2020-01-15" },
     { header: "Account Type", key: "account_type", width: 26, required: true, note: config.accountTypeNote, validation_values: config.allowedAccountTypes, example_value: config.exampleAccountType },
@@ -481,29 +511,48 @@ function getDefaultColumns(config) {
     { header: "Account Holder Name (Entity)", key: "account_holder_name", width: 30, required: false, note: "Required if Account Holder Type = entity", validation_values: null, example_value: "" },
     { header: "Date of Birth", key: "date_of_birth", width: 18, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: "1985-06-15" },
     { header: "Place of Birth", key: "place_of_birth", width: 20, required: false, note: "Country name", validation_values: null, example_value: "United States" },
+    // ── Entity-holder specific fields
+    { header: "Date of Incorporation", key: "date_of_incorporation", width: 24, required: false, note: "YYYY-MM-DD. For entity account holders", validation_values: null, example_value: "" },
+    { header: "Country of Incorporation", key: "country_of_incorporation", width: 26, required: false, note: "For entity account holders", validation_values: null, example_value: "" },
+    { header: "Country of Incorporation Code", key: "country_of_incorporation_code", width: 28, required: false, note: "ISO 2-letter code e.g. AU, US", validation_values: null, example_value: "" },
+    { header: "Type of Financial Institution", key: "type_of_financial_institution", width: 28, required: false, note: "If account holder is an FI", validation_values: null, example_value: "" },
+    // ── Account flags
     { header: "Pre-existing Account", key: "is_pre_existing", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Holder Alive", key: "account_holder_is_alive", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "true" },
-    { header: "Deceased During Period", key: "deceased_during_period", width: 24, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Deceased During Period", key: "account_holder_deceased_during_period", width: 24, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Closed During Period", key: "account_closed_during_period", width: 28, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Account Frozen at Reporting Date", key: "account_frozen_at_reporting_date", width: 30, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Account Dormant at Reporting Date", key: "account_dormant_at_reporting_date", width: 30, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Account Holder Address Unchanged", key: "acct_holder_address_unchanged", width: 30, required: false, note: "true | false - unchanged since last period", validation_values: ["true", "false"], example_value: "false" },
+    // ── Address
     { header: "Acct Holder Address - Street", key: "ah_street", width: 28, required: false, note: "", validation_values: null, example_value: "123 Main St" },
     { header: "Acct Holder Address - City", key: "ah_city", width: 22, required: false, note: "", validation_values: null, example_value: "New York" },
     { header: "Acct Holder Address - Country", key: "ah_country", width: 24, required: false, note: "", validation_values: null, example_value: "United States" },
     { header: "Country of Residence", key: "country_of_residence", width: 22, required: false, note: "", validation_values: null, example_value: "United States" },
+    // ── Contact & classification
     { header: "Current Email Address", key: "current_email", width: 28, required: true, note: "Valid email format", validation_values: null, example_value: "john@example.com" },
     { header: "Current Phone Number", key: "current_phone", width: 22, required: true, note: "e.g. +12125551234", validation_values: null, example_value: "+12125551234" },
     { header: "Entity Classification", key: "entity_classification", width: 26, required: false, note: "financial_institution | active_nfe | passive_nfe | not_applicable", validation_values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"], example_value: "not_applicable" },
+    // ── Financial values
     { header: "Year-end Cash Value", key: "year_end_cash_value", width: 22, required: false, note: "Number", validation_values: null, example_value: "50000" },
     { header: "Year-end Currency", key: "year_end_currency", width: 20, required: false, note: "ISO code e.g. USD, AUD", validation_values: null, example_value: "USD" },
     { header: "Gross Payments", key: "gross_payments", width: 18, required: false, note: "Number", validation_values: null, example_value: "5000" },
     { header: "Gross Payments Currency", key: "gross_payments_currency", width: 24, required: false, note: "ISO code", validation_values: null, example_value: "USD" },
     { header: "Reporting Year", key: "reporting_year", width: 18, required: false, note: "YYYY e.g. 2024", validation_values: null, example_value: "2024" },
+    // ── Compliance
     { header: "US Person Indicator", key: "us_person_indic", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Self Certification Obtained", key: "self_cert_obtained", width: 28, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Self Certification Date", key: "self_cert_date", width: 24, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: "" },
     { header: "Account Status", key: "status", width: 18, required: false, note: "active | closed | dormant", validation_values: ["active", "closed", "dormant"], example_value: "active" },
+    // ── Tax residencies
     { header: "Tax Residency 1 - Country", key: "tax1_country", width: 26, required: false, note: "Country name", validation_values: null, example_value: "United States" },
     { header: "Tax Residency 1 - TIN", key: "tax1_tin", width: 22, required: false, note: "Tax identification number", validation_values: null, example_value: "123-45-6789" },
     { header: "Tax Residency 2 - Country", key: "tax2_country", width: 26, required: false, note: "", validation_values: null, example_value: "" },
     { header: "Tax Residency 2 - TIN", key: "tax2_tin", width: 22, required: false, note: "", validation_values: null, example_value: "" },
+    // ── Controlling Persons (CP1–CP4, flat columns)
+    ...cpColumns(1),
+    ...cpColumns(2),
+    ...cpColumns(3),
+    ...cpColumns(4),
   ];
 }

@@ -12,6 +12,32 @@ import {
 } from "@/components/ui/select";
 import { Sparkles, Check, AlertTriangle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 
+// Generate CP field descriptors for N controlling persons
+function buildCPFields(count) {
+  const fields = [];
+  for (let n = 1; n <= count; n++) {
+    const p = `cp${n}`;
+    const label = `CP${n}`;
+    fields.push(
+      { name: `${p}_first_name`, label: `${label} First Name`, required: false },
+      { name: `${p}_last_name`, label: `${label} Last Name`, required: false },
+      { name: `${p}_date_of_birth`, label: `${label} Date of Birth`, required: false },
+      { name: `${p}_place_of_birth`, label: `${label} Place of Birth`, required: false },
+      { name: `${p}_country_of_residence`, label: `${label} Country of Residence`, required: false },
+      { name: `${p}_street`, label: `${label} Address Street`, required: false },
+      { name: `${p}_city`, label: `${label} Address City`, required: false },
+      { name: `${p}_address_country`, label: `${label} Address Country`, required: false },
+      { name: `${p}_tax_country`, label: `${label} Tax Residency Country`, required: false },
+      { name: `${p}_tin`, label: `${label} TIN`, required: false },
+      { name: `${p}_control_type`, label: `${label} Control Type`, required: false },
+      { name: `${p}_ownership_percentage`, label: `${label} Ownership %`, required: false },
+      { name: `${p}_self_cert_obtained`, label: `${label} Self Cert Obtained`, required: false },
+      { name: `${p}_self_cert_date`, label: `${label} Self Cert Date`, required: false },
+    );
+  }
+  return fields;
+}
+
 const ACCOUNT_FIELDS = [
   { name: "entity_id", label: "Entity ID", required: true },
   { name: "account_number", label: "Account Number", required: true },
@@ -24,10 +50,17 @@ const ACCOUNT_FIELDS = [
   { name: "account_holder_name", label: "Account Holder Name (Entity)", required: false },
   { name: "date_of_birth", label: "Date of Birth", required: false },
   { name: "place_of_birth", label: "Place of Birth", required: false },
+  { name: "date_of_incorporation", label: "Date of Incorporation", required: false },
+  { name: "country_of_incorporation", label: "Country of Incorporation", required: false },
+  { name: "country_of_incorporation_code", label: "Country of Incorporation Code", required: false },
+  { name: "type_of_financial_institution", label: "Type of Financial Institution", required: false },
   { name: "is_pre_existing", label: "Pre-existing Account", required: false },
   { name: "account_holder_is_alive", label: "Account Holder Alive", required: false },
   { name: "account_holder_deceased_during_period", label: "Deceased During Period", required: false },
   { name: "account_closed_during_period", label: "Account Closed During Period", required: false },
+  { name: "account_frozen_at_reporting_date", label: "Account Frozen at Reporting Date", required: false },
+  { name: "account_dormant_at_reporting_date", label: "Account Dormant at Reporting Date", required: false },
+  { name: "acct_holder_address_unchanged", label: "Account Holder Address Unchanged", required: false },
   { name: "death_certificate_requested", label: "Death Certificate Requested", required: false },
   { name: "death_certificate_requested_date", label: "Death Certificate Requested Date", required: false },
   { name: "death_certificate_received", label: "Death Certificate Received", required: false },
@@ -68,6 +101,7 @@ const ACCOUNT_FIELDS = [
   { name: "tax_residency_1_tin", label: "Tax Residency 1 - TIN", required: false },
   { name: "tax_residency_2_country", label: "Tax Residency 2 - Country", required: false },
   { name: "tax_residency_2_tin", label: "Tax Residency 2 - TIN", required: false },
+  ...buildCPFields(4),
 ];
 
 const ENTITY_FIELDS = [
@@ -142,7 +176,30 @@ export default function AIFieldMapper({
       'tax residency 1 - tin': 'tax_residency_1_tin',
       'tax residency 2 - country': 'tax_residency_2_country',
       'tax residency 2 - tin': 'tax_residency_2_tin',
+      // New account fields
+      'date of incorporation': 'date_of_incorporation',
+      'country of incorporation': 'country_of_incorporation',
+      'country of incorporation code': 'country_of_incorporation_code',
+      'type of financial institution': 'type_of_financial_institution',
+      'account frozen at reporting date': 'account_frozen_at_reporting_date',
+      'account dormant at reporting date': 'account_dormant_at_reporting_date',
+      'account holder address unchanged': 'acct_holder_address_unchanged',
     };
+    // Add CP flat column rules dynamically for CP1–CP4
+    const CP_FIELD_MAP = {
+      'first name': 'first_name', 'last name': 'last_name', 'date of birth': 'date_of_birth',
+      'place of birth': 'place_of_birth', 'country of residence': 'country_of_residence',
+      'address street': 'street', 'address city': 'city', 'address country': 'address_country',
+      'tax residency country': 'tax_country', 'tin': 'tin', 'control type': 'control_type',
+      'ownership %': 'ownership_percentage', 'self cert obtained': 'self_cert_obtained',
+      'self cert date': 'self_cert_date',
+    };
+    for (let n = 1; n <= 4; n++) {
+      const prefix = `controlling person ${n} - `;
+      Object.entries(CP_FIELD_MAP).forEach(([suffix, fieldSuffix]) => {
+        RULES[`${prefix}${suffix}`] = `cp${n}_${fieldSuffix}`;
+      });
+    }
     csvHeaders.forEach(header => {
       const key = header.toLowerCase().trim();
       if (RULES[key]) instant[header] = RULES[key];

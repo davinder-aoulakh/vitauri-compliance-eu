@@ -1,0 +1,137 @@
+{
+  "name": "ControllingPerson",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Reference to the passive NFE account"
+    },
+    "first_name": {
+      "type": "string",
+      "description": "First name of the controlling person"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Last name of the controlling person"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the controlling person (legacy field)"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date"
+    },
+    "place_of_birth": {
+      "type": "string",
+      "description": "Country of birth of the controlling person"
+    },
+    "place_of_birth_code": {
+      "type": "string",
+      "description": "ISO country code for place of birth"
+    },
+    "country_of_residence": {
+      "type": "string",
+      "description": "Country of residence of the controlling person"
+    },
+    "country_of_residence_code": {
+      "type": "string",
+      "description": "ISO country code for country of residence"
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
+    },
+    "tax_residencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "tin": {
+            "type": "string"
+          },
+          "tin_unavailable_reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "control_type": {
+      "type": "string",
+      "enum": [
+        "legal_person_ownership",
+        "legal_person_other_means",
+        "legal_person_senior_managing_official",
+        "trust_settlor",
+        "trust_trustee",
+        "trust_protector",
+        "trust_beneficiary",
+        "trust_other",
+        "legal_arrangement_settlor_equivalent",
+        "legal_arrangement_trustee_equivalent",
+        "legal_arrangement_protector_equivalent",
+        "legal_arrangement_beneficiary_equivalent",
+        "legal_arrangement_other_equivalent"
+      ],
+      "description": "Type of control exercised by the controlling person"
+    },
+    "ownership_percentage": {
+      "type": "number",
+      "description": "Percentage of ownership if applicable"
+    },
+    "self_certification_obtained": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether self-certification has been obtained"
+    },
+    "self_certification_receipt_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date self-certification was received"
+    },
+    "is_reportable": {
+      "type": "boolean",
+      "description": "Whether this controlling person is reportable (foreign tax resident)"
+    },
+    "us_person_indic": {
+      "type": "boolean",
+      "description": "Indicates US status if applicable per FATCA"
+    },
+    "self_certification_request_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when a new self-certification was requested"
+    },
+    "self_certification_overdue": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if 90 days have passed since self_certification_request_date and no new self-certification received"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "account_id"
+  ]
+}
