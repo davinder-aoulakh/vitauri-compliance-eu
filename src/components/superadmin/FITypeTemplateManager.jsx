@@ -352,48 +352,47 @@ export default function FITypeTemplateManager() {
       });
     });
 
-    // Sheet 4: Referenced Data (country lookup table)
+    // Sheet 4: Referenced Data (country lookup + all dropdown sections in col D)
+    const DROPDOWN_SECTIONS = [
+      { label: "Account Types",                   values: config.allowedAccountTypes },
+      { label: "Account Holder Types",             values: ["individual", "entity"] },
+      { label: "Entity Classification",            values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
+      { label: "Account Status",                   values: ["active", "closed", "dormant"] },
+      { label: "Boolean Fields (true / false)",    values: ["true", "false"] },
+      { label: "Controlling Person Control Types", values: CP_CONTROL_TYPES },
+    ];
+
     const refSheet = workbook.addWorksheet("Referenced Data", { properties: { tabColor: { argb: "FFCBD5E1" } } });
     refSheet.columns = [
-      { key: "name", width: 35 },
-      { key: "code", width: 12 },
+      { key: "col_a", width: 40 },
+      { key: "col_b", width: 14 },
+      { key: "col_c", width: 4 },
+      { key: "col_d", width: 50 },
     ];
-    // Header row
     const refHeader = refSheet.getRow(1);
     refHeader.getCell(1).value = "Country Name";
     refHeader.getCell(2).value = "Country Code";
-    [1, 2].forEach(c => {
-      styleHeader(refHeader.getCell(c), false);
-    });
+    refHeader.getCell(4).value = "Dropdown Reference Values";
+    [1, 2, 4].forEach(c => styleHeader(refHeader.getCell(c), false));
     refHeader.height = 24;
     refSheet.views = [{ state: "frozen", ySplit: 1 }];
-
-    // Dropdown legend rows
     refSheet.addRows(countryData.map(c => [c.name, c.code]));
 
-    // Also add a section for other dropdown values (account type, entity classification, etc.)
-    const DROPDOWN_LEGEND = [
-      { label: "Account Types", values: ["depository", "custodial", "equity_debt_interest", "cash_value_insurance", "annuity"] },
-      { label: "Account Holder Types", values: ["individual", "entity"] },
-      { label: "Entity Classification", values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
-      { label: "Account Status", values: ["active", "closed", "dormant"] },
-      { label: "Boolean Fields (true/false)", values: ["true", "false"] },
-      { label: "Control Types", values: CP_CONTROL_TYPES },
-    ];
-
-    // Leave a gap then write legend
-    let legendRow = refDataRows + 3;
-    DROPDOWN_LEGEND.forEach(({ label, values }) => {
-      const headCell = refSheet.getCell(legendRow, 1);
-      headCell.value = label;
-      headCell.font = { bold: true, color: { argb: "FF1E3A5F" } };
-      headCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E7FF" } };
-      legendRow++;
-      values.forEach(v => {
-        refSheet.getCell(legendRow, 1).value = v;
-        legendRow++;
+    // Write dropdown sections into column D
+    let dRow = refDataRows + 3;
+    DROPDOWN_SECTIONS.forEach(section => {
+      const labelCell = refSheet.getCell(dRow, 4);
+      labelCell.value = `── ${section.label}`;
+      labelCell.font = { bold: true, color: { argb: "FF1E3A5F" }, size: 9 };
+      labelCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E7FF" } };
+      dRow++;
+      section.values.forEach(v => {
+        const vc = refSheet.getCell(dRow, 4);
+        vc.value = v;
+        vc.font = { size: 9 };
+        dRow++;
       });
-      legendRow++; // blank row between sections
+      dRow++; // blank separator
     });
 
     const buffer = await workbook.xlsx.writeBuffer();

@@ -178,6 +178,15 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
             formulae: [`'Referenced Data'!$A$2:$A$${refDataRows + 1}`],
             showErrorMessage: false,
           };
+        } else if (COL_DROPDOWN_SECTION[col.key]) {
+          const range = dropdownRanges[COL_DROPDOWN_SECTION[col.key]];
+          if (range) {
+            cell.dataValidation = {
+              type: "list", allowBlank: true,
+              formulae: [`'Referenced Data'!$D$${range.start}:$D$${range.end}`],
+              showErrorMessage: false,
+            };
+          }
         } else if (col.validation_values?.length) {
           cell.dataValidation = {
             type: "list", allowBlank: true,
@@ -228,16 +237,90 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     });
 
-    // ── Sheet 4: Referenced Data (country lookup + dropdown legend)
+    // ── Define all dropdown sections (used for both validation ranges and the legend)
+    const DROPDOWN_SECTIONS = [
+      { key: "account_types",        label: "Account Types",                  values: effectiveConfig.allowedAccountTypes },
+      { key: "account_holder_types", label: "Account Holder Types",           values: ["individual", "entity"] },
+      { key: "entity_class",         label: "Entity Classification",          values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
+      { key: "account_status",       label: "Account Status",                 values: ["active", "closed", "dormant"] },
+      { key: "boolean",              label: "Boolean Fields (true / false)",  values: ["true", "false"] },
+      { key: "control_types",        label: "Controlling Person Control Types", values: [
+        "legal_person_ownership", "legal_person_other_means", "legal_person_senior_managing_official",
+        "trust_settlor", "trust_trustee", "trust_protector", "trust_beneficiary", "trust_other",
+        "legal_arrangement_settlor_equivalent", "legal_arrangement_trustee_equivalent",
+        "legal_arrangement_protector_equivalent", "legal_arrangement_beneficiary_equivalent",
+        "legal_arrangement_other_equivalent"
+      ]},
+    ];
+
+    // Pre-compute where each dropdown section starts in column D of the ref sheet
+    // Layout: row 1 = country header, rows 2..refDataRows+1 = countries
+    // Then gap of 2 rows, then each section: 1 label row + N value rows + 1 blank row
+    const dropdownRanges = {};
+    let sectionStartRow = refDataRows + 3; // +1 for header, +1 for data, +1 gap row
+    DROPDOWN_SECTIONS.forEach(section => {
+      dropdownRanges[section.key] = {
+        start: sectionStartRow + 1, // +1 to skip the section label row
+        end: sectionStartRow + section.values.length,
+      };
+      sectionStartRow += section.values.length + 2; // label + values + blank
+    });
+
+    // Map from column key -> dropdown section key (for non-country dropdowns)
+    const COL_DROPDOWN_SECTION = {
+      account_type:         "account_types",
+      account_holder_type:  "account_holder_types",
+      entity_classification:"entity_class",
+      status:               "account_status",
+      is_pre_existing:      "boolean",
+      account_holder_is_alive: "boolean",
+      account_holder_deceased_during_period: "boolean",
+      account_closed_during_period: "boolean",
+      account_frozen_at_reporting_date: "boolean",
+      account_dormant_at_reporting_date: "boolean",
+      acct_holder_address_unchanged: "boolean",
+      us_person_indic: "boolean",
+      self_cert_obtained: "boolean",
+      self_certification_obtained: "boolean",
+      ...(Object.fromEntries([1,2,3,4].flatMap(n => [
+        [`cp${n}_control_type`,      "control_types"],
+        [`cp${n}_self_cert_obtained`,"boolean"],
+      ]))),
+    };
+
+    // ── Sheet 4: Referenced Data (country lookup + all dropdown legends)
     const refSheet = workbook.addWorksheet("Referenced Data", { properties: { tabColor: { argb: "FFCBD5E1" } } });
-    refSheet.columns = [{ key: "name", width: 35 }, { key: "code", width: 12 }];
+    refSheet.columns = [
+      { key: "col_a", width: 40 },
+      { key: "col_b", width: 14 },
+      { key: "col_c", width: 4 },
+      { key: "col_d", width: 50 },
+    ];
     const refHeader = refSheet.getRow(1);
     refHeader.getCell(1).value = "Country Name";
     refHeader.getCell(2).value = "Country Code";
-    [1, 2].forEach(c => styleHeader(refHeader.getCell(c), false));
+    refHeader.getCell(4).value = "Dropdown Reference Values";
+    [1, 2, 4].forEach(c => styleHeader(refHeader.getCell(c), false));
     refHeader.height = 24;
     refSheet.views = [{ state: "frozen", ySplit: 1 }];
     refSheet.addRows(countryData.map(c => [c.name, c.code]));
+
+    // Write dropdown sections into column D
+    let dRow = refDataRows + 3;
+    DROPDOWN_SECTIONS.forEach(section => {
+      const labelCell = refSheet.getCell(dRow, 4);
+      labelCell.value = `── ${section.label}`;
+      labelCell.font = { bold: true, color: { argb: "FF1E3A5F" }, size: 9 };
+      labelCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E7FF" } };
+      dRow++;
+      section.values.forEach(v => {
+        const vc = refSheet.getCell(dRow, 4);
+        vc.value = v;
+        vc.font = { size: 9 };
+        dRow++;
+      });
+      dRow++; // blank separator
+    });
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
