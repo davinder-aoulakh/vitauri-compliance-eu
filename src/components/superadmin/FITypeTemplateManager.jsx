@@ -423,6 +423,8 @@ export default function FITypeTemplateManager() {
       { label: "Entity Classification",            values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
       { label: "Account Status",                   values: ["active", "closed", "dormant"] },
       { label: "Boolean Fields (true / false)",    values: ["true", "false"] },
+      { label: "Type of Financial Institution",    values: FI_INSTITUTION_TYPES },
+      { label: "Type of Entity",                   values: ENTITY_TYPES },
       { label: "Controlling Person Control Types", values: CP_CONTROL_TYPES },
     ];
 
@@ -652,6 +654,31 @@ const CP_CONTROL_TYPES = [
   "legal_arrangement_other_equivalent"
 ];
 
+const FI_INSTITUTION_TYPES = [
+  "Depository",
+  "Specialized Insurance",
+  "Investment Entity Type A",
+  "Investment Entity Type B",
+  "Custodial",
+];
+
+const ENTITY_TYPES = [
+  "Naamloze Vennootschap (N.V.) (Limited Liability Company)",
+  "Besloten Vennootschap (B.V.) (Private Limited Liability Company)",
+  "N.V. or B.V. acting with one 100% shareholder/director (100% DGA)",
+  "Stichting (Foundation) or other Non-Profit Organization",
+  "Stichting Particulier Fonds (SPF) (Private Foundation)",
+  "Stichting Administratiekantoor (STAK)",
+  "Curaçao Trust Arrangement",
+  "Holding Company",
+  "Treasury Center",
+  "Partnership",
+  "Real Estate Fund",
+  "Vereniging met rechtspersoonlijkheid (Association with corporate capacity)",
+  "Cooperatie (Cooperation)",
+  "Onderlinge Waarborgmaatschappij (Mutual Guarantee Company)",
+];
+
 function cpColumns(n) {
   const p = `cp${n}`;
   const label = `Controlling Person ${n}`;
@@ -692,8 +719,8 @@ function getDefaultColumns(config) {
     { header: "Account Type", key: "account_type", width: 26, required: true, note: config.accountTypeNote, validation_values: config.allowedAccountTypes, example_value: config.exampleAccountType },
     { header: "Account Holder Type", key: "account_holder_type", width: 24, required: true, note: "individual | entity", validation_values: ["individual", "entity"], example_value: "individual" },
     // ── Entity-only fields (greyed for individual)
-    { header: "Type of Financial Institution", key: "type_of_financial_institution", width: 28, required: false, note: "If account holder is an FI", validation_values: null, example_value: "" },
-    { header: "Type of Entity", key: "account_holder_entity_type", width: 30, required: false, note: "Legal entity type e.g. Corporation, Trust, Partnership", validation_values: null, example_value: "" },
+    { header: "Type of Financial Institution", key: "type_of_financial_institution", width: 30, required: false, note: "If account holder is an FI", validation_values: FI_INSTITUTION_TYPES, example_value: "" },
+    { header: "Type of Entity", key: "account_holder_entity_type", width: 30, required: false, note: "Legal entity type", validation_values: ENTITY_TYPES, example_value: "" },
     { header: "Account Holder Name (Entity)", key: "account_holder_name", width: 30, required: false, note: "Required if Account Holder Type = entity", validation_values: null, example_value: "" },
     { header: "Date of Incorporation", key: "date_of_incorporation", width: 24, required: false, note: "YYYY-MM-DD. For entity account holders", validation_values: null, example_value: "" },
     { header: "Country of Incorporation", key: "country_of_incorporation", width: 26, required: false, note: "For entity account holders", validation_values: null, example_value: "" },
