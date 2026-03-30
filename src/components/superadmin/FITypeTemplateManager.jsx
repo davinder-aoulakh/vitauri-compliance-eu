@@ -212,6 +212,13 @@ export default function FITypeTemplateManager() {
     workbook.creator = "CRS Platform";
     workbook.created = new Date();
 
+    // Fetch country data for Referenced Data sheet
+    const crsCountries = await base44.entities.CrsCountryInfo.list("-country_name", 300);
+    const countryData = crsCountries
+      .map(c => ({ name: c.country_name, code: c.country_code }))
+      .filter(c => c.name && c.code)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     const styleHeader = (cell, required = false) => {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: required ? "FF1E3A5F" : "FF334155" } };
       cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
@@ -221,6 +228,42 @@ export default function FITypeTemplateManager() {
 
     // Use DB column_definitions if available, else use defaults
     const columns = getColumnsForFiType(config);
+
+    // Build a map of column key -> 1-based column index for VLOOKUP references
+    const colIndexMap = {};
+    columns.forEach((col, i) => { colIndexMap[col.key] = i + 1; });
+
+    // Helper to get Excel column letter from 1-based index
+    const colLetter = (idx) => {
+      let letter = "";
+      while (idx > 0) {
+        const rem = (idx - 1) % 26;
+        letter = String.fromCharCode(65 + rem) + letter;
+        idx = Math.floor((idx - 1) / 26);
+      }
+      return letter;
+    };
+
+    // Fields that should use the country name dropdown from Referenced Data sheet
+    const COUNTRY_NAME_KEYS = new Set([
+      "place_of_birth", "country_of_incorporation", "ah_country", "country_of_residence",
+      "tax1_country", "tax2_country",
+      ...([1,2,3,4].flatMap(n => [
+        `cp${n}_place_of_birth`, `cp${n}_country_of_residence`,
+        `cp${n}_address_country`, `cp${n}_tax_country`,
+      ])),
+    ]);
+
+    // Map from a country-code column key -> the corresponding country-name column key
+    const CODE_TO_NAME_KEY = {
+      country_of_incorporation_code: "country_of_incorporation",
+      ...Object.fromEntries([1,2,3,4].flatMap(n => [
+        [`cp${n}_place_of_birth_code`, `cp${n}_place_of_birth`],
+        [`cp${n}_country_of_residence_code`, `cp${n}_country_of_residence`],
+        [`cp${n}_address_country_code`, `cp${n}_address_country`],
+        [`cp${n}_tax_country_code`, `cp${n}_tax_country`],
+      ])),
+    };
 
     // Sheet 1: Data
     const dataSheet = workbook.addWorksheet("Accounts Data", { properties: { tabColor: { argb: "FF10B981" } } });
@@ -235,11 +278,35 @@ export default function FITypeTemplateManager() {
     headerRow.height = 28;
     dataSheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    // Apply dropdowns from column definitions
+    // Apply dropdowns, country dropdowns from ref sheet, and VLOOKUP formulas
+    const refDataRows = countryData.length;
     for (let row = 2; row <= 502; row++) {
       columns.forEach((col, colIdx) => {
-        if (col.validation_values?.length) {
-          dataSheet.getCell(row, colIdx + 1).dataValidation = {
+        const cell = dataSheet.getCell(row, colIdx + 1);
+
+        // Country code columns: insert VLOOKUP formula
+        if (CODE_TO_NAME_KEY[col.key]) {
+          const nameKey = CODE_TO_NAME_KEY[col.key];
+          const nameColIdx = colIndexMap[nameKey];
+          if (nameColIdx) {
+            const nameLetter = colLetter(nameColIdx);
+            cell.value = {
+              formula: `IFERROR(VLOOKUP(${nameLetter}${row},'Referenced Data'!$A$2:$B$${refDataRows + 1},2,FALSE),"")`,
+            };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+          }
+        }
+        // Country name columns: dropdown from Referenced Data sheet
+        else if (COUNTRY_NAME_KEYS.has(col.key)) {
+          cell.dataValidation = {
+            type: "list", allowBlank: true,
+            formulae: [`'Referenced Data'!$A$2:$A$${refDataRows + 1}`],
+            showErrorMessage: false,
+          };
+        }
+        // Other static dropdowns
+        else if (col.validation_values?.length) {
+          cell.dataValidation = {
             type: "list", allowBlank: true,
             formulae: [`"${col.validation_values.join(",")}"`],
           };
@@ -267,7 +334,7 @@ export default function FITypeTemplateManager() {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
     });
 
-    // Sheet 3: Entity Info
+    // Sheet 3: Template Info
     const infoSheet = workbook.addWorksheet("Template Info", { properties: { tabColor: { argb: "FF4F46E5" } } });
     infoSheet.columns = [{ key: "key", width: 30 }, { key: "value", width: 50 }];
     [
@@ -283,6 +350,50 @@ export default function FITypeTemplateManager() {
       row.eachCell(cell => {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF" } };
       });
+    });
+
+    // Sheet 4: Referenced Data (country lookup table)
+    const refSheet = workbook.addWorksheet("Referenced Data", { properties: { tabColor: { argb: "FFCBD5E1" } } });
+    refSheet.columns = [
+      { key: "name", width: 35 },
+      { key: "code", width: 12 },
+    ];
+    // Header row
+    const refHeader = refSheet.getRow(1);
+    refHeader.getCell(1).value = "Country Name";
+    refHeader.getCell(2).value = "Country Code";
+    [1, 2].forEach(c => {
+      styleHeader(refHeader.getCell(c), false);
+    });
+    refHeader.height = 24;
+    refSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    // Dropdown legend rows
+    refSheet.addRows(countryData.map(c => [c.name, c.code]));
+
+    // Also add a section for other dropdown values (account type, entity classification, etc.)
+    const DROPDOWN_LEGEND = [
+      { label: "Account Types", values: ["depository", "custodial", "equity_debt_interest", "cash_value_insurance", "annuity"] },
+      { label: "Account Holder Types", values: ["individual", "entity"] },
+      { label: "Entity Classification", values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
+      { label: "Account Status", values: ["active", "closed", "dormant"] },
+      { label: "Boolean Fields (true/false)", values: ["true", "false"] },
+      { label: "Control Types", values: CP_CONTROL_TYPES },
+    ];
+
+    // Leave a gap then write legend
+    let legendRow = refDataRows + 3;
+    DROPDOWN_LEGEND.forEach(({ label, values }) => {
+      const headCell = refSheet.getCell(legendRow, 1);
+      headCell.value = label;
+      headCell.font = { bold: true, color: { argb: "FF1E3A5F" } };
+      headCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E7FF" } };
+      legendRow++;
+      values.forEach(v => {
+        refSheet.getCell(legendRow, 1).value = v;
+        legendRow++;
+      });
+      legendRow++; // blank row between sections
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
