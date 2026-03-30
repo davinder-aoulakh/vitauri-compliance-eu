@@ -265,8 +265,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       // CP fields → grey out when type = "individual"
       const CP_KEY_PREFIX_RE = /^cp\d_/;
 
-      const greyFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1D5DB" } };
-      const greyFont = { color: { argb: "FF9CA3AF" }, italic: true };
+      const greyFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+      const greyFont = { color: { argb: "FFFFFFFF" }, italic: true };
 
       columns.forEach((col, colIdx) => {
         const excelColLetter = colLetter(colIdx + 1);
