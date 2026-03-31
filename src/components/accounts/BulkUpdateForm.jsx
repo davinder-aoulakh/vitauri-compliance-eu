@@ -72,6 +72,21 @@ export default function BulkUpdateForm({ selectedAccounts, onUpdate, onCancel, i
       key: "year_end_cash_value_currency",
       label: "Currency",
       type: "text"
+    },
+    {
+      key: "reportability_reason",
+      label: "Reportability Reason",
+      type: "text"
+    },
+    {
+      key: "current_email",
+      label: "Current Email",
+      type: "text"
+    },
+    {
+      key: "current_phone",
+      label: "Current Phone",
+      type: "text"
     }
   ];
 

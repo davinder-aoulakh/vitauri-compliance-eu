@@ -20,11 +20,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 import ControllingPersonDetails from "./ControllingPersonDetails";
 import ControllingPersonClassificationHistory from "./ControllingPersonClassificationHistory";
+import ControllingPersonBulkUpdateForm from "./ControllingPersonBulkUpdateForm";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 
 export default function ControllingPersonsList({ account, onUpdateCount }) {
@@ -37,6 +39,9 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [showHistory, setShowHistory] = useState(false);
   const [historyPerson, setHistoryPerson] = useState(null);
   const [entity, setEntity] = useState(null);
+  const [selectedPersonIds, setSelectedPersonIds] = useState([]);
+  const [showBulkUpdate, setShowBulkUpdate] = useState(false);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: controllingPersons = [], isLoading } = useQuery({
@@ -116,6 +121,36 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
   const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this controlling person?")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleSelectPerson = (personId) => {
+    setSelectedPersonIds(prev =>
+      prev.includes(personId) ? prev.filter(id => id !== personId) : [...prev, personId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPersonIds.length === controllingPersons.length) {
+      setSelectedPersonIds([]);
+    } else {
+      setSelectedPersonIds(controllingPersons.map(p => p.id));
+    }
+  };
+
+  const handleBulkUpdate = async (field, value) => {
+    setBulkUpdating(true);
+    try {
+      await Promise.all(selectedPersonIds.map(id =>
+        base44.entities.ControllingPerson.update(id, { [field]: value })
+      ));
+      queryClient.invalidateQueries(['controlling-persons', account?.id]);
+      setShowBulkUpdate(false);
+      setSelectedPersonIds([]);
+    } catch (err) {
+      alert("Error updating controlling persons: " + err.message);
+    } finally {
+      setBulkUpdating(false);
     }
   };
 
@@ -275,16 +310,28 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                 Individuals who exercise control over the entity ({">"}25% ownership or senior management)
               </CardDescription>
             </div>
-            <Button
-              onClick={() => {
-                setSelectedPerson(null);
-                setShowForm(true);
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Controlling Person
-            </Button>
+            <div className="flex gap-2">
+              {selectedPersonIds.length > 0 && (
+                <Button
+                  onClick={() => setShowBulkUpdate(true)}
+                  variant="outline"
+                  className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Bulk Update ({selectedPersonIds.length})
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  setSelectedPerson(null);
+                  setShowForm(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Controlling Person
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-6">
@@ -346,6 +393,12 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50/50">
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedPersonIds.length === controllingPersons.length && controllingPersons.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Date of Birth</TableHead>
                     <TableHead>Control Type</TableHead>
@@ -357,6 +410,12 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                 <TableBody>
                   {controllingPersons.map((person) => (
                     <TableRow key={person.id} className="hover:bg-slate-50/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedPersonIds.includes(person.id)}
+                          onCheckedChange={() => handleSelectPerson(person.id)}
+                        />
+                      </TableCell>
                       <TableCell>
                        <div className="flex items-center gap-3">
                          <div>
@@ -554,6 +613,21 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
           <ControllingPersonDetails 
             controllingPerson={detailsPerson} 
             account={account}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Update Dialog */}
+      <Dialog open={showBulkUpdate} onOpenChange={setShowBulkUpdate}>
+        <DialogContent className="max-w-xl" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Bulk Update Controlling Persons</DialogTitle>
+          </DialogHeader>
+          <ControllingPersonBulkUpdateForm
+            selectedPersons={controllingPersons.filter(p => selectedPersonIds.includes(p.id))}
+            onUpdate={handleBulkUpdate}
+            onCancel={() => setShowBulkUpdate(false)}
+            isLoading={bulkUpdating}
           />
         </DialogContent>
       </Dialog>
