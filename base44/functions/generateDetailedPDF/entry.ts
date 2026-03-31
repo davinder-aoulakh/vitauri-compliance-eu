@@ -67,34 +67,59 @@ Deno.serve(async (req) => {
       yPos -= 10;
     }
 
-    // Summary Statistics
+    // Summary Statistics - Card Style
     if (summary && report.summary_stats) {
-      page.drawText('Summary Statistics', {
-        x: marginLeft,
-        y: yPos,
-        size: 14,
-        color: darkColor,
-        font: helveticaBold
-      });
-      yPos -= 18;
-
-      const stats = [
-        `Total Reportable Accounts: ${report.summary_stats.total_reportable_accounts || 0}`,
-        `Total Controlling Persons: ${report.summary_stats.total_controlling_persons || 0}`,
-        `Total Account Balance: $${(report.summary_stats.total_account_balance || 0).toLocaleString()}`
+      const cardWidth = 110;
+      const cardHeight = 50;
+      const cardSpacing = 15;
+      const colors = [
+        rgb(0.4, 0.5, 0.9), // Blue
+        rgb(0.6, 0.4, 0.8), // Purple
+        rgb(0.2, 0.8, 0.4), // Green
+        rgb(1.0, 0.65, 0.2)  // Orange
       ];
 
-      for (const stat of stats) {
-        page.drawText(stat, {
-          x: marginLeft + 10,
-          y: yPos,
-          size: 10,
+      const stats = [
+        { label: 'Reportable Accounts', value: report.summary_stats.total_reportable_accounts || 0 },
+        { label: 'Controlling Persons', value: report.summary_stats.total_controlling_persons || 0 },
+        { label: 'Total Balance', value: `$${(report.summary_stats.total_account_balance || 0) > 1000000 ? (report.summary_stats.total_account_balance / 1000000).toFixed(1) + 'M' : '$' + (report.summary_stats.total_account_balance || 0).toLocaleString()}` },
+        { label: 'Jurisdictions', value: report.summary_stats.jurisdictions_reported?.length || 1 }
+      ];
+
+      let xPos = marginLeft;
+      for (let i = 0; i < stats.length; i++) {
+        // Card background
+        page.drawRectangle({
+          x: xPos,
+          y: yPos - cardHeight,
+          width: cardWidth,
+          height: cardHeight,
+          color: rgb(0.95, 0.95, 0.97),
+          borderColor: rgb(0.9, 0.9, 0.95),
+          borderWidth: 1
+        });
+
+        // Value (large)
+        page.drawText(String(stats[i].value), {
+          x: xPos + 8,
+          y: yPos - 25,
+          size: 16,
+          color: colors[i],
+          font: helveticaBold
+        });
+
+        // Label
+        page.drawText(stats[i].label, {
+          x: xPos + 8,
+          y: yPos - 38,
+          size: 8,
           color: textColor,
           font: helvetica
         });
-        yPos -= 12;
+
+        xPos += cardWidth + cardSpacing;
       }
-      yPos -= 10;
+      yPos -= cardHeight + 20;
     }
 
     // Accounts Table
