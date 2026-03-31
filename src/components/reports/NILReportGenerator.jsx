@@ -60,8 +60,7 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
   <crs:CrsBody>
     <crs:ReportingFI>
       <crs:ResCountryCode>CW</crs:ResCountryCode>
-      ${entity?.giin ? `<crs:IN INType="GIIN">${escapeXML(entity.giin)}</crs:IN>` : ''}
-      <crs:TIN>${escapeXML(entity?.tax_id || 'UNKNOWN')}</crs:TIN>
+      <crs:TIN IssuedBy="${entity?.is_ffi ? 'US' : 'CW'}">${escapeXML(entity?.is_ffi ? entity?.giin : entity?.tax_id)}</crs:TIN>
       <crs:Name>${escapeXML(entity?.entity_name || 'Unknown Entity')}</crs:Name>
       ${entity?.address ? `
       <crs:Address>

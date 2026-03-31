@@ -173,6 +173,18 @@ export default function XMLGenerator({ report, onSuccess }) {
       throw new Error('Cannot generate XML: CRIB number (tax_id) is missing for the Reporting FI. This is required as SendingCompanyIN.');
     }
 
+    // GAP 8: TIN logic — FFI uses GIIN (IssuedBy=US), non-FFI uses CRIB (IssuedBy=CW)
+    const isFfi = entity?.is_ffi === true;
+    const tinValue = isFfi ? entity?.giin : cribNumber;
+    const tinIssuedBy = isFfi ? 'US' : 'CW';
+    if (!tinValue) {
+      throw new Error(
+        isFfi
+          ? 'Cannot generate XML: GIIN is missing for this FFI ReportingFI. Set entity.giin to proceed.'
+          : 'Cannot generate XML: CRIB number (tax_id) is missing for this ReportingFI. Set entity.tax_id to proceed.'
+      );
+    }
+
     // GAP 1: Root element is FATCA_CRS Version="2.0" with FATCA-CRS v2.0 namespaces
     // GAP 2: TransmittingCountry and ReceivingCountry must always be 'CW'
     // GAP 3: MessageType must be 'FATCA-CRS'
@@ -212,9 +224,9 @@ export default function XMLGenerator({ report, onSuccess }) {
   </MessageSpec>
   
   <CrsBody>
-    <ReportingFI>
-      <ResCountryCode>CW</ResCountryCode>
-      <TIN>${escapeXML(cribNumber)}</TIN>
+  <ReportingFI>
+    <ResCountryCode>CW</ResCountryCode>
+    <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
       <Name>${escapeXML(entity.entity_name)}</Name>
       ${entity.address ? `
       <Address>

@@ -1,0 +1,161 @@
+{
+  "name": "Entity",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "entity_name": {
+      "type": "string",
+      "description": "Legal name of the entity"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "corporation",
+        "trust",
+        "partnership",
+        "fund",
+        "branch",
+        "other"
+      ],
+      "description": "Type of legal entity"
+    },
+    "country_of_incorporation": {
+      "type": "string",
+      "description": "Country where entity is legally established"
+    },
+    "tax_id": {
+      "type": "string",
+      "description": "CRIB number (Tax identification number for non-FFI ReportingFIs)"
+    },
+    "is_ffi": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this entity is a Foreign Financial Institution (FFI). If true, GIIN is used as TIN with IssuedBy=US. If false, CRIB (tax_id) is used as TIN with IssuedBy=CW."
+    },
+    "giin": {
+      "type": "string",
+      "description": "Global Intermediary Identification Number (required if is_ffi=true). Used as TIN with IssuedBy='US' for FFI ReportingFIs."
+    },
+    "rfi_status": {
+      "type": "string",
+      "enum": [
+        "pending_classification",
+        "reporting_fi",
+        "non_reporting_fi",
+        "nfe_active",
+        "nfe_passive"
+      ],
+      "default": "pending_classification",
+      "description": "CRS classification status"
+    },
+    "fi_type": {
+      "type": "string",
+      "enum": [
+        "custodial_institution",
+        "depository_institution",
+        "investment_entity",
+        "specified_insurance_company",
+        "not_applicable"
+      ],
+      "description": "Type of Financial Institution if RFI"
+    },
+    "non_reporting_reason": {
+      "type": "string",
+      "description": "Reason if classified as non-reporting FI"
+    },
+    "classification_completed_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "classification_answers": {
+      "type": "object",
+      "description": "Stored answers from RFI determination questionnaire"
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    },
+    "policy_pre_existing_account_status": {
+      "type": "string",
+      "enum": [
+        "pre_existing",
+        "new"
+      ],
+      "description": "Policy decision: treat accounts opened before Dec 31 2015 as pre-existing or new"
+    },
+    "policy_reporting_method": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "xml"
+      ],
+      "description": "Policy decision: preferred reporting method to tax authorities"
+    },
+    "policy_self_certification_not_obtained": {
+      "type": "string",
+      "description": "Policy when self certification is not obtained where requested"
+    },
+    "policy_report_under_threshold": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no"
+      ],
+      "description": "Policy decision: report accounts with aggregated value under USD 250,000"
+    },
+    "policy_dormant_no_contact_period": {
+      "type": "number",
+      "description": "Number of years/months for no contact period to determine dormant status"
+    },
+    "policy_dormant_no_contact_unit": {
+      "type": "string",
+      "enum": [
+        "years",
+        "months"
+      ],
+      "description": "Unit for no contact period (years or months)"
+    },
+    "policy_dormant_status": {
+      "type": "string",
+      "enum": [
+        "paid_up",
+        "lapsed_but_recoverable",
+        "inactive"
+      ],
+      "description": "Policy status for dormant accounts"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "entity_name",
+    "entity_type",
+    "country_of_incorporation"
+  ]
+}
