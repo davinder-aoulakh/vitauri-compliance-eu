@@ -31,6 +31,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -467,15 +468,14 @@ export default function ReportsPage() {
                                   </>
                                 )}
                                 
-                                {report.status === 'draft' && (
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDelete(report.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                   onClick={() => handleDelete(report.id)}
+                                   className="text-red-600"
+                                 >
+                                   <Trash2 className="w-4 h-4 mr-2" />
+                                   Delete Report
+                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
