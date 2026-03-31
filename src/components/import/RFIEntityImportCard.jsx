@@ -502,7 +502,9 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         const values = [];
         row.eachCell({ includeEmpty: true }, cell => {
           let v = cell.value;
-          if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
+          // Skip formula results (VLOOKUP auto-fill cells) — treat as empty
+          if (v && typeof v === "object" && v.formula) v = v.result ?? "";
+          else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
           else if (v instanceof Date) v = v.toISOString().split("T")[0];
           values.push(v == null ? "" : String(v));
@@ -511,7 +513,16 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
       if (rows.length < 2) { setErrors(["No data rows found in the Excel file"]); return; }
       headers = rows[0];
-      data = rows.slice(1).filter(r => r.some(v => v !== "")).map(values => {
+      // Filter out rows where the key identifier columns (account number, account holder type) are all empty
+      // This avoids including the 500 empty template rows that still have formula cells
+      const accountNumberIdx = headers.findIndex(h => h.replace(" *", "").trim().toLowerCase() === "account number");
+      const holderTypeIdx = headers.findIndex(h => h.replace(" *", "").trim().toLowerCase() === "account holder type");
+      data = rows.slice(1).filter(r => {
+        const hasAccountNum = accountNumberIdx >= 0 && r[accountNumberIdx] && r[accountNumberIdx].trim() !== "";
+        const hasHolderType = holderTypeIdx >= 0 && r[holderTypeIdx] && r[holderTypeIdx].trim() !== "";
+        // Row is valid if it has at least one of these key fields
+        return hasAccountNum || hasHolderType;
+      }).map(values => {
         const row = {};
         headers.forEach((h, i) => { row[h] = values[i] || ""; });
         return row;
