@@ -414,7 +414,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           ${cp.tax_residencies && cp.tax_residencies.length > 0 ?
             cp.tax_residencies.map(res => `
           <ResCountryCode>${res.country}</ResCountryCode>
-          ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')}
+          ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : ''}
           `).join('') : ''}
           <Name>
             <FirstName>${escapeXML(cp.first_name || 'NFN')}</FirstName>
