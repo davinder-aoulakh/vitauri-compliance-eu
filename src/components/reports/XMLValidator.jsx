@@ -145,14 +145,14 @@ export default function XMLValidator({
       cat.passed++;
     }
 
-    // Check for MessageSpec
+    // Check for MessageHeader
     results.total_checks++;
-    const messageSpec = getElem(xmlDoc, "MessageSpec");
-    if (!messageSpec) {
+    const messageHeader = getElem(xmlDoc, "MessageHeader");
+    if (!messageHeader) {
       results.errors.push({
         category: VALIDATION_CATEGORIES.STRUCTURE,
         code: "XML003",
-        message: "Missing required element: MessageSpec",
+        message: "Missing required element: MessageHeader",
         severity: "error"
       });
       cat.failed++;
@@ -160,14 +160,14 @@ export default function XMLValidator({
       cat.passed++;
     }
 
-    // Check for CrsBody
+    // Check for MessageBody
     results.total_checks++;
-    const crsBody = getElem(xmlDoc, "CrsBody");
-    if (!crsBody) {
+    const messageBody = getElem(xmlDoc, "MessageBody");
+    if (!messageBody) {
       results.errors.push({
         category: VALIDATION_CATEGORIES.STRUCTURE,
         code: "XML004",
-        message: "Missing required element: CrsBody",
+        message: "Missing required element: MessageBody",
         severity: "error"
       });
       cat.failed++;
