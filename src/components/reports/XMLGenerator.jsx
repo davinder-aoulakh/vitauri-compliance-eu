@@ -401,10 +401,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           }
         }
 
-        // GAP 17: Validate City is present for individual account holders
-        if (account.account_holder_type === 'individual' && account.account_holder_address && !account.account_holder_address.city) {
-          throw new Error(`Account "${account.account_number}": City is mandatory in the account holder address (GAP 17). Please update the account before generating XML.`);
-        }
+
 
         // GAP 18: Validate birth date year range
         if (account.account_holder_type === 'individual' && account.date_of_birth) {
@@ -498,11 +495,7 @@ export default function XMLGenerator({ report, onSuccess }) {
             const cpName = cp.first_name || cp.id;
             throw new Error(`Controlling person "${cpName}" on account "${account.account_holder_name || account.account_number}" is missing a Last Name, which is mandatory for CRS reporting. Please update the record.`);
           }
-          // Validate City is present in controlling person address
-          if (cp.address && !cp.address.city?.trim()) {
-            const cpName = cp.first_name ? `${cp.first_name} ${cp.last_name || ''}`.trim() : (cp.full_name || cp.id);
-            throw new Error(`Controlling person "${cpName}" on account "${account.account_holder_name || account.account_number}": City is mandatory in the address. Please update the record.`);
-          }
+
           const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
           return `
       <ControllingPerson>
@@ -519,19 +512,7 @@ export default function XMLGenerator({ report, onSuccess }) {
             <FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</FirstName>
             <LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</LastName>
           </Name>
-          ${cp.address ? (() => {
-            const cpAddrCountry = normalizeCountryCode(cp.address.country || 'CW');
-            const cpPostCode = sanitizePostalCode(cp.address.postal_code, cpAddrCountry);
-            return `
-          <Address>
-            <CountryCode>${cpAddrCountry}</CountryCode>
-            <AddressFix>
-              ${cp.address.street ? `<Street>${escapeXML(sanitizeText(cp.address.street))}</Street>` : ''}
-              <City>${escapeXML(sanitizeText(cp.address.city || ''))}</City>
-              ${cpPostCode ? `<PostCode>${escapeXML(cpPostCode)}</PostCode>` : ''}
-            </AddressFix>
-          </Address>`;
-          })() : ''}
+          ${buildAddressBlock(cp.address, 'CW')}
           ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
         </Individual>
         <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
@@ -551,7 +532,6 @@ export default function XMLGenerator({ report, onSuccess }) {
       <AccountHolder>
         ${(() => {
           const addrCountry = normalizeCountryCode(account.account_holder_address?.country || 'CW');
-          const postCode = sanitizePostalCode(account.account_holder_address?.postal_code, addrCountry);
           const tinBlocks = (account.tax_residencies || []).map(res => {
             const resCode = normalizeCountryCode(res.country);
             const resTin = res.tin ? sanitizeTIN(res.tin) : null;
@@ -572,15 +552,7 @@ export default function XMLGenerator({ report, onSuccess }) {
             ${account.middle_name ? `<MiddleName>${escapeXML(sanitizeText(account.middle_name))}</MiddleName>` : ''}
             <LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</LastName>
           </Name>
-          ${account.account_holder_address ? `
-          <Address>
-            <CountryCode>${addrCountry}</CountryCode>
-            <AddressFix>
-              ${account.account_holder_address.street ? `<Street>${escapeXML(sanitizeText(account.account_holder_address.street))}</Street>` : ''}
-              <City>${escapeXML(sanitizeText(account.account_holder_address.city || ''))}</City>
-              ${postCode ? `<PostCode>${escapeXML(postCode)}</PostCode>` : ''}
-            </AddressFix>
-          </Address>` : ''}
+          ${buildAddressBlock(account.account_holder_address, 'CW')}
           ${account.date_of_birth ? `<BirthInfo><BirthDate>${account.date_of_birth}</BirthDate></BirthInfo>` : ''}
           <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
         </Individual>`;
@@ -590,15 +562,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           <ResCountryCode>${addrCountry}</ResCountryCode>
           ${tinBlocks}
           <Name>${escapeXML(sanitizeText(account.account_holder_name))}</Name>
-          ${account.account_holder_address ? `
-          <Address>
-            <CountryCode>${addrCountry}</CountryCode>
-            <AddressFix>
-              ${account.account_holder_address.street ? `<Street>${escapeXML(sanitizeText(account.account_holder_address.street))}</Street>` : ''}
-              <City>${escapeXML(sanitizeText(account.account_holder_address.city || ''))}</City>
-              ${postCode ? `<PostCode>${escapeXML(postCode)}</PostCode>` : ''}
-            </AddressFix>
-          </Address>` : ''}
+          ${buildAddressBlock(account.account_holder_address, 'CW')}
           ${derivedCrsCode ? `<AcctHolderTypeCRS>${derivedCrsCode}</AcctHolderTypeCRS>` : ''}
           ${account.fatca_entity_classification ? `<FATCAClassification>${account.fatca_entity_classification}</FATCAClassification>` : ''}
           <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
@@ -641,13 +605,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       <ResCountryCode>CW</ResCountryCode>
       <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
       <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
-      <Address AddressType="OECD303">
-        <CountryCode>CW</CountryCode>
-        <AddressFix>
-          ${entity.address?.street ? `<Street>${escapeXML(entity.address.street)}</Street>` : ''}
-          <City>${escapeXML(entity.address?.city || '')}</City>
-        </AddressFix>
-      </Address>${filerCategoryXml}
+      ${buildAddressBlock(entity.address, 'CW')}${filerCategoryXml}
       <DocSpec>
         <DocTypeIndic>${fiDocTypeIndic}</DocTypeIndic>
         <DocRefId>${fiDocRefId}</DocRefId>
@@ -657,6 +615,41 @@ export default function XMLGenerator({ report, onSuccess }) {
     ${buildReportingGroup()}
   </MessageBody>
 </FATCA_CRS>`;
+  };
+
+  // Helper: build an <Address> block — uses AddressFree when city is missing
+  const buildAddressBlock = (address, fallbackCountry = 'CW') => {
+    if (!address) return '';
+    const countryCode = normalizeCountryCode(address.country || fallbackCountry);
+    const hasCity = address.city && String(address.city).trim() !== '';
+
+    if (!hasCity) {
+      // No city — concatenate all available parts into AddressFree
+      const parts = [
+        address.street,
+        address.state,
+        address.postal_code,
+        address.country
+      ].filter(Boolean).map(p => String(p).trim()).filter(Boolean);
+      const addressFree = escapeXML(sanitizeText(parts.join(', ')));
+      return `
+          <Address AddressType="OECD303">
+            <CountryCode>${countryCode}</CountryCode>
+            <AddressFree>${addressFree}</AddressFree>
+          </Address>`;
+    }
+
+    // Has city — use structured AddressFix
+    const postCode = sanitizePostalCode(address.postal_code, countryCode);
+    return `
+          <Address AddressType="OECD303">
+            <CountryCode>${countryCode}</CountryCode>
+            <AddressFix>
+              ${address.street ? `<Street>${escapeXML(sanitizeText(address.street))}</Street>` : ''}
+              <City>${escapeXML(sanitizeText(address.city))}</City>
+              ${postCode ? `<PostCode>${escapeXML(postCode)}</PostCode>` : ''}
+            </AddressFix>
+          </Address>`;
   };
 
   // GAP 28: Strip prohibited SQL-injection character combinations before XML escaping
