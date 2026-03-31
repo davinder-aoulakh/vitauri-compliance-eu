@@ -104,6 +104,9 @@ function buildAddressBlock(address, fallbackCountry, ns = '') {
 }
 
 export function buildCRSXML({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig, isNilReport }) {
+  // GAP 6: British spelling — use Organisation not Organization throughout
+  // The FATCA-CRS schema v2.2 uses British spelling per the official spec
+  
   const timestamp = new Date().toISOString().substring(0, 19);
   const cribNumber = entity?.tax_id || '';
 
