@@ -367,7 +367,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
       const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
 
-      const buildPaymentBlock = (ns = '') => {
+      const buildPaymentBlock = (ns = '', isFfi = false, reportingYear = '') => {
         const grossPayments = account.gross_payments;
         if (!grossPayments || grossPayments <= 0) return '';
         const payCurrency = account.gross_payments_currency || account.year_end_cash_value_currency;
@@ -382,6 +382,22 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           annuity: 'CRS504'
         };
         const paymentType = paymentTypeMap[account.account_type] || 'CRS504';
+        
+        // Fiscal year-based payment type restrictions for FATCA accounts (isFfi = true)
+        if (isFfi) {
+          // 2014: suppress all payments for FFI accounts
+          if (reportingYear === '2014') {
+            return '';
+          }
+          
+          // 2015: allow only CRS501 (custodial) and CRS502 (depository) for FFI accounts
+          if (reportingYear === '2015') {
+            if (!['CRS501', 'CRS502'].includes(paymentType)) {
+              throw new Error(`For reporting year 2015, FFI account "${account.account_number}" can only report custodial (CRS501) or depository (CRS502) payment types. Found: ${paymentType}.`);
+            }
+          }
+        }
+        
         return `
       <${ns}Payment>
         <${ns}PaymentType>${paymentType}</${ns}PaymentType>
@@ -531,7 +547,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       </${ns}AccountHolder>
       
       <${ns}AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</${ns}AccountBalance>
-      ${buildPaymentBlock(ns)}
+      ${buildPaymentBlock(ns, isFfi, report.reporting_year)}
       ${cpBlocks}${additionalDataBlock}
     </${ns}AccountReport>`;
     }).join('');
