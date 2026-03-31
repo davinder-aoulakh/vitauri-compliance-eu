@@ -132,8 +132,8 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     messageTypeIndic = report.message_type_indic || 'CRS701';
   }
 
-  // Helper function to add oecd_ftc: prefix to all elements
-  const ns = 'oecd_ftc:';
+  // Helper function for namespace handling (empty prefix — elements use default namespace)
+  const ns = '';
 
   const sendingCompanyIN = cribNumber;
   if (!sendingCompanyIN) {
@@ -558,12 +558,12 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     </${ns}ReportingGroup>`;
   };
 
-  // GAP 1: Correct namespace URIs, version 2.2, and add oecd_ftc: prefix to all elements
+  // GAP 1: Correct namespace URIs, version 2.2
   return `<?xml version="1.0" encoding="UTF-8"?>
-<${ns}FATCA_CRS version="2.2"
+<FATCA_CRS version="2.2"
+  xmlns="urn:fatcacrs:ties:v2"
   xmlns:sfa_ftc="urn:oecd:ties:fatcacrstypes:v2"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:${ns.slice(0, -1)}="urn:fatcacrs:ties:v2"
   xmlns:sfa="urn:oecd:ties:stffatcatypes:v2">
   <${ns}MessageHeader>
     <${ns}SendingCompanyIN>${sendingCompanyIN}</${ns}SendingCompanyIN>
@@ -590,6 +590,6 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       </${ns}DocSpec>
     </${ns}ReportingFI>
     ${buildReportingGroup(ns)}
-  </${ns}MessageBody>
-</${ns}FATCA_CRS>`;
+  </MessageBody>
+</FATCA_CRS>`;
 }
