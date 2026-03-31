@@ -424,7 +424,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       <${ns}ControllingPerson>
         <${ns}Individual>
           ${cpTaxResidencyBlocks}
-          <${ns}Name>
+          <${ns}Name NameType="OECD207">
             <${ns}FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</${ns}FirstName>
             <${ns}LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</${ns}LastName>
           </${ns}Name>
