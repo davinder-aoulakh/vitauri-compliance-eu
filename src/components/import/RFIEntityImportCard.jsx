@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import ExcelJS from "exceljs";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,7 +109,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   };
 
   const downloadTemplate = async () => {
-    const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "CRS Platform";
     workbook.created = new Date();
@@ -621,7 +621,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     let headers = [], data = [];
 
     if (isExcel) {
-      const ExcelJS = (await import("exceljs")).default;
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await selectedFile.arrayBuffer());
       const sheet = workbook.worksheets.find(s => s.name.toLowerCase().includes("data")) || workbook.worksheets[0];
