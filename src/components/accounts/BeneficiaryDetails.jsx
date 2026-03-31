@@ -135,7 +135,7 @@ export default function BeneficiaryDetails({ beneficiary, account }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={format(new Date(beneficiary.date_of_birth), 'MMMM d, yyyy')}
+                value={format(new Date(beneficiary.date_of_birth.replace(/-/g, '/')), 'MMMM d, yyyy')}
               />
             )}
             {beneficiary.place_of_birth && (
@@ -282,7 +282,7 @@ export default function BeneficiaryDetails({ beneficiary, account }) {
             <InfoRow
               icon={Calendar}
               label="Certification Requested"
-              value={format(new Date(beneficiary.self_certification_request_date), 'MMM d, yyyy')}
+              value={format(new Date(beneficiary.self_certification_request_date.replace(/-/g, '/')), 'MMM d, yyyy')}
             />
           )}
           {beneficiary.self_certification_request_date && (
