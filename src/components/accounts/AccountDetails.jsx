@@ -186,7 +186,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={account.date_of_birth ? new Date(account.date_of_birth).toLocaleDateString() : "—"}
+                value={account.date_of_birth ? new Date(account.date_of_birth.replace(/-/g, '/')).toLocaleDateString() : "—"}
               />
             )}
             {entity && (
@@ -465,7 +465,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of birth of the account holder"
-                value={account.date_of_birth ? new Date(account.date_of_birth).toLocaleDateString() : "—"}
+                value={account.date_of_birth ? new Date(account.date_of_birth.replace(/-/g, '/')).toLocaleDateString() : "—"}
               />
               <InfoRow
                 icon={Globe}
@@ -552,7 +552,7 @@ export default function AccountDetails({ account, entity }) {
                       <p className="font-semibold text-slate-900">{beneficiary.full_name}</p>
                       {beneficiary.date_of_birth && (
                         <p className="text-xs text-slate-600">
-                          DOB: {new Date(beneficiary.date_of_birth).toLocaleDateString()}
+                          DOB: {new Date(beneficiary.date_of_birth.replace(/-/g, '/')).toLocaleDateString()}
                         </p>
                       )}
                       {beneficiary.address?.country && (

@@ -133,7 +133,7 @@ export default function ControllingPersonDetails({ controllingPerson, account })
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={format(new Date(controllingPerson.date_of_birth), 'MMMM d, yyyy')}
+                value={format(new Date(controllingPerson.date_of_birth.replace(/-/g, '/')), 'MMMM d, yyyy')}
               />
             )}
             <InfoRow

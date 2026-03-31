@@ -434,7 +434,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-slate-700">
-                          {person.date_of_birth ? format(new Date(person.date_of_birth), 'MMM d, yyyy') : '—'}
+                          {person.date_of_birth ? format(new Date(person.date_of_birth.replace(/-/g, '/')), 'MMM d, yyyy') : '—'}
                         </span>
                       </TableCell>
                       <TableCell>
