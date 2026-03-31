@@ -205,6 +205,39 @@ export default function XMLGenerator({ report, onSuccess }) {
       }
     }
 
+    // GAP 12: ReportingFI DocSpec — unique DocRefId with type 'FI', DocTypeIndic, and conditional CorrDocRefId
+    const fiDocRefId = generateDocRefId({
+      fiscalYear: report.reporting_year,
+      cribNumber,
+      serialNumber: '001',
+      type: 'FI'
+    });
+
+    // DocTypeIndic for ReportingFI uses same mapping as AccountReport
+    let fiDocTypeIndic;
+    if (report.is_test_supply) {
+      if (report.message_type_indic === 'CRS702') fiDocTypeIndic = 'OECD12';
+      else if (report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD13';
+      else fiDocTypeIndic = 'OECD11';
+    } else {
+      if (report.message_type_indic === 'CRS702') fiDocTypeIndic = 'OECD2';
+      else if (report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD3';
+      else fiDocTypeIndic = 'OECD1';
+    }
+
+    // Rule 108: CorrDocRefId must NOT appear if CRS701
+    // Rule 109: CorrDocRefId MUST appear if CRS702
+    const fiCorrDocRefIdXml = (() => {
+      if (messageTypeIndic === 'CRS701') return ''; // Rule 108
+      if (messageTypeIndic === 'CRS702') {
+        if (!report.correction_doc_ref_id) {
+          throw new Error('CorrDocRefId is mandatory for the ReportingFI DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set.');
+        }
+        return `<CorrDocRefId>${report.correction_doc_ref_id}_FI</CorrDocRefId>`; // Rule 109
+      }
+      return '';
+    })();
+
     // GAP 1: Root element is FATCA_CRS Version="2.0" with FATCA-CRS v2.0 namespaces
     // GAP 2: TransmittingCountry and ReceivingCountry must always be 'CW'
     // GAP 3: MessageType must be 'FATCA-CRS'
@@ -252,6 +285,11 @@ export default function XMLGenerator({ report, onSuccess }) {
           <City>${escapeXML(entity.address?.city || '')}</City>
         </AddressFix>
       </Address>${filerCategoryXml}
+      <DocSpec>
+        <DocTypeIndic>${fiDocTypeIndic}</DocTypeIndic>
+        <DocRefId>${fiDocRefId}</DocRefId>
+        ${fiCorrDocRefIdXml}
+      </DocSpec>
     </ReportingFI>
 `;
 

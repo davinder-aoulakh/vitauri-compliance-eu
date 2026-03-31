@@ -12,7 +12,8 @@ import {
   Info,
   FileCode
 } from "lucide-react";
-import { JURISDICTION_CONFIGS, generateFileName, generateDocRefId } from "./JurisdictionConfig";
+import { JURISDICTION_CONFIGS, generateFileName } from "./JurisdictionConfig";
+import { generateMessageRefId, generateDocRefId } from "./idGenerator";
 
 export default function NILReportGenerator({ report, entity, tenant, onSuccess }) {
   const [generating, setGenerating] = useState(false);
@@ -35,14 +36,26 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
       const jurisdiction = report.reporting_jurisdiction;
       const config = JURISDICTION_CONFIGS[jurisdiction] || JURISDICTION_CONFIGS["DEFAULT"];
       
-      const timestamp = new Date().toISOString();
-      const messageRefId = generateDocRefId(config.docRefIdFormat, {
-        tin: entity?.tax_id,
-        giin: entity?.giin,
-        year: report.reporting_year,
-        type: 'NIL',
-        sequence: '001'
+      // GAP 29: Timestamp must be YYYY-MM-DDTHH:MM:SS — no milliseconds, no Z
+      const timestamp = new Date().toISOString().substring(0, 19);
+      const cribNumber = entity?.tax_id || '';
+
+      const messageRefId = generateMessageRefId({
+        fiscalYear: report.reporting_year,
+        cribNumber,
+        serialNumber: '001'
       });
+
+      // GAP 12: ReportingFI DocSpec — FI-typed DocRefId
+      const fiDocRefId = generateDocRefId({
+        fiscalYear: report.reporting_year,
+        cribNumber,
+        serialNumber: '001',
+        type: 'FI'
+      });
+
+      // NIL reports always use CRS703 → DocTypeIndic is OECD3 (or OECD13 for test supply)
+      const fiDocTypeIndic = report.is_test_supply ? 'OECD13' : 'OECD3';
 
       // GAP 11: FilerCategory — required for FFI entities that file independently (not through a Sponsor)
       const FATCA_FILER_CATEGORY_MAP = {
@@ -90,8 +103,8 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
         </crs:AddressFix>
       </crs:Address>${filerCategoryXml}
       <crs:DocSpec>
-        <crs:DocTypeIndic>${report.is_test_supply ? 'OECD13' : 'OECD3'}</crs:DocTypeIndic>
-        <crs:DocRefId>${escapeXML(messageRefId)}.FI</crs:DocRefId>
+        <crs:DocTypeIndic>${fiDocTypeIndic}</crs:DocTypeIndic>
+        <crs:DocRefId>${escapeXML(fiDocRefId)}</crs:DocRefId>
       </crs:DocSpec>
     </crs:ReportingFI>
   </crs:CrsBody>

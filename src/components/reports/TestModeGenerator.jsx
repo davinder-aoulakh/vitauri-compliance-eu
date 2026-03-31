@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   Users
 } from "lucide-react";
-import { generateFileName, generateDocRefId, JURISDICTION_CONFIGS } from "./JurisdictionConfig";
+import { generateFileName, JURISDICTION_CONFIGS } from "./JurisdictionConfig";
+import { generateMessageRefId, generateDocRefId } from "./idGenerator";
 
 export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
   const [generating, setGenerating] = useState(false);
@@ -82,13 +83,21 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
           .replace(/'/g, '&apos;');
       };
 
-      const timestamp = new Date().toISOString();
-      const messageRefId = generateDocRefId(jConfig.docRefIdFormat, {
-        tin: entity?.tax_id || 'TESTTIN123',
-        giin: entity?.giin || 'TESTGIIN',
-        year: config.reportingYear,
-        type: 'TEST',
-        sequence: '001'
+      const timestamp = new Date().toISOString().substring(0, 19);
+      const cribNumber = entity?.tax_id || 'TESTTIN123';
+
+      const messageRefId = generateMessageRefId({
+        fiscalYear: config.reportingYear,
+        cribNumber,
+        serialNumber: '001'
+      });
+
+      // GAP 12: ReportingFI DocSpec — FI-typed DocRefId (test supply → OECD11)
+      const fiDocRefId = generateDocRefId({
+        fiscalYear: config.reportingYear,
+        cribNumber,
+        serialNumber: '001',
+        type: 'FI'
       });
 
       // GAP 11: FilerCategory — required for FFI entities that file independently (not through a Sponsor)
@@ -134,16 +143,19 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
           <crs:City>${escapeXML(entity?.address?.city || 'Willemstad')}</crs:City>
         </crs:AddressFix>
       </crs:Address>${testFilerCategoryXml}
+      <crs:DocSpec>
+        <crs:DocTypeIndic>OECD11</crs:DocTypeIndic>
+        <crs:DocRefId>${escapeXML(fiDocRefId)}</crs:DocRefId>
+      </crs:DocSpec>
     </crs:ReportingFI>
 `;
 
       dummyAccounts.forEach((account, index) => {
-        const accDocRefId = generateDocRefId(jConfig.docRefIdFormat, {
-          tin: entity?.tax_id || 'TESTTIN123',
-          giin: entity?.giin || 'TESTGIIN',
-          year: config.reportingYear,
-          type: 'ACC',
-          sequence: String(index + 1).padStart(3, '0')
+        const accDocRefId = generateDocRefId({
+          fiscalYear: config.reportingYear,
+          cribNumber,
+          serialNumber: String(index + 1),
+          type: 'ACC'
         });
 
         xml += `
