@@ -489,6 +489,13 @@ export default function XMLGenerator({ report, onSuccess }) {
           legal_arrangement_other_equivalent: 'CRS813'
         };
 
+        // Minor issue 5: Warn about duplicate birthdates among CPs on same account
+        const cpBirthDates = accountCPs.map(cp => cp.date_of_birth).filter(Boolean);
+        const dupBirthDates = cpBirthDates.filter((d, i) => cpBirthDates.indexOf(d) !== i);
+        if (dupBirthDates.length > 0) {
+          console.warn(`Account "${account.account_holder_name || account.account_number}": Multiple controlling persons share the same birth date (${[...new Set(dupBirthDates)].join(', ')}). Please verify this is correct as it may trigger a notification from the receiving tax authority.`);
+        }
+
         const cpBlocks = accountCPs.map(cp => {
           // GAP 22: Validate LastName is present
           if (!cp.last_name && !cp.full_name) {
@@ -497,6 +504,16 @@ export default function XMLGenerator({ report, onSuccess }) {
           }
 
           const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
+
+          // Issue 4 (address CountryCode): Use the CP's actual residence country as address fallback,
+          // not CW. This fixes cases like Daniele Gasparri where address.country = Italy but
+          // buildAddressBlock was falling back to CW.
+          const cpAddressFallbackCountry = (() => {
+            if (cp.address?.country) return normalizeCountryCode(cp.address.country);
+            if (cp.tax_residencies?.length > 0) return normalizeCountryCode(cp.tax_residencies[0].country);
+            return 'CW';
+          })();
+
           return `
       <ControllingPerson>
         <Individual>
@@ -512,7 +529,7 @@ export default function XMLGenerator({ report, onSuccess }) {
             <FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</FirstName>
             <LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</LastName>
           </Name>
-          ${buildAddressBlock(cp.address, 'CW')}
+          ${buildAddressBlock(cp.address, cpAddressFallbackCountry)}
           ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
         </Individual>
         <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
@@ -627,6 +644,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       <ResCountryCode>CW</ResCountryCode>
       <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
       <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
+
       ${buildAddressBlock(entity.address, 'CW')}${filerCategoryXml}
       <DocSpec>
         <DocTypeIndic>${fiDocTypeIndic}</DocTypeIndic>

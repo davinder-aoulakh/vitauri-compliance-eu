@@ -183,6 +183,8 @@ export const sanitizeTIN = (tin) => {
     /^RFC:\s*/i,      // Mexico RFC prefix
     /^CPF:\s*/i,      // Brazil CPF prefix
     /^CNPJ:\s*/i,     // Brazil CNPJ prefix
+    /^CI\s+/i,        // Document type label prefix (e.g. "CI 801550273")
+    /^[A-Z]{1,3}\s+(?=\d)/,  // Generic 1-3 letter label followed by space before number
   ];
   
   for (const pattern of prefixPatterns) {

@@ -625,6 +625,54 @@ export default function XMLValidator({
     } else {
       cat.passed++;
     }
+
+    // Minor issue 5: Duplicate birthdate check across CPs on the same account
+    accounts.forEach(account => {
+      const accountCPs = controllingPersons.filter(cp => cp.account_id === account.id);
+      const birthDates = accountCPs.map(cp => cp.date_of_birth).filter(Boolean);
+      const dupDates = [...new Set(birthDates.filter((d, i) => birthDates.indexOf(d) !== i))];
+      if (dupDates.length > 0) {
+        results.total_checks++;
+        results.warnings.push({
+          category: VALIDATION_CATEGORIES.BUSINESS,
+          code: "BUS005",
+          message: `Account ${account.account_number}: Multiple controlling persons share birth date(s) ${dupDates.join(', ')} — please verify data accuracy as this may trigger a notification from the receiving tax authority.`,
+          severity: "warning"
+        });
+        cat.warnings++;
+      }
+    });
+
+    // Minor issue 6: TIN label prefix check
+    accounts.forEach(account => {
+      (account.tax_residencies || []).forEach(res => {
+        if (res.tin && /^[A-Z]{1,3}\s+\d/.test(res.tin)) {
+          results.total_checks++;
+          results.warnings.push({
+            category: VALIDATION_CATEGORIES.BUSINESS,
+            code: "BUS006",
+            message: `Account ${account.account_number}: TIN "${res.tin}" for ${res.country} appears to contain a label prefix. TIN values should contain only the identifier number (e.g. strip "CI " prefix).`,
+            severity: "warning"
+          });
+          cat.warnings++;
+        }
+      });
+    });
+    controllingPersons.forEach(cp => {
+      const cpName = cp.first_name ? `${cp.first_name} ${cp.last_name || ''}`.trim() : (cp.full_name || cp.id);
+      (cp.tax_residencies || []).forEach(res => {
+        if (res.tin && /^[A-Z]{1,3}\s+\d/.test(res.tin)) {
+          results.total_checks++;
+          results.warnings.push({
+            category: VALIDATION_CATEGORIES.BUSINESS,
+            code: "BUS006",
+            message: `Controlling person "${cpName}": TIN "${res.tin}" for ${res.country} appears to contain a label prefix. TIN values should contain only the identifier number.`,
+            severity: "warning"
+          });
+          cat.warnings++;
+        }
+      });
+    });
   };
 
   const toggleCategory = (category) => {
