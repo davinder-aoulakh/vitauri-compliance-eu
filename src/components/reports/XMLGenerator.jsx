@@ -20,6 +20,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { JURISDICTION_CONFIGS, generateFileName } from "./JurisdictionConfig";
 import { generateMessageRefId, generateDocRefId, validateIdFormat } from "./idGenerator";
+import { normalizeCountryCode, sanitizeTIN, sanitizeText, sanitizePostalCode, validateAddress } from "./xmlUtils";
 import XMLValidator from "./XMLValidator";
 import ReportPreviewExport from "./ReportPreviewExport";
 import TestModeGenerator from "./TestModeGenerator";
@@ -465,7 +466,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           return `
       <Payment>
         <PaymentType>${paymentType}</PaymentType>
-        <PaymentAmnt currCode="${payCurrency}">${paymentAmnt}</PaymentAmnt>
+        <PaymentAmnt CurrCode="${payCurrency}">${paymentAmnt}</PaymentAmnt>
       </Payment>`;
         };
 
@@ -497,28 +498,40 @@ export default function XMLGenerator({ report, onSuccess }) {
             const cpName = cp.first_name || cp.id;
             throw new Error(`Controlling person "${cpName}" on account "${account.account_holder_name || account.account_number}" is missing a Last Name, which is mandatory for CRS reporting. Please update the record.`);
           }
+          // Validate City is present in controlling person address
+          if (cp.address && !cp.address.city?.trim()) {
+            const cpName = cp.first_name ? `${cp.first_name} ${cp.last_name || ''}`.trim() : (cp.full_name || cp.id);
+            throw new Error(`Controlling person "${cpName}" on account "${account.account_holder_name || account.account_number}": City is mandatory in the address. Please update the record.`);
+          }
           const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
           return `
       <ControllingPerson>
         <Individual>
           ${cp.tax_residencies && cp.tax_residencies.length > 0 ?
-            cp.tax_residencies.map(res => `
-          <ResCountryCode>${res.country}</ResCountryCode>
-          ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : ''}
-          `).join('') : ''}
+            cp.tax_residencies.map(res => {
+              const cpCountryCode = normalizeCountryCode(res.country);
+              const cpTin = res.tin ? sanitizeTIN(res.tin) : null;
+              return `
+          <ResCountryCode>${cpCountryCode}</ResCountryCode>
+          ${cpTin ? `<TIN IssuedBy="${cpCountryCode}">${escapeXML(cpTin)}</TIN>` : ''}`;
+            }).join('') : ''}
           <Name>
-            <FirstName>${escapeXML(cp.first_name || 'NFN')}</FirstName>
-            <LastName>${escapeXML(cp.last_name || '')}</LastName>
+            <FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</FirstName>
+            <LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</LastName>
           </Name>
-          ${cp.address ? `
+          ${cp.address ? (() => {
+            const cpAddrCountry = normalizeCountryCode(cp.address.country || 'CW');
+            const cpPostCode = sanitizePostalCode(cp.address.postal_code, cpAddrCountry);
+            return `
           <Address>
-            <CountryCode>${cp.address.country || 'CW'}</CountryCode>
+            <CountryCode>${cpAddrCountry}</CountryCode>
             <AddressFix>
-              ${cp.address.street ? `<Street>${escapeXML(cp.address.street)}</Street>` : ''}
-              ${cp.address.city ? `<City>${escapeXML(cp.address.city)}</City>` : ''}
+              ${cp.address.street ? `<Street>${escapeXML(sanitizeText(cp.address.street))}</Street>` : ''}
+              <City>${escapeXML(sanitizeText(cp.address.city || ''))}</City>
+              ${cpPostCode ? `<PostCode>${escapeXML(cpPostCode)}</PostCode>` : ''}
             </AddressFix>
-          </Address>
-          ` : ''}
+          </Address>`;
+          })() : ''}
           ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
         </Individual>
         <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
@@ -536,61 +549,65 @@ export default function XMLGenerator({ report, onSuccess }) {
       <AccountNumber${closedAttr}${dormantAttr}${acctTypeAttr}>${accountNumberVal}</AccountNumber>
       
       <AccountHolder>
-        ${account.account_holder_type === 'individual' ? `
+        ${(() => {
+          const addrCountry = normalizeCountryCode(account.account_holder_address?.country || 'CW');
+          const postCode = sanitizePostalCode(account.account_holder_address?.postal_code, addrCountry);
+          const tinBlocks = (account.tax_residencies || []).map(res => {
+            const resCode = normalizeCountryCode(res.country);
+            const resTin = res.tin ? sanitizeTIN(res.tin) : null;
+            if (resTin) return `<TIN IssuedBy="${resCode}">${escapeXML(resTin)}</TIN>`;
+            if (resCode === 'US') return `<TIN IssuedBy="US">000000000</TIN>`;
+            return '';
+          }).join('');
+
+          if (account.account_holder_type === 'individual') {
+            return `
         <Individual>
-          <ResCountryCode>${account.account_holder_address?.country || 'CW'}</ResCountryCode>
-          ${account.tax_residencies && account.tax_residencies.length > 0 ?
-            account.tax_residencies.map(res => res.tin
-              ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>`
-              : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')
-            ).join('') : ''}
+          <ResCountryCode>${addrCountry}</ResCountryCode>
+          ${tinBlocks}
           <Name>
-            ${account.name_prefix ? `<NamePrefix>${escapeXML(account.name_prefix)}</NamePrefix>` : ''}
-            ${account.title ? `<Title>${escapeXML(account.title)}</Title>` : ''}
-            <FirstName>${escapeXML(account.first_name || 'NFN')}</FirstName>
-            ${account.middle_name ? `<MiddleName>${escapeXML(account.middle_name)}</MiddleName>` : ''}
-            <LastName>${escapeXML(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
+            ${account.name_prefix ? `<NamePrefix>${escapeXML(sanitizeText(account.name_prefix))}</NamePrefix>` : ''}
+            ${account.title ? `<Title>${escapeXML(sanitizeText(account.title))}</Title>` : ''}
+            <FirstName>${escapeXML(sanitizeText(account.first_name || 'NFN'))}</FirstName>
+            ${account.middle_name ? `<MiddleName>${escapeXML(sanitizeText(account.middle_name))}</MiddleName>` : ''}
+            <LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</LastName>
           </Name>
           ${account.account_holder_address ? `
           <Address>
-            <CountryCode>${account.account_holder_address.country || 'CW'}</CountryCode>
+            <CountryCode>${addrCountry}</CountryCode>
             <AddressFix>
-              ${account.account_holder_address.street ? `<Street>${escapeXML(account.account_holder_address.street)}</Street>` : ''}
-              <City>${escapeXML(account.account_holder_address.city || '')}</City>
-              ${(account.account_holder_address.country || 'CW') !== 'CW' && account.account_holder_address.postal_code ? `<PostCode>${escapeXML(account.account_holder_address.postal_code)}</PostCode>` : ''}
+              ${account.account_holder_address.street ? `<Street>${escapeXML(sanitizeText(account.account_holder_address.street))}</Street>` : ''}
+              <City>${escapeXML(sanitizeText(account.account_holder_address.city || ''))}</City>
+              ${postCode ? `<PostCode>${escapeXML(postCode)}</PostCode>` : ''}
             </AddressFix>
-          </Address>
-          ` : ''}
+          </Address>` : ''}
           ${account.date_of_birth ? `<BirthInfo><BirthDate>${account.date_of_birth}</BirthDate></BirthInfo>` : ''}
           <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
-        </Individual>
-        ` : `
+        </Individual>`;
+          } else {
+            return `
         <Organisation>
-          <ResCountryCode>${account.account_holder_address?.country || 'CW'}</ResCountryCode>
-          ${account.tax_residencies && account.tax_residencies.length > 0 ?
-            account.tax_residencies.map(res => res.tin
-              ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>`
-              : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')
-            ).join('') : ''}
-          <Name>${escapeXML(account.account_holder_name)}</Name>
+          <ResCountryCode>${addrCountry}</ResCountryCode>
+          ${tinBlocks}
+          <Name>${escapeXML(sanitizeText(account.account_holder_name))}</Name>
           ${account.account_holder_address ? `
           <Address>
-            <CountryCode>${account.account_holder_address.country || 'CW'}</CountryCode>
+            <CountryCode>${addrCountry}</CountryCode>
             <AddressFix>
-              ${account.account_holder_address.street ? `<Street>${escapeXML(account.account_holder_address.street)}</Street>` : ''}
-              <City>${escapeXML(account.account_holder_address.city || '')}</City>
-              ${(account.account_holder_address.country || 'CW') !== 'CW' && account.account_holder_address.postal_code ? `<PostCode>${escapeXML(account.account_holder_address.postal_code)}</PostCode>` : ''}
+              ${account.account_holder_address.street ? `<Street>${escapeXML(sanitizeText(account.account_holder_address.street))}</Street>` : ''}
+              <City>${escapeXML(sanitizeText(account.account_holder_address.city || ''))}</City>
+              ${postCode ? `<PostCode>${escapeXML(postCode)}</PostCode>` : ''}
             </AddressFix>
-          </Address>
-          ` : ''}
-          ${derivedCrsCode ? `<AcctHolderType>${derivedCrsCode}</AcctHolderType>` : ''}
+          </Address>` : ''}
+          ${derivedCrsCode ? `<AcctHolderTypeCRS>${derivedCrsCode}</AcctHolderTypeCRS>` : ''}
           ${account.fatca_entity_classification ? `<FATCAClassification>${account.fatca_entity_classification}</FATCAClassification>` : ''}
           <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
-        </Organisation>
-        `}
+        </Organisation>`;
+          }
+        })()}
       </AccountHolder>
       
-      <AccountBalance currCode="${balanceCurrency}">${balanceValue}</AccountBalance>
+      <AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</AccountBalance>
       ${paymentBlock}
       ${cpBlocks}
     </AccountReport>`;
@@ -608,19 +625,18 @@ export default function XMLGenerator({ report, onSuccess }) {
   xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
   xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <MessageSpec>
+  <MessageHeader>
     <SendingCompanyIN>${sendingCompanyIN}</SendingCompanyIN>
     <TransmittingCountry>CW</TransmittingCountry>
     <ReceivingCountry>CW</ReceivingCountry>
     <MessageType>FATCA-CRS</MessageType>
-    <MessageRefId>${messageRefId}</MessageRefId>
-    ${corrMessageRefIdXml}
+    <MessageRefId>${messageRefId}</MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml}` : ''}
     <MessageTypeIndic>${messageTypeIndic}</MessageTypeIndic>
     <ReportingPeriod>${report.reporting_year}-12-31</ReportingPeriod>
     <Timestamp>${timestamp}</Timestamp>
-  </MessageSpec>
+  </MessageHeader>
   
-  <CrsBody>
+  <MessageBody>
     <ReportingFI>
       <ResCountryCode>CW</ResCountryCode>
       <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
@@ -639,7 +655,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       </DocSpec>
     </ReportingFI>
     ${buildReportingGroup()}
-  </CrsBody>
+  </MessageBody>
 </FATCA_CRS>`;
   };
 
