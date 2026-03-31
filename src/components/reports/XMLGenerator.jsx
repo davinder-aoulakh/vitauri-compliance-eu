@@ -25,6 +25,29 @@ import XMLValidator from "./XMLValidator";
 import ReportPreviewExport from "./ReportPreviewExport";
 import TestModeGenerator from "./TestModeGenerator";
 
+// XML tag name constants — defined OUTSIDE the component so the JSX compiler
+// never processes these strings as JSX element references.
+const XML_TAGS = {
+  Name: 'Name',
+  FirstName: 'FirstName',
+  LastName: 'LastName',
+  MiddleName: 'MiddleName',
+  NamePrefix: 'NamePrefix',
+  Title: 'Title',
+  Individual: 'Individual',
+  Organisation: 'Organisation',
+  ResCountryCode: 'ResCountryCode',
+  TIN: 'TIN',
+  BirthInfo: 'BirthInfo',
+  BirthDate: 'BirthDate',
+  Recalcitrant: 'Recalcitrant',
+  Street: 'Street',
+  City: 'City',
+  PostCode: 'PostCode',
+  ControllingPerson: 'ControllingPerson',
+  CtrlgPersonType: 'CtrlgPersonType',
+};
+
 export default function XMLGenerator({ report, onSuccess }) {
   const [generating, setGenerating] = useState(false);
   const [xmlContent, setXmlContent] = useState(null);
@@ -172,28 +195,8 @@ export default function XMLGenerator({ report, onSuccess }) {
     }
   };
 
-  // XML tag name constants — prevents JSX compiler from misinterpreting capitalized XML element names
-  // in template literals as JSX component references (which would truncate closing tags to <n>)
-  const T = {
-    Name: 'Name',
-    FirstName: 'FirstName',
-    LastName: 'LastName',
-    MiddleName: 'MiddleName',
-    NamePrefix: 'NamePrefix',
-    Title: 'Title',
-    Individual: 'Individual',
-    Organisation: 'Organisation',
-    ResCountryCode: 'ResCountryCode',
-    TIN: 'TIN',
-    BirthInfo: 'BirthInfo',
-    BirthDate: 'BirthDate',
-    Recalcitrant: 'Recalcitrant',
-    Street: 'Street',
-    City: 'City',
-    PostCode: 'PostCode',
-    ControllingPerson: 'ControllingPerson',
-    CtrlgPersonType: 'CtrlgPersonType',
-  };
+  // Use the module-level XML_TAGS constant (defined outside component) to avoid JSX compiler issues
+  const T = XML_TAGS;
 
   const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig, isNilReport }) => {
     // GAP 29: Timestamp must be YYYY-MM-DDTHH:MM:SS — no milliseconds, no Z
