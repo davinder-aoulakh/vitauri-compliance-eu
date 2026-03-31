@@ -123,7 +123,7 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
         )
       )],
       total_account_balance: accounts.reduce((sum, acc) => 
-        sum + (acc.account_balance || 0), 0
+        sum + (acc.year_end_cash_value || 0) + (acc.gross_payments || 0), 0
       ),
       accounts_by_type: accounts.reduce((acc, account) => {
         acc[account.account_holder_type] = (acc[account.account_holder_type] || 0) + 1;
@@ -361,7 +361,7 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
               <div>
                 <p className="text-xs text-slate-600">Total Balance</p>
                 <p className="text-lg font-bold text-slate-900">
-                  ${accounts.reduce((sum, acc) => sum + (acc.account_balance || 0), 0).toLocaleString()}
+                  ${accounts.reduce((sum, acc) => sum + (acc.year_end_cash_value || 0) + (acc.gross_payments || 0), 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -414,7 +414,7 @@ export default function ReportWizard({ tenant, onComplete, onCancel }) {
                       </td>
                       <td className="p-3">
                         <span className="text-sm font-semibold text-slate-900">
-                          ${(account.account_balance || 0).toLocaleString()}
+                          ${((account.year_end_cash_value || 0) + (account.gross_payments || 0)).toLocaleString()}
                         </span>
                       </td>
                       <td className="p-3">
