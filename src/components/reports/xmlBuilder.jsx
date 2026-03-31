@@ -448,6 +448,8 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       }).join('');
 
       let accountHolderBlock;
+      let acctClassifications = '';
+      
       if (account.account_holder_type === 'individual') {
         accountHolderBlock = `
         <${ns}Individual>
@@ -482,10 +484,12 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
           <${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>
         </${ns}Organisation>`;
+        
+        // GAP 5: AcctHolderTypeCRS and FATCAClassification are siblings of Organisation inside AccountHolder (entity accounts only)
+        acctClassifications = `${derivedCrsCode ? `
+        <${ns}AcctHolderTypeCRS>${derivedCrsCode}</${ns}AcctHolderTypeCRS>` : ''}${account.fatca_entity_classification ? `
+        <${ns}AcctHolderTypeFATCA>${account.fatca_entity_classification}</${ns}AcctHolderTypeFATCA>` : ''}`;
       }
-
-      // GAP 5: AcctHolderTypeCRS and FATCAClassification are now direct children of AccountHolder
-      const acctClassifications = `${derivedCrsCode ? `<${ns}AcctHolderTypeCRS>${derivedCrsCode}</${ns}AcctHolderTypeCRS>` : ''}${account.fatca_entity_classification ? `<${ns}AcctHolderTypeFATCA>${account.fatca_entity_classification}</${ns}AcctHolderTypeFATCA>` : ''}`;
 
       return `
     <${ns}AccountReport>
@@ -498,8 +502,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       <${ns}AccountNumber${closedAttr}${dormantAttr}${acctTypeAttr}>${accountNumberVal}</${ns}AccountNumber>
       
       <${ns}AccountHolder>
-        ${accountHolderBlock}
-        ${acctClassifications}
+        ${accountHolderBlock}${acctClassifications}
       </${ns}AccountHolder>
       
       <${ns}AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</${ns}AccountBalance>
