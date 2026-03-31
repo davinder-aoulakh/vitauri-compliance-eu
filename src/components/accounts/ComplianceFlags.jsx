@@ -92,9 +92,9 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
       if (a.entity_classification !== 'passive_nfe') return false;
       if (a.compliance_issues_resolved?.includes('cp_not_classified')) return false;
       const accountControllingPersons = controllingPersons.filter(cp => cp.account_id === a.id);
-      // Has CPs but at least one is not classified (no reportability_status or is pending_review)
+      // Has CPs but at least one has not been classified yet (is_reportable is null/undefined)
       return accountControllingPersons.length > 0 && 
-             accountControllingPersons.some(cp => !cp.reportability_status || cp.reportability_status === 'pending_review');
+             accountControllingPersons.some(cp => cp.is_reportable === null || cp.is_reportable === undefined);
     }),
     missingBeneficiary: accounts.filter(a => {
       // Beneficiaries only required for deceased account holders on annuities and cash value insurance
