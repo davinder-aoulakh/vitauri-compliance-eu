@@ -89,6 +89,20 @@ export default function XMLGenerator({ report, onSuccess }) {
       const nilScenario = data.accounts.length === 0 || report.report_type === 'nil_report';
       setIsNilReport(nilScenario);
 
+      // GAP 28: Pre-generation scan for prohibited character combinations
+      const prohibitedIssues = scanForProhibitedChars(data.accounts, data.controllingPersons, data.entity);
+      if (prohibitedIssues.length > 0) {
+        const confirmed = window.confirm(
+          `Warning: The following data fields contain prohibited character combinations (--  /*  &#) that will be automatically sanitised before XML generation:\n\n` +
+          prohibitedIssues.map(i => `• ${i}`).join('\n') +
+          `\n\nClick OK to continue and sanitise automatically, or Cancel to review your data first.`
+        );
+        if (!confirmed) {
+          setGenerating(false);
+          return;
+        }
+      }
+
       const xml = buildCRSXML({
         report,
         entity: data.entity,
@@ -602,14 +616,70 @@ export default function XMLGenerator({ report, onSuccess }) {
 </FATCA_CRS>`;
   };
 
+  // GAP 28: Strip prohibited SQL-injection character combinations before XML escaping
+  // Annex 4 rule 17: --, /*, and &# must not appear in any text/attribute element
+  const sanitizeProhibited = (str) => {
+    return str
+      .replace(/--/g, '-')      // double-dash → single dash
+      .replace(/\/\*/g, '/ ')   // slash-asterisk → slash-space
+      .replace(/&#/g, '&');     // ampersand-hash → ampersand (will be escaped next)
+  };
+
   const escapeXML = (str) => {
     if (!str) return '';
-    return String(str)
+    const sanitized = sanitizeProhibited(String(str));
+    return sanitized
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
+  };
+
+  // GAP 28: Pre-generation scan — warn user if any data field contains prohibited combinations
+  const scanForProhibitedChars = (accounts, controllingPersons, entity) => {
+    const PROHIBITED = [/--/, /\/\*/, /&#/];
+    const issues = [];
+
+    const checkField = (value, context) => {
+      if (!value || typeof value !== 'string') return;
+      for (const pattern of PROHIBITED) {
+        if (pattern.test(value)) {
+          issues.push(`${context}: contains prohibited sequence "${value.match(pattern)[0]}"`);
+          break;
+        }
+      }
+    };
+
+    // Check entity fields
+    checkField(entity?.entity_name, 'Entity name');
+    checkField(entity?.address?.street, 'Entity street address');
+    checkField(entity?.address?.city, 'Entity city');
+
+    // Check account fields
+    accounts.forEach(a => {
+      const label = a.account_holder_name || a.account_number || a.id;
+      checkField(a.account_number, `Account "${label}" — account number`);
+      checkField(a.account_holder_name, `Account "${label}" — holder name`);
+      checkField(a.first_name, `Account "${label}" — first name`);
+      checkField(a.last_name, `Account "${label}" — last name`);
+      checkField(a.middle_name, `Account "${label}" — middle name`);
+      checkField(a.account_holder_address?.street, `Account "${label}" — street`);
+      checkField(a.account_holder_address?.city, `Account "${label}" — city`);
+      (a.tax_residencies || []).forEach(r => checkField(r.tin, `Account "${label}" — TIN`));
+    });
+
+    // Check controlling person fields
+    controllingPersons.forEach(cp => {
+      const label = cp.first_name ? `${cp.first_name} ${cp.last_name || ''}`.trim() : (cp.full_name || cp.id);
+      checkField(cp.first_name, `Controlling person "${label}" — first name`);
+      checkField(cp.last_name, `Controlling person "${label}" — last name`);
+      checkField(cp.address?.street, `Controlling person "${label}" — street`);
+      checkField(cp.address?.city, `Controlling person "${label}" — city`);
+      (cp.tax_residencies || []).forEach(r => checkField(r.tin, `Controlling person "${label}" — TIN`));
+    });
+
+    return issues;
   };
 
   const handleValidationComplete = async (results) => {
