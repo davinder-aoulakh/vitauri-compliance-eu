@@ -351,27 +351,32 @@ export default function XMLGenerator({ report, onSuccess }) {
           return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
         })();
 
-        // GAP 19: Validate and emit organisation classification codes
-        // Only enforce CRS/FATCA classification if the account is a passive_nfe (CRS101/102/103 applicable).
-        // Active NFEs and financial institutions do not require crs_entity_classification on the account.
+        // GAP 19: Auto-derive CRS AcctHolderType code from entity_classification field.
+        // crs_entity_classification on the account is no longer required — we derive it here.
+        let derivedCrsCode = null;
         if (account.account_holder_type === 'entity') {
-          const taxCountries = (account.tax_residencies || []).map(r => r.country);
-          const hasNonUS = taxCountries.some(c => c && c !== 'US');
-          const hasUS = taxCountries.includes('US');
-          const isPassiveNfe = account.entity_classification === 'passive_nfe';
+          const hasControllingPersons = (account.controlling_persons_count || 0) > 0;
+          switch (account.entity_classification) {
+            case 'passive_nfe':
+              // CRS101 = passive NFE with reportable controlling persons
+              // CRS103 = passive NFE that is itself a tax resident (no CPs needed)
+              derivedCrsCode = hasControllingPersons ? 'CRS101' : 'CRS103';
+              break;
+            case 'active_nfe':
+            case 'financial_institution':
+              derivedCrsCode = 'CRS102'; // active entity / FI — is itself the tax resident
+              break;
+            case 'not_applicable':
+            default:
+              derivedCrsCode = null; // omit AcctHolderType
+          }
 
-          if (hasNonUS && !account.crs_entity_classification && isPassiveNfe) {
-            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is a passive NFE with non-US tax residencies but has not been classified for CRS (CRS101/102/103). Please classify the organisation before generating the report.`);
-          }
-          if (hasUS && !account.fatca_entity_classification && isPassiveNfe) {
-            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is a passive NFE with a US tax residency but has not been classified for FATCA. Please classify the organisation before generating the report.`);
-          }
-          if (account.crs_entity_classification === 'CRS101' && (account.controlling_persons_count || 0) === 0) {
-            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is classified as a passive entity with controlling persons (CRS101) — please add at least one controlling person before generating.`);
-          }
-
-          // GAP 21: Validate all CPs for CRS101 accounts have a control_type set
-          if (account.crs_entity_classification === 'CRS101') {
+          // Validate CPs present for CRS101
+          if (derivedCrsCode === 'CRS101') {
+            if (hasControllingPersons === false) {
+              throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is a passive NFE with controlling persons (CRS101) — please add at least one controlling person before generating.`);
+            }
+            // GAP 21: Validate all CPs have control_type set
             const accountCPsForValidation = controllingPersons.filter(cp => cp.account_id === account.id);
             for (const cp of accountCPsForValidation) {
               if (!cp.control_type) {
@@ -382,7 +387,14 @@ export default function XMLGenerator({ report, onSuccess }) {
               }
             }
           }
-          if (['FATCA101', 'FATCA102'].includes(account.fatca_entity_classification) && (account.controlling_persons_count || 0) === 0) {
+
+          // FATCA validation only for passive NFEs with US tax residency
+          const taxCountries = (account.tax_residencies || []).map(r => r.country);
+          const hasUS = taxCountries.includes('US');
+          if (hasUS && account.entity_classification === 'passive_nfe' && !account.fatca_entity_classification) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is a passive NFE with a US tax residency but has not been classified for FATCA. Please classify the organisation before generating the report.`);
+          }
+          if (['FATCA101', 'FATCA102'].includes(account.fatca_entity_classification) && !hasControllingPersons) {
             throw new Error(`Organisation "${account.account_holder_name || account.account_number}" requires Substantial Owner details — please add at least one substantial owner before generating.`);
           }
         }
@@ -458,8 +470,8 @@ export default function XMLGenerator({ report, onSuccess }) {
 
         const paymentBlock = buildPaymentBlock();
 
-        // GAP 21: Only emit ControllingPerson blocks for CRS101 accounts
-        const accountCPs = account.crs_entity_classification === 'CRS101'
+        // GAP 21: Only emit ControllingPerson blocks for CRS101 accounts (passive NFE with CPs)
+        const accountCPs = derivedCrsCode === 'CRS101'
           ? controllingPersons.filter(cp => cp.account_id === account.id)
           : [];
         const ctrlTypeMap = {
@@ -570,7 +582,7 @@ export default function XMLGenerator({ report, onSuccess }) {
             </AddressFix>
           </Address>
           ` : ''}
-          ${account.crs_entity_classification ? `<AcctHolderType>${account.crs_entity_classification}</AcctHolderType>` : ''}
+          ${derivedCrsCode ? `<AcctHolderType>${derivedCrsCode}</AcctHolderType>` : ''}
           ${account.fatca_entity_classification ? `<FATCAClassification>${account.fatca_entity_classification}</FATCAClassification>` : ''}
           <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
         </Organisation>
