@@ -160,6 +160,7 @@ export default function XMLGenerator({ report, onSuccess }) {
         }
       });
 
+      // Refresh data but don't close the dialog — user may want to validate/download
       if (nilScenario) onSuccess?.();
 
     } catch (error) {

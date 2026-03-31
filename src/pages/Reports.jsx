@@ -525,7 +525,6 @@ export default function ReportsPage() {
             report={selectedReport}
             onSuccess={() => {
               queryClient.invalidateQueries(['crs-reports']);
-              setShowXMLGenerator(false);
             }}
           />
         </DialogContent>
