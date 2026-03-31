@@ -627,13 +627,7 @@ export default function AccountsPage() {
                   CRS Advisor
                 </TabsTrigger>
               )}
-              <TabsTrigger
-                value="export"
-                className="flex items-center gap-2 px-5 py-3.5 text-sm font-medium text-slate-500 border-b-2 border-transparent rounded-none bg-transparent hover:text-slate-800 hover:bg-slate-50 data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent transition-colors whitespace-nowrap"
-              >
-                <Download className="w-4 h-4" />
-                Export
-              </TabsTrigger>
+
             </TabsList>
           </div>
 
@@ -1030,14 +1024,7 @@ export default function AccountsPage() {
             </TabsContent>
           )}
 
-          <TabsContent value="export">
-            <AccountExport
-              accounts={accessibleAccounts}
-              entities={entities}
-              accessibleEntityIds={isAdmin ? null : new Set(userEntityAccess.map(r => r.rfi_entity_id))}
-              isAdmin={isAdmin}
-            />
-          </TabsContent>
+
         </Tabs>
       </div>
 

@@ -454,6 +454,121 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       dRow++; // blank separator
     });
 
+    // ── Sheet 5: Export (existing accounts for this entity)
+    const exportSheet = workbook.addWorksheet("Export", { properties: { tabColor: { argb: "FF10B981" } } });
+    const exportColumns = columns.filter(c => !c.key.startsWith("entity_"));
+    exportSheet.columns = [
+      { key: "entity_id", width: 28 },
+      { key: "entity_name", width: 28 },
+      ...exportColumns.map(c => ({ key: c.key, width: c.width || 20 })),
+    ];
+
+    // Write header row
+    const expHeaderRow = exportSheet.getRow(1);
+    expHeaderRow.getCell(1).value = "Entity ID";
+    expHeaderRow.getCell(2).value = "Entity Name";
+    styleHeader(expHeaderRow.getCell(1), false);
+    styleHeader(expHeaderRow.getCell(2), false);
+    exportColumns.forEach((col, i) => {
+      const cell = expHeaderRow.getCell(i + 3);
+      cell.value = col.header;
+      styleHeader(cell, col.required);
+    });
+    expHeaderRow.height = 28;
+    exportSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    // Fetch existing accounts for this entity
+    const existingAccounts = await base44.entities.Account.filter({ entity_id: entity.id });
+
+    // Fetch controlling persons for those accounts
+    const cpMap = {};
+    if (existingAccounts.length > 0) {
+      const cpRecords = await base44.entities.ControllingPerson.filter({ tenant_id: entity.tenant_id });
+      cpRecords.forEach(cp => {
+        if (!cpMap[cp.account_id]) cpMap[cp.account_id] = [];
+        cpMap[cp.account_id].push(cp);
+      });
+    }
+
+    existingAccounts.forEach(acc => {
+      const cps = cpMap[acc.id] || [];
+      const rowData = { entity_id: entity.id, entity_name: entity.entity_name };
+
+      exportColumns.forEach(col => {
+        const k = col.key;
+        // Address fields
+        if (k === "ah_original_street") rowData[k] = acc.account_holder_address?.street || "";
+        else if (k === "ah_original_city") rowData[k] = acc.account_holder_address?.city || "";
+        else if (k === "ah_original_state") rowData[k] = acc.account_holder_address?.state || "";
+        else if (k === "ah_original_postal_code") rowData[k] = acc.account_holder_address?.postal_code || "";
+        else if (k === "ah_original_country") rowData[k] = acc.account_holder_address?.country || "";
+        else if (k === "ah_original_country_code") rowData[k] = acc.account_holder_address?.country_code || "";
+        else if (k === "ah_current_street") rowData[k] = acc.current_address?.street || "";
+        else if (k === "ah_current_city") rowData[k] = acc.current_address?.city || "";
+        else if (k === "ah_current_state") rowData[k] = acc.current_address?.state || "";
+        else if (k === "ah_current_postal_code") rowData[k] = acc.current_address?.postal_code || "";
+        else if (k === "ah_current_country") rowData[k] = acc.current_address?.country || "";
+        else if (k === "ah_current_country_code") rowData[k] = acc.current_address?.country_code || "";
+        else if (k === "ah_country_of_residence") rowData[k] = acc.country_of_residence || "";
+        else if (k === "ah_country_of_residence_code") rowData[k] = "";
+        // Tax residencies
+        else if (k === "tax1_country") rowData[k] = acc.tax_residencies?.[0]?.country || "";
+        else if (k === "tax1_country_code") rowData[k] = acc.tax_residencies?.[0]?.country_code || "";
+        else if (k === "tax1_tin") rowData[k] = acc.tax_residencies?.[0]?.tin || "";
+        else if (k === "tax2_country") rowData[k] = acc.tax_residencies?.[1]?.country || "";
+        else if (k === "tax2_country_code") rowData[k] = acc.tax_residencies?.[1]?.country_code || "";
+        else if (k === "tax2_tin") rowData[k] = acc.tax_residencies?.[1]?.tin || "";
+        // Controlling persons
+        else if (/^cp(\d)_(.+)$/.test(k)) {
+          const m = k.match(/^cp(\d)_(.+)$/);
+          const cpIdx = parseInt(m[1]) - 1;
+          const cpField = m[2];
+          const cp = cps[cpIdx];
+          if (!cp) { rowData[k] = ""; return; }
+          if (cpField === "first_name") rowData[k] = cp.first_name || "";
+          else if (cpField === "last_name") rowData[k] = cp.last_name || "";
+          else if (cpField === "date_of_birth") rowData[k] = cp.date_of_birth || "";
+          else if (cpField === "place_of_birth") rowData[k] = cp.place_of_birth || "";
+          else if (cpField === "place_of_birth_code") rowData[k] = cp.place_of_birth_code || "";
+          else if (cpField === "country_of_residence") rowData[k] = cp.country_of_residence || "";
+          else if (cpField === "country_of_residence_code") rowData[k] = cp.country_of_residence_code || "";
+          else if (cpField === "self_cert_obtained") rowData[k] = cp.self_certification_obtained != null ? String(cp.self_certification_obtained) : "";
+          else if (cpField === "self_cert_date") rowData[k] = cp.self_certification_receipt_date || "";
+          else if (cpField === "self_cert_requested") rowData[k] = cp.self_certification_request_date ? "true" : "false";
+          else if (cpField === "self_cert_request_date") rowData[k] = cp.self_certification_request_date || "";
+          else if (cpField === "street") rowData[k] = cp.address?.street || "";
+          else if (cpField === "city") rowData[k] = cp.address?.city || "";
+          else if (cpField === "state") rowData[k] = cp.address?.state || "";
+          else if (cpField === "postal_code") rowData[k] = cp.address?.postal_code || "";
+          else if (cpField === "address_country") rowData[k] = cp.address?.country || "";
+          else if (cpField === "address_country_code") rowData[k] = cp.address?.country_code || "";
+          else if (cpField === "tax1_country") rowData[k] = cp.tax_residencies?.[0]?.country || "";
+          else if (cpField === "tax1_country_code") rowData[k] = cp.tax_residencies?.[0]?.country_code || "";
+          else if (cpField === "tin") rowData[k] = cp.tax_residencies?.[0]?.tin || "";
+          else if (cpField === "tax2_country") rowData[k] = cp.tax_residencies?.[1]?.country || "";
+          else if (cpField === "tax2_country_code") rowData[k] = cp.tax_residencies?.[1]?.country_code || "";
+          else if (cpField === "tin2") rowData[k] = cp.tax_residencies?.[1]?.tin || "";
+          else rowData[k] = "";
+        }
+        // Boolean fields
+        else if (typeof acc[k] === "boolean") rowData[k] = String(acc[k]);
+        // Direct mapping
+        else rowData[k] = acc[k] != null ? String(acc[k]) : "";
+      });
+
+      const row = exportSheet.addRow(rowData);
+      row.eachCell(cell => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+        cell.font = { size: 9 };
+      });
+    });
+
+    // Add a note if no accounts yet
+    if (existingAccounts.length === 0) {
+      const noteRow = exportSheet.addRow({ entity_id: "No existing accounts found for this entity." });
+      noteRow.getCell(1).font = { italic: true, color: { argb: "FF94A3B8" } };
+    }
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = window.URL.createObjectURL(blob);
