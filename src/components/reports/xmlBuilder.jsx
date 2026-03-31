@@ -452,6 +452,12 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         return '';
       }).join('');
 
+      // GAP 11: Recalcitrant should only be emitted if account has US tax residency (FATCA concept)
+      const hasUSResidency = resCountryCodes.includes('US');
+      const recalcitrantBlock = hasUSResidency 
+        ? `<${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>`
+        : '';
+
       let accountHolderBlock;
       let acctClassifications = '';
       
@@ -469,7 +475,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           </${ns}Name>
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
           ${account.date_of_birth ? `<${ns}BirthInfo><${ns}BirthDate>${account.date_of_birth}</${ns}BirthDate></${ns}BirthInfo>` : ''}
-          <${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>
+          ${recalcitrantBlock}
         </${ns}Individual>`;
       } else {
         const accountCPsForRes = controllingPersons.filter(cp => cp.account_id === account.id);
@@ -487,7 +493,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           ${tinBlocks.replace(/TIN/g, ns + 'TIN')}
           <${ns}Name>${escapeXML(sanitizeText(account.account_holder_name))}</${ns}Name>
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
-          <${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>
+          ${recalcitrantBlock}
         </${ns}Organisation>`;
         
         // GAP 5: AcctHolderTypeCRS and FATCAClassification are siblings of Organisation inside AccountHolder (entity accounts only)
