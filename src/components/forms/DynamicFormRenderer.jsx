@@ -392,11 +392,13 @@ export default function DynamicFormRenderer({
   };
 
   const renderField = (field) => {
-    // Hide GIIN field for Entity forms
-    if (entityType === "Entity" && field.field_name === "giin") {
-      return null;
+    // For Entity forms: giin/fi_registration_type/is_sponsored_ffi only visible when is_ffi=true
+    if (entityType === "Entity") {
+      if (field.field_name === "giin" && !formData.is_ffi) return null;
+      if (field.field_name === "fi_registration_type" && !formData.is_ffi) return null;
+      if (field.field_name === "is_sponsored_ffi" && !formData.is_ffi) return null;
     }
-    
+
     // Check conditional visibility
     const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
     if (!isVisible) return null;

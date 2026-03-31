@@ -96,7 +96,23 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     documents: account?.documents || [],
     crs_entity_classification: account?.crs_entity_classification || "",
     fatca_entity_classification: account?.fatca_entity_classification || "",
-    account_number_type: account?.account_number_type || ""
+    account_number_type: account?.account_number_type || "",
+    // Individual name extras
+    middle_name: account?.middle_name || "",
+    name_prefix: account?.name_prefix || "",
+    title: account?.title || "",
+    // Entity holder extras
+    date_of_incorporation: account?.date_of_incorporation || "",
+    country_of_incorporation: account?.country_of_incorporation || "",
+    country_of_incorporation_code: account?.country_of_incorporation_code || "",
+    type_of_financial_institution: account?.type_of_financial_institution || "",
+    entity_classification: account?.entity_classification || "",
+    // CRS flags
+    is_recalcitrant: account?.is_recalcitrant || false,
+    account_frozen_at_reporting_date: account?.account_frozen_at_reporting_date || false,
+    account_dormant_at_reporting_date: account?.account_dormant_at_reporting_date || false,
+    acct_holder_address_unchanged: account?.acct_holder_address_unchanged || false,
+    us_person_indic: account?.us_person_indic || false,
   });
 
   const [detectedChanges, setDetectedChanges] = useState([]);
@@ -659,23 +675,100 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             )}
 
             {formData.account_holder_type === "entity" && (
-              <div>
-                <Label htmlFor="account_holder_name" className="text-slate-700">
-                  Account Holder Name <span className="text-red-600">*</span>
-                </Label>
-                <Input
-                  id="account_holder_name"
-                  value={formData.account_holder_name}
-                  onChange={(e) => handleChange("account_holder_name", e.target.value)}
-                  placeholder="Entity name"
-                  required
-                  className={`mt-1.5 ${submitted && !formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                />
-              </div>
+              <>
+                <div>
+                  <Label htmlFor="account_holder_name" className="text-slate-700">
+                    Account Holder Name <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    id="account_holder_name"
+                    value={formData.account_holder_name}
+                    onChange={(e) => handleChange("account_holder_name", e.target.value)}
+                    placeholder="Entity name"
+                    required
+                    className={`mt-1.5 ${submitted && !formData.account_holder_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="date_of_incorporation" className="text-slate-700">Date of Incorporation</Label>
+                  <Input
+                    id="date_of_incorporation"
+                    type="date"
+                    value={formData.date_of_incorporation}
+                    onChange={(e) => handleChange("date_of_incorporation", e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="country_of_incorporation" className="text-slate-700">Country of Incorporation</Label>
+                  <div className="mt-1.5">
+                    <CountrySelect
+                      value={formData.country_of_incorporation}
+                      onValueChange={(value) => handleChange("country_of_incorporation", value)}
+                      placeholder="Select country..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="entity_classification" className="text-slate-700">Entity Classification</Label>
+                  <Select
+                    value={formData.entity_classification}
+                    onValueChange={(value) => handleChange("entity_classification", value)}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select classification..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="financial_institution">Financial Institution</SelectItem>
+                      <SelectItem value="active_nfe">Active NFE</SelectItem>
+                      <SelectItem value="passive_nfe">Passive NFE</SelectItem>
+                      <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">Used to derive CRS AcctHolderType in XML</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="type_of_financial_institution" className="text-slate-700">Type of Financial Institution</Label>
+                  <Input
+                    id="type_of_financial_institution"
+                    value={formData.type_of_financial_institution}
+                    onChange={(e) => handleChange("type_of_financial_institution", e.target.value)}
+                    placeholder="e.g. Custodial, Depository"
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Only if account holder is a financial institution</p>
+                </div>
+              </>
             )}
 
             {formData.account_holder_type === "individual" && (
               <>
+                <div>
+                  <Label htmlFor="name_prefix" className="text-slate-700">Name Prefix</Label>
+                  <Input
+                    id="name_prefix"
+                    value={formData.name_prefix}
+                    onChange={(e) => handleChange("name_prefix", e.target.value)}
+                    placeholder="e.g. Mr, Mrs, Dr"
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="title" className="text-slate-700">Title</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => handleChange("title", e.target.value)}
+                    placeholder="e.g. Director, Prof"
+                    className="mt-1.5"
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="first_name" className="text-slate-700">
                     First Name <span className="text-red-600">*</span>
@@ -686,6 +779,17 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     onChange={(e) => handleChange("first_name", e.target.value)}
                     placeholder="First name"
                     className={`mt-1.5 ${submitted && !formData.first_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="middle_name" className="text-slate-700">Middle Name</Label>
+                  <Input
+                    id="middle_name"
+                    value={formData.middle_name}
+                    onChange={(e) => handleChange("middle_name", e.target.value)}
+                    placeholder="Middle name(s)"
+                    className="mt-1.5"
                   />
                 </div>
 
@@ -1394,6 +1498,109 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               />
             </div>
           )}
+
+          {/* CRS Flags */}
+          <div className="p-4 border-2 border-slate-200 rounded-lg bg-slate-50/30">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">CRS Reporting Flags</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Account Frozen at Reporting Date?</Label>
+                <RadioGroup
+                  value={formData.account_frozen_at_reporting_date ? "yes" : "no"}
+                  onValueChange={(value) => handleChange("account_frozen_at_reporting_date", value === "yes")}
+                  className="flex gap-4 mt-1.5"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="frozen_yes" />
+                    <Label htmlFor="frozen_yes" className="font-normal cursor-pointer">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="frozen_no" />
+                    <Label htmlFor="frozen_no" className="font-normal cursor-pointer">No</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Account Dormant at Reporting Date?</Label>
+                <RadioGroup
+                  value={formData.account_dormant_at_reporting_date ? "yes" : "no"}
+                  onValueChange={(value) => handleChange("account_dormant_at_reporting_date", value === "yes")}
+                  className="flex gap-4 mt-1.5"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="dormant_yes" />
+                    <Label htmlFor="dormant_yes" className="font-normal cursor-pointer">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="dormant_no" />
+                    <Label htmlFor="dormant_no" className="font-normal cursor-pointer">No</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Account Holder Address Unchanged?</Label>
+                <RadioGroup
+                  value={formData.acct_holder_address_unchanged ? "yes" : "no"}
+                  onValueChange={(value) => handleChange("acct_holder_address_unchanged", value === "yes")}
+                  className="flex gap-4 mt-1.5"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="addr_unchanged_yes" />
+                    <Label htmlFor="addr_unchanged_yes" className="font-normal cursor-pointer">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="addr_unchanged_no" />
+                    <Label htmlFor="addr_unchanged_no" className="font-normal cursor-pointer">No</Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-slate-500 mt-1">Address unchanged since last reporting period</p>
+              </div>
+
+              {formData.account_holder_type === "individual" && (
+                <div>
+                  <Label className="text-sm font-medium text-slate-700">
+                    Recalcitrant Account Holder?
+                  </Label>
+                  <RadioGroup
+                    value={formData.is_recalcitrant ? "yes" : "no"}
+                    onValueChange={(value) => handleChange("is_recalcitrant", value === "yes")}
+                    className="flex gap-4 mt-1.5"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="recalcitrant_yes" />
+                      <Label htmlFor="recalcitrant_yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="recalcitrant_no" />
+                      <Label htmlFor="recalcitrant_no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+                  <p className="text-xs text-slate-500 mt-1">Mandatory for Individual AccountHolder in CRS XML (Section 6.3.2.3.2.1)</p>
+                </div>
+              )}
+
+              <div>
+                <Label className="text-sm font-medium text-slate-700">US Person Indicator (FATCA)?</Label>
+                <RadioGroup
+                  value={formData.us_person_indic ? "yes" : "no"}
+                  onValueChange={(value) => handleChange("us_person_indic", value === "yes")}
+                  className="flex gap-4 mt-1.5"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="us_person_yes" />
+                    <Label htmlFor="us_person_yes" className="font-normal cursor-pointer">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="us_person_no" />
+                    <Label htmlFor="us_person_no" className="font-normal cursor-pointer">No</Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-slate-500 mt-1">Indicates US status per FATCA</p>
+              </div>
+            </div>
+          </div>
 
           {/* GAP 19: CRS & FATCA Organisation Classification */}
           {formData.account_holder_type === "entity" && (() => {
