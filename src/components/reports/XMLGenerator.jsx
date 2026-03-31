@@ -341,6 +341,19 @@ export default function XMLGenerator({ report, onSuccess }) {
           if (account.crs_entity_classification === 'CRS101' && (account.controlling_persons_count || 0) === 0) {
             throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is classified as a passive entity with controlling persons (CRS101) — please add at least one controlling person before generating.`);
           }
+
+          // GAP 21: Validate all CPs for CRS101 accounts have a control_type set
+          if (account.crs_entity_classification === 'CRS101') {
+            const accountCPsForValidation = controllingPersons.filter(cp => cp.account_id === account.id);
+            for (const cp of accountCPsForValidation) {
+              if (!cp.control_type) {
+                const cpName = cp.first_name
+                  ? `${cp.first_name} ${cp.last_name || ''}`.trim()
+                  : (cp.full_name || cp.id);
+                throw new Error(`Please select a "Type of Control" role for controlling person "${cpName}" on account "${account.account_holder_name || account.account_number}" before generating the report.`);
+              }
+            }
+          }
           if (['FATCA101', 'FATCA102'].includes(account.fatca_entity_classification) && (account.controlling_persons_count || 0) === 0) {
             throw new Error(`Organisation "${account.account_holder_name || account.account_number}" requires Substantial Owner details — please add at least one substantial owner before generating.`);
           }
@@ -368,7 +381,10 @@ export default function XMLGenerator({ report, onSuccess }) {
         const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
         const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
 
-        const accountCPs = controllingPersons.filter(cp => cp.account_id === account.id);
+        // GAP 21: Only emit ControllingPerson blocks for CRS101 accounts
+        const accountCPs = account.crs_entity_classification === 'CRS101'
+          ? controllingPersons.filter(cp => cp.account_id === account.id)
+          : [];
         const ctrlTypeMap = {
           legal_person_ownership: 'CRS801',
           legal_person_other_means: 'CRS802',
