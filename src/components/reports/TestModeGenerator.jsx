@@ -107,7 +107,7 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
   
   <crs:CrsBody>
     <crs:ReportingFI>
-      <crs:ResCountryCode>${escapeXML(jurisdiction || 'AU')}</crs:ResCountryCode>
+      <crs:ResCountryCode>CW</crs:ResCountryCode>
       ${entity?.giin ? `<crs:IN INType="GIIN">${escapeXML(entity.giin)}</crs:IN>` : ''}
       <crs:TIN>${escapeXML(entity?.tax_id || 'TESTTIN123')}</crs:TIN>
       <crs:Name>${escapeXML(entity?.entity_name || 'Test Financial Institution')}</crs:Name>

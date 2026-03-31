@@ -218,7 +218,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       <Name>${escapeXML(entity.entity_name)}</Name>
       ${entity.address ? `
       <Address>
-        <CountryCode>CW</CountryCode>
+        <CountryCode>CW</CountryCode>  
         ${entity.address.street ? `<AddressFree>${escapeXML(entity.address.street)}</AddressFree>` : ''}
         ${entity.address.city ? `<City>${escapeXML(entity.address.city)}</City>` : ''}
       </Address>

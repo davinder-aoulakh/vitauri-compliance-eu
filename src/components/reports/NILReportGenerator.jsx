@@ -59,7 +59,7 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
   
   <crs:CrsBody>
     <crs:ReportingFI>
-      <crs:ResCountryCode>${escapeXML(entity?.country_of_incorporation || report.reporting_jurisdiction)}</crs:ResCountryCode>
+      <crs:ResCountryCode>CW</crs:ResCountryCode>
       ${entity?.giin ? `<crs:IN INType="GIIN">${escapeXML(entity.giin)}</crs:IN>` : ''}
       <crs:TIN>${escapeXML(entity?.tax_id || 'UNKNOWN')}</crs:TIN>
       <crs:Name>${escapeXML(entity?.entity_name || 'Unknown Entity')}</crs:Name>
