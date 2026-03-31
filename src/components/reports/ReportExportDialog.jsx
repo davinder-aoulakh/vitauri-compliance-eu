@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, FileText, FileSpreadsheet, FileCode } from "lucide-react";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
 
 export default function ReportExportDialog({ report, accounts, controllingPersons, open, onOpenChange }) {
   const [exportFormat, setExportFormat] = useState("pdf");
@@ -24,86 +23,31 @@ export default function ReportExportDialog({ report, accounts, controllingPerson
     setIncludeFields(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    let yPos = 20;
-
-    // Title
-    doc.setFontSize(20);
-    doc.text(`CRS Report - ${report.reporting_year}`, 20, yPos);
-    yPos += 10;
-
-    // Report metadata
-    if (includeFields.metadata) {
-      doc.setFontSize(12);
-      doc.text(`Jurisdiction: ${report.reporting_jurisdiction}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Status: ${report.status}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Type: ${report.report_type}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Schema: ${report.schema_version}`, 20, yPos);
-      yPos += 15;
-    }
-
-    // Summary stats
-    if (includeFields.summary && report.summary_stats) {
-      doc.setFontSize(14);
-      doc.text("Summary Statistics", 20, yPos);
-      yPos += 7;
-      doc.setFontSize(10);
-      doc.text(`Total Reportable Accounts: ${report.summary_stats.total_reportable_accounts || 0}`, 25, yPos);
-      yPos += 6;
-      doc.text(`Total Controlling Persons: ${report.summary_stats.total_controlling_persons || 0}`, 25, yPos);
-      yPos += 6;
-      doc.text(`Total Balance: ${report.summary_stats.total_account_balance || 0}`, 25, yPos);
-      yPos += 15;
-    }
-
-    // Accounts
-    if (includeFields.accounts && accounts?.length > 0) {
-      doc.setFontSize(14);
-      doc.text("Reportable Accounts", 20, yPos);
-      yPos += 7;
-      doc.setFontSize(10);
-      
-      accounts.slice(0, 10).forEach((account, idx) => {
-        if (yPos > 270) {
-          doc.addPage();
-          yPos = 20;
-        }
-        doc.text(`${idx + 1}. ${account.account_holder_name} - ${account.account_number}`, 25, yPos);
-        yPos += 6;
+  const exportToPDF = async () => {
+    setExporting(true);
+    try {
+      const response = await base44.functions.invoke('generateDetailedPDF', {
+        report,
+        accounts,
+        controllingPersons,
+        includeFields
       });
-      
-      if (accounts.length > 10) {
-        doc.text(`... and ${accounts.length - 10} more accounts`, 25, yPos);
-        yPos += 6;
-      }
-      yPos += 10;
-    }
 
-    // Validation results
-    if (includeFields.validation && report.validation_results) {
-      doc.setFontSize(14);
-      doc.text("Validation Results", 20, yPos);
-      yPos += 7;
-      doc.setFontSize(10);
-      doc.text(`Valid: ${report.validation_results.is_valid ? 'Yes' : 'No'}`, 25, yPos);
-      yPos += 6;
-      
-      if (report.validation_results.errors?.length > 0) {
-        doc.text(`Errors: ${report.validation_results.errors.length}`, 25, yPos);
-        yPos += 6;
-      }
-      
-      if (report.validation_results.warnings?.length > 0) {
-        doc.text(`Warnings: ${report.validation_results.warnings.length}`, 25, yPos);
-        yPos += 6;
-      }
+      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CRS_Report_${report.reporting_year}_${report.reporting_jurisdiction}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setExporting(false);
     }
-
-    doc.save(`CRS_Report_${report.reporting_year}_${report.reporting_jurisdiction}.pdf`);
   };
 
   const exportToCSV = () => {
@@ -183,33 +127,36 @@ export default function ReportExportDialog({ report, accounts, controllingPerson
   };
 
   const handleExport = async () => {
-    setExporting(true);
     try {
       switch (exportFormat) {
         case "pdf":
-          exportToPDF();
+          await exportToPDF();
+          toast.success(`Report exported as PDF`);
+          onOpenChange(false);
           break;
         case "csv":
           exportToCSV();
+          toast.success(`Report exported as CSV`);
+          onOpenChange(false);
           break;
         case "json":
           exportToJSON();
+          toast.success(`Report exported as JSON`);
+          onOpenChange(false);
           break;
         case "xml":
           if (report.xml_file_url) {
             window.open(report.xml_file_url, '_blank');
+            toast.success(`Downloaded XML file`);
+            onOpenChange(false);
           } else {
             toast.error("XML file not available");
           }
           break;
       }
-      toast.success(`Report exported as ${exportFormat.toUpperCase()}`);
-      onOpenChange(false);
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export report");
-    } finally {
-      setExporting(false);
     }
   };
 
