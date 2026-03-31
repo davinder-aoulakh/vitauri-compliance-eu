@@ -526,7 +526,7 @@ export default function AccountsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
-      <div className="p-6 md:p-8 max-w-screen-2xl mx-auto space-y-6">
+      <div className="px-4 md:px-6 py-6 md:py-8 max-w-screen-2xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Accounts</h1>
