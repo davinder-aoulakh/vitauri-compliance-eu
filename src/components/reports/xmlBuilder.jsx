@@ -107,6 +107,8 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
   // GAP 6: British spelling — use Organisation not Organization throughout
   // The FATCA-CRS schema v2.2 uses British spelling per the official spec
   
+  // GAP 7: Timestamp format — milliseconds optional per spec (YYYY-MM-DDTHH:mm:ss.nnn or YYYY-MM-DDTHH:mm:ss)
+  // Current implementation generates YYYY-MM-DDTHH:mm:ss (without milliseconds), which is valid
   const timestamp = new Date().toISOString().substring(0, 19);
   const cribNumber = entity?.tax_id || '';
 
