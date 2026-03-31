@@ -93,6 +93,7 @@ export default function AccountsPage() {
     return params.get('status') || "all";
   });
   const [entityFilter, setEntityFilter] = useState("all");
+  const [classificationFilter, setClassificationFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("accounts");
   const [selectedAccountIds, setSelectedAccountIds] = useState([]);
@@ -466,12 +467,13 @@ export default function AccountsPage() {
                          account.account_number?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || account.reportability_status === statusFilter;
     const matchesEntity = entityFilter === "all" || account.entity_id === entityFilter;
+    const matchesClassification = classificationFilter === "all" || account.entity_classification === classificationFilter;
     
     const matchesCountry = countryFilter === "all" || 
       (account.tax_residencies && account.tax_residencies.some(r => r.country === countryFilter)) ||
       account.account_holder_address?.country === countryFilter;
     
-    return matchesSearch && matchesStatus && matchesEntity && matchesCountry;
+    return matchesSearch && matchesStatus && matchesEntity && matchesClassification && matchesCountry;
   });
 
   const uniqueCountries = [...new Set(
@@ -746,8 +748,22 @@ export default function AccountsPage() {
                 </div>
 
                 <div className="flex gap-4 mt-4 flex-wrap">
+                  <Select value={classificationFilter} onValueChange={setClassificationFilter}>
+                    <SelectTrigger className="w-full md:w-56">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Entity Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Entity Types</SelectItem>
+                      <SelectItem value="financial_institution">Financial Institution</SelectItem>
+                      <SelectItem value="active_nfe">Active NFE</SelectItem>
+                      <SelectItem value="passive_nfe">Passive NFE</SelectItem>
+                      <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Select value={countryFilter} onValueChange={setCountryFilter}>
-                    <SelectTrigger className="w-full md:w-64">
+                    <SelectTrigger className="w-full md:w-56">
                       <Filter className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Country" />
                     </SelectTrigger>
@@ -761,13 +777,14 @@ export default function AccountsPage() {
                     </SelectContent>
                   </Select>
 
-                  {(searchTerm || statusFilter !== "all" || entityFilter !== "all" || countryFilter !== "all") && (
+                  {(searchTerm || statusFilter !== "all" || entityFilter !== "all" || classificationFilter !== "all" || countryFilter !== "all") && (
                     <Button
                       variant="outline"
                       onClick={() => {
                         setSearchTerm("");
                         setStatusFilter("all");
                         setEntityFilter("all");
+                        setClassificationFilter("all");
                         setCountryFilter("all");
                       }}
                     >
@@ -807,7 +824,7 @@ export default function AccountsPage() {
                         ? "Try adjusting your filters" 
                         : "Get started by adding your first account"}
                     </p>
-                    {!searchTerm && statusFilter === "all" && entityFilter === "all" && countryFilter === "all" && (
+                    {!searchTerm && statusFilter === "all" && entityFilter === "all" && classificationFilter === "all" && countryFilter === "all" && (
                       <Button onClick={() => setShowForm(true)} style={{ backgroundColor: primaryColor }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Account
