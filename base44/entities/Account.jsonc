@@ -14,6 +14,18 @@
       "type": "string",
       "description": "Unique account identifier"
     },
+    "account_number_type": {
+      "type": "string",
+      "enum": [
+        "IBAN",
+        "Bank account number (non-IBAN)",
+        "ISIN",
+        "Securities account number (non-ISIN)",
+        "Other account identifier",
+        "No account number exists"
+      ],
+      "description": "Type of account number for CRS XML reporting. Maps to OECD601-OECD605 codes. 'No account number exists' results in NANUM being emitted with no type attribute."
+    },
     "account_creation_date": {
       "type": "string",
       "format": "date",

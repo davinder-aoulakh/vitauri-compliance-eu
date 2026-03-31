@@ -95,12 +95,15 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     self_certification_overdue: account?.self_certification_overdue || false,
     documents: account?.documents || [],
     crs_entity_classification: account?.crs_entity_classification || "",
-    fatca_entity_classification: account?.fatca_entity_classification || ""
+    fatca_entity_classification: account?.fatca_entity_classification || "",
+    account_number_type: account?.account_number_type || ""
   });
 
   const [detectedChanges, setDetectedChanges] = useState([]);
   const [initialData, setInitialData] = useState(null);
   const [accountNumberError, setAccountNumberError] = useState("");
+  const [accountNumberTypeError, setAccountNumberTypeError] = useState("");
+  const [ibanSuggestion, setIbanSuggestion] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [showSmartUpload, setShowSmartUpload] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -234,6 +237,54 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   };
 
+  const ACCOUNT_NUMBER_TYPE_CODE_MAP = {
+    "IBAN": "OECD601",
+    "Bank account number (non-IBAN)": "OECD602",
+    "ISIN": "OECD603",
+    "Securities account number (non-ISIN)": "OECD604",
+    "Other account identifier": "OECD605",
+    "No account number exists": null
+  };
+
+  const validateIBAN = (value) => /^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$/.test(value) && value.length <= 34;
+  const validateISIN = (value) => /^[A-Z]{2}\d{9}[0-9]$/.test(value) && value.length === 12;
+
+  const validateAccountNumberFormat = (number, type) => {
+    if (!type || type === "No account number exists") return "";
+    if (!number) return "";
+    if (type === "IBAN" && !validateIBAN(number.toUpperCase())) {
+      return "This does not appear to be a valid IBAN. An IBAN starts with a 2-letter country code, followed by 2 digits, then up to 30 letters and numbers (maximum 34 characters total).";
+    }
+    if (type === "ISIN" && !validateISIN(number.toUpperCase())) {
+      return "This does not appear to be a valid ISIN. An ISIN must be exactly 12 characters: a 2-letter country code, 9 digits, and 1 check digit.";
+    }
+    return "";
+  };
+
+  const looksLikeIBAN = (value) => value && /^[A-Z]{2}\d{2}[A-Z0-9]/.test(value.toUpperCase()) && value.length >= 15 && value.length <= 34;
+
+  const handleAccountNumberChange = (value) => {
+    handleChange("account_number", value);
+    setAccountNumberError("");
+    // Real-time format validation
+    const formatErr = validateAccountNumberFormat(value, formData.account_number_type);
+    setAccountNumberTypeError(formatErr);
+    // IBAN suggestion: only show if no type set yet and looks like IBAN
+    setIbanSuggestion(!formData.account_number_type && looksLikeIBAN(value));
+  };
+
+  const handleAccountNumberTypeChange = (value) => {
+    handleChange("account_number_type", value);
+    setIbanSuggestion(false);
+    // Re-validate existing number against new type
+    if (value !== "No account number exists") {
+      const formatErr = validateAccountNumberFormat(formData.account_number, value);
+      setAccountNumberTypeError(formatErr);
+    } else {
+      setAccountNumberTypeError("");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -241,6 +292,20 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     // Validate account number uniqueness
     const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
     if (!isValid) return;
+
+    // GAP 27: Validate account number type/format
+    if (formData.account_number_type !== "No account number exists") {
+      if (!formData.account_number?.trim()) {
+        const holderName = formData.account_holder_name || `${formData.first_name} ${formData.last_name}`.trim() || "this account";
+        alert(`Please enter an account number for ${holderName}, or select 'No account number exists' if one is not available.`);
+        return;
+      }
+      const formatErr = validateAccountNumberFormat(formData.account_number, formData.account_number_type);
+      if (formatErr) {
+        setAccountNumberTypeError(formatErr);
+        return;
+      }
+    }
     
     // Validate mandatory fields for individual accounts
     if (formData.account_holder_type === 'individual') {
@@ -430,31 +495,73 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="account_number" className="text-slate-700">
-                Account Number <span className="text-red-600">*</span>
-              </Label>
-              <Input
-                id="account_number"
-                value={formData.account_number}
-                onChange={(e) => {
-                  handleChange("account_number", e.target.value);
-                  setAccountNumberError(""); // Clear error on change
-                }}
-                onBlur={() => {
-                  if (formData.account_number && formData.entity_id) {
-                    validateAccountNumber(formData.account_number, formData.entity_id);
-                  }
-                }}
-                placeholder="e.g., ACC-123456"
-                required
-                className={`mt-1.5 ${accountNumberError ? 'border-red-500 focus:ring-red-500' : submitted && !formData.account_number ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-              />
-              {accountNumberError && (
-                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  {accountNumberError}
-                </p>
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Account Number Type */}
+              <div>
+                <Label htmlFor="account_number_type" className="text-slate-700">
+                  What type of account number is this?
+                </Label>
+                <Select
+                  value={formData.account_number_type}
+                  onValueChange={handleAccountNumberTypeChange}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IBAN">IBAN (International Bank Account Number)</SelectItem>
+                    <SelectItem value="Bank account number (non-IBAN)">Bank account number (non-IBAN)</SelectItem>
+                    <SelectItem value="ISIN">ISIN (International Securities Identification Number)</SelectItem>
+                    <SelectItem value="Securities account number (non-ISIN)">Securities account number (non-ISIN)</SelectItem>
+                    <SelectItem value="Other account identifier">Other account identifier</SelectItem>
+                    <SelectItem value="No account number exists">No account number exists</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Account Number — hidden when "No account number exists" */}
+              {formData.account_number_type !== "No account number exists" && (
+                <div>
+                  <Label htmlFor="account_number" className="text-slate-700">
+                    Account Number <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    id="account_number"
+                    value={formData.account_number}
+                    onChange={(e) => handleAccountNumberChange(e.target.value)}
+                    onBlur={() => {
+                      if (formData.account_number && formData.entity_id) {
+                        validateAccountNumber(formData.account_number, formData.entity_id);
+                      }
+                    }}
+                    placeholder="e.g., ACC-123456"
+                    className={`mt-1.5 ${accountNumberError || accountNumberTypeError ? 'border-red-500 focus:ring-red-500' : submitted && !formData.account_number ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  />
+                  {accountNumberError && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {accountNumberError}
+                    </p>
+                  )}
+                  {accountNumberTypeError && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {accountNumberTypeError}
+                    </p>
+                  )}
+                  {ibanSuggestion && (
+                    <p className="text-xs text-amber-700 mt-1 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      This account number looks like an IBAN — would you like to set the type to IBAN so it can be validated correctly?
+                      <button
+                        type="button"
+                        className="ml-2 underline font-medium"
+                        onClick={() => handleAccountNumberTypeChange("IBAN")}
+                      >
+                        Set to IBAN
+                      </button>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

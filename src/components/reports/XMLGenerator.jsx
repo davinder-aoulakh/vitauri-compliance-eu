@@ -376,7 +376,25 @@ export default function XMLGenerator({ report, onSuccess }) {
         // GAP 26: ClosedAccount and DormantAccount as attributes on AccountNumber
         const closedAttr = account.account_closed_during_period ? ' ClosedAccount="true"' : '';
         const dormantAttr = account.account_dormant_at_reporting_date ? ' DormantAccount="true"' : '';
-        const accountNumberVal = account.account_number ? escapeXML(account.account_number) : 'NANUM';
+
+        // GAP 27: AccountNumber type attribute and NANUM handling
+        const ACCT_TYPE_CODE_MAP = {
+          "IBAN": "OECD601",
+          "Bank account number (non-IBAN)": "OECD602",
+          "ISIN": "OECD603",
+          "Securities account number (non-ISIN)": "OECD604",
+          "Other account identifier": "OECD605"
+        };
+        const noAccountNumber = account.account_number_type === "No account number exists";
+        const accountNumberVal = noAccountNumber ? 'NANUM' : (account.account_number ? escapeXML(account.account_number) : 'NANUM');
+        const acctTypeCode = noAccountNumber ? null : ACCT_TYPE_CODE_MAP[account.account_number_type] || null;
+        const acctTypeAttr = acctTypeCode ? ` AcctNumberType="${acctTypeCode}"` : '';
+
+        // GAP 27: Block if account number missing (and type is not "No account number exists")
+        if (!noAccountNumber && !account.account_number?.trim()) {
+          const holderName = account.account_holder_name || account.account_number || 'Unknown';
+          throw new Error(`Please enter an account number for "${holderName}", or select 'No account number exists' if one is not available.`);
+        }
 
         // GAP 25: AccountBalance is year-end value only
         const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
@@ -474,7 +492,7 @@ export default function XMLGenerator({ report, onSuccess }) {
         ${corrDocRefIdXml}
       </DocSpec>
       
-      <AccountNumber${closedAttr}${dormantAttr}>${accountNumberVal}</AccountNumber>
+      <AccountNumber${closedAttr}${dormantAttr}${acctTypeAttr}>${accountNumberVal}</AccountNumber>
       
       <AccountHolder>
         ${account.account_holder_type === 'individual' ? `
