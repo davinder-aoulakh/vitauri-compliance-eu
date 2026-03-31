@@ -326,6 +326,26 @@ export default function XMLGenerator({ report, onSuccess }) {
           return '';
         })();
 
+        // GAP 19: Validate and emit organisation classification codes
+        if (account.account_holder_type === 'entity') {
+          const taxCountries = (account.tax_residencies || []).map(r => r.country);
+          const hasNonUS = taxCountries.some(c => c && c !== 'US');
+          const hasUS = taxCountries.includes('US');
+
+          if (hasNonUS && !account.crs_entity_classification) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" has non-US tax residencies but has not been classified for CRS. Please classify the organisation before generating the report.`);
+          }
+          if (hasUS && !account.fatca_entity_classification) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" has a US tax residency but has not been classified for FATCA. Please classify the organisation before generating the report.`);
+          }
+          if (account.crs_entity_classification === 'CRS101' && (account.controlling_persons_count || 0) === 0) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is classified as a passive entity with controlling persons (CRS101) — please add at least one controlling person before generating.`);
+          }
+          if (['FATCA101', 'FATCA102'].includes(account.fatca_entity_classification) && (account.controlling_persons_count || 0) === 0) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" requires Substantial Owner details — please add at least one substantial owner before generating.`);
+          }
+        }
+
         // GAP 17: Validate City is present for individual account holders
         if (account.account_holder_type === 'individual' && account.account_holder_address && !account.account_holder_address.city) {
           throw new Error(`Account "${account.account_number}": City is mandatory in the account holder address (GAP 17). Please update the account before generating XML.`);
@@ -448,9 +468,12 @@ export default function XMLGenerator({ report, onSuccess }) {
             <AddressFix>
               ${account.account_holder_address.street ? `<Street>${escapeXML(account.account_holder_address.street)}</Street>` : ''}
               <City>${escapeXML(account.account_holder_address.city || '')}</City>
+              ${(account.account_holder_address.country || 'CW') !== 'CW' && account.account_holder_address.postal_code ? `<PostCode>${escapeXML(account.account_holder_address.postal_code)}</PostCode>` : ''}
             </AddressFix>
           </Address>
           ` : ''}
+          ${account.crs_entity_classification ? `<AcctHolderType>${account.crs_entity_classification}</AcctHolderType>` : ''}
+          ${account.fatca_entity_classification ? `<FATCAClassification>${account.fatca_entity_classification}</FATCAClassification>` : ''}
         </Organisation>
         `}
       </AccountHolder>

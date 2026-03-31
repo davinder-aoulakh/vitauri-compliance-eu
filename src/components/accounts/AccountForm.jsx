@@ -93,7 +93,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     self_certification_date: account?.self_certification_date || null,
     self_certification_request_date: account?.self_certification_request_date || "",
     self_certification_overdue: account?.self_certification_overdue || false,
-    documents: account?.documents || []
+    documents: account?.documents || [],
+    crs_entity_classification: account?.crs_entity_classification || "",
+    fatca_entity_classification: account?.fatca_entity_classification || ""
   });
 
   const [detectedChanges, setDetectedChanges] = useState([]);
@@ -1286,21 +1288,98 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             </div>
           )}
 
-          {/* Controlling Persons Section - Only for Entity Account Holders */}
-          {formData.account_holder_type === "entity" && account?.id && (
-            <div className="p-4 border-2 border-indigo-200 rounded-lg bg-indigo-50/30 mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-slate-700">Controlling Persons</h3>
-                <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
-                  {formData.controlling_persons_count || 0} Controlling Person(s)
-                </Badge>
+          {/* GAP 19: CRS & FATCA Organisation Classification */}
+          {formData.account_holder_type === "entity" && (() => {
+            const taxCountries = (formData.tax_residencies || []).map(r => r.country);
+            const hasNonUS = taxCountries.some(c => c && c !== 'US');
+            const hasUS = taxCountries.includes('US');
+            if (!hasNonUS && !hasUS) return null;
+            return (
+              <div className="p-4 border-2 border-amber-200 rounded-lg bg-amber-50/30 mt-4 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700">Organisation Tax Classification</h3>
+
+                {hasNonUS && (
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">
+                      What best describes this organisation's status for CRS reporting? <span className="text-red-600">*</span>
+                    </Label>
+                    <p className="text-xs text-slate-500 mt-0.5 mb-2">Required because this organisation has non-US tax residencies.</p>
+                    <Select
+                      value={formData.crs_entity_classification}
+                      onValueChange={(value) => handleChange("crs_entity_classification", value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select CRS classification..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CRS101">Passive entity (e.g. holding company, trust, foundation) with one or more controlling persons who are tax residents of a reportable country</SelectItem>
+                        <SelectItem value="CRS102">Active or financial entity that is itself a tax resident of a reportable country</SelectItem>
+                        <SelectItem value="CRS103">Passive entity that is itself also a tax resident of a reportable country</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formData.crs_entity_classification === 'CRS102' || formData.crs_entity_classification === 'CRS103' ? (
+                      <p className="text-xs text-blue-700 mt-1 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                        Controlling Persons are not required for this classification and will not be emitted in the XML.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
+                {hasUS && (
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">
+                      What best describes this organisation's US tax status? <span className="text-red-600">*</span>
+                    </Label>
+                    <p className="text-xs text-slate-500 mt-0.5 mb-2">Required because this organisation has a US tax residency.</p>
+                    <Select
+                      value={formData.fatca_entity_classification}
+                      onValueChange={(value) => handleChange("fatca_entity_classification", value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select FATCA classification..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FATCA101">Entity that documents its US owners (Owner-Documented FI)</SelectItem>
+                        <SelectItem value="FATCA102">Passive entity with substantial US owners (e.g. passive holding company owned by US persons)</SelectItem>
+                        <SelectItem value="FATCA103">Non-participating foreign financial institution</SelectItem>
+                        <SelectItem value="FATCA104">Specified US Person (US company or individual-equivalent entity)</SelectItem>
+                        <SelectItem value="FATCA105">Direct Reporting NFFE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {['FATCA101', 'FATCA102'].includes(formData.fatca_entity_classification) ? (
+                      <p className="text-xs text-amber-700 mt-1 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                        At least one Substantial Owner (Controlling Person) must be added for this classification.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
               </div>
-              <ControllingPersonManager 
-                account={account} 
-                tenant={tenant}
-              />
-            </div>
-          )}
+            );
+          })()}
+
+          {/* Controlling Persons Section - Only for Entity Account Holders */}
+          {formData.account_holder_type === "entity" && account?.id && (() => {
+            const crsClass = formData.crs_entity_classification;
+            const fatcaClass = formData.fatca_entity_classification;
+            // CRS102/CRS103: hide controlling persons
+            if (crsClass === 'CRS102' || crsClass === 'CRS103') return null;
+            // If only FATCA is set and it's FATCA103/104/105: hide controlling persons
+            if (!crsClass && ['FATCA103', 'FATCA104', 'FATCA105'].includes(fatcaClass)) return null;
+            return (
+              <div className="p-4 border-2 border-indigo-200 rounded-lg bg-indigo-50/30 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-slate-700">Controlling Persons</h3>
+                  <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
+                    {formData.controlling_persons_count || 0} Controlling Person(s)
+                  </Badge>
+                </div>
+                <ControllingPersonManager 
+                  account={account} 
+                  tenant={tenant}
+                />
+              </div>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="tax" className="space-y-4 mt-4">

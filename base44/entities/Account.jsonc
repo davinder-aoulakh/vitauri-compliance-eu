@@ -168,6 +168,26 @@
       "type": "string",
       "description": "Type of financial institution if account holder is an FI"
     },
+    "crs_entity_classification": {
+      "type": "string",
+      "enum": [
+        "CRS101",
+        "CRS102",
+        "CRS103"
+      ],
+      "description": "CRS classification for organisation account holders with non-US tax residencies. CRS101=Passive entity with controlling persons, CRS102=Active/financial entity that is itself a tax resident, CRS103=Passive entity that is itself also a tax resident."
+    },
+    "fatca_entity_classification": {
+      "type": "string",
+      "enum": [
+        "FATCA101",
+        "FATCA102",
+        "FATCA103",
+        "FATCA104",
+        "FATCA105"
+      ],
+      "description": "FATCA classification for organisation account holders with US tax residency. FATCA101=Owner-Documented FI, FATCA102=Passive entity with substantial US owners, FATCA103=Non-participating FFI, FATCA104=Specified US Person, FATCA105=Direct Reporting NFFE."
+    },
     "current_address": {
       "type": "object",
       "properties": {
