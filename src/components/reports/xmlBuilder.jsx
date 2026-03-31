@@ -496,6 +496,26 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         <${ns}AcctHolderTypeFATCA>${account.fatca_entity_classification}</${ns}AcctHolderTypeFATCA>` : ''}`;
       }
 
+      // GAP 9: AdditionalData section (optional, up to 100 items)
+      const additionalDataBlock = (() => {
+        const items = (account.additional_items || []).slice(0, 100);
+        if (items.length === 0) return '';
+        
+        const itemsXml = items.map(item => {
+          const itemName = escapeXML(sanitizeText(String(item.item_name || '').substring(0, 200)));
+          const itemContent = escapeXML(sanitizeText(String(item.item_content || '').substring(0, 4000)));
+          return `
+        <${ns}AdditionalItem>
+          <${ns}ItemName>${itemName}</${ns}ItemName>
+          <${ns}ItemContent>${itemContent}</${ns}ItemContent>
+        </${ns}AdditionalItem>`;
+        }).join('');
+        
+        return `
+      <${ns}AdditionalData>${itemsXml}
+      </${ns}AdditionalData>`;
+      })();
+
       return `
     <${ns}AccountReport>
       <${ns}DocSpec>
@@ -512,7 +532,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       
       <${ns}AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</${ns}AccountBalance>
       ${buildPaymentBlock(ns)}
-      ${cpBlocks}
+      ${cpBlocks}${additionalDataBlock}
     </${ns}AccountReport>`;
     }).join('');
 

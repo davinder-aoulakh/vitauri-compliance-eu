@@ -443,6 +443,30 @@
         }
       }
     },
+    "additional_items": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_name": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Name/key of the additional item (max 200 chars)"
+          },
+          "item_content": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Content value of the additional item (max 4000 chars)"
+          }
+        },
+        "required": [
+          "item_name",
+          "item_content"
+        ]
+      },
+      "description": "Optional additional items for AccountReport (up to 100 items per spec)"
+    },
     "status": {
       "type": "string",
       "enum": [
