@@ -1,0 +1,172 @@
+{
+  "name": "CRSReport",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Reference to the RFI entity"
+    },
+    "reporting_year": {
+      "type": "string",
+      "description": "Year for which this report applies"
+    },
+    "reporting_jurisdiction": {
+      "type": "string",
+      "description": "Tax authority jurisdiction receiving this report"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "crs_xml",
+        "nil_report"
+      ],
+      "default": "crs_xml",
+      "description": "Type of CRS report"
+    },
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "v1.0",
+        "v2.0",
+        "v2.1",
+        "FATCA-spec"
+      ],
+      "default": "v2.0",
+      "description": "XML schema version used for this report"
+    },
+    "giin": {
+      "type": "string",
+      "maxLength": 19,
+      "description": "Global Intermediary Identification Number for FATCA"
+    },
+    "filer_category": {
+      "type": "string",
+      "enum": [
+        "FATCA1",
+        "FATCA2",
+        "FATCA3",
+        "FATCA4",
+        "FATCA5",
+        "FATCA6",
+        "FATCA7"
+      ],
+      "description": "Category of the Filer as required by FATCA-CRS XML v2.1 (e.g. FATCA1 = Reporting FI, FATCA2 = Direct Reporting NFFE)"
+    },
+    "is_test_supply": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indicates if this report is a test supply for the tax authority. When true, MessageTypeIndic is forced to CRS704."
+    },
+    "message_type_indic": {
+      "type": "string",
+      "enum": [
+        "CRS701",
+        "CRS702",
+        "CRS703",
+        "CRS704",
+        "OECD1",
+        "OECD2",
+        "OECD3"
+      ],
+      "default": "CRS701",
+      "description": "Message type indicator - CRS701: New Data, CRS702: Corrections, CRS703: NIL/Deletion, CRS704: Test Supply"
+    },
+    "correction_message_ref_id": {
+      "type": "string",
+      "description": "Reference to original MessageRefId when this is a correction report"
+    },
+    "correction_doc_ref_id": {
+      "type": "string",
+      "description": "Reference to original DocRefId when this is a correction report"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "validated",
+        "submitted",
+        "accepted",
+        "rejected"
+      ],
+      "default": "draft",
+      "description": "Current status of the report"
+    },
+    "xml_file_url": {
+      "type": "string",
+      "description": "URL to the generated CRS XML file"
+    },
+    "summary_stats": {
+      "type": "object",
+      "properties": {
+        "total_reportable_accounts": {
+          "type": "number"
+        },
+        "total_controlling_persons": {
+          "type": "number"
+        },
+        "jurisdictions_reported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "total_account_balance": {
+          "type": "number"
+        }
+      },
+      "description": "Summary statistics for this report"
+    },
+    "validation_results": {
+      "type": "object",
+      "properties": {
+        "is_valid": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "validated_date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "Validation results from XML schema validation"
+    },
+    "notification_details": {
+      "type": "object",
+      "description": "Details from tax authority notifications (acceptance, rejection, error codes)"
+    },
+    "submission_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when report was submitted to tax authority"
+    },
+    "submission_reference": {
+      "type": "string",
+      "description": "Reference number provided by tax authority"
+    },
+    "submitted_by": {
+      "type": "string",
+      "description": "Email of user who submitted the report"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "entity_id",
+    "reporting_year",
+    "reporting_jurisdiction"
+  ]
+}

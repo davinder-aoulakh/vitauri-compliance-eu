@@ -164,7 +164,8 @@ export default function XMLGenerator({ report, onSuccess }) {
       console.warn('MessageRefId validation warnings:', validation.errors);
     }
 
-    const messageTypeIndic = report.message_type_indic || 'CRS701';
+    // If is_test_supply is true, override MessageTypeIndic to CRS704 regardless of other settings
+    const messageTypeIndic = report.is_test_supply ? 'CRS704' : (report.message_type_indic || 'CRS701');
 
     // GAP 31: SendingCompanyIN must be CRIB number — never 'UNKNOWN'
     const sendingCompanyIN = cribNumber;
@@ -189,8 +190,11 @@ export default function XMLGenerator({ report, onSuccess }) {
         : '';
     })();
 
+    // filer_category is optional — only include if set on the report
+    const filerCategoryAttr = report.filer_category ? ` FilerCategory="${report.filer_category}"` : '';
+
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<FATCA_CRS Version="2.0"
+<FATCA_CRS Version="2.0"${filerCategoryAttr}
   xmlns="urn:oecd:ties:fatcacrs:v2"
   xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
   xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
