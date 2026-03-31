@@ -89,6 +89,15 @@ export default function XMLGenerator({ report, onSuccess }) {
       const nilScenario = data.accounts.length === 0 || report.report_type === 'nil_report';
       setIsNilReport(nilScenario);
 
+      // GAP 30: Block CRS701 report if correction_doc_ref_id is set (rules 108/109)
+      const effectiveMessageType = report.is_test_supply ? 'CRS704' : (report.message_type_indic || 'CRS701');
+      if (effectiveMessageType === 'CRS701' && report.correction_doc_ref_id) {
+        throw new Error(
+          'This is a New Data report (CRS701). CorrDocRefId must NOT appear in any DocSpec for new supply reports. ' +
+          'Please clear the correction_doc_ref_id field on the report, or change the MessageTypeIndic to CRS702 if this is a correction.'
+        );
+      }
+
       // GAP 28: Pre-generation scan for prohibited character combinations
       const prohibitedIssues = scanForProhibitedChars(data.accounts, data.controllingPersons, data.entity);
       if (prohibitedIssues.length > 0) {
@@ -249,9 +258,11 @@ export default function XMLGenerator({ report, onSuccess }) {
       else fiDocTypeIndic = 'OECD1'; // new supply or new NIL supply
     }
 
-    // Rules 108/109: CorrDocRefId
+    // GAP 30 / Rules 108/109: CorrDocRefId — MUST NOT appear for CRS701, MUST appear for CRS702
     const fiCorrDocRefIdXml = (() => {
-      if (messageTypeIndic === 'CRS701' || messageTypeIndic === 'CRS703') return ''; // Rule 108 + NIL
+      // CRS701 (new data) and CRS703 (NIL/delete): never emit CorrDocRefId
+      if (messageTypeIndic === 'CRS701' || messageTypeIndic === 'CRS703' || messageTypeIndic === 'CRS704') return '';
+      // CRS702 (correction): mandatory
       if (messageTypeIndic === 'CRS702') {
         if (!report.correction_doc_ref_id) {
           throw new Error('CorrDocRefId is mandatory for the ReportingFI DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set.');
@@ -331,13 +342,13 @@ export default function XMLGenerator({ report, onSuccess }) {
           else docTypeIndic = 'OECD1';
         }
 
-        // GAP 30: CorrDocRefId must NOT appear for CRS701
+        // GAP 30 / Rules 108/109: CorrDocRefId — strictly absent for CRS701/CRS703/CRS704, mandatory for CRS702
         const corrDocRefIdXml = (() => {
-          if (messageTypeIndic === 'CRS701') return '';
-          if (messageTypeIndic === 'CRS702' && report.correction_doc_ref_id) {
-            return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
+          if (messageTypeIndic !== 'CRS702') return ''; // only CRS702 emits CorrDocRefId
+          if (!report.correction_doc_ref_id) {
+            throw new Error(`CorrDocRefId is mandatory for AccountReport DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set (account: ${account.account_number}).`);
           }
-          return '';
+          return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
         })();
 
         // GAP 19: Validate and emit organisation classification codes
