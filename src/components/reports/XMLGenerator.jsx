@@ -326,6 +326,20 @@ export default function XMLGenerator({ report, onSuccess }) {
           return '';
         })();
 
+        // GAP 17: Validate City is present for individual account holders
+        if (account.account_holder_type === 'individual' && account.account_holder_address && !account.account_holder_address.city) {
+          throw new Error(`Account "${account.account_number}": City is mandatory in the account holder address (GAP 17). Please update the account before generating XML.`);
+        }
+
+        // GAP 18: Validate birth date year range
+        if (account.account_holder_type === 'individual' && account.date_of_birth) {
+          const birthYear = new Date(account.date_of_birth).getFullYear();
+          const currentYear = new Date().getFullYear();
+          if (birthYear < 1900 || birthYear >= currentYear) {
+            throw new Error(`Account "${account.account_number}": Birth date year must be between 1900 and ${currentYear - 1} (GAP 18). Found year: ${birthYear}.`);
+          }
+        }
+
         // GAP 26: ClosedAccount attribute
         const closedAttr = account.account_closed_during_period ? ' ClosedAccount="true"' : '';
         const accountNumberVal = account.account_number ? escapeXML(account.account_number) : 'NANUM';
@@ -412,6 +426,7 @@ export default function XMLGenerator({ report, onSuccess }) {
             <AddressFix>
               ${account.account_holder_address.street ? `<Street>${escapeXML(account.account_holder_address.street)}</Street>` : ''}
               <City>${escapeXML(account.account_holder_address.city || '')}</City>
+              ${(account.account_holder_address.country || 'CW') !== 'CW' && account.account_holder_address.postal_code ? `<PostCode>${escapeXML(account.account_holder_address.postal_code)}</PostCode>` : ''}
             </AddressFix>
           </Address>
           ` : ''}
