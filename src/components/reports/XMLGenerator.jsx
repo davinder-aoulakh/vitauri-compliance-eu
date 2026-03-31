@@ -400,7 +400,10 @@ export default function XMLGenerator({ report, onSuccess }) {
               : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')
             ).join('') : ''}
           <Name>
-            <FirstName>${escapeXML(account.first_name || (account.account_holder_name || '').split(' ')[0] || 'NFN')}</FirstName>
+            ${account.name_prefix ? `<NamePrefix>${escapeXML(account.name_prefix)}</NamePrefix>` : ''}
+            ${account.title ? `<Title>${escapeXML(account.title)}</Title>` : ''}
+            <FirstName>${escapeXML(account.first_name || 'NFN')}</FirstName>
+            ${account.middle_name ? `<MiddleName>${escapeXML(account.middle_name)}</MiddleName>` : ''}
             <LastName>${escapeXML(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
           </Name>
           ${account.account_holder_address ? `

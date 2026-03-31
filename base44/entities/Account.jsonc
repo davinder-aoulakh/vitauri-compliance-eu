@@ -47,11 +47,23 @@
     },
     "first_name": {
       "type": "string",
-      "description": "First name of individual account holder"
+      "description": "First name of individual account holder. If empty, 'NFN' is used in CRS XML."
     },
     "last_name": {
       "type": "string",
-      "description": "Last name of individual account holder"
+      "description": "Last name of individual account holder (mandatory for CRS XML)."
+    },
+    "middle_name": {
+      "type": "string",
+      "description": "Middle name(s) of individual account holder (optional, CRS XML MiddleName)."
+    },
+    "name_prefix": {
+      "type": "string",
+      "description": "Name prefix / title prefix (optional, CRS XML NamePrefix e.g. Mr, Mrs, Dr)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Title of individual account holder (optional, CRS XML Title)."
     },
     "date_of_birth": {
       "type": "string",
