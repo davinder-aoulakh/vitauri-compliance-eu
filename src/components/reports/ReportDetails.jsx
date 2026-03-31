@@ -108,7 +108,7 @@ export default function ReportDetails({ report, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Submitted"
-                value={new Date(report.submission_date).toLocaleDateString()}
+                value={new Date(report.submission_date.replace(/-/g, '/')).toLocaleDateString()}
               />
             )}
             {report.submission_reference && (
