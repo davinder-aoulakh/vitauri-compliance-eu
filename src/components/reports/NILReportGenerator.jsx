@@ -44,6 +44,26 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
         sequence: '001'
       });
 
+      // GAP 11: FilerCategory — required for FFI entities that file independently (not through a Sponsor)
+      const FATCA_FILER_CATEGORY_MAP = {
+        "Participating FFI (standard FATCA-registered institution)": "FATCA601",
+        "Registered Deemed-Compliant FFI": "FATCA602",
+        "Limited FFI or Limited Branch": "FATCA603",
+        "Qualified Intermediary / Withholding Foreign Partnership or Trust": "FATCA605",
+        "Direct Reporting NFFE": "FATCA606",
+        "Reporting Model 1 FFI / Withholding Agent": "FATCA610"
+      };
+      let filerCategoryXml = '';
+      if (entity?.is_ffi === true && !entity?.is_sponsored_ffi) {
+        if (!entity?.fi_registration_type) {
+          throw new Error(`Please select the institution registration type for "${entity?.entity_name}" before generating the report.`);
+        }
+        const fatcaCode = FATCA_FILER_CATEGORY_MAP[entity.fi_registration_type];
+        if (fatcaCode) {
+          filerCategoryXml = `\n      <crs:FilerCategory>${fatcaCode}</crs:FilerCategory>`;
+        }
+      }
+
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v2" xmlns:stf="urn:oecd:ties:crsstf:v5" version="${config.schemaVersion}">
   <crs:MessageSpec>
@@ -68,7 +88,7 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
           ${entity?.address?.street ? `<crs:Street>${escapeXML(entity.address.street)}</crs:Street>` : ''}
           <crs:City>${escapeXML(entity?.address?.city || '')}</crs:City>
         </crs:AddressFix>
-      </crs:Address>
+      </crs:Address>${filerCategoryXml}
       <crs:DocSpec>
         <crs:DocTypeIndic>${report.is_test_supply ? 'OECD13' : 'OECD3'}</crs:DocTypeIndic>
         <crs:DocRefId>${escapeXML(messageRefId)}.FI</crs:DocRefId>

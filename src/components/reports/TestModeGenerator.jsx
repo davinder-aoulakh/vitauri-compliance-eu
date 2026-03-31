@@ -91,6 +91,23 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
         sequence: '001'
       });
 
+      // GAP 11: FilerCategory — required for FFI entities that file independently (not through a Sponsor)
+      const FATCA_FILER_CATEGORY_MAP = {
+        "Participating FFI (standard FATCA-registered institution)": "FATCA601",
+        "Registered Deemed-Compliant FFI": "FATCA602",
+        "Limited FFI or Limited Branch": "FATCA603",
+        "Qualified Intermediary / Withholding Foreign Partnership or Trust": "FATCA605",
+        "Direct Reporting NFFE": "FATCA606",
+        "Reporting Model 1 FFI / Withholding Agent": "FATCA610"
+      };
+      let testFilerCategoryXml = '';
+      if (entity?.is_ffi === true && !entity?.is_sponsored_ffi && entity?.fi_registration_type) {
+        const fatcaCode = FATCA_FILER_CATEGORY_MAP[entity.fi_registration_type];
+        if (fatcaCode) {
+          testFilerCategoryXml = `\n      <crs:FilerCategory>${fatcaCode}</crs:FilerCategory>`;
+        }
+      }
+
       let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v2" xmlns:stf="urn:oecd:ties:crsstf:v5" version="${jConfig.schemaVersion}">
   <!-- THIS IS A TEST FILE - NOT FOR ACTUAL SUBMISSION -->
@@ -116,7 +133,7 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
           ${entity?.address?.street ? `<crs:Street>${escapeXML(entity.address.street)}</crs:Street>` : '<crs:Street>123 Test Bank Street</crs:Street>'}
           <crs:City>${escapeXML(entity?.address?.city || 'Willemstad')}</crs:City>
         </crs:AddressFix>
-      </crs:Address>
+      </crs:Address>${testFilerCategoryXml}
     </crs:ReportingFI>
 `;
 

@@ -39,6 +39,23 @@
       "type": "string",
       "description": "Global Intermediary Identification Number (required if is_ffi=true). Used as TIN with IssuedBy='US' for FFI ReportingFIs."
     },
+    "is_sponsored_ffi": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this FFI is sponsored by another entity for FATCA reporting. If true, FilerCategory is not emitted on this entity (it belongs to the Sponsor instead per rule 99)."
+    },
+    "fi_registration_type": {
+      "type": "string",
+      "enum": [
+        "Participating FFI (standard FATCA-registered institution)",
+        "Registered Deemed-Compliant FFI",
+        "Limited FFI or Limited Branch",
+        "Qualified Intermediary / Withholding Foreign Partnership or Trust",
+        "Direct Reporting NFFE",
+        "Reporting Model 1 FFI / Withholding Agent"
+      ],
+      "description": "Plain-language registration type for FFI entities. Maps to FilerCategory codes (FATCA601\u2013FATCA610) in XML. Only required when is_ffi=true and is_sponsored_ffi=false."
+    },
     "rfi_status": {
       "type": "string",
       "enum": [

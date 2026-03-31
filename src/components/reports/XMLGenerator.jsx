@@ -185,6 +185,26 @@ export default function XMLGenerator({ report, onSuccess }) {
       );
     }
 
+    // GAP 11: FilerCategory — required for FFI entities that file independently (not through a Sponsor)
+    const FATCA_FILER_CATEGORY_MAP = {
+      "Participating FFI (standard FATCA-registered institution)": "FATCA601",
+      "Registered Deemed-Compliant FFI": "FATCA602",
+      "Limited FFI or Limited Branch": "FATCA603",
+      "Qualified Intermediary / Withholding Foreign Partnership or Trust": "FATCA605",
+      "Direct Reporting NFFE": "FATCA606",
+      "Reporting Model 1 FFI / Withholding Agent": "FATCA610"
+    };
+    let filerCategoryXml = '';
+    if (isFfi && !entity?.is_sponsored_ffi) {
+      if (!entity?.fi_registration_type) {
+        throw new Error(`Please select the institution registration type for "${entity?.entity_name}" before generating the report.`);
+      }
+      const fatcaCode = FATCA_FILER_CATEGORY_MAP[entity.fi_registration_type];
+      if (fatcaCode) {
+        filerCategoryXml = `\n    <FilerCategory>${fatcaCode}</FilerCategory>`;
+      }
+    }
+
     // GAP 1: Root element is FATCA_CRS Version="2.0" with FATCA-CRS v2.0 namespaces
     // GAP 2: TransmittingCountry and ReceivingCountry must always be 'CW'
     // GAP 3: MessageType must be 'FATCA-CRS'
@@ -202,11 +222,8 @@ export default function XMLGenerator({ report, onSuccess }) {
         : '';
     })();
 
-    // filer_category is optional — only include if set on the report
-    const filerCategoryAttr = report.filer_category ? ` FilerCategory="${report.filer_category}"` : '';
-
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<FATCA_CRS Version="2.0"${filerCategoryAttr}
+<FATCA_CRS Version="2.0"
   xmlns="urn:oecd:ties:fatcacrs:v2"
   xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
   xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
@@ -234,7 +251,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           ${entity.address?.street ? `<Street>${escapeXML(entity.address.street)}</Street>` : ''}
           <City>${escapeXML(entity.address?.city || '')}</City>
         </AddressFix>
-      </Address>
+      </Address>${filerCategoryXml}
     </ReportingFI>
 `;
 

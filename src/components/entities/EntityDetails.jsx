@@ -209,6 +209,42 @@ export default function EntityDetails({ entity }) {
         </CardContent>
       </Card>
 
+      {/* FATCA Filing Details — only shown for FFI entities */}
+      {entity.is_ffi === true && (
+        <Card className="border-0 shadow-lg border-l-4 border-l-amber-400">
+          <CardHeader className="border-b bg-gradient-to-r from-amber-50 to-transparent">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Shield className="w-5 h-5 text-amber-600" />
+              FATCA Filing Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-0">
+              <InfoRow
+                label="Sponsored by Another Entity?"
+                value={
+                  entity.is_sponsored_ffi
+                    ? <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Yes — Sponsored FFI (FilerCategory on Sponsor)</Badge>
+                    : <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">No — Files Independently</Badge>
+                }
+                icon={Shield}
+              />
+              {!entity.is_sponsored_ffi && (
+                <InfoRow
+                  label="Institution Registration Type"
+                  value={
+                    entity.fi_registration_type
+                      ? <span>{entity.fi_registration_type}</span>
+                      : <span className="text-red-500 font-medium">⚠ Not set — required before XML generation</span>
+                  }
+                  icon={FileText}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Address Information */}
       {entity.address && (Object.values(entity.address).some(v => v)) && (
         <Card className="border-0 shadow-lg">
