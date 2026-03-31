@@ -100,6 +100,12 @@ export default function XMLValidator({
     }
   };
 
+  // Helper: get element by tag name, supporting both namespaced and non-namespaced variants
+  const getElem = (doc, tag) =>
+    doc.getElementsByTagName(tag)[0] ||
+    doc.getElementsByTagName(`crs:${tag}`)[0] ||
+    null;
+
   const validateXMLStructure = async (xml, results) => {
     results.categories[VALIDATION_CATEGORIES.STRUCTURE] = { passed: 0, failed: 0, warnings: 0 };
     const cat = results.categories[VALIDATION_CATEGORIES.STRUCTURE];
@@ -122,14 +128,16 @@ export default function XMLValidator({
       cat.passed++;
     }
 
-    // Check for required root element
+    // Check for required root element — supports FATCA_CRS (our format) or crs:CRS_OECD
     results.total_checks++;
-    const root = xmlDoc.getElementsByTagName("crs:CRS_OECD")[0];
-    if (!root) {
+    const root = xmlDoc.getElementsByTagName("FATCA_CRS")[0] ||
+                 xmlDoc.getElementsByTagName("crs:CRS_OECD")[0] ||
+                 xmlDoc.documentElement;
+    if (!root || root.tagName === 'parsererror') {
       results.errors.push({
         category: VALIDATION_CATEGORIES.STRUCTURE,
         code: "XML002",
-        message: "Missing required root element: crs:CRS_OECD",
+        message: "Missing required root element (FATCA_CRS)",
         severity: "error"
       });
       cat.failed++;
@@ -139,7 +147,7 @@ export default function XMLValidator({
 
     // Check for MessageSpec
     results.total_checks++;
-    const messageSpec = xmlDoc.getElementsByTagName("crs:MessageSpec")[0];
+    const messageSpec = getElem(xmlDoc, "MessageSpec");
     if (!messageSpec) {
       results.errors.push({
         category: VALIDATION_CATEGORIES.STRUCTURE,
@@ -154,7 +162,7 @@ export default function XMLValidator({
 
     // Check for CrsBody
     results.total_checks++;
-    const crsBody = xmlDoc.getElementsByTagName("crs:CrsBody")[0];
+    const crsBody = getElem(xmlDoc, "CrsBody");
     if (!crsBody) {
       results.errors.push({
         category: VALIDATION_CATEGORIES.STRUCTURE,
@@ -175,25 +183,25 @@ export default function XMLValidator({
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xml, "text/xml");
 
-    // Check MessageSpec required elements
+    // Check MessageSpec required elements (non-namespaced to match our generator output)
     const requiredMessageElements = [
-      "crs:SendingCompanyIN",
-      "crs:TransmittingCountry",
-      "crs:ReceivingCountry",
-      "crs:MessageType",
-      "crs:MessageRefId",
-      "crs:ReportingPeriod",
-      "crs:Timestamp"
+      "SendingCompanyIN",
+      "TransmittingCountry",
+      "ReceivingCountry",
+      "MessageType",
+      "MessageRefId",
+      "ReportingPeriod",
+      "Timestamp"
     ];
 
-    requiredMessageElements.forEach(elem => {
+    requiredMessageElements.forEach((elem, i) => {
       results.total_checks++;
-      const element = xmlDoc.getElementsByTagName(elem)[0];
+      const element = getElem(xmlDoc, elem);
       if (!element || !element.textContent?.trim()) {
         results.errors.push({
           category: VALIDATION_CATEGORIES.SCHEMA,
-          code: `SCH${requiredMessageElements.indexOf(elem) + 1}`,
-          message: `Missing or empty required element: ${elem.replace('crs:', '')}`,
+          code: `SCH${i + 1}`,
+          message: `Missing or empty required element: ${elem}`,
           severity: "error"
         });
         cat.failed++;
@@ -204,7 +212,7 @@ export default function XMLValidator({
 
     // Check ReportingFI
     results.total_checks++;
-    const reportingFI = xmlDoc.getElementsByTagName("crs:ReportingFI")[0];
+    const reportingFI = getElem(xmlDoc, "ReportingFI");
     if (!reportingFI) {
       results.errors.push({
         category: VALIDATION_CATEGORIES.SCHEMA,
@@ -217,15 +225,15 @@ export default function XMLValidator({
       cat.passed++;
 
       // Check ReportingFI sub-elements
-      const fiRequiredElements = ["crs:ResCountryCode", "crs:Name"];
-      fiRequiredElements.forEach(elem => {
+      const fiRequiredElements = ["ResCountryCode", "Name"];
+      fiRequiredElements.forEach((elem, i) => {
         results.total_checks++;
         const element = reportingFI.getElementsByTagName(elem)[0];
         if (!element || !element.textContent?.trim()) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
-            code: `SCH${fiRequiredElements.indexOf(elem) + 11}`,
-            message: `Missing ReportingFI element: ${elem.replace('crs:', '')}`,
+            code: `SCH${i + 11}`,
+            message: `Missing ReportingFI element: ${elem}`,
             severity: "error"
           });
           cat.failed++;
@@ -235,25 +243,40 @@ export default function XMLValidator({
       });
     }
 
-    // Check AccountReport elements
-    const accountReports = xmlDoc.getElementsByTagName("crs:AccountReport");
+    // Check AccountReport elements (non-namespaced)
+    const accountReports = [
+      ...Array.from(xmlDoc.getElementsByTagName("AccountReport")),
+      ...Array.from(xmlDoc.getElementsByTagName("crs:AccountReport"))
+    ];
     results.total_checks++;
     if (accountReports.length === 0) {
-      results.warnings.push({
-        category: VALIDATION_CATEGORIES.SCHEMA,
-        code: "SCH020",
-        message: "No AccountReport elements found - consider NIL report if no accounts",
-        severity: "warning"
-      });
-      cat.warnings++;
+      // Check if it's a NIL report (has NilReport element)
+      const nilReport = getElem(xmlDoc, "NilReport");
+      if (nilReport) {
+        results.info.push({
+          category: VALIDATION_CATEGORIES.SCHEMA,
+          code: "SCH020",
+          message: "NIL report detected — NilReport block present with no AccountReport elements",
+          severity: "info"
+        });
+      } else {
+        results.warnings.push({
+          category: VALIDATION_CATEGORIES.SCHEMA,
+          code: "SCH020",
+          message: "No AccountReport elements found - consider NIL report if no accounts",
+          severity: "warning"
+        });
+        cat.warnings++;
+      }
+      cat.passed++;
     } else {
       cat.passed++;
 
       // Validate each AccountReport
-      Array.from(accountReports).forEach((accReport, idx) => {
+      accountReports.forEach((accReport, idx) => {
         // DocSpec validation
         results.total_checks++;
-        const docSpec = accReport.getElementsByTagName("crs:DocSpec")[0];
+        const docSpec = accReport.getElementsByTagName("DocSpec")[0];
         if (!docSpec) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
@@ -268,7 +291,7 @@ export default function XMLValidator({
 
         // AccountNumber validation
         results.total_checks++;
-        const accNum = accReport.getElementsByTagName("crs:AccountNumber")[0];
+        const accNum = accReport.getElementsByTagName("AccountNumber")[0];
         if (!accNum || !accNum.textContent?.trim()) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
@@ -283,7 +306,7 @@ export default function XMLValidator({
 
         // AccountHolder validation
         results.total_checks++;
-        const accHolder = accReport.getElementsByTagName("crs:AccountHolder")[0];
+        const accHolder = accReport.getElementsByTagName("AccountHolder")[0];
         if (!accHolder) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
