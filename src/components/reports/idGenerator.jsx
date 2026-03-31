@@ -1,80 +1,92 @@
 /**
- * Standardized ID Generation for CRS Reports
- * Format: <CountryCode><FiscalYear><DestinationCountry><SerialNumber>
- * 
- * Example: GB2024GB001
- * - GB: Sending country code
- * - 2024: Fiscal year
- * - GB: Destination country code
- * - 001: Serial number (padded to 3 digits)
+ * FATCA-CRS ID Generation for Curaçao (CW) Reports
+ * Format: CW{YEAR}{CRIB_NUMBER}{SERIAL}
+ *
+ * Required format per Annex 7 rules 7, 8, 30:
+ * - First 2 chars: CW (Curaçao country code — always hardcoded)
+ * - Next 4 chars: fiscal year (e.g. 2016)
+ * - Then: CRIB number of the supplying financial institution
+ * - Then: unique serial suffix
+ * - No spaces allowed. Max 200 characters.
+ *
+ * Example: CW2016123456789ABC001
  */
 
 /**
- * Generate a standardized CRS Message Reference ID
+ * Generate a FATCA-CRS Message Reference ID for Curaçao
+ * Format: CW{YEAR}{CRIB}{SERIAL}
  */
-export function generateMessageRefId({ 
-  sendingCountry, 
-  fiscalYear, 
-  destinationCountry, 
+export function generateMessageRefId({
+  fiscalYear,
+  cribNumber,
   serialNumber,
-  type = 'MSG'
+  // Legacy params kept for backward compatibility but ignored
+  sendingCountry,
+  destinationCountry,
+  type
 }) {
-  const country = (sendingCountry || 'XX').toUpperCase().substring(0, 3);
   const year = String(fiscalYear || new Date().getFullYear()).substring(0, 4);
-  const dest = (destinationCountry || country).toUpperCase().substring(0, 3);
+  const crib = (cribNumber || '').replace(/\s/g, '');
   const serial = String(serialNumber || '001').padStart(3, '0');
-  
-  return `${country}${year}${dest}${type}${serial}`;
+
+  const id = `CW${year}${crib}${serial}`;
+
+  // Enforce max 200 characters and no spaces
+  return id.replace(/\s/g, '').substring(0, 200);
 }
 
 /**
- * Generate a standardized CRS Document Reference ID
+ * Generate a FATCA-CRS Document Reference ID for Curaçao
+ * Format: CW{YEAR}{CRIB}{TYPE}{SERIAL}
  */
 export function generateDocRefId({
-  sendingCountry,
   fiscalYear,
-  destinationCountry,
+  cribNumber,
   serialNumber,
   type = 'ACC',
+  // Legacy params kept for backward compatibility but ignored
+  sendingCountry,
+  destinationCountry,
   tin
 }) {
-  const country = (sendingCountry || 'XX').toUpperCase().substring(0, 3);
   const year = String(fiscalYear || new Date().getFullYear()).substring(0, 4);
-  const dest = (destinationCountry || country).toUpperCase().substring(0, 3);
+  const crib = (cribNumber || '').replace(/\s/g, '');
   const serial = String(serialNumber || '001').padStart(6, '0');
-  
-  const tinPart = tin ? `_${tin.replace(/[^A-Za-z0-9]/g, '').substring(0, 15)}` : '';
-  
-  return `${country}${year}${dest}${type}${serial}${tinPart}`;
+
+  const id = `CW${year}${crib}${type}${serial}`;
+
+  return id.replace(/\s/g, '').substring(0, 200);
 }
 
 /**
- * Validate ID format against CRS requirements
+ * Validate ID format against FATCA-CRS Curaçao requirements
+ * Rules 7, 8, 30: starts with CW + year, no spaces, max 200 chars
  */
 export function validateIdFormat(id, type = 'MessageRefId') {
   const errors = [];
-  
+
   if (!id || typeof id !== 'string') {
     return { isValid: false, errors: ['ID is required and must be a string'] };
   }
-  
-  const minLength = type === 'MessageRefId' ? 15 : 20;
-  const maxLength = type === 'MessageRefId' ? 35 : 50;
-  
-  if (id.length < minLength || id.length > maxLength) {
-    errors.push(`${type} length must be between ${minLength} and ${maxLength} characters`);
+
+  if (id.length > 200) {
+    errors.push(`${type} exceeds maximum length of 200 characters`);
   }
-  
+
+  if (/\s/.test(id)) {
+    errors.push(`${type} must not contain spaces`);
+  }
+
   const validCharsRegex = /^[A-Za-z0-9_-]+$/;
   if (!validCharsRegex.test(id)) {
     errors.push(`${type} contains invalid characters. Only alphanumeric, underscore, and hyphen allowed`);
   }
-  
-  const formatRegex = /^[A-Z]{2,3}\d{4}/;
+
+  const formatRegex = /^CW\d{4}/;
   if (!formatRegex.test(id)) {
-    errors.push(`${type} must start with 2-3 letter country code followed by 4-digit year`);
+    errors.push(`${type} must start with 'CW' followed by the 4-digit fiscal year`);
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors
@@ -85,18 +97,16 @@ export function validateIdFormat(id, type = 'MessageRefId') {
  * Generate correction IDs based on original report
  */
 export function generateCorrectionIds(originalReport, correctionType = 'correction') {
-  const sendingCountry = originalReport.reporting_jurisdiction?.substring(0, 3) || 'XX';
   const fiscalYear = originalReport.reporting_year;
-  const serialNumber = String(Date.now()).substring(-6);
-  
+  const cribNumber = originalReport.entity?.tax_id || '';
+  const serialNumber = String(Date.now()).slice(-6);
+
   const messageRefId = generateMessageRefId({
-    sendingCountry,
     fiscalYear,
-    destinationCountry: sendingCountry,
-    serialNumber,
-    type: correctionType === 'deletion' ? 'DEL' : 'COR'
+    cribNumber,
+    serialNumber
   });
-  
+
   return {
     correctionMessageRefId: messageRefId,
     messageTypeIndic: correctionType === 'deletion' ? 'CRS703' : 'CRS702'

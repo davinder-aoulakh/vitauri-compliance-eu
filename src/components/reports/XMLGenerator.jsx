@@ -145,16 +145,17 @@ export default function XMLGenerator({ report, onSuccess }) {
   };
 
   const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig }) => {
-    const jConfig = jurisdictionConfig || JURISDICTION_CONFIGS["DEFAULT"];
-    const timestamp = new Date().toISOString();
-    
-    // Generate standardized MessageRefId
+    // GAP 29: Timestamp must be YYYY-MM-DDTHH:MM:SS — no milliseconds, no Z
+    const timestamp = new Date().toISOString().substring(0, 19);
+
+    // CRIB number is entity.tax_id (used in all IDs per Annex 7)
+    const cribNumber = entity?.tax_id || '';
+
+    // GAP 4: MessageRefId format must be CW{YEAR}{CRIB}{SERIAL}
     const messageRefId = generateMessageRefId({
-      sendingCountry: report.reporting_jurisdiction,
       fiscalYear: report.reporting_year,
-      destinationCountry: report.reporting_jurisdiction,
-      serialNumber: '001',
-      type: 'MSG'
+      cribNumber: cribNumber,
+      serialNumber: '001'
     });
 
     // Validate generated ID
@@ -163,159 +164,209 @@ export default function XMLGenerator({ report, onSuccess }) {
       console.warn('MessageRefId validation warnings:', validation.errors);
     }
 
-    // Get schema version and namespace
-    const schemaVersion = report.schema_version || 'v2.0';
-    const versionNumber = schemaVersion.replace('v', '');
     const messageTypeIndic = report.message_type_indic || 'CRS701';
 
+    // GAP 31: SendingCompanyIN must be CRIB number — never 'UNKNOWN'
+    const sendingCompanyIN = cribNumber;
+    if (!sendingCompanyIN) {
+      throw new Error('Cannot generate XML: CRIB number (tax_id) is missing for the Reporting FI. This is required as SendingCompanyIN.');
+    }
+
+    // GAP 1: Root element is FATCA_CRS Version="2.0" with FATCA-CRS v2.0 namespaces
+    // GAP 2: TransmittingCountry and ReceivingCountry must always be 'CW'
+    // GAP 3: MessageType must be 'FATCA-CRS'
+    // GAP 5: CorrMessageRefId logic — only for CRS702, must NOT appear for CRS701
+    const corrMessageRefIdXml = (() => {
+      if (messageTypeIndic === 'CRS701') return ''; // Must NOT appear
+      if (messageTypeIndic === 'CRS702') {
+        if (!report.correction_message_ref_id) {
+          throw new Error('CorrMessageRefId is mandatory for correction reports (CRS702) but is not set.');
+        }
+        return `<CorrMessageRefId>${report.correction_message_ref_id}</CorrMessageRefId>`;
+      }
+      return report.correction_message_ref_id
+        ? `<CorrMessageRefId>${report.correction_message_ref_id}</CorrMessageRefId>`
+        : '';
+    })();
+
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<crs:CRS_OECD xmlns:crs="urn:oecd:ties:crs:v${versionNumber}" xmlns:stf="urn:oecd:ties:crsstf:v5" version="${versionNumber}">
-  <crs:MessageSpec>
-    <crs:SendingCompanyIN>${entity.tax_id || entity.giin || 'UNKNOWN'}</crs:SendingCompanyIN>
-    <crs:TransmittingCountry>${report.reporting_jurisdiction}</crs:TransmittingCountry>
-    <crs:ReceivingCountry>${report.reporting_jurisdiction}</crs:ReceivingCountry>
-    <crs:MessageType>CRS</crs:MessageType>
-    <crs:MessageRefId>${messageRefId}</crs:MessageRefId>
-    ${report.correction_message_ref_id ? `<crs:CorrMessageRefId>${report.correction_message_ref_id}</crs:CorrMessageRefId>` : ''}
-    <crs:MessageTypeIndic>${messageTypeIndic}</crs:MessageTypeIndic>
-    <crs:ReportingPeriod>${report.reporting_year}-12-31</crs:ReportingPeriod>
-    <crs:Timestamp>${timestamp}</crs:Timestamp>
-  </crs:MessageSpec>
+<FATCA_CRS Version="2.0"
+  xmlns="urn:oecd:ties:fatcacrs:v2"
+  xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
+  xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <MessageSpec>
+    <SendingCompanyIN>${sendingCompanyIN}</SendingCompanyIN>
+    <TransmittingCountry>CW</TransmittingCountry>
+    <ReceivingCountry>CW</ReceivingCountry>
+    <MessageType>FATCA-CRS</MessageType>
+    <MessageRefId>${messageRefId}</MessageRefId>
+    ${corrMessageRefIdXml}
+    <MessageTypeIndic>${messageTypeIndic}</MessageTypeIndic>
+    <ReportingPeriod>${report.reporting_year}-12-31</ReportingPeriod>
+    <Timestamp>${timestamp}</Timestamp>
+  </MessageSpec>
   
-  <crs:CrsBody>
-    <crs:ReportingFI>
-      <crs:ResCountryCode>${entity.country_of_incorporation || report.reporting_jurisdiction}</crs:ResCountryCode>
-      <crs:TIN>${entity.tax_id || 'UNKNOWN'}</crs:TIN>
-      <crs:Name>${escapeXML(entity.entity_name)}</crs:Name>
+  <CrsBody>
+    <ReportingFI>
+      <ResCountryCode>CW</ResCountryCode>
+      <TIN>${escapeXML(cribNumber)}</TIN>
+      <Name>${escapeXML(entity.entity_name)}</Name>
       ${entity.address ? `
-      <crs:Address>
-        <crs:CountryCode>${entity.address.country || report.reporting_jurisdiction}</crs:CountryCode>
-        ${entity.address.street ? `<crs:AddressFree>${escapeXML(entity.address.street)}</crs:AddressFree>` : ''}
-        ${entity.address.city ? `<crs:City>${escapeXML(entity.address.city)}</crs:City>` : ''}
-        ${entity.address.postal_code ? `<crs:PostCode>${escapeXML(entity.address.postal_code)}</crs:PostCode>` : ''}
-      </crs:Address>
+      <Address>
+        <CountryCode>CW</CountryCode>
+        ${entity.address.street ? `<AddressFree>${escapeXML(entity.address.street)}</AddressFree>` : ''}
+        ${entity.address.city ? `<City>${escapeXML(entity.address.city)}</City>` : ''}
+      </Address>
       ` : ''}
-    </crs:ReportingFI>
+    </ReportingFI>
 `;
 
     // Add account reports
     accounts.forEach((account, index) => {
       const accDocRefId = generateDocRefId({
-        sendingCountry: report.reporting_jurisdiction,
         fiscalYear: report.reporting_year,
-        destinationCountry: report.reporting_jurisdiction,
+        cribNumber,
         serialNumber: String(index + 1),
-        type: 'ACC',
-        tin: entity?.tax_id
+        type: 'ACC'
       });
 
-      // Determine DocTypeIndic based on message type
-      let docTypeIndic = 'OECD1'; // New data
-      if (report.message_type_indic === 'CRS702') {
-        docTypeIndic = 'OECD2'; // Correction
-      } else if (report.message_type_indic === 'CRS703') {
-        docTypeIndic = 'OECD3'; // Deletion
-      }
+      // GAP 1: DocTypeIndic uses no namespace prefix; same OECD1/2/3 mapping
+      let docTypeIndic = 'OECD1';
+      if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD2';
+      else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD3';
+
+      // GAP 30: CorrDocRefId must NOT appear for CRS701
+      const corrDocRefIdXml = (() => {
+        if (messageTypeIndic === 'CRS701') return '';
+        if (messageTypeIndic === 'CRS702' && report.correction_doc_ref_id) {
+          return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
+        }
+        return '';
+      })();
+
+      // GAP 26: ClosedAccount is an attribute on AccountNumber, not a child element
+      const closedAttr = account.account_closed_during_period ? ' ClosedAccount="true"' : '';
+      const accountNumberVal = account.account_number ? escapeXML(account.account_number) : 'NANUM';
+
+      // GAP 25: AccountBalance is year-end value only, not summed with payments
+      const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
+      const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
 
       xml += `
-    <crs:AccountReport>
-      <crs:DocSpec>
-        <crs:DocTypeIndic>${docTypeIndic}</crs:DocTypeIndic>
-        <crs:DocRefId>${accDocRefId}</crs:DocRefId>
-        ${report.correction_doc_ref_id ? `<crs:CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</crs:CorrDocRefId>` : ''}
-      </crs:DocSpec>
+    <AccountReport>
+      <DocSpec>
+        <DocTypeIndic>${docTypeIndic}</DocTypeIndic>
+        <DocRefId>${accDocRefId}</DocRefId>
+        ${corrDocRefIdXml}
+      </DocSpec>
       
-      <crs:AccountNumber>${escapeXML(account.account_number)}</crs:AccountNumber>
+      <AccountNumber${closedAttr}>${accountNumberVal}</AccountNumber>
       
-      <crs:AccountHolder>
+      <AccountHolder>
         ${account.account_holder_type === 'individual' ? `
-        <crs:Individual>
-          <crs:ResCountryCode>${account.account_holder_address?.country || report.reporting_jurisdiction}</crs:ResCountryCode>
-          ${account.tax_residencies && account.tax_residencies.length > 0 ? 
-            account.tax_residencies.map(res => `
-          <crs:TIN>${res.tin || 'NOTIN'}</crs:TIN>
-          `).join('') : '<crs:TIN>NOTIN</crs:TIN>'}
-          <crs:Name>
-            <crs:FirstName>${escapeXML((account.account_holder_name || 'Unknown').split(' ')[0] || 'Unknown')}</crs:FirstName>
-            <crs:LastName>${escapeXML((account.account_holder_name || 'Unknown').split(' ').slice(1).join(' ') || 'Unknown')}</crs:LastName>
-          </crs:Name>
+        <Individual>
+          <ResCountryCode>${account.account_holder_address?.country || 'CW'}</ResCountryCode>
+          ${account.tax_residencies && account.tax_residencies.length > 0 ?
+            account.tax_residencies.map(res => res.tin
+              ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>`
+              : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')
+            ).join('') : ''}
+          <Name>
+            <FirstName>${escapeXML(account.first_name || (account.account_holder_name || '').split(' ')[0] || 'NFN')}</FirstName>
+            <LastName>${escapeXML(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
+          </Name>
           ${account.account_holder_address ? `
-          <crs:Address>
-            <crs:CountryCode>${account.account_holder_address.country || report.reporting_jurisdiction}</crs:CountryCode>
-            ${account.account_holder_address.street ? `<crs:AddressFree>${escapeXML(account.account_holder_address.street)}</crs:AddressFree>` : ''}
-            ${account.account_holder_address.city ? `<crs:City>${escapeXML(account.account_holder_address.city)}</crs:City>` : ''}
-            ${account.account_holder_address.postal_code ? `<crs:PostCode>${escapeXML(account.account_holder_address.postal_code)}</crs:PostCode>` : ''}
-          </crs:Address>
+          <Address>
+            <CountryCode>${account.account_holder_address.country || 'CW'}</CountryCode>
+            <AddressFix>
+              ${account.account_holder_address.street ? `<Street>${escapeXML(account.account_holder_address.street)}</Street>` : ''}
+              <City>${escapeXML(account.account_holder_address.city || '')}</City>
+            </AddressFix>
+          </Address>
           ` : ''}
-          ${account.date_of_birth ? `<crs:BirthDate>${account.date_of_birth}</crs:BirthDate>` : ''}
-        </crs:Individual>
+          ${account.date_of_birth ? `<BirthInfo><BirthDate>${account.date_of_birth}</BirthDate></BirthInfo>` : ''}
+        </Individual>
         ` : `
-        <crs:Organisation>
-          <crs:ResCountryCode>${account.account_holder_address?.country || report.reporting_jurisdiction}</crs:ResCountryCode>
-          ${account.tax_residencies && account.tax_residencies.length > 0 ? 
-            account.tax_residencies.map(res => `
-          <crs:TIN>${res.tin || 'NOTIN'}</crs:TIN>
-          `).join('') : '<crs:TIN>NOTIN</crs:TIN>'}
-          <crs:Name>${escapeXML(account.account_holder_name)}</crs:Name>
+        <Organisation>
+          <ResCountryCode>${account.account_holder_address?.country || 'CW'}</ResCountryCode>
+          ${account.tax_residencies && account.tax_residencies.length > 0 ?
+            account.tax_residencies.map(res => res.tin
+              ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>`
+              : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')
+            ).join('') : ''}
+          <Name>${escapeXML(account.account_holder_name)}</Name>
           ${account.account_holder_address ? `
-          <crs:Address>
-            <crs:CountryCode>${account.account_holder_address.country || report.reporting_jurisdiction}</crs:CountryCode>
-            ${account.account_holder_address.street ? `<crs:AddressFree>${escapeXML(account.account_holder_address.street)}</crs:AddressFree>` : ''}
-            ${account.account_holder_address.city ? `<crs:City>${escapeXML(account.account_holder_address.city)}</crs:City>` : ''}
-            ${account.account_holder_address.postal_code ? `<crs:PostCode>${escapeXML(account.account_holder_address.postal_code)}</crs:PostCode>` : ''}
-          </crs:Address>
+          <Address>
+            <CountryCode>${account.account_holder_address.country || 'CW'}</CountryCode>
+            <AddressFix>
+              ${account.account_holder_address.street ? `<Street>${escapeXML(account.account_holder_address.street)}</Street>` : ''}
+              <City>${escapeXML(account.account_holder_address.city || '')}</City>
+            </AddressFix>
+          </Address>
           ` : ''}
-        </crs:Organisation>
+        </Organisation>
         `}
-      </crs:AccountHolder>
+      </AccountHolder>
       
-      <crs:AccountBalance currCode="${account.year_end_cash_value_currency || account.currency || 'USD'}">${account.year_end_cash_value || account.account_balance || 0}</crs:AccountBalance>
-      ${account.account_closed_during_period ? '<crs:ClosedAccount>true</crs:ClosedAccount>' : ''}
-      
-      ${account.tax_residencies && account.tax_residencies.length > 0 ? 
-        account.tax_residencies.map(res => `
-      <crs:Payment>
-        <crs:Type>CRS501</crs:Type>
-        <crs:PaymentAmnt currCode="${account.currency || 'USD'}">0</crs:PaymentAmnt>
-      </crs:Payment>
-      `).join('') : ''}
+      <AccountBalance currCode="${balanceCurrency}">${balanceValue}</AccountBalance>
 `;
 
       // Add controlling persons for passive NFE accounts
       const accountCPs = controllingPersons.filter(cp => cp.account_id === account.id);
-      accountCPs.forEach((cp, cpIndex) => {
+      accountCPs.forEach((cp) => {
+        // GAP 21: Map control_type to CRS801-CRS813 codes
+        const ctrlTypeMap = {
+          legal_person_ownership: 'CRS801',
+          legal_person_other_means: 'CRS802',
+          legal_person_senior_managing_official: 'CRS803',
+          trust_settlor: 'CRS804',
+          trust_trustee: 'CRS805',
+          trust_protector: 'CRS806',
+          trust_beneficiary: 'CRS807',
+          trust_other: 'CRS808',
+          legal_arrangement_settlor_equivalent: 'CRS809',
+          legal_arrangement_trustee_equivalent: 'CRS810',
+          legal_arrangement_protector_equivalent: 'CRS811',
+          legal_arrangement_beneficiary_equivalent: 'CRS812',
+          legal_arrangement_other_equivalent: 'CRS813'
+        };
+        const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
+
         xml += `
-      <crs:ControllingPerson>
-        <crs:Individual>
-          ${cp.tax_residencies && cp.tax_residencies.length > 0 ? 
+      <ControllingPerson>
+        <Individual>
+          ${cp.tax_residencies && cp.tax_residencies.length > 0 ?
             cp.tax_residencies.map(res => `
-          <crs:ResCountryCode>${res.country}</crs:ResCountryCode>
-          <crs:TIN>${res.tin || 'NOTIN'}</crs:TIN>
+          <ResCountryCode>${res.country}</ResCountryCode>
+          ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')}
           `).join('') : ''}
-          <crs:Name>
-            <crs:FirstName>${escapeXML((cp.full_name || 'Unknown').split(' ')[0] || 'Unknown')}</crs:FirstName>
-            <crs:LastName>${escapeXML((cp.full_name || 'Unknown').split(' ').slice(1).join(' ') || 'Unknown')}</crs:LastName>
-          </crs:Name>
+          <Name>
+            <FirstName>${escapeXML(cp.first_name || (cp.full_name || '').split(' ')[0] || 'NFN')}</FirstName>
+            <LastName>${escapeXML(cp.last_name || (cp.full_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
+          </Name>
           ${cp.address ? `
-          <crs:Address>
-            <crs:CountryCode>${cp.address.country || report.reporting_jurisdiction}</crs:CountryCode>
-            ${cp.address.street ? `<crs:AddressFree>${escapeXML(cp.address.street)}</crs:AddressFree>` : ''}
-            ${cp.address.city ? `<crs:City>${escapeXML(cp.address.city)}</crs:City>` : ''}
-          </crs:Address>
+          <Address>
+            <CountryCode>${cp.address.country || 'CW'}</CountryCode>
+            <AddressFix>
+              ${cp.address.street ? `<Street>${escapeXML(cp.address.street)}</Street>` : ''}
+              ${cp.address.city ? `<City>${escapeXML(cp.address.city)}</City>` : ''}
+            </AddressFix>
+          </Address>
           ` : ''}
-          ${cp.date_of_birth ? `<crs:BirthDate>${cp.date_of_birth}</crs:BirthDate>` : ''}
-        </crs:Individual>
-        <crs:CtrlgPersonType>CRS801</crs:CtrlgPersonType>
-      </crs:ControllingPerson>
+          ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
+        </Individual>
+        <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
+      </ControllingPerson>
 `;
       });
 
-      xml += `    </crs:AccountReport>
+      xml += `    </AccountReport>
 `;
     });
 
-    xml += `  </crs:CrsBody>
-</crs:CRS_OECD>`;
+    xml += `  </CrsBody>
+</FATCA_CRS>`;
 
     return xml;
   };
