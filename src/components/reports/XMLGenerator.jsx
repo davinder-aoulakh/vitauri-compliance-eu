@@ -442,7 +442,9 @@ export default function XMLGenerator({ report, onSuccess }) {
       }).join('');
 
       return `
-    ${accountBlocks}`;
+    <ReportingGroup>
+      ${accountBlocks}
+    </ReportingGroup>`;
     };
 
     return `<?xml version="1.0" encoding="UTF-8"?>
