@@ -33,6 +33,26 @@ export default function SubmissionTracker({ report, onUpdate }) {
   });
   const [saving, setSaving] = useState(false);
   const [autoSubmitting, setAutoSubmitting] = useState(false);
+  const [tenantUsers, setTenantUsers] = useState([]);
+
+  useEffect(() => {
+    const loadUsersAndDefaults = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        // Load tenant users via backend function
+        const response = await base44.functions.invoke('getTenantUsers', {});
+        const users = response?.data?.users || [];
+        setTenantUsers(users);
+        // Default submitted_by to current user if not already set
+        if (!report?.submitted_by && currentUser?.full_name) {
+          setFormData(prev => ({ ...prev, submitted_by: currentUser.full_name }));
+        }
+      } catch (error) {
+        console.error("Error loading tenant users:", error);
+      }
+    };
+    loadUsersAndDefaults();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -140,13 +160,31 @@ export default function SubmissionTracker({ report, onUpdate }) {
 
             <div className="md:col-span-2">
               <Label htmlFor="submitted_by">Submitted By</Label>
-              <Input
-                id="submitted_by"
-                value={formData.submitted_by}
-                onChange={(e) => setFormData({ ...formData, submitted_by: e.target.value })}
-                placeholder="Name or email of person who submitted"
-                className="mt-1.5"
-              />
+              {tenantUsers.length > 0 ? (
+                <Select
+                  value={formData.submitted_by}
+                  onValueChange={(value) => setFormData({ ...formData, submitted_by: value })}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select person who submitted" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenantUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.full_name || u.email}>
+                        {u.full_name ? `${u.full_name} (${u.email})` : u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="submitted_by"
+                  value={formData.submitted_by}
+                  onChange={(e) => setFormData({ ...formData, submitted_by: e.target.value })}
+                  placeholder="Name or email of person who submitted"
+                  className="mt-1.5"
+                />
+              )}
             </div>
 
             <div className="md:col-span-2">
