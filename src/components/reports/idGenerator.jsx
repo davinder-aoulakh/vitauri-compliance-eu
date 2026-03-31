@@ -7,7 +7,7 @@
  * - Next 4 chars: fiscal year (e.g. 2016)
  * - Then: CRIB number of the supplying financial institution
  * - Then: unique serial suffix
- * - No spaces allowed. Max 200 characters.
+ * - No spaces allowed. Max 170 characters (per FC XML schema v2.2, page 11).
  *
  * Example: CW2016123456789ABC001
  */
@@ -31,8 +31,8 @@ export function generateMessageRefId({
 
   const id = `CW${year}${crib}${serial}`;
 
-  // Enforce max 200 characters and no spaces
-  return id.replace(/\s/g, '').substring(0, 200);
+  // Enforce max 170 characters and no spaces (per FC XML schema v2.2)
+  return id.replace(/\s/g, '').substring(0, 170);
 }
 
 /**
@@ -55,7 +55,8 @@ export function generateDocRefId({
 
   const id = `CW${year}${crib}${type}${serial}`;
 
-  return id.replace(/\s/g, '').substring(0, 200);
+  // Enforce max 170 characters (per FC XML schema v2.2, page 11)
+  return id.replace(/\s/g, '').substring(0, 170);
 }
 
 /**
@@ -69,8 +70,8 @@ export function validateIdFormat(id, type = 'MessageRefId') {
     return { isValid: false, errors: ['ID is required and must be a string'] };
   }
 
-  if (id.length > 200) {
-    errors.push(`${type} exceeds maximum length of 200 characters`);
+  if (id.length > 170) {
+    errors.push(`${type} exceeds maximum length of 170 characters (per FC XML schema v2.2)`);
   }
 
   if (/\s/.test(id)) {

@@ -69,7 +69,7 @@ export function scanForProhibitedChars(accounts, controllingPersons, entity) {
   return issues;
 }
 
-function buildAddressBlock(address, fallbackCountry) {
+function buildAddressBlock(address, fallbackCountry, ns = '') {
   if (!address) return '';
   const countryCode = normalizeCountryCode(address.country || fallbackCountry);
   const hasCity = address.city && String(address.city).trim() !== '';
@@ -85,22 +85,22 @@ function buildAddressBlock(address, fallbackCountry) {
     const parts = [address.street, address.state, address.postal_code, countryDisplay]
       .filter(Boolean).map(p => String(p).trim()).filter(Boolean);
     return `
-          <Address AddressType="OECD303">
-            <CountryCode>${countryCode}</CountryCode>
-            <AddressFree>${escapeXML(sanitizeText(parts.join(', ')))}</AddressFree>
-          </Address>`;
+          <${ns}Address AddressType="OECD303">
+            <${ns}CountryCode>${countryCode}</${ns}CountryCode>
+            <${ns}AddressFree>${escapeXML(sanitizeText(parts.join(', ')))}</${ns}AddressFree>
+          </${ns}Address>`;
   }
 
   const postCode = sanitizePostalCode(address.postal_code, countryCode);
   return `
-          <Address AddressType="OECD303">
-            <CountryCode>${countryCode}</CountryCode>
-            <AddressFix>
-              ${address.street ? `<Street>${escapeXML(sanitizeText(address.street))}</Street>` : ''}
-              <City>${escapeXML(sanitizeText(address.city))}</City>
-              ${postCode ? `<PostCode>${escapeXML(postCode)}</PostCode>` : ''}
-            </AddressFix>
-          </Address>`;
+          <${ns}Address AddressType="OECD303">
+            <${ns}CountryCode>${countryCode}</${ns}CountryCode>
+            <${ns}AddressFix>
+              ${address.street ? `<${ns}Street>${escapeXML(sanitizeText(address.street))}</${ns}Street>` : ''}
+              <${ns}City>${escapeXML(sanitizeText(address.city))}</${ns}City>
+              ${postCode ? `<${ns}PostCode>${escapeXML(postCode)}</${ns}PostCode>` : ''}
+            </${ns}AddressFix>
+          </${ns}Address>`;
 }
 
 export function buildCRSXML({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig, isNilReport }) {
@@ -126,6 +126,9 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
   } else {
     messageTypeIndic = report.message_type_indic || 'CRS701';
   }
+
+  // Helper function to add oecd_ftc: prefix to all elements
+  const ns = 'oecd_ftc:';
 
   const sendingCompanyIN = cribNumber;
   if (!sendingCompanyIN) {
@@ -158,6 +161,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     }
     const fatcaCode = FATCA_FILER_CATEGORY_MAP[entity.fi_registration_type];
     if (fatcaCode) {
+      // Will be prefixed with ns when inserted into root element
       filerCategoryXml = `\n    <FilerCategory>${fatcaCode}</FilerCategory>`;
     }
   }
@@ -175,13 +179,19 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     else if (isNilReport && report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD13';
     else fiDocTypeIndic = 'OECD11';
   } else {
-    if (report.message_type_indic === 'CRS702') fiDocTypeIndic = 'OECD2';
+    // GAP 4: Use OECD0 for corrections, OECD1 for new, OECD3 for nil
+    if (report.message_type_indic === 'CRS702') fiDocTypeIndic = 'OECD0';
     else if (isNilReport && report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD3';
     else fiDocTypeIndic = 'OECD1';
   }
 
+  // GAP 4: For OECD0, reuse original DocRefId without CorrDocRefId
   const fiCorrDocRefIdXml = (() => {
     if (messageTypeIndic === 'CRS701' || messageTypeIndic === 'CRS703' || messageTypeIndic === 'CRS704') return '';
+    if (messageTypeIndic === 'CRS702' && fiDocTypeIndic === 'OECD0') {
+      // OECD0 (Resend Data) — reuse original DocRefId, no CorrDocRefId
+      return '';
+    }
     if (messageTypeIndic === 'CRS702') {
       if (!report.correction_doc_ref_id) {
         throw new Error('CorrDocRefId is mandatory for the ReportingFI DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set.');
@@ -204,7 +214,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       : '';
   })();
 
-  const buildReportingGroup = () => {
+  const buildReportingGroup = (ns = '') => {
     if (isNilReport && messageTypeIndic !== 'CRS701') {
       const nilDocRefId = generateDocRefId({
         fiscalYear: report.reporting_year,
@@ -221,19 +231,19 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       }
 
       const nilCorrDocRefIdXml = (report.message_type_indic === 'CRS703' && report.correction_doc_ref_id)
-        ? `\n          <CorrDocRefId>${report.correction_doc_ref_id}_NIL</CorrDocRefId>`
+        ? `\n          <${ns}CorrDocRefId>${report.correction_doc_ref_id}_NIL</${ns}CorrDocRefId>`
         : '';
 
       return `
-    <ReportingGroup>
-      <NilReport>
-        <DocSpec>
-          <DocTypeIndic>${nilDocTypeIndic}</DocTypeIndic>
-          <DocRefId>${nilDocRefId}</DocRefId>${nilCorrDocRefIdXml}
-        </DocSpec>
-        <NoAccountToReport>yes</NoAccountToReport>
-      </NilReport>
-    </ReportingGroup>`;
+    <${ns}ReportingGroup>
+      <${ns}NilReport>
+        <${ns}DocSpec>
+          <${ns}DocTypeIndic>${nilDocTypeIndic}</${ns}DocTypeIndic>
+          <${ns}DocRefId>${nilDocRefId}</${ns}DocRefId>${nilCorrDocRefIdXml}
+        </${ns}DocSpec>
+        <${ns}NoAccountToReport>yes</${ns}NoAccountToReport>
+      </${ns}NilReport>
+    </${ns}ReportingGroup>`;
     }
 
     const ACCT_TYPE_CODE_MAP = {
@@ -264,7 +274,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       const accDocRefId = generateDocRefId({
         fiscalYear: report.reporting_year,
         cribNumber,
-        serialNumber: String(index + 1),
+        serialNumber: String(index + 1).padStart(6, '0'),
         type: 'ACC'
       });
 
@@ -284,7 +294,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         if (!report.correction_doc_ref_id) {
           throw new Error(`CorrDocRefId is mandatory for AccountReport DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set (account: ${account.account_number}).`);
         }
-        return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
+        return `<${ns}CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</${ns}CorrDocRefId>`;
       })();
 
       let derivedCrsCode = null;
@@ -352,7 +362,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
       const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
 
-      const buildPaymentBlock = () => {
+      const buildPaymentBlock = (ns = '') => {
         const grossPayments = account.gross_payments;
         if (!grossPayments || grossPayments <= 0) return '';
         const payCurrency = account.gross_payments_currency || account.year_end_cash_value_currency;
@@ -368,10 +378,10 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         };
         const paymentType = paymentTypeMap[account.account_type] || 'CRS504';
         return `
-      <Payment>
-        <PaymentType>${paymentType}</PaymentType>
-        <PaymentAmnt CurrCode="${payCurrency}">${parseFloat(grossPayments).toFixed(2)}</PaymentAmnt>
-      </Payment>`;
+      <${ns}Payment>
+        <${ns}PaymentType>${paymentType}</${ns}PaymentType>
+        <${ns}PaymentAmnt CurrCode="${payCurrency}">${parseFloat(grossPayments).toFixed(2)}</${ns}PaymentAmnt>
+      </${ns}Payment>`;
       };
 
       const accountCPs = derivedCrsCode === 'CRS101'
@@ -401,23 +411,23 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           const cpCountryCode = normalizeCountryCode(res.country);
           const cpTin = res.tin ? sanitizeTIN(res.tin) : null;
           return `
-          <ResCountryCode>${cpCountryCode}</ResCountryCode>
-          ${cpTin ? `<TIN IssuedBy="${cpCountryCode}">${escapeXML(cpTin)}</TIN>` : ''}`;
+          <${ns}ResCountryCode>${cpCountryCode}</${ns}ResCountryCode>
+          ${cpTin ? `<${ns}TIN IssuedBy="${cpCountryCode}">${escapeXML(cpTin)}</${ns}TIN>` : ''}`;
         }).join('');
 
         return `
-      <ControllingPerson>
-        <Individual>
+      <${ns}ControllingPerson>
+        <${ns}Individual>
           ${cpTaxResidencyBlocks}
-          <Name>
-            <FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</FirstName>
-            <LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</LastName>
-          </Name>
-          ${buildAddressBlock(cp.address, cpAddressFallbackCountry)}
-          ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
-        </Individual>
-        <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
-      </ControllingPerson>`;
+          <${ns}Name>
+            <${ns}FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</${ns}FirstName>
+            <${ns}LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</${ns}LastName>
+          </${ns}Name>
+          ${buildAddressBlock(cp.address, cpAddressFallbackCountry, ns)}
+          ${cp.date_of_birth ? `<${ns}BirthInfo><${ns}BirthDate>${cp.date_of_birth}</${ns}BirthDate></${ns}BirthInfo>` : ''}
+        </${ns}Individual>
+        <${ns}CtrlgPersonType>${ctrlgPersonType}</${ns}CtrlgPersonType>
+      </${ns}ControllingPerson>`;
       }).join('');
 
       const taxResidencies = account.tax_residencies || [];
@@ -440,20 +450,20 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       let accountHolderBlock;
       if (account.account_holder_type === 'individual') {
         accountHolderBlock = `
-        <Individual>
-          ${resCountryCodeBlocks}
-          ${tinBlocks}
-          <Name>
-            ${account.name_prefix ? `<NamePrefix>${escapeXML(sanitizeText(account.name_prefix))}</NamePrefix>` : ''}
-            ${account.title ? `<Title>${escapeXML(sanitizeText(account.title))}</Title>` : ''}
-            <FirstName>${escapeXML(sanitizeText(account.first_name || 'NFN'))}</FirstName>
-            ${account.middle_name ? `<MiddleName>${escapeXML(sanitizeText(account.middle_name))}</MiddleName>` : ''}
-            <LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</LastName>
-          </Name>
-          ${buildAddressBlock(account.account_holder_address, 'CW')}
-          ${account.date_of_birth ? `<BirthInfo><BirthDate>${account.date_of_birth}</BirthDate></BirthInfo>` : ''}
-          <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
-        </Individual>`;
+        <${ns}Individual>
+          ${resCountryCodeBlocks.replace(/ResCountryCode/g, ns + 'ResCountryCode')}
+          ${tinBlocks.replace(/TIN/g, ns + 'TIN')}
+          <${ns}Name>
+            ${account.name_prefix ? `<${ns}NamePrefix>${escapeXML(sanitizeText(account.name_prefix))}</${ns}NamePrefix>` : ''}
+            ${account.title ? `<${ns}Title>${escapeXML(sanitizeText(account.title))}</${ns}Title>` : ''}
+            <${ns}FirstName>${escapeXML(sanitizeText(account.first_name || 'NFN'))}</${ns}FirstName>
+            ${account.middle_name ? `<${ns}MiddleName>${escapeXML(sanitizeText(account.middle_name))}</${ns}MiddleName>` : ''}
+            <${ns}LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</${ns}LastName>
+          </${ns}Name>
+          ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
+          ${account.date_of_birth ? `<${ns}BirthInfo><${ns}BirthDate>${account.date_of_birth}</${ns}BirthDate></${ns}BirthInfo>` : ''}
+          <${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>
+        </${ns}Individual>`;
       } else {
         const accountCPsForRes = controllingPersons.filter(cp => cp.account_id === account.id);
         const cpResCountries = accountCPsForRes
@@ -461,78 +471,81 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           .filter(Boolean);
         const orgResCodes = [...new Set([...resCountryCodes, ...cpResCountries])];
         const orgResCountryCodeBlocks = orgResCodes
-          .map(code => `<ResCountryCode>${code}</ResCountryCode>`)
+          .map(code => `<${ns}ResCountryCode>${code}</${ns}ResCountryCode>`)
           .join('\n          ');
 
         accountHolderBlock = `
-        <Organisation>
+        <${ns}Organisation>
           ${orgResCountryCodeBlocks}
-          ${tinBlocks}
-          <Name>${escapeXML(sanitizeText(account.account_holder_name))}</Name>
-          ${buildAddressBlock(account.account_holder_address, 'CW')}
-          ${derivedCrsCode ? `<AcctHolderTypeCRS>${derivedCrsCode}</AcctHolderTypeCRS>` : ''}
-          ${account.fatca_entity_classification ? `<FATCAClassification>${account.fatca_entity_classification}</FATCAClassification>` : ''}
-          <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
-        </Organisation>`;
+          ${tinBlocks.replace(/TIN/g, ns + 'TIN')}
+          <${ns}Name>${escapeXML(sanitizeText(account.account_holder_name))}</${ns}Name>
+          ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
+          <${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>
+        </${ns}Organisation>`;
       }
 
+      // GAP 5: AcctHolderTypeCRS and FATCAClassification are now direct children of AccountHolder
+      const acctClassifications = `${derivedCrsCode ? `<${ns}AcctHolderTypeCRS>${derivedCrsCode}</${ns}AcctHolderTypeCRS>` : ''}${account.fatca_entity_classification ? `<${ns}AcctHolderTypeFATCA>${account.fatca_entity_classification}</${ns}AcctHolderTypeFATCA>` : ''}`;
+
       return `
-    <AccountReport>
-      <DocSpec>
-        <DocTypeIndic>${docTypeIndic}</DocTypeIndic>
-        <DocRefId>${accDocRefId}</DocRefId>
+    <${ns}AccountReport>
+      <${ns}DocSpec>
+        <${ns}DocTypeIndic>${docTypeIndic}</${ns}DocTypeIndic>
+        <${ns}DocRefId>${accDocRefId}</${ns}DocRefId>
         ${corrDocRefIdXml}
-      </DocSpec>
+      </${ns}DocSpec>
       
-      <AccountNumber${closedAttr}${dormantAttr}${acctTypeAttr}>${accountNumberVal}</AccountNumber>
+      <${ns}AccountNumber${closedAttr}${dormantAttr}${acctTypeAttr}>${accountNumberVal}</${ns}AccountNumber>
       
-      <AccountHolder>
+      <${ns}AccountHolder>
         ${accountHolderBlock}
-      </AccountHolder>
+        ${acctClassifications}
+      </${ns}AccountHolder>
       
-      <AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</AccountBalance>
-      ${buildPaymentBlock()}
+      <${ns}AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</${ns}AccountBalance>
+      ${buildPaymentBlock(ns)}
       ${cpBlocks}
-    </AccountReport>`;
+    </${ns}AccountReport>`;
     }).join('');
 
     return `
-    <ReportingGroup>
+    <${ns}ReportingGroup>
       ${accountBlocks}
-    </ReportingGroup>`;
+    </${ns}ReportingGroup>`;
   };
 
+  // GAP 1: Correct namespace URIs, version 2.2, and add oecd_ftc: prefix to all elements
   return `<?xml version="1.0" encoding="UTF-8"?>
-<FATCA_CRS Version="2.0"
-  xmlns="urn:oecd:ties:fatcacrs:v2"
-  xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
-  xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <MessageHeader>
-    <SendingCompanyIN>${sendingCompanyIN}</SendingCompanyIN>
-    <TransmittingCountry>CW</TransmittingCountry>
-    <ReceivingCountry>CW</ReceivingCountry>
-    <MessageType>FATCA-CRS</MessageType>
-    <MessageRefId>${messageRefId}</MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml}` : ''}
-    <MessageTypeIndic>${messageTypeIndic}</MessageTypeIndic>
-    <ReportingPeriod>${report.reporting_year}-12-31</ReportingPeriod>
-    <Timestamp>${timestamp}</Timestamp>
-  </MessageHeader>
+<${ns}FATCA_CRS version="2.2"
+  xmlns:sfa_ftc="urn:oecd:ties:fatcacrstypes:v2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:${ns.slice(0, -1)}="urn:fatcacrs:ties:v2"
+  xmlns:sfa="urn:oecd:ties:stffatcatypes:v2">
+  <${ns}MessageHeader>
+    <${ns}SendingCompanyIN>${sendingCompanyIN}</${ns}SendingCompanyIN>
+    <${ns}TransmittingCountry>CW</${ns}TransmittingCountry>
+    <${ns}ReceivingCountry>CW</${ns}ReceivingCountry>
+    <${ns}MessageType>FATCA-CRS</${ns}MessageType>
+    <${ns}MessageRefId>${messageRefId}</${ns}MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml.replace(/</g, '<' + ns).replace(/<\/([^>]+)>/g, (match, tag) => '</' + ns + tag + '>')}` : ''}
+    <${ns}MessageTypeIndic>${messageTypeIndic}</${ns}MessageTypeIndic>
+    <${ns}ReportingPeriod>${report.reporting_year}-12-31</${ns}ReportingPeriod>
+    <${ns}Timestamp>${timestamp}</${ns}Timestamp>
+  </${ns}MessageHeader>
   
-  <MessageBody>
-    <ReportingFI>
-      <ResCountryCode>CW</ResCountryCode>
-      <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
-      <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
+  <${ns}MessageBody>
+    <${ns}ReportingFI>
+      <${ns}ResCountryCode>CW</${ns}ResCountryCode>
+      <${ns}TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</${ns}TIN>
+      <${ns}Name NameType="OECD207">${escapeXML(entity.entity_name)}</${ns}Name>
 
-      ${buildAddressBlock(entity.address, 'CW')}${filerCategoryXml}
-      <DocSpec>
-        <DocTypeIndic>${fiDocTypeIndic}</DocTypeIndic>
-        <DocRefId>${fiDocRefId}</DocRefId>
-        ${fiCorrDocRefIdXml}
-      </DocSpec>
-    </ReportingFI>
-    ${buildReportingGroup()}
-  </MessageBody>
-</FATCA_CRS>`;
+      ${buildAddressBlock(entity.address, 'CW', ns)}${filerCategoryXml ? filerCategoryXml.replace(/</g, '<' + ns).replace(/<\/([^>]+)>/g, (match, tag) => '</' + ns + tag + '>') : ''}
+      <${ns}DocSpec>
+        <${ns}DocTypeIndic>${fiDocTypeIndic}</${ns}DocTypeIndic>
+        <${ns}DocRefId>${fiDocRefId}</${ns}DocRefId>
+        ${fiCorrDocRefIdXml ? fiCorrDocRefIdXml.replace(/</g, '<' + ns).replace(/<\/([^>]+)>/g, (match, tag) => '</' + ns + tag + '>') : ''}
+      </${ns}DocSpec>
+    </${ns}ReportingFI>
+    ${buildReportingGroup(ns)}
+  </${ns}MessageBody>
+</${ns}FATCA_CRS>`;
 }
