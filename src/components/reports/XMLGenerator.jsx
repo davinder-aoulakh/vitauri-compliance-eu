@@ -373,8 +373,9 @@ export default function XMLGenerator({ report, onSuccess }) {
           }
         }
 
-        // GAP 26: ClosedAccount attribute
+        // GAP 26: ClosedAccount and DormantAccount as attributes on AccountNumber
         const closedAttr = account.account_closed_during_period ? ' ClosedAccount="true"' : '';
+        const dormantAttr = account.account_dormant_at_reporting_date ? ' DormantAccount="true"' : '';
         const accountNumberVal = account.account_number ? escapeXML(account.account_number) : 'NANUM';
 
         // GAP 25: AccountBalance is year-end value only
@@ -473,7 +474,7 @@ export default function XMLGenerator({ report, onSuccess }) {
         ${corrDocRefIdXml}
       </DocSpec>
       
-      <AccountNumber${closedAttr}>${accountNumberVal}</AccountNumber>
+      <AccountNumber${closedAttr}${dormantAttr}>${accountNumberVal}</AccountNumber>
       
       <AccountHolder>
         ${account.account_holder_type === 'individual' ? `
