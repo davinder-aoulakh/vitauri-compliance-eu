@@ -235,10 +235,17 @@ export default function XMLGenerator({ report, onSuccess }) {
         type: 'ACC'
       });
 
-      // GAP 1: DocTypeIndic uses no namespace prefix; same OECD1/2/3 mapping
-      let docTypeIndic = 'OECD1';
-      if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD2';
-      else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD3';
+      // GAP 6: DocTypeIndic mapping — test supply uses OECD11/12/13, production uses OECD1/2/3
+      let docTypeIndic;
+      if (report.is_test_supply) {
+        if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD12';
+        else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD13';
+        else docTypeIndic = 'OECD11'; // CRS701 → OECD11
+      } else {
+        if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD2';
+        else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD3';
+        else docTypeIndic = 'OECD1'; // CRS701 → OECD1
+      }
 
       // GAP 30: CorrDocRefId must NOT appear for CRS701
       const corrDocRefIdXml = (() => {

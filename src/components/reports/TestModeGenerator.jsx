@@ -100,7 +100,7 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
     <crs:ReceivingCountry>${escapeXML(jurisdiction || 'AU')}</crs:ReceivingCountry>
     <crs:MessageType>CRS</crs:MessageType>
     <crs:MessageRefId>${escapeXML(messageRefId)}</crs:MessageRefId>
-    <crs:MessageTypeIndic>CRS701</crs:MessageTypeIndic>
+    <crs:MessageTypeIndic>CRS704</crs:MessageTypeIndic>
     <crs:ReportingPeriod>${config.reportingYear}-12-31</crs:ReportingPeriod>
     <crs:Timestamp>${timestamp}</crs:Timestamp>
   </crs:MessageSpec>
@@ -132,7 +132,7 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
         xml += `
     <crs:AccountReport>
       <crs:DocSpec>
-        <crs:DocTypeIndic>OECD1</crs:DocTypeIndic>
+        <crs:DocTypeIndic>OECD11</crs:DocTypeIndic>
         <crs:DocRefId>${escapeXML(accDocRefId)}</crs:DocRefId>
       </crs:DocSpec>
       

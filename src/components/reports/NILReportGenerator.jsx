@@ -72,7 +72,7 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
       </crs:Address>
       ` : ''}
       <crs:DocSpec>
-        <crs:DocTypeIndic>OECD0</crs:DocTypeIndic>
+        <crs:DocTypeIndic>${report.is_test_supply ? 'OECD13' : 'OECD3'}</crs:DocTypeIndic>
         <crs:DocRefId>${escapeXML(messageRefId)}.FI</crs:DocRefId>
       </crs:DocSpec>
     </crs:ReportingFI>

@@ -66,7 +66,7 @@ export default function XMLValidator({
       setProgress(60);
 
       // Step 4: Jurisdiction-Specific Rules (80%)
-      await validateJurisdictionRules(report, entity, accounts, validationResults);
+      await validateJurisdictionRules(xmlContent, report, entity, accounts, validationResults);
       setProgress(80);
 
       // Step 5: Business Rules (100%)
@@ -428,11 +428,58 @@ export default function XMLValidator({
     });
   };
 
-  const validateJurisdictionRules = async (report, entity, accounts, results) => {
+  const validateJurisdictionRules = async (xml, report, entity, accounts, results) => {
     results.categories[VALIDATION_CATEGORIES.JURISDICTION] = { passed: 0, failed: 0, warnings: 0 };
     const cat = results.categories[VALIDATION_CATEGORIES.JURISDICTION];
     const jurisdiction = report.reporting_jurisdiction;
     const config = JURISDICTION_CONFIGS[jurisdiction] || JURISDICTION_CONFIGS["DEFAULT"];
+
+    // Rule 95/96: Validate DocTypeIndic consistency — no mixing test and production codes
+    results.total_checks++;
+    if (xml) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, "text/xml");
+      // Match both namespaced (crs:DocTypeIndic) and non-namespaced (DocTypeIndic)
+      const allDocTypeElems = [
+        ...Array.from(xmlDoc.getElementsByTagName("crs:DocTypeIndic")),
+        ...Array.from(xmlDoc.getElementsByTagName("DocTypeIndic"))
+      ];
+      const docTypeValues = allDocTypeElems.map(el => el.textContent.trim()).filter(Boolean);
+      const TEST_CODES = new Set(['OECD11', 'OECD12', 'OECD13']);
+      const PROD_CODES = new Set(['OECD1', 'OECD2', 'OECD3']);
+      const hasTestCodes = docTypeValues.some(v => TEST_CODES.has(v));
+      const hasProdCodes = docTypeValues.some(v => PROD_CODES.has(v));
+
+      if (hasTestCodes && hasProdCodes) {
+        results.errors.push({
+          category: VALIDATION_CATEGORIES.JURISDICTION,
+          code: "JUR095",
+          message: "Mixing test (OECD11/12/13) and production (OECD1/2/3) DocTypeIndic codes in the same report is not allowed.",
+          severity: "error"
+        });
+        cat.failed++;
+      } else if (report.is_test_supply && hasProdCodes && !hasTestCodes) {
+        results.errors.push({
+          category: VALIDATION_CATEGORIES.JURISDICTION,
+          code: "JUR096",
+          message: "Test supply report contains production DocTypeIndic codes (OECD1/2/3). Expected OECD11/12/13.",
+          severity: "error"
+        });
+        cat.failed++;
+      } else if (!report.is_test_supply && hasTestCodes && !hasProdCodes) {
+        results.errors.push({
+          category: VALIDATION_CATEGORIES.JURISDICTION,
+          code: "JUR097",
+          message: "Production report contains test DocTypeIndic codes (OECD11/12/13). Expected OECD1/2/3.",
+          severity: "error"
+        });
+        cat.failed++;
+      } else {
+        cat.passed++;
+      }
+    } else {
+      cat.passed++;
+    }
 
     // Check GIIN requirement
     results.total_checks++;
