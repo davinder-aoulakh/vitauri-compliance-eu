@@ -560,6 +560,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     "is_pre_existing", "account_holder_is_alive", "account_holder_deceased_during_period",
     "account_closed_during_period", "us_person_indic", "self_certification_obtained",
     "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
+    "self_cert_requested", "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
   ]);
 
   const parseBool = (v) => ["true", "yes", "1", "y"].includes(String(v).toLowerCase().trim());
@@ -568,12 +569,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     const account = { tenant_id: tenant.id, entity_id: entity.id, reportability_status: "pending_review", status: "active" };
     const cpData = { 1: {}, 2: {}, 3: {}, 4: {} };
 
-    // Extra boolean fields from new template
-    const EXTRA_BOOL_FIELDS = new Set([
-      ...BOOL_FIELDS,
-      "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
-      "self_cert_requested",
-    ]);
+    const EXTRA_BOOL_FIELDS = BOOL_FIELDS;
 
     Object.entries(mappings).forEach(([csvCol, targetField]) => {
       if (!targetField) return;
@@ -589,31 +585,33 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         return;
       }
 
-      // Tax residency shorthand: tax1_country, tax1_tin, tax2_country, tax2_tin
-      if (targetField === "tax1_country" || targetField === "tax1_country_code") {
+      // Tax residency: tax1_country, tax1_tin, tax2_country, tax2_tin
+      if (targetField === "tax1_country") {
         if (!account.tax_residencies) account.tax_residencies = [];
         if (!account.tax_residencies[0]) account.tax_residencies[0] = {};
-        if (targetField === "tax1_country") account.tax_residencies[0].country = value;
+        account.tax_residencies[0].country = value;
         return;
       }
       if (targetField === "tax1_tin") {
         if (!account.tax_residencies) account.tax_residencies = [];
         if (!account.tax_residencies[0]) account.tax_residencies[0] = {};
-        account.tax_residencies[0].tin = value;
+        account.tax_residencies[0].tin = String(value);
         return;
       }
-      if (targetField === "tax2_country" || targetField === "tax2_country_code") {
+      if (targetField === "tax2_country") {
         if (!account.tax_residencies) account.tax_residencies = [];
         if (!account.tax_residencies[1]) account.tax_residencies[1] = {};
-        if (targetField === "tax2_country") account.tax_residencies[1].country = value;
+        account.tax_residencies[1].country = value;
         return;
       }
       if (targetField === "tax2_tin") {
         if (!account.tax_residencies) account.tax_residencies = [];
         if (!account.tax_residencies[1]) account.tax_residencies[1] = {};
-        account.tax_residencies[1].tin = value;
+        account.tax_residencies[1].tin = String(value);
         return;
       }
+      // Skip auto-filled country code columns (VLOOKUP results)
+      if (["tax1_country_code", "tax2_country_code"].includes(targetField)) return;
 
       // Address fields mapping to nested account_holder_address / current_address
       if (targetField.startsWith("ah_original_") || targetField.startsWith("ah_current_") || targetField === "ah_country_of_residence") {
@@ -634,11 +632,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       }
 
       if (["year_end_cash_value", "gross_payments"].includes(targetField)) {
-        account[targetField] = parseFloat(String(value).replace(/[,$]/g, "")) || 0;
+        account[targetField] = parseFloat(String(value).replace(/[,$]/g, "")) || null;
       } else if (EXTRA_BOOL_FIELDS.has(targetField)) {
         account[targetField] = parseBool(value);
-      } else if (targetField === "entity_id" || targetField === "entity_name_ref") {
-        // skip — entity_id is set from entity prop, entity_name_ref is display-only
+      } else if (targetField === "entity_id" || targetField === "entity_name_ref" || targetField === "skip") {
+        // skip — entity_id is set from entity prop, entity_name_ref/skip are display-only
       } else if (targetField === "status") {
         // Normalize status to lowercase
         account[targetField] = String(value).toLowerCase().trim();
@@ -676,36 +674,36 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     // Build controlling person objects from flat cp data
     const controllingPersons = [];
     for (let n = 1; n <= 4; n++) {
-      const cp = cpData[n];
-      if (!cp.first_name && !cp.last_name) continue;
-      const tax_residencies = [];
-      if (cp.tax1_country) tax_residencies.push({ country: cp.tax1_country, tin: cp.tin || "" });
-      if (cp.tax2_country) tax_residencies.push({ country: cp.tax2_country, tin: cp.tin2 || "" });
-      const cpRecord = {
-        tenant_id: tenant.id,
-        first_name: cp.first_name || "",
-        last_name: cp.last_name || "",
-        full_name: `${cp.first_name || ""} ${cp.last_name || ""}`.trim(),
-        date_of_birth: cp.date_of_birth || null,
-        place_of_birth: cp.place_of_birth || null,
-        place_of_birth_code: cp.place_of_birth_code || null,
-        country_of_residence: cp.country_of_residence || null,
-        country_of_residence_code: cp.country_of_residence_code || null,
-        address: {
-          street: cp.street || "",
-          city: cp.city || "",
-          state: cp.state || "",
-          postal_code: cp.postal_code || "",
-          country: cp.address_country || "",
-        },
-        tax_residencies,
-        control_type: cp.control_type || null,
-        ownership_percentage: cp.ownership_percentage ? parseFloat(cp.ownership_percentage) || null : null,
-        self_certification_obtained: cp.self_cert_obtained ? parseBool(cp.self_cert_obtained) : false,
-        self_certification_receipt_date: cp.self_cert_date || null,
-        self_certification_request_date: cp.self_cert_request_date || null,
-      };
-      controllingPersons.push(cpRecord);
+    const cp = cpData[n];
+    if (!cp.first_name && !cp.last_name) continue;
+    const tax_residencies = [];
+    if (cp.tax1_country) tax_residencies.push({ country: cp.tax1_country, tin: cp.tax1_tin || "" });
+    if (cp.tax2_country) tax_residencies.push({ country: cp.tax2_country, tin: cp.tax2_tin || "" });
+    const cpRecord = {
+      tenant_id: tenant.id,
+      first_name: (cp.first_name || "").trim(),
+      last_name: (cp.last_name || "").trim(),
+      full_name: `${(cp.first_name || "").trim()} ${(cp.last_name || "").trim()}`.trim(),
+      date_of_birth: cp.date_of_birth || null,
+      place_of_birth: cp.place_of_birth || null,
+      place_of_birth_code: cp.place_of_birth_code || null,
+      country_of_residence: cp.country_of_residence || null,
+      country_of_residence_code: cp.country_of_residence_code || null,
+      address: {
+        street: cp.address_street || "",
+        city: cp.address_city || "",
+        state: cp.address_state || "",
+        postal_code: cp.address_postal_code || "",
+        country: cp.address_country || "",
+      },
+      tax_residencies,
+      control_type: cp.control_type || null,
+      ownership_percentage: cp.ownership_percentage ? parseFloat(cp.ownership_percentage) || null : null,
+      self_certification_obtained: cp.self_cert_obtained ? parseBool(cp.self_cert_obtained) : false,
+      self_certification_receipt_date: cp.self_cert_date || null,
+      self_certification_request_date: cp.self_cert_request_date || null,
+    };
+    controllingPersons.push(cpRecord);
     }
 
     return { account, controllingPersons };
