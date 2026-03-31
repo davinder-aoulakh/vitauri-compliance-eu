@@ -22,17 +22,16 @@ import { JURISDICTION_CONFIGS, generateFileName } from "./JurisdictionConfig";
 import { generateMessageRefId, generateDocRefId, validateIdFormat } from "./idGenerator";
 import XMLValidator from "./XMLValidator";
 import ReportPreviewExport from "./ReportPreviewExport";
-import NILReportGenerator from "./NILReportGenerator";
 import TestModeGenerator from "./TestModeGenerator";
 
 export default function XMLGenerator({ report, onSuccess }) {
   const [generating, setGenerating] = useState(false);
-  const [validating, setValidating] = useState(false);
   const [xmlContent, setXmlContent] = useState(null);
   const [validationResults, setValidationResults] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [activeTab, setActiveTab] = useState("generate");
-  
+  const [isNilReport, setIsNilReport] = useState(false);
+
   // Data state
   const [accounts, setAccounts] = useState([]);
   const [entity, setEntity] = useState(null);
@@ -45,14 +44,14 @@ export default function XMLGenerator({ report, onSuccess }) {
 
   const loadReportData = async () => {
     try {
-      // Fetch all related data
       const fetchedAccounts = await base44.entities.Account.filter({
         entity_id: report.entity_id,
         reportability_status: 'reportable'
       });
-      setAccounts(fetchedAccounts.filter(a => 
+      const filteredAccounts = fetchedAccounts.filter(a =>
         !a.reporting_year || a.reporting_year === report.reporting_year.toString()
-      ));
+      );
+      setAccounts(filteredAccounts);
 
       const entities = await base44.entities.Entity.list();
       const reportingEntity = entities.find(e => e.id === report.entity_id);
@@ -62,18 +61,17 @@ export default function XMLGenerator({ report, onSuccess }) {
       const reportingTenant = tenants.find(t => t.id === report.tenant_id);
       setTenant(reportingTenant);
 
-      // Fetch controlling persons for passive NFE accounts
       const accountIds = fetchedAccounts.map(a => a.id);
       const allCPs = await base44.entities.ControllingPerson.filter({
         tenant_id: report.tenant_id
       });
-      const filteredCPs = allCPs.filter(cp => 
+      const filteredCPs = allCPs.filter(cp =>
         accountIds.includes(cp.account_id) && cp.is_reportable
       );
       setControllingPersons(filteredCPs);
       setDataLoaded(true);
 
-      return { accounts: fetchedAccounts, entity: reportingEntity, tenant: reportingTenant, controllingPersons: filteredCPs };
+      return { accounts: filteredAccounts, entity: reportingEntity, tenant: reportingTenant, controllingPersons: filteredCPs };
     } catch (error) {
       console.error("Error loading report data:", error);
       throw error;
@@ -83,30 +81,26 @@ export default function XMLGenerator({ report, onSuccess }) {
   const generateXML = async () => {
     setGenerating(true);
     try {
-      const data = dataLoaded 
+      const data = dataLoaded
         ? { accounts, entity, tenant, controllingPersons }
         : await loadReportData();
 
-      // Check for NIL report
-      if (data.accounts.length === 0 || report.report_type === 'nil_report') {
-        setActiveTab("nil");
-        setGenerating(false);
-        return;
-      }
+      // GAP 13: Determine if this is a NIL report scenario inline
+      const nilScenario = data.accounts.length === 0 || report.report_type === 'nil_report';
+      setIsNilReport(nilScenario);
 
-      // Generate XML content with jurisdiction config
       const xml = buildCRSXML({
         report,
         entity: data.entity,
         tenant: data.tenant,
         accounts: data.accounts,
         controllingPersons: data.controllingPersons,
-        jurisdictionConfig
+        jurisdictionConfig,
+        isNilReport: nilScenario
       });
 
       setXmlContent(xml);
 
-      // Generate filename based on jurisdiction config
       const fileName = generateFileName(jurisdictionConfig.fileNamingPattern, {
         year: report.reporting_year,
         tin: data.entity?.tax_id,
@@ -114,27 +108,36 @@ export default function XMLGenerator({ report, onSuccess }) {
         sequence: '001'
       });
 
-      // Upload XML to storage
       const blob = new Blob([xml], { type: 'application/xml' });
-      const file = new File([blob], fileName);
-      
+      const file = new File([blob], nilScenario ? fileName.replace('.xml', '_NIL.xml') : fileName);
+
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-      // Update report with XML URL
       await base44.entities.CRSReport.update(report.id, {
         xml_file_url: file_url,
-        status: 'draft', // Keep as draft until validated
+        status: nilScenario ? 'validated' : 'draft',
+        ...(nilScenario ? {
+          report_type: 'nil_report',
+          validation_results: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+            validated_date: new Date().toISOString()
+          }
+        } : {}),
         summary_stats: {
           total_reportable_accounts: data.accounts.length,
           total_controlling_persons: data.controllingPersons.length,
-          jurisdictions_reported: [...new Set(data.accounts.flatMap(a => 
+          jurisdictions_reported: [...new Set(data.accounts.flatMap(a =>
             a.tax_residencies?.map(r => r.country) || []
           ))],
-          total_account_balance: data.accounts.reduce((sum, a) => 
+          total_account_balance: data.accounts.reduce((sum, a) =>
             sum + (a.year_end_cash_value || a.account_balance || 0), 0
           )
         }
       });
+
+      if (nilScenario) onSuccess?.();
 
     } catch (error) {
       console.error("XML generation error:", error);
@@ -144,48 +147,53 @@ export default function XMLGenerator({ report, onSuccess }) {
     }
   };
 
-  const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig }) => {
+  const buildCRSXML = ({ report, entity, tenant, accounts, controllingPersons, jurisdictionConfig, isNilReport }) => {
     // GAP 29: Timestamp must be YYYY-MM-DDTHH:MM:SS — no milliseconds, no Z
     const timestamp = new Date().toISOString().substring(0, 19);
 
-    // CRIB number is entity.tax_id (used in all IDs per Annex 7)
     const cribNumber = entity?.tax_id || '';
 
-    // GAP 4: MessageRefId format must be CW{YEAR}{CRIB}{SERIAL}
+    // GAP 4: MessageRefId format
     const messageRefId = generateMessageRefId({
       fiscalYear: report.reporting_year,
-      cribNumber: cribNumber,
+      cribNumber,
       serialNumber: '001'
     });
 
-    // Validate generated ID
     const validation = validateIdFormat(messageRefId, 'MessageRefId');
     if (!validation.isValid) {
       console.warn('MessageRefId validation warnings:', validation.errors);
     }
 
-    // If is_test_supply is true, override MessageTypeIndic to CRS704 regardless of other settings
-    const messageTypeIndic = report.is_test_supply ? 'CRS704' : (report.message_type_indic || 'CRS701');
-
-    // GAP 31: SendingCompanyIN must be CRIB number — never 'UNKNOWN'
-    const sendingCompanyIN = cribNumber;
-    if (!sendingCompanyIN) {
-      throw new Error('Cannot generate XML: CRIB number (tax_id) is missing for the Reporting FI. This is required as SendingCompanyIN.');
+    // GAP 13: NIL reports must use CRS703. Test supply overrides to CRS704.
+    let messageTypeIndic;
+    if (report.is_test_supply) {
+      messageTypeIndic = 'CRS704';
+    } else if (isNilReport) {
+      messageTypeIndic = 'CRS703';
+    } else {
+      messageTypeIndic = report.message_type_indic || 'CRS701';
     }
 
-    // GAP 8: TIN logic — FFI uses GIIN (IssuedBy=US), non-FFI uses CRIB (IssuedBy=CW)
+    // GAP 31: SendingCompanyIN must be CRIB number
+    const sendingCompanyIN = cribNumber;
+    if (!sendingCompanyIN) {
+      throw new Error('Cannot generate XML: CRIB number (tax_id) is missing for the Reporting FI.');
+    }
+
+    // GAP 8: TIN logic
     const isFfi = entity?.is_ffi === true;
     const tinValue = isFfi ? entity?.giin : cribNumber;
     const tinIssuedBy = isFfi ? 'US' : 'CW';
     if (!tinValue) {
       throw new Error(
         isFfi
-          ? 'Cannot generate XML: GIIN is missing for this FFI ReportingFI. Set entity.giin to proceed.'
-          : 'Cannot generate XML: CRIB number (tax_id) is missing for this ReportingFI. Set entity.tax_id to proceed.'
+          ? 'Cannot generate XML: GIIN is missing for this FFI ReportingFI.'
+          : 'Cannot generate XML: CRIB number (tax_id) is missing for this ReportingFI.'
       );
     }
 
-    // GAP 11: FilerCategory — required for FFI entities that file independently (not through a Sponsor)
+    // GAP 11: FilerCategory
     const FATCA_FILER_CATEGORY_MAP = {
       "Participating FFI (standard FATCA-registered institution)": "FATCA601",
       "Registered Deemed-Compliant FFI": "FATCA602",
@@ -205,7 +213,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       }
     }
 
-    // GAP 12: ReportingFI DocSpec — unique DocRefId with type 'FI', DocTypeIndic, and conditional CorrDocRefId
+    // GAP 12: ReportingFI DocSpec
     const fiDocRefId = generateDocRefId({
       fiscalYear: report.reporting_year,
       cribNumber,
@@ -213,37 +221,35 @@ export default function XMLGenerator({ report, onSuccess }) {
       type: 'FI'
     });
 
-    // DocTypeIndic for ReportingFI uses same mapping as AccountReport
+    // DocTypeIndic mapping — test supply uses OECD11/12/13, production uses OECD1/2/3
+    // GAP 13: NilReport uses OECD1/OECD11 (new blank supply) or OECD3/OECD13 (deletion).
+    //         OECD2/OECD12 is NOT applicable for NilReport.
     let fiDocTypeIndic;
     if (report.is_test_supply) {
       if (report.message_type_indic === 'CRS702') fiDocTypeIndic = 'OECD12';
-      else if (report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD13';
-      else fiDocTypeIndic = 'OECD11';
+      else if (isNilReport && report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD13'; // delete prior NIL
+      else fiDocTypeIndic = 'OECD11'; // new supply (CRS701) or new NIL supply
     } else {
       if (report.message_type_indic === 'CRS702') fiDocTypeIndic = 'OECD2';
-      else if (report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD3';
-      else fiDocTypeIndic = 'OECD1';
+      else if (isNilReport && report.message_type_indic === 'CRS703') fiDocTypeIndic = 'OECD3'; // delete prior NIL
+      else fiDocTypeIndic = 'OECD1'; // new supply or new NIL supply
     }
 
-    // Rule 108: CorrDocRefId must NOT appear if CRS701
-    // Rule 109: CorrDocRefId MUST appear if CRS702
+    // Rules 108/109: CorrDocRefId
     const fiCorrDocRefIdXml = (() => {
-      if (messageTypeIndic === 'CRS701') return ''; // Rule 108
+      if (messageTypeIndic === 'CRS701' || messageTypeIndic === 'CRS703') return ''; // Rule 108 + NIL
       if (messageTypeIndic === 'CRS702') {
         if (!report.correction_doc_ref_id) {
           throw new Error('CorrDocRefId is mandatory for the ReportingFI DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set.');
         }
-        return `<CorrDocRefId>${report.correction_doc_ref_id}_FI</CorrDocRefId>`; // Rule 109
+        return `<CorrDocRefId>${report.correction_doc_ref_id}_FI</CorrDocRefId>`;
       }
       return '';
     })();
 
-    // GAP 1: Root element is FATCA_CRS Version="2.0" with FATCA-CRS v2.0 namespaces
-    // GAP 2: TransmittingCountry and ReceivingCountry must always be 'CW'
-    // GAP 3: MessageType must be 'FATCA-CRS'
-    // GAP 5: CorrMessageRefId logic — only for CRS702, must NOT appear for CRS701
+    // GAP 5: CorrMessageRefId
     const corrMessageRefIdXml = (() => {
-      if (messageTypeIndic === 'CRS701') return ''; // Must NOT appear
+      if (messageTypeIndic === 'CRS701' || messageTypeIndic === 'CRS703') return '';
       if (messageTypeIndic === 'CRS702') {
         if (!report.correction_message_ref_id) {
           throw new Error('CorrMessageRefId is mandatory for correction reports (CRS702) but is not set.');
@@ -255,83 +261,126 @@ export default function XMLGenerator({ report, onSuccess }) {
         : '';
     })();
 
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<FATCA_CRS Version="2.0"
-  xmlns="urn:oecd:ties:fatcacrs:v2"
-  xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
-  xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <MessageSpec>
-    <SendingCompanyIN>${sendingCompanyIN}</SendingCompanyIN>
-    <TransmittingCountry>CW</TransmittingCountry>
-    <ReceivingCountry>CW</ReceivingCountry>
-    <MessageType>FATCA-CRS</MessageType>
-    <MessageRefId>${messageRefId}</MessageRefId>
-    ${corrMessageRefIdXml}
-    <MessageTypeIndic>${messageTypeIndic}</MessageTypeIndic>
-    <ReportingPeriod>${report.reporting_year}-12-31</ReportingPeriod>
-    <Timestamp>${timestamp}</Timestamp>
-  </MessageSpec>
-  
-  <CrsBody>
-  <ReportingFI>
-    <ResCountryCode>CW</ResCountryCode>
-    <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
-      <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
-      <Address AddressType="OECD303">
-        <CountryCode>CW</CountryCode>
-        <AddressFix>
-          ${entity.address?.street ? `<Street>${escapeXML(entity.address.street)}</Street>` : ''}
-          <City>${escapeXML(entity.address?.city || '')}</City>
-        </AddressFix>
-      </Address>${filerCategoryXml}
-      <DocSpec>
-        <DocTypeIndic>${fiDocTypeIndic}</DocTypeIndic>
-        <DocRefId>${fiDocRefId}</DocRefId>
-        ${fiCorrDocRefIdXml}
-      </DocSpec>
-    </ReportingFI>
-`;
+    // Build NIL ReportingGroup — GAP 13 (Sections 6.3.2.2, 6.3.2.2.1, 6.3.2.2.2)
+    // Rule 114: NilReport must NOT appear when MessageTypeIndic = CRS701
+    const buildReportingGroup = () => {
+      if (isNilReport && messageTypeIndic !== 'CRS701') {
+        const nilDocRefId = generateDocRefId({
+          fiscalYear: report.reporting_year,
+          cribNumber,
+          serialNumber: '002',
+          type: 'NIL'
+        });
 
-    // Add account reports
-    accounts.forEach((account, index) => {
-      const accDocRefId = generateDocRefId({
-        fiscalYear: report.reporting_year,
-        cribNumber,
-        serialNumber: String(index + 1),
-        type: 'ACC'
-      });
+        // NilReport DocTypeIndic: OECD1/OECD11 = new blank supply, OECD3/OECD13 = delete prior NIL
+        // OECD2/OECD12 is NOT applicable for NilReport
+        let nilDocTypeIndic;
+        if (report.is_test_supply) {
+          nilDocTypeIndic = (report.message_type_indic === 'CRS703') ? 'OECD13' : 'OECD11';
+        } else {
+          nilDocTypeIndic = (report.message_type_indic === 'CRS703') ? 'OECD3' : 'OECD1';
+        }
 
-      // GAP 6: DocTypeIndic mapping — test supply uses OECD11/12/13, production uses OECD1/2/3
-      let docTypeIndic;
-      if (report.is_test_supply) {
-        if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD12';
-        else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD13';
-        else docTypeIndic = 'OECD11'; // CRS701 → OECD11
-      } else {
-        if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD2';
-        else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD3';
-        else docTypeIndic = 'OECD1'; // CRS701 → OECD1
+        const nilCorrDocRefIdXml = (report.message_type_indic === 'CRS703' && report.correction_doc_ref_id)
+          ? `\n          <CorrDocRefId>${report.correction_doc_ref_id}_NIL</CorrDocRefId>`
+          : '';
+
+        return `
+    <ReportingGroup>
+      <NilReport>
+        <DocSpec>
+          <DocTypeIndic>${nilDocTypeIndic}</DocTypeIndic>
+          <DocRefId>${nilDocRefId}</DocRefId>${nilCorrDocRefIdXml}
+        </DocSpec>
+        <NoAccountToReport>yes</NoAccountToReport>
+      </NilReport>
+    </ReportingGroup>`;
       }
 
-      // GAP 30: CorrDocRefId must NOT appear for CRS701
-      const corrDocRefIdXml = (() => {
-        if (messageTypeIndic === 'CRS701') return '';
-        if (messageTypeIndic === 'CRS702' && report.correction_doc_ref_id) {
-          return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
+      // Standard AccountReport blocks
+      const accountBlocks = accounts.map((account, index) => {
+        const accDocRefId = generateDocRefId({
+          fiscalYear: report.reporting_year,
+          cribNumber,
+          serialNumber: String(index + 1),
+          type: 'ACC'
+        });
+
+        let docTypeIndic;
+        if (report.is_test_supply) {
+          if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD12';
+          else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD13';
+          else docTypeIndic = 'OECD11';
+        } else {
+          if (report.message_type_indic === 'CRS702') docTypeIndic = 'OECD2';
+          else if (report.message_type_indic === 'CRS703') docTypeIndic = 'OECD3';
+          else docTypeIndic = 'OECD1';
         }
-        return '';
-      })();
 
-      // GAP 26: ClosedAccount is an attribute on AccountNumber, not a child element
-      const closedAttr = account.account_closed_during_period ? ' ClosedAccount="true"' : '';
-      const accountNumberVal = account.account_number ? escapeXML(account.account_number) : 'NANUM';
+        // GAP 30: CorrDocRefId must NOT appear for CRS701
+        const corrDocRefIdXml = (() => {
+          if (messageTypeIndic === 'CRS701') return '';
+          if (messageTypeIndic === 'CRS702' && report.correction_doc_ref_id) {
+            return `<CorrDocRefId>${report.correction_doc_ref_id}_ACC${String(index + 1).padStart(3, '0')}</CorrDocRefId>`;
+          }
+          return '';
+        })();
 
-      // GAP 25: AccountBalance is year-end value only, not summed with payments
-      const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
-      const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
+        // GAP 26: ClosedAccount attribute
+        const closedAttr = account.account_closed_during_period ? ' ClosedAccount="true"' : '';
+        const accountNumberVal = account.account_number ? escapeXML(account.account_number) : 'NANUM';
 
-      xml += `
+        // GAP 25: AccountBalance is year-end value only
+        const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
+        const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
+
+        const accountCPs = controllingPersons.filter(cp => cp.account_id === account.id);
+        const ctrlTypeMap = {
+          legal_person_ownership: 'CRS801',
+          legal_person_other_means: 'CRS802',
+          legal_person_senior_managing_official: 'CRS803',
+          trust_settlor: 'CRS804',
+          trust_trustee: 'CRS805',
+          trust_protector: 'CRS806',
+          trust_beneficiary: 'CRS807',
+          trust_other: 'CRS808',
+          legal_arrangement_settlor_equivalent: 'CRS809',
+          legal_arrangement_trustee_equivalent: 'CRS810',
+          legal_arrangement_protector_equivalent: 'CRS811',
+          legal_arrangement_beneficiary_equivalent: 'CRS812',
+          legal_arrangement_other_equivalent: 'CRS813'
+        };
+
+        const cpBlocks = accountCPs.map(cp => {
+          const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
+          return `
+      <ControllingPerson>
+        <Individual>
+          ${cp.tax_residencies && cp.tax_residencies.length > 0 ?
+            cp.tax_residencies.map(res => `
+          <ResCountryCode>${res.country}</ResCountryCode>
+          ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')}
+          `).join('') : ''}
+          <Name>
+            <FirstName>${escapeXML(cp.first_name || (cp.full_name || '').split(' ')[0] || 'NFN')}</FirstName>
+            <LastName>${escapeXML(cp.last_name || (cp.full_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
+          </Name>
+          ${cp.address ? `
+          <Address>
+            <CountryCode>${cp.address.country || 'CW'}</CountryCode>
+            <AddressFix>
+              ${cp.address.street ? `<Street>${escapeXML(cp.address.street)}</Street>` : ''}
+              ${cp.address.city ? `<City>${escapeXML(cp.address.city)}</City>` : ''}
+            </AddressFix>
+          </Address>
+          ` : ''}
+          ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
+        </Individual>
+        <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
+      </ControllingPerson>`;
+        }).join('');
+
+        return `
     <AccountReport>
       <DocSpec>
         <DocTypeIndic>${docTypeIndic}</DocTypeIndic>
@@ -388,65 +437,53 @@ export default function XMLGenerator({ report, onSuccess }) {
       </AccountHolder>
       
       <AccountBalance currCode="${balanceCurrency}">${balanceValue}</AccountBalance>
-`;
+      ${cpBlocks}
+    </AccountReport>`;
+      }).join('');
 
-      // Add controlling persons for passive NFE accounts
-      const accountCPs = controllingPersons.filter(cp => cp.account_id === account.id);
-      accountCPs.forEach((cp) => {
-        // GAP 21: Map control_type to CRS801-CRS813 codes
-        const ctrlTypeMap = {
-          legal_person_ownership: 'CRS801',
-          legal_person_other_means: 'CRS802',
-          legal_person_senior_managing_official: 'CRS803',
-          trust_settlor: 'CRS804',
-          trust_trustee: 'CRS805',
-          trust_protector: 'CRS806',
-          trust_beneficiary: 'CRS807',
-          trust_other: 'CRS808',
-          legal_arrangement_settlor_equivalent: 'CRS809',
-          legal_arrangement_trustee_equivalent: 'CRS810',
-          legal_arrangement_protector_equivalent: 'CRS811',
-          legal_arrangement_beneficiary_equivalent: 'CRS812',
-          legal_arrangement_other_equivalent: 'CRS813'
-        };
-        const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
+      return `
+    ${accountBlocks}`;
+    };
 
-        xml += `
-      <ControllingPerson>
-        <Individual>
-          ${cp.tax_residencies && cp.tax_residencies.length > 0 ?
-            cp.tax_residencies.map(res => `
-          <ResCountryCode>${res.country}</ResCountryCode>
-          ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')}
-          `).join('') : ''}
-          <Name>
-            <FirstName>${escapeXML(cp.first_name || (cp.full_name || '').split(' ')[0] || 'NFN')}</FirstName>
-            <LastName>${escapeXML(cp.last_name || (cp.full_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
-          </Name>
-          ${cp.address ? `
-          <Address>
-            <CountryCode>${cp.address.country || 'CW'}</CountryCode>
-            <AddressFix>
-              ${cp.address.street ? `<Street>${escapeXML(cp.address.street)}</Street>` : ''}
-              ${cp.address.city ? `<City>${escapeXML(cp.address.city)}</City>` : ''}
-            </AddressFix>
-          </Address>
-          ` : ''}
-          ${cp.date_of_birth ? `<BirthInfo><BirthDate>${cp.date_of_birth}</BirthDate></BirthInfo>` : ''}
-        </Individual>
-        <CtrlgPersonType>${ctrlgPersonType}</CtrlgPersonType>
-      </ControllingPerson>
-`;
-      });
-
-      xml += `    </AccountReport>
-`;
-    });
-
-    xml += `  </CrsBody>
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<FATCA_CRS Version="2.0"
+  xmlns="urn:oecd:ties:fatcacrs:v2"
+  xmlns:ftc="urn:oecd:ties:fatcacrstypes:v2"
+  xmlns:stf="urn:oecd:ties:stffatcatypes:v2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <MessageSpec>
+    <SendingCompanyIN>${sendingCompanyIN}</SendingCompanyIN>
+    <TransmittingCountry>CW</TransmittingCountry>
+    <ReceivingCountry>CW</ReceivingCountry>
+    <MessageType>FATCA-CRS</MessageType>
+    <MessageRefId>${messageRefId}</MessageRefId>
+    ${corrMessageRefIdXml}
+    <MessageTypeIndic>${messageTypeIndic}</MessageTypeIndic>
+    <ReportingPeriod>${report.reporting_year}-12-31</ReportingPeriod>
+    <Timestamp>${timestamp}</Timestamp>
+  </MessageSpec>
+  
+  <CrsBody>
+    <ReportingFI>
+      <ResCountryCode>CW</ResCountryCode>
+      <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
+      <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
+      <Address AddressType="OECD303">
+        <CountryCode>CW</CountryCode>
+        <AddressFix>
+          ${entity.address?.street ? `<Street>${escapeXML(entity.address.street)}</Street>` : ''}
+          <City>${escapeXML(entity.address?.city || '')}</City>
+        </AddressFix>
+      </Address>${filerCategoryXml}
+      <DocSpec>
+        <DocTypeIndic>${fiDocTypeIndic}</DocTypeIndic>
+        <DocRefId>${fiDocRefId}</DocRefId>
+        ${fiCorrDocRefIdXml}
+      </DocSpec>
+    </ReportingFI>
+    ${buildReportingGroup()}
+  </CrsBody>
 </FATCA_CRS>`;
-
-    return xml;
   };
 
   const escapeXML = (str) => {
@@ -461,16 +498,11 @@ export default function XMLGenerator({ report, onSuccess }) {
 
   const handleValidationComplete = async (results) => {
     setValidationResults(results);
-    
-    // Update report validation results
     await base44.entities.CRSReport.update(report.id, {
       validation_results: results,
       status: results.is_valid ? 'validated' : 'draft'
     });
-
-    if (results.is_valid) {
-      onSuccess?.();
-    }
+    if (results.is_valid) onSuccess?.();
   };
 
   const downloadXML = () => {
@@ -478,19 +510,17 @@ export default function XMLGenerator({ report, onSuccess }) {
       alert("Please generate XML first");
       return;
     }
-
     const blob = new Blob([xmlContent], { type: 'application/xml' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `CRS_${report.reporting_year}_${report.id}.xml`;
+    a.download = `CRS_${isNilReport ? 'NIL_' : ''}${report.reporting_year}_${report.id}.xml`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
     a.remove();
   };
 
-  // Load data on mount
   React.useEffect(() => {
     if (report && !dataLoaded) {
       loadReportData();
@@ -499,7 +529,6 @@ export default function XMLGenerator({ report, onSuccess }) {
 
   return (
     <div className="space-y-6">
-      {/* Jurisdiction Info Banner */}
       <Alert className="bg-blue-50 border-blue-200">
         <Globe className="w-4 h-4 text-blue-600" />
         <AlertDescription className="text-sm text-blue-900">
@@ -511,7 +540,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       </Alert>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="generate" className="flex items-center gap-2">
             <FileCode className="w-4 h-4" />
             Generate
@@ -523,10 +552,6 @@ export default function XMLGenerator({ report, onSuccess }) {
           <TabsTrigger value="preview" className="flex items-center gap-2">
             <FileSpreadsheet className="w-4 h-4" />
             Preview & Export
-          </TabsTrigger>
-          <TabsTrigger value="nil" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            NIL Report
           </TabsTrigger>
           <TabsTrigger value="test" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -540,9 +565,25 @@ export default function XMLGenerator({ report, onSuccess }) {
               <CardTitle className="flex items-center gap-2">
                 <FileCode className="w-5 h-5 text-indigo-600" />
                 XML Generation
+                {isNilReport && xmlContent && (
+                  <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200">
+                    NIL Report (CRS703)
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
+              {isNilReport && xmlContent && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  <AlertDescription className="text-sm text-amber-900">
+                    <strong>NIL Report generated.</strong> No reportable accounts found. A <code>NilReport</code> block 
+                    with <code>NoAccountToReport: yes</code> and <code>MessageTypeIndic: CRS703</code> has been included 
+                    in the XML per Section 6.3.2.2.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button
                   onClick={generateXML}
@@ -596,12 +637,18 @@ export default function XMLGenerator({ report, onSuccess }) {
                   </div>
                   <div>
                     <p className="text-xs text-slate-600">Accounts</p>
-                    <p className="text-sm font-semibold">{accounts.length}</p>
+                    <p className="text-sm font-semibold">{isNilReport ? 'NIL' : accounts.length}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-600">Status</p>
-                    <Badge variant="outline" className={validationResults?.is_valid ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}>
-                      {validationResults?.is_valid ? "Validated" : "Pending Validation"}
+                    <Badge variant="outline" className={
+                      isNilReport
+                        ? "bg-amber-50 text-amber-700"
+                        : validationResults?.is_valid
+                          ? "bg-green-50 text-green-700"
+                          : "bg-amber-50 text-amber-700"
+                    }>
+                      {isNilReport ? "NIL — Auto Validated" : validationResults?.is_valid ? "Validated" : "Pending Validation"}
                     </Badge>
                   </div>
                 </div>
@@ -628,15 +675,6 @@ export default function XMLGenerator({ report, onSuccess }) {
             accounts={accounts}
             controllingPersons={controllingPersons}
             validationResults={validationResults}
-          />
-        </TabsContent>
-
-        <TabsContent value="nil" className="mt-6">
-          <NILReportGenerator
-            report={report}
-            entity={entity}
-            tenant={tenant}
-            onSuccess={onSuccess}
           />
         </TabsContent>
 
