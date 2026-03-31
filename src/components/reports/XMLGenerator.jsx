@@ -352,16 +352,19 @@ export default function XMLGenerator({ report, onSuccess }) {
         })();
 
         // GAP 19: Validate and emit organisation classification codes
+        // Only enforce CRS/FATCA classification if the account is a passive_nfe (CRS101/102/103 applicable).
+        // Active NFEs and financial institutions do not require crs_entity_classification on the account.
         if (account.account_holder_type === 'entity') {
           const taxCountries = (account.tax_residencies || []).map(r => r.country);
           const hasNonUS = taxCountries.some(c => c && c !== 'US');
           const hasUS = taxCountries.includes('US');
+          const isPassiveNfe = account.entity_classification === 'passive_nfe';
 
-          if (hasNonUS && !account.crs_entity_classification) {
-            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" has non-US tax residencies but has not been classified for CRS. Please classify the organisation before generating the report.`);
+          if (hasNonUS && !account.crs_entity_classification && isPassiveNfe) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is a passive NFE with non-US tax residencies but has not been classified for CRS (CRS101/102/103). Please classify the organisation before generating the report.`);
           }
-          if (hasUS && !account.fatca_entity_classification) {
-            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" has a US tax residency but has not been classified for FATCA. Please classify the organisation before generating the report.`);
+          if (hasUS && !account.fatca_entity_classification && isPassiveNfe) {
+            throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is a passive NFE with a US tax residency but has not been classified for FATCA. Please classify the organisation before generating the report.`);
           }
           if (account.crs_entity_classification === 'CRS101' && (account.controlling_persons_count || 0) === 0) {
             throw new Error(`Organisation "${account.account_holder_name || account.account_number}" is classified as a passive entity with controlling persons (CRS101) — please add at least one controlling person before generating.`);
