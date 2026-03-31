@@ -531,8 +531,18 @@ export default function XMLGenerator({ report, onSuccess }) {
       
       <AccountHolder>
         ${(() => {
-          const addrCountry = normalizeCountryCode(account.account_holder_address?.country || 'CW');
-          const tinBlocks = (account.tax_residencies || []).map(res => {
+          // ResCountryCode must come from tax residencies (where data is being reported to),
+          // NOT from the address country. One <ResCountryCode> per tax residency entry.
+          const taxResidencies = account.tax_residencies || [];
+          const resCountryCodes = taxResidencies.length > 0
+            ? taxResidencies.map(res => normalizeCountryCode(res.country)).filter(Boolean)
+            : [normalizeCountryCode(account.account_holder_address?.country || 'CW')];
+
+          const resCountryCodeBlocks = [...new Set(resCountryCodes)]
+            .map(code => `<ResCountryCode>${code}</ResCountryCode>`)
+            .join('\n          ');
+
+          const tinBlocks = taxResidencies.map(res => {
             const resCode = normalizeCountryCode(res.country);
             const resTin = res.tin ? sanitizeTIN(res.tin) : null;
             if (resTin) return `<TIN IssuedBy="${resCode}">${escapeXML(resTin)}</TIN>`;
@@ -543,7 +553,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           if (account.account_holder_type === 'individual') {
             return `
         <Individual>
-          <ResCountryCode>${addrCountry}</ResCountryCode>
+          ${resCountryCodeBlocks}
           ${tinBlocks}
           <Name>
             ${account.name_prefix ? `<NamePrefix>${escapeXML(sanitizeText(account.name_prefix))}</NamePrefix>` : ''}
@@ -557,9 +567,21 @@ export default function XMLGenerator({ report, onSuccess }) {
           <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
         </Individual>`;
           } else {
+            // For organisations (CRS101 passive NFE), ResCountryCode should include
+            // all MCAA countries where controlling persons are resident, so the
+            // Inspectorate knows where to forward the data.
+            const accountCPsForRes = controllingPersons.filter(cp => cp.account_id === account.id);
+            const cpResCountries = accountCPsForRes
+              .flatMap(cp => (cp.tax_residencies || []).map(r => normalizeCountryCode(r.country)))
+              .filter(Boolean);
+            const orgResCodes = [...new Set([...resCountryCodes, ...cpResCountries])];
+            const orgResCountryCodeBlocks = orgResCodes
+              .map(code => `<ResCountryCode>${code}</ResCountryCode>`)
+              .join('\n          ');
+
             return `
         <Organisation>
-          <ResCountryCode>${addrCountry}</ResCountryCode>
+          ${orgResCountryCodeBlocks}
           ${tinBlocks}
           <Name>${escapeXML(sanitizeText(account.account_holder_name))}</Name>
           ${buildAddressBlock(account.account_holder_address, 'CW')}
@@ -625,11 +647,19 @@ export default function XMLGenerator({ report, onSuccess }) {
 
     if (!hasCity) {
       // No city — concatenate all available parts into AddressFree
+      // Shorten verbose country names for free text (e.g. avoid full UN legal name)
+      const countryDisplay = (() => {
+        const c = String(address.country || '').trim();
+        const lower = c.toLowerCase();
+        if (lower.includes('united kingdom') || lower.includes('great britain') || lower === 'gb') return 'United Kingdom';
+        if (lower.includes('united states') || lower === 'us' || lower === 'usa') return 'United States';
+        return c;
+      })();
       const parts = [
         address.street,
         address.state,
         address.postal_code,
-        address.country
+        countryDisplay
       ].filter(Boolean).map(p => String(p).trim()).filter(Boolean);
       const addressFree = escapeXML(sanitizeText(parts.join(', ')));
       return `
