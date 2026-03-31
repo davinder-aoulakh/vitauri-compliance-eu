@@ -24,15 +24,24 @@ const STEPS = [
 
 const FIELD_GUIDE = [
   { col: "Account Number", format: "Text", required: true, notes: "Unique account identifier per entity" },
+  { col: "Account Number Type", format: "See dropdown", required: false, notes: "IBAN | Bank account number (non-IBAN) | ISIN | etc." },
   { col: "Account Opening Date", format: "YYYY-MM-DD", required: true, notes: "e.g. 2020-01-15" },
   { col: "Account Type", format: "See FI Type", required: true, notes: "Valid types depend on FI Type" },
   { col: "Account Holder Type", format: "individual | entity", required: true, notes: "" },
   { col: "First Name", format: "Text", required: false, notes: "Required for individuals" },
+  { col: "Middle Name", format: "Text", required: false, notes: "Optional for individuals" },
   { col: "Last Name", format: "Text", required: false, notes: "Required for individuals" },
+  { col: "Name Prefix", format: "Text", required: false, notes: "e.g. Mr, Mrs, Dr" },
+  { col: "Title", format: "Text", required: false, notes: "Optional title for individuals" },
   { col: "Account Holder Name", format: "Text", required: false, notes: "Required for entity holders" },
   { col: "Date of Birth", format: "YYYY-MM-DD", required: false, notes: "Required for individuals" },
   { col: "Place of Birth", format: "Country name", required: false, notes: "" },
+  { col: "Is Recalcitrant", format: "true | false", required: false, notes: "Individual account holders only" },
   { col: "Pre-existing Account", format: "true | false", required: false, notes: "" },
+  { col: "Account Frozen at Reporting Date", format: "true | false", required: false, notes: "" },
+  { col: "Account Dormant at Reporting Date", format: "true | false", required: false, notes: "" },
+  { col: "Acct Holder Address Unchanged", format: "true | false", required: false, notes: "" },
+  { col: "US Person Indicator", format: "true | false", required: false, notes: "" },
   { col: "Year-end Cash Value", format: "Number", required: false, notes: "e.g. 50000" },
   { col: "Year-end Currency", format: "ISO code", required: false, notes: "e.g. USD, AUD, GBP" },
   { col: "Gross Payments", format: "Number", required: false, notes: "" },
@@ -165,6 +174,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     // ── Define all dropdown sections (used for both validation ranges and the legend)
     const DROPDOWN_SECTIONS = [
       { key: "account_types",        label: "Account Types",                    values: effectiveConfig.allowedAccountTypes },
+      { key: "account_number_types", label: "Account Number Types",             values: ["IBAN", "Bank account number (non-IBAN)", "ISIN", "Securities account number (non-ISIN)", "Other account identifier", "No account number exists"] },
       { key: "account_holder_types", label: "Account Holder Types",             values: ["individual", "entity"] },
       { key: "entity_class",         label: "Entity Classification",            values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
       { key: "account_status",       label: "Account Status",                   values: ["active", "closed", "dormant"] },
@@ -214,12 +224,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     // Map from column key -> dropdown section key
     const COL_DROPDOWN_SECTION = {
       account_type:                  "account_types",
+      account_number_type:           "account_number_types",
       account_holder_type:           "account_holder_types",
       entity_classification:         "entity_class",
       status:                        "account_status",
       type_of_financial_institution: "fi_institution_types",
       account_holder_entity_type:    "entity_types",
       is_pre_existing:               "boolean",
+      is_recalcitrant:               "boolean",
       account_holder_is_alive: "boolean",
       account_holder_deceased_during_period: "boolean",
       account_closed_during_period: "boolean",
@@ -300,7 +312,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
 
       // Fields only relevant for individuals → grey out when type = "entity"
       const INDIVIDUAL_ONLY_KEYS = new Set([
-        "first_name", "last_name", "date_of_birth", "place_of_birth",
+        "first_name", "middle_name", "last_name", "name_prefix", "title",
+        "date_of_birth", "place_of_birth", "is_recalcitrant",
         "account_holder_is_alive", "account_holder_deceased_during_period",
       ]);
       // Fields only relevant for entity holders → grey out when type = "individual"
@@ -557,7 +570,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   };
 
   const BOOL_FIELDS = new Set([
-    "is_pre_existing", "account_holder_is_alive", "account_holder_deceased_during_period",
+    "is_pre_existing", "is_recalcitrant", "account_holder_is_alive", "account_holder_deceased_during_period",
     "account_closed_during_period", "us_person_indic", "self_certification_obtained",
     "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
     "self_cert_requested", "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",

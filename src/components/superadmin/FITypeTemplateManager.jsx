@@ -342,7 +342,8 @@ export default function FITypeTemplateManager() {
       const ahtLetter = colLetter(ahtColIdx);
 
       const INDIVIDUAL_ONLY_KEYS = new Set([
-        "first_name", "last_name", "date_of_birth", "place_of_birth",
+        "first_name", "middle_name", "last_name", "name_prefix", "title",
+        "date_of_birth", "place_of_birth", "is_recalcitrant",
         "account_holder_is_alive", "account_holder_deceased_during_period",
       ]);
       const ENTITY_ONLY_KEYS = new Set([
@@ -439,6 +440,7 @@ export default function FITypeTemplateManager() {
     // Sheet 4: Referenced Data (country lookup + all dropdown sections in col D)
     const DROPDOWN_SECTIONS = [
       { label: "Account Types",                   values: config.allowedAccountTypes },
+      { label: "Account Number Types",             values: ACCOUNT_NUMBER_TYPES },
       { label: "Account Holder Types",             values: ["individual", "entity"] },
       { label: "Entity Classification",            values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
       { label: "Account Status",                   values: ["active", "closed", "dormant"] },
@@ -676,6 +678,15 @@ export function getColumnsForFiType(config) {
   return getDefaultColumns(config);
 }
 
+const ACCOUNT_NUMBER_TYPES = [
+  "IBAN",
+  "Bank account number (non-IBAN)",
+  "ISIN",
+  "Securities account number (non-ISIN)",
+  "Other account identifier",
+  "No account number exists",
+];
+
 const CP_CONTROL_TYPES = [
   "legal_person_ownership", "legal_person_other_means", "legal_person_senior_managing_official",
   "trust_settlor", "trust_trustee", "trust_protector", "trust_beneficiary", "trust_other",
@@ -745,9 +756,16 @@ function getDefaultColumns(config) {
     { header: "Entity ID", key: "entity_id", width: 28, required: true, note: "Exact ID of the RFI Entity this account belongs to", validation_values: null, example_value: "" },
     { header: "Entity Name (auto-ref)", key: "entity_name_ref", width: 28, required: false, note: "Auto-populated — do not edit", validation_values: null, example_value: "" },
     { header: "Account Number", key: "account_number", width: 22, required: true, note: "Unique account identifier", validation_values: null, example_value: "ACC-001" },
+    { header: "Account Number Type", key: "account_number_type", width: 32, required: false, note: "IBAN | Bank account number (non-IBAN) | ISIN | Securities account number (non-ISIN) | Other account identifier | No account number exists", validation_values: ACCOUNT_NUMBER_TYPES, example_value: "IBAN" },
     { header: "Account Opening Date", key: "account_creation_date", width: 24, required: true, note: "Format: YYYY-MM-DD e.g. 2020-01-15", validation_values: null, example_value: "2020-01-15" },
     { header: "Account Type", key: "account_type", width: 26, required: true, note: config.accountTypeNote, validation_values: config.allowedAccountTypes, example_value: config.exampleAccountType },
     { header: "Account Holder Type", key: "account_holder_type", width: 24, required: true, note: "individual | entity", validation_values: ["individual", "entity"], example_value: "individual" },
+    // ── Individual-only name fields (greyed for entity)
+    { header: "First Name", key: "first_name", width: 22, required: false, note: "Required for individuals", validation_values: null, example_value: "John" },
+    { header: "Middle Name", key: "middle_name", width: 22, required: false, note: "Optional for individuals", validation_values: null, example_value: "" },
+    { header: "Last Name", key: "last_name", width: 22, required: false, note: "Required for individuals", validation_values: null, example_value: "Smith" },
+    { header: "Name Prefix", key: "name_prefix", width: 18, required: false, note: "e.g. Mr, Mrs, Dr", validation_values: null, example_value: "Mr" },
+    { header: "Title", key: "title", width: 18, required: false, note: "Optional title", validation_values: null, example_value: "" },
     // ── Entity-only fields (greyed for individual)
     { header: "Type of Financial Institution", key: "type_of_financial_institution", width: 30, required: false, note: "If account holder is an FI", validation_values: FI_INSTITUTION_TYPES, example_value: "" },
     { header: "Type of Entity", key: "account_holder_entity_type", width: 30, required: false, note: "Legal entity type", validation_values: ENTITY_TYPES, example_value: "" },
@@ -757,6 +775,7 @@ function getDefaultColumns(config) {
     { header: "Country of Incorporation Code", key: "country_of_incorporation_code", width: 28, required: false, note: "Auto-filled from country name", validation_values: null, example_value: "" },
     // ── Account flags
     { header: "Pre-existing Account", key: "is_pre_existing", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Is Recalcitrant", key: "is_recalcitrant", width: 22, required: false, note: "true | false — individual holders only", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Status", key: "status", width: 18, required: false, note: "active | closed | dormant", validation_values: ["active", "closed", "dormant"], example_value: "active" },
     { header: "Account Closed During Period", key: "account_closed_during_period", width: 28, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Frozen at Reporting Date", key: "account_frozen_at_reporting_date", width: 30, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
