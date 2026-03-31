@@ -110,11 +110,12 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
       <crs:ResCountryCode>CW</crs:ResCountryCode>
       <crs:TIN IssuedBy="${entity?.is_ffi ? 'US' : 'CW'}">${escapeXML(entity?.is_ffi ? (entity?.giin || 'TESTGIIN123456') : (entity?.tax_id || 'TESTCRIB123'))}</crs:TIN>
       <crs:Name NameType="OECD207">${escapeXML(entity?.entity_name || 'Test Financial Institution')}</crs:Name>
-      <crs:Address>
-        <crs:CountryCode>${escapeXML(jurisdiction || 'AU')}</crs:CountryCode>
-        <crs:AddressFree>123 Test Bank Street</crs:AddressFree>
-        <crs:City>Test City</crs:City>
-        <crs:PostCode>12345</crs:PostCode>
+      <crs:Address AddressType="OECD303">
+        <crs:CountryCode>CW</crs:CountryCode>
+        <crs:AddressFix>
+          ${entity?.address?.street ? `<crs:Street>${escapeXML(entity.address.street)}</crs:Street>` : '<crs:Street>123 Test Bank Street</crs:Street>'}
+          <crs:City>${escapeXML(entity?.address?.city || 'Willemstad')}</crs:City>
+        </crs:AddressFix>
       </crs:Address>
     </crs:ReportingFI>
 `;

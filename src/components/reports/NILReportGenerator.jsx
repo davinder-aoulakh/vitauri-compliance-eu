@@ -62,14 +62,13 @@ export default function NILReportGenerator({ report, entity, tenant, onSuccess }
       <crs:ResCountryCode>CW</crs:ResCountryCode>
       <crs:TIN IssuedBy="${entity?.is_ffi ? 'US' : 'CW'}">${escapeXML(entity?.is_ffi ? entity?.giin : entity?.tax_id)}</crs:TIN>
       <crs:Name NameType="OECD207">${escapeXML(entity?.entity_name || 'Unknown Entity')}</crs:Name>
-      ${entity?.address ? `
-      <crs:Address>
-        <crs:CountryCode>${escapeXML(entity.address.country || report.reporting_jurisdiction)}</crs:CountryCode>
-        ${entity.address.street ? `<crs:AddressFree>${escapeXML(entity.address.street)}</crs:AddressFree>` : ''}
-        ${entity.address.city ? `<crs:City>${escapeXML(entity.address.city)}</crs:City>` : ''}
-        ${entity.address.postal_code ? `<crs:PostCode>${escapeXML(entity.address.postal_code)}</crs:PostCode>` : ''}
+      <crs:Address AddressType="OECD303">
+        <crs:CountryCode>CW</crs:CountryCode>
+        <crs:AddressFix>
+          ${entity?.address?.street ? `<crs:Street>${escapeXML(entity.address.street)}</crs:Street>` : ''}
+          <crs:City>${escapeXML(entity?.address?.city || '')}</crs:City>
+        </crs:AddressFix>
       </crs:Address>
-      ` : ''}
       <crs:DocSpec>
         <crs:DocTypeIndic>${report.is_test_supply ? 'OECD13' : 'OECD3'}</crs:DocTypeIndic>
         <crs:DocRefId>${escapeXML(messageRefId)}.FI</crs:DocRefId>

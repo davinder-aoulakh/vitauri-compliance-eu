@@ -228,13 +228,13 @@ export default function XMLGenerator({ report, onSuccess }) {
     <ResCountryCode>CW</ResCountryCode>
     <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
       <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
-      ${entity.address ? `
-      <Address>
-        <CountryCode>CW</CountryCode>  
-        ${entity.address.street ? `<AddressFree>${escapeXML(entity.address.street)}</AddressFree>` : ''}
-        ${entity.address.city ? `<City>${escapeXML(entity.address.city)}</City>` : ''}
+      <Address AddressType="OECD303">
+        <CountryCode>CW</CountryCode>
+        <AddressFix>
+          ${entity.address?.street ? `<Street>${escapeXML(entity.address.street)}</Street>` : ''}
+          <City>${escapeXML(entity.address?.city || '')}</City>
+        </AddressFix>
       </Address>
-      ` : ''}
     </ReportingFI>
 `;
 
