@@ -313,13 +313,12 @@ Deno.serve(async (req) => {
     }
 
     const pdfBytes = await pdfDoc.save();
+    const pdfBase64 = btoa(String.fromCharCode.apply(null, pdfBytes));
 
-    return new Response(pdfBytes, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="CRS_Report_${report.reporting_year}_${report.reporting_jurisdiction}.pdf"`
-      }
+    return Response.json({
+      success: true,
+      pdf: pdfBase64,
+      filename: `CRS_Report_${report.reporting_year}_${report.reporting_jurisdiction}.pdf`
     });
   } catch (error) {
     console.error('PDF generation error:', error);

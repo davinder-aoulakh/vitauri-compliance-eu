@@ -33,15 +33,24 @@ export default function ReportExportDialog({ report, accounts, controllingPerson
         includeFields
       });
 
-      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `CRS_Report_${report.reporting_year}_${report.reporting_jurisdiction}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+      if (response.data?.pdf) {
+        const binaryString = atob(response.data.pdf);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = response.data.filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+      } else {
+        toast.error('Invalid PDF response');
+      }
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('Failed to generate PDF');
