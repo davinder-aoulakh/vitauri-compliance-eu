@@ -16,7 +16,8 @@ import CountrySelect from "../shared/CountrySelect";
 export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel }) {
   const [formData, setFormData] = useState(controllingPerson || {
     account_id: account?.id || "",
-    full_name: "",
+    first_name: "",
+    last_name: "",
     date_of_birth: "",
     address: {
       street: "",
@@ -75,16 +76,30 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
           <CardTitle className="text-lg">Basic Information</CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-4">
-          <div>
-            <Label htmlFor="full_name">Full Name *</Label>
-            <Input
-              id="full_name"
-              value={formData.full_name}
-              onChange={(e) => handleChange("full_name", e.target.value)}
-              placeholder="e.g., John Smith"
-              required
-              className="mt-1.5"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="first_name">First Name *</Label>
+              <Input
+                id="first_name"
+                value={formData.first_name || ""}
+                onChange={(e) => handleChange("first_name", e.target.value)}
+                placeholder="e.g., John"
+                required
+                className="mt-1.5"
+              />
+              <p className="text-xs text-slate-500 mt-1">Use 'NFN' if no first name available</p>
+            </div>
+            <div>
+              <Label htmlFor="last_name">Last Name *</Label>
+              <Input
+                id="last_name"
+                value={formData.last_name || ""}
+                onChange={(e) => handleChange("last_name", e.target.value)}
+                placeholder="e.g., Smith"
+                required
+                className="mt-1.5"
+              />
+            </div>
           </div>
 
           <div>

@@ -402,6 +402,11 @@ export default function XMLGenerator({ report, onSuccess }) {
         };
 
         const cpBlocks = accountCPs.map(cp => {
+          // GAP 22: Validate LastName is present
+          if (!cp.last_name && !cp.full_name) {
+            const cpName = cp.first_name || cp.id;
+            throw new Error(`Controlling person "${cpName}" on account "${account.account_holder_name || account.account_number}" is missing a Last Name, which is mandatory for CRS reporting. Please update the record.`);
+          }
           const ctrlgPersonType = cp.control_type ? (ctrlTypeMap[cp.control_type] || 'CRS801') : 'CRS801';
           return `
       <ControllingPerson>
@@ -412,8 +417,8 @@ export default function XMLGenerator({ report, onSuccess }) {
           ${res.tin ? `<TIN IssuedBy="${res.country}">${escapeXML(res.tin)}</TIN>` : (res.country === 'US' ? `<TIN IssuedBy="US">000000000</TIN>` : '')}
           `).join('') : ''}
           <Name>
-            <FirstName>${escapeXML(cp.first_name || (cp.full_name || '').split(' ')[0] || 'NFN')}</FirstName>
-            <LastName>${escapeXML(cp.last_name || (cp.full_name || '').split(' ').slice(1).join(' ') || 'NFN')}</LastName>
+            <FirstName>${escapeXML(cp.first_name || 'NFN')}</FirstName>
+            <LastName>${escapeXML(cp.last_name || '')}</LastName>
           </Name>
           ${cp.address ? `
           <Address>
