@@ -109,7 +109,7 @@ export default function TestModeGenerator({ entity, tenant, jurisdiction }) {
     <crs:ReportingFI>
       <crs:ResCountryCode>CW</crs:ResCountryCode>
       <crs:TIN IssuedBy="${entity?.is_ffi ? 'US' : 'CW'}">${escapeXML(entity?.is_ffi ? (entity?.giin || 'TESTGIIN123456') : (entity?.tax_id || 'TESTCRIB123'))}</crs:TIN>
-      <crs:Name>${escapeXML(entity?.entity_name || 'Test Financial Institution')}</crs:Name>
+      <crs:Name NameType="OECD207">${escapeXML(entity?.entity_name || 'Test Financial Institution')}</crs:Name>
       <crs:Address>
         <crs:CountryCode>${escapeXML(jurisdiction || 'AU')}</crs:CountryCode>
         <crs:AddressFree>123 Test Bank Street</crs:AddressFree>

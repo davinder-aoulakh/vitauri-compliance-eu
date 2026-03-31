@@ -227,7 +227,7 @@ export default function XMLGenerator({ report, onSuccess }) {
   <ReportingFI>
     <ResCountryCode>CW</ResCountryCode>
     <TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</TIN>
-      <Name>${escapeXML(entity.entity_name)}</Name>
+      <Name NameType="OECD207">${escapeXML(entity.entity_name)}</Name>
       ${entity.address ? `
       <Address>
         <CountryCode>CW</CountryCode>  
