@@ -474,6 +474,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           ` : ''}
           ${account.crs_entity_classification ? `<AcctHolderType>${account.crs_entity_classification}</AcctHolderType>` : ''}
           ${account.fatca_entity_classification ? `<FATCAClassification>${account.fatca_entity_classification}</FATCAClassification>` : ''}
+          <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
         </Organisation>
         `}
       </AccountHolder>
