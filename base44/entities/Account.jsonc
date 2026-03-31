@@ -79,6 +79,11 @@
       "type": "boolean",
       "description": "Whether this account existed before December 31, 2018 (CRS pre-existing account threshold)"
     },
+    "is_recalcitrant": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the individual account holder is recalcitrant. Mandatory for Individual AccountHolder in CRS XML (Section 6.3.2.3.2.1)."
+    },
     "account_holder_is_alive": {
       "type": "boolean",
       "description": "For individual account holders - whether the account holder is alive"

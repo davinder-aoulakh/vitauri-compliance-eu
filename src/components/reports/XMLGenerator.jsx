@@ -413,6 +413,7 @@ export default function XMLGenerator({ report, onSuccess }) {
           </Address>
           ` : ''}
           ${account.date_of_birth ? `<BirthInfo><BirthDate>${account.date_of_birth}</BirthDate></BirthInfo>` : ''}
+          <Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</Recalcitrant>
         </Individual>
         ` : `
         <Organisation>
