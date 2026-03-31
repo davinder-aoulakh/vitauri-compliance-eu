@@ -381,6 +381,36 @@ export default function XMLGenerator({ report, onSuccess }) {
         const balanceValue = Math.max(0, account.year_end_cash_value || 0).toFixed(2);
         const balanceCurrency = account.year_end_cash_value_currency || account.gross_payments_currency || 'USD';
 
+        // GAP 24: Payment block — derived from gross_payments, payment type from account_type
+        const buildPaymentBlock = () => {
+          const grossPayments = account.gross_payments;
+          if (!grossPayments || grossPayments <= 0) return ''; // omit entirely if zero/null
+
+          const payCurrency = account.gross_payments_currency || account.year_end_cash_value_currency;
+          if (!payCurrency) {
+            throw new Error(`Please select a currency for account "${account.account_number}" before generating the report.`);
+          }
+
+          // Derive PaymentType from account_type
+          const paymentTypeMap = {
+            depository: 'CRS502',           // Interest paid or credited
+            custodial: 'CRS501',            // Combined gross — use CRS501 (dividends/gross)
+            equity_debt_interest: 'CRS504', // Other payments or credits
+            cash_value_insurance: 'CRS504', // Gross payments including repayments
+            annuity: 'CRS504'               // Gross payments including repayments
+          };
+          const paymentType = paymentTypeMap[account.account_type] || 'CRS504';
+          const paymentAmnt = parseFloat(grossPayments).toFixed(2);
+
+          return `
+      <Payment>
+        <PaymentType>${paymentType}</PaymentType>
+        <PaymentAmnt currCode="${payCurrency}">${paymentAmnt}</PaymentAmnt>
+      </Payment>`;
+        };
+
+        const paymentBlock = buildPaymentBlock();
+
         // GAP 21: Only emit ControllingPerson blocks for CRS101 accounts
         const accountCPs = account.crs_entity_classification === 'CRS101'
           ? controllingPersons.filter(cp => cp.account_id === account.id)
@@ -501,6 +531,7 @@ export default function XMLGenerator({ report, onSuccess }) {
       </AccountHolder>
       
       <AccountBalance currCode="${balanceCurrency}">${balanceValue}</AccountBalance>
+      ${paymentBlock}
       ${cpBlocks}
     </AccountReport>`;
       }).join('');
