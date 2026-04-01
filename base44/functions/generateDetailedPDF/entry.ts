@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       const barTxt = isValid ? C.green : C.red;
       const barH = 26;
       drawRect(ML, y - barH, CONTENT_W, barH, barBg, isValid ? C.green : C.red, 0.6);
-      const validLabel = isValid ? '✓  XML Validation Passed' : '✗  XML Validation Failed';
+      const validLabel = isValid ? '[PASSED]  XML Validation Passed' : '[FAILED]  XML Validation Failed';
       drawText(validLabel, ML + 10, y - 17, 9.5, barTxt, bold);
       if (!isValid) {
         const errCount = vr.errors?.length || 0;
