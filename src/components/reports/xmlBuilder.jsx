@@ -552,9 +552,9 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         ${accountHolderBlock}${acctClassifications}
       </${ns}AccountHolder>
       
-      <${ns}AccountBalance CurrCode="${balanceCurrency}">${balanceValue}</${ns}AccountBalance>
-      ${buildPaymentBlock(ns, isFfi, report.reporting_year)}
-      ${cpBlocks}${additionalDataBlock}
+      ${cpBlocks}
+      <${ns}AccountBalance currCode="${balanceCurrency}">${balanceValue}</${ns}AccountBalance>
+      ${buildPaymentBlock(ns, isFfi, report.reporting_year)}${additionalDataBlock}
     </${ns}AccountReport>`;
     }).join('');
 
