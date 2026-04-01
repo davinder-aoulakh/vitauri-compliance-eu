@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     }
 
     // Verify user is a tenant admin or super admin
-    if (user.user_role !== 'tenant_admin' && user.user_role !== 'super_admin') {
+    if (user.app_role !== 'tenant_admin' && user.app_role !== 'super_admin') {
       return Response.json({ error: 'Forbidden: Only admins can update users' }, { status: 403 });
     }
 
@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     }
 
     // For super_admin role, remove tenant_id (super admins are not tied to tenants)
-    if (userData.user_role === 'super_admin') {
+    if (userData.app_role === 'super_admin') {
       userData.tenant_id = null;
     } else if (!userData.tenant_id && user.tenant_id) {
       // If no tenant_id provided and user has one, use current user's tenant
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     // Fetch the user to verify access
     let userToUpdate;
-    if (user.user_role === 'super_admin') {
+    if (user.app_role === 'super_admin') {
       // Super admins can update any user
       const allUsers = await base44.asServiceRole.entities.User.list();
       userToUpdate = allUsers.find(u => u.id === userId);
