@@ -99,8 +99,8 @@ function buildAddressBlock(address, fallbackCountry, ns = '') {
             <${inner}CountryCode>${countryCode}</${inner}CountryCode>
             <${inner}AddressFix>
               ${address.street ? `<${inner}Street>${escapeXML(sanitizeText(address.street))}</${inner}Street>` : ''}
-              <${inner}City>${escapeXML(sanitizeText(address.city))}</${inner}City>
               ${postCode ? `<${inner}PostCode>${escapeXML(postCode)}</${inner}PostCode>` : ''}
+              <${inner}City>${escapeXML(sanitizeText(address.city))}</${inner}City>
             </${inner}AddressFix>
           </${ns}Address>`;
 }
