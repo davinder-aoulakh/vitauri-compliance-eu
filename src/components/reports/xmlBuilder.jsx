@@ -446,11 +446,11 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         <${ns}Individual>
           ${cpTaxResidencyBlocks}
           <${ns}Name>
-            <${ns}FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</${ns}FirstName>
-            <${ns}LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</${ns}LastName>
+            <sfa:FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</sfa:FirstName>
+            <sfa:LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</sfa:LastName>
           </${ns}Name>
           ${buildAddressBlock(cp.address, cpAddressFallbackCountry, ns)}
-          ${cp.date_of_birth ? `<${ns}BirthInfo><${ns}BirthDate>${cp.date_of_birth}</${ns}BirthDate></${ns}BirthInfo>` : ''}
+          ${cp.date_of_birth ? `<sfa:BirthInfo><sfa:BirthDate>${cp.date_of_birth}</sfa:BirthDate></sfa:BirthInfo>` : ''}
         </${ns}Individual>
         <${ns}CtrlgPersonType>${ctrlgPersonType}</${ns}CtrlgPersonType>
       </${ns}ControllingPerson>`;
@@ -483,14 +483,14 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           ${resCountryCodeBlocks.replace(/ResCountryCode/g, ns + 'ResCountryCode')}
           ${tinBlocks.replace(/TIN/g, ns + 'TIN')}
           <${ns}Name>
-            ${account.name_prefix ? `<${ns}NamePrefix>${escapeXML(sanitizeText(account.name_prefix))}</${ns}NamePrefix>` : ''}
-            ${account.title ? `<${ns}Title>${escapeXML(sanitizeText(account.title))}</${ns}Title>` : ''}
-            <${ns}FirstName>${escapeXML(sanitizeText(account.first_name || 'NFN'))}</${ns}FirstName>
-            ${account.middle_name ? `<${ns}MiddleName>${escapeXML(sanitizeText(account.middle_name))}</${ns}MiddleName>` : ''}
-            <${ns}LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</${ns}LastName>
+            ${account.name_prefix ? `<sfa:NamePrefix>${escapeXML(sanitizeText(account.name_prefix))}</sfa:NamePrefix>` : ''}
+            ${account.title ? `<sfa:Title>${escapeXML(sanitizeText(account.title))}</sfa:Title>` : ''}
+            <sfa:FirstName>${escapeXML(sanitizeText(account.first_name || 'NFN'))}</sfa:FirstName>
+            ${account.middle_name ? `<sfa:MiddleName>${escapeXML(sanitizeText(account.middle_name))}</sfa:MiddleName>` : ''}
+            <sfa:LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</sfa:LastName>
           </${ns}Name>
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
-          ${account.date_of_birth ? `<${ns}BirthInfo><${ns}BirthDate>${account.date_of_birth}</${ns}BirthDate></${ns}BirthInfo>` : ''}
+          ${account.date_of_birth ? `<sfa:BirthInfo><sfa:BirthDate>${account.date_of_birth}</sfa:BirthDate></sfa:BirthInfo>` : ''}
           ${hasUSResidency ? `<${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>` : ''}
         </${ns}Individual>`;
       } else {
