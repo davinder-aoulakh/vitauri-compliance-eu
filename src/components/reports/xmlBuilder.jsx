@@ -85,7 +85,7 @@ function buildAddressBlock(address, fallbackCountry, ns = '') {
     const parts = [address.street, address.state, address.postal_code, countryDisplay]
       .filter(Boolean).map(p => String(p).trim()).filter(Boolean);
     return `
-          <${ns}Address AddressType="OECD303">
+          <${ns}Address>
             <${ns}CountryCode>${countryCode}</${ns}CountryCode>
             <${ns}AddressFree>${escapeXML(sanitizeText(parts.join(', ')))}</${ns}AddressFree>
           </${ns}Address>`;
@@ -93,7 +93,7 @@ function buildAddressBlock(address, fallbackCountry, ns = '') {
 
   const postCode = sanitizePostalCode(address.postal_code, countryCode);
   return `
-          <${ns}Address AddressType="OECD303">
+          <${ns}Address>
             <${ns}CountryCode>${countryCode}</${ns}CountryCode>
             <${ns}AddressFix>
               ${address.street ? `<${ns}Street>${escapeXML(sanitizeText(address.street))}</${ns}Street>` : ''}
@@ -443,7 +443,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       <${ns}ControllingPerson>
         <${ns}Individual>
           ${cpTaxResidencyBlocks}
-          <${ns}Name NameType="OECD207">
+          <${ns}Name>
             <${ns}FirstName>${escapeXML(sanitizeText(cp.first_name || 'NFN'))}</${ns}FirstName>
             <${ns}LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</${ns}LastName>
           </${ns}Name>
@@ -505,7 +505,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         <${ns}Organisation>
           ${orgResCountryCodeBlocks}
           ${tinBlocks.replace(/TIN/g, ns + 'TIN')}
-          <${ns}Name NameType="OECD207">${escapeXML(sanitizeText(account.account_holder_name))}</${ns}Name>
+          <${ns}Name>${escapeXML(sanitizeText(account.account_holder_name))}</${ns}Name>
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
           ${hasUSResidency ? `<${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>` : ''}
         </${ns}Organisation>`;
@@ -584,7 +584,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     <${ns}ReportingFI>
       <${ns}ResCountryCode>CW</${ns}ResCountryCode>
       <${ns}TIN issuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</${ns}TIN>
-      <${ns}Name NameType="OECD207">${escapeXML(entity.entity_name)}</${ns}Name>
+      <${ns}Name>${escapeXML(entity.entity_name)}</${ns}Name>
 
       ${buildAddressBlock(entity.address, 'CW', ns)}${filerCategoryXml}
       <${ns}DocSpec>
