@@ -450,7 +450,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
             <sfa:LastName>${escapeXML(sanitizeText(cp.last_name || ''))}</sfa:LastName>
           </${ns}Name>
           ${buildAddressBlock(cp.address, cpAddressFallbackCountry, ns)}
-          ${cp.date_of_birth ? `<sfa:BirthInfo><sfa:BirthDate>${cp.date_of_birth}</sfa:BirthDate></sfa:BirthInfo>` : ''}
+          ${cp.date_of_birth ? `<sfa_ftc:BirthInfo><sfa_ftc:BirthDate>${cp.date_of_birth}</sfa_ftc:BirthDate></sfa_ftc:BirthInfo>` : ''}
         </${ns}Individual>
         <${ns}CtrlgPersonType>${ctrlgPersonType}</${ns}CtrlgPersonType>
       </${ns}ControllingPerson>`;
@@ -490,7 +490,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
             <sfa:LastName>${escapeXML(sanitizeText(account.last_name || (account.account_holder_name || '').split(' ').slice(1).join(' ') || 'NFN'))}</sfa:LastName>
           </${ns}Name>
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
-          ${account.date_of_birth ? `<sfa:BirthInfo><sfa:BirthDate>${account.date_of_birth}</sfa:BirthDate></sfa:BirthInfo>` : ''}
+          ${account.date_of_birth ? `<sfa_ftc:BirthInfo><sfa_ftc:BirthDate>${account.date_of_birth}</sfa_ftc:BirthDate></sfa_ftc:BirthInfo>` : ''}
           ${hasUSResidency ? `<${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>` : ''}
         </${ns}Individual>`;
       } else {
