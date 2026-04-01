@@ -406,7 +406,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         return `
       <${ns}Payment>
         <${ns}Type>${paymentType}</${ns}Type>
-        <${ns}PaymentAmnt CurrCode="${payCurrency}">${parseFloat(grossPayments).toFixed(2)}</${ns}PaymentAmnt>
+        <${ns}PaymentAmnt currCode="${payCurrency}">${parseFloat(grossPayments).toFixed(2)}</${ns}PaymentAmnt>
       </${ns}Payment>`;
       };
 
