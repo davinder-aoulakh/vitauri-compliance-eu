@@ -132,8 +132,8 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     messageTypeIndic = report.message_type_indic || 'CRS701';
   }
 
-  // Helper function for namespace handling (empty prefix — elements use default namespace)
-  const ns = '';
+  // Use oecd_ftc: prefix on all elements as required by the PFGU XSD validator
+  const ns = 'oecd_ftc:';
 
   const sendingCompanyIN = cribNumber;
   if (!sendingCompanyIN) {
@@ -167,7 +167,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     const fatcaCode = FATCA_FILER_CATEGORY_MAP[entity.fi_registration_type];
     if (fatcaCode) {
       // Will be prefixed with ns when inserted into root element
-      filerCategoryXml = `\n    <FilerCategory>${fatcaCode}</FilerCategory>`;
+      filerCategoryXml = `\n    <oecd_ftc:FilerCategory>${fatcaCode}</oecd_ftc:FilerCategory>`;
     }
   }
 
@@ -201,7 +201,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       if (!report.correction_doc_ref_id) {
         throw new Error('CorrDocRefId is mandatory for the ReportingFI DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set.');
       }
-      return `<CorrDocRefId>${report.correction_doc_ref_id}_FI</CorrDocRefId>`;
+      return `<oecd_ftc:CorrDocRefId>${report.correction_doc_ref_id}_FI</oecd_ftc:CorrDocRefId>`;
     }
     return '';
   })();
@@ -212,10 +212,10 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       if (!report.correction_message_ref_id) {
         throw new Error('CorrMessageRefId is mandatory for correction reports (CRS702) but is not set.');
       }
-      return `<CorrMessageRefId>${report.correction_message_ref_id}</CorrMessageRefId>`;
+      return `<oecd_ftc:CorrMessageRefId>${report.correction_message_ref_id}</oecd_ftc:CorrMessageRefId>`;
     }
     return report.correction_message_ref_id
-      ? `<CorrMessageRefId>${report.correction_message_ref_id}</CorrMessageRefId>`
+      ? `<oecd_ftc:CorrMessageRefId>${report.correction_message_ref_id}</oecd_ftc:CorrMessageRefId>`
       : '';
   })();
 
@@ -558,10 +558,10 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     </${ns}ReportingGroup>`;
   };
 
-  // GAP 1: Correct namespace URIs, version 2.2
+  // GAP 1: Correct namespace URIs, version 2.2 — use oecd_ftc: prefix as required by PFGU XSD validator
   return `<?xml version="1.0" encoding="UTF-8"?>
-<FATCA_CRS version="2.2"
-  xmlns="urn:fatcacrs:ties:v2"
+<oecd_ftc:FATCA_CRS version="2.2"
+  xmlns:oecd_ftc="urn:fatcacrs:ties:v2"
   xmlns:sfa_ftc="urn:oecd:ties:fatcacrstypes:v2"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:sfa="urn:oecd:ties:stffatcatypes:v2">
@@ -570,7 +570,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     <${ns}TransmittingCountry>CW</${ns}TransmittingCountry>
     <${ns}ReceivingCountry>CW</${ns}ReceivingCountry>
     <${ns}MessageType>FATCA-CRS</${ns}MessageType>
-    <${ns}MessageRefId>${messageRefId}</${ns}MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml.replace(/</g, '<' + ns).replace(/<\/([^>]+)>/g, (match, tag) => '</' + ns + tag + '>')}` : ''}
+    <${ns}MessageRefId>${messageRefId}</${ns}MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml}` : ''}
     <${ns}MessageTypeIndic>${messageTypeIndic}</${ns}MessageTypeIndic>
     <${ns}ReportingPeriod>${report.reporting_year}-12-31</${ns}ReportingPeriod>
     <${ns}Timestamp>${timestamp}</${ns}Timestamp>
@@ -582,14 +582,14 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       <${ns}TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</${ns}TIN>
       <${ns}Name NameType="OECD207">${escapeXML(entity.entity_name)}</${ns}Name>
 
-      ${buildAddressBlock(entity.address, 'CW', ns)}${filerCategoryXml ? filerCategoryXml.replace(/</g, '<' + ns).replace(/<\/([^>]+)>/g, (match, tag) => '</' + ns + tag + '>') : ''}
+      ${buildAddressBlock(entity.address, 'CW', ns)}${filerCategoryXml}
       <${ns}DocSpec>
         <${ns}DocTypeIndic>${fiDocTypeIndic}</${ns}DocTypeIndic>
         <${ns}DocRefId>${fiDocRefId}</${ns}DocRefId>
-        ${fiCorrDocRefIdXml ? fiCorrDocRefIdXml.replace(/</g, '<' + ns).replace(/<\/([^>]+)>/g, (match, tag) => '</' + ns + tag + '>') : ''}
+        ${fiCorrDocRefIdXml}
       </${ns}DocSpec>
     </${ns}ReportingFI>
     ${buildReportingGroup(ns)}
-  </MessageBody>
-</FATCA_CRS>`;
+  </oecd_ftc:MessageBody>
+</oecd_ftc:FATCA_CRS>`;
 }
