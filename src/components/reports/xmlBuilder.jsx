@@ -436,7 +436,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
           const cpTin = res.tin ? sanitizeTIN(res.tin) : null;
           return `
           <${ns}ResCountryCode>${cpCountryCode}</${ns}ResCountryCode>
-          ${cpTin ? `<${ns}TIN IssuedBy="${cpCountryCode}">${escapeXML(cpTin)}</${ns}TIN>` : ''}`;
+          ${cpTin ? `<${ns}TIN issuedBy="${cpCountryCode}">${escapeXML(cpTin)}</${ns}TIN>` : ''}`;
         }).join('');
 
         return `
@@ -467,8 +467,8 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       const tinBlocks = taxResidencies.map(res => {
         const resCode = normalizeCountryCode(res.country);
         const resTin = res.tin ? sanitizeTIN(res.tin) : null;
-        if (resTin) return `<TIN IssuedBy="${resCode}">${escapeXML(resTin)}</TIN>`;
-        if (resCode === 'US') return `<TIN IssuedBy="US">000000000</TIN>`;
+        if (resTin) return `<TIN issuedBy="${resCode}">${escapeXML(resTin)}</TIN>`;
+        if (resCode === 'US') return `<TIN issuedBy="US">000000000</TIN>`;
         return '';
       }).join('');
 
@@ -583,7 +583,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
   <oecd_ftc:MessageBody>
     <${ns}ReportingFI>
       <${ns}ResCountryCode>CW</${ns}ResCountryCode>
-      <${ns}TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</${ns}TIN>
+      <${ns}TIN issuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</${ns}TIN>
       <${ns}Name NameType="OECD207">${escapeXML(entity.entity_name)}</${ns}Name>
 
       ${buildAddressBlock(entity.address, 'CW', ns)}${filerCategoryXml}
