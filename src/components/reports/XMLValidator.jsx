@@ -104,6 +104,7 @@ export default function XMLValidator({
   const getElem = (doc, tag) =>
     doc.getElementsByTagName(tag)[0] ||
     doc.getElementsByTagName(`sfa_ftc:${tag}`)[0] ||
+    doc.getElementsByTagName(`sfa:${tag}`)[0] ||
     doc.getElementsByTagName(`oecd_ftc:${tag}`)[0] ||
     doc.getElementsByTagName(`crs:${tag}`)[0] ||
     null;
