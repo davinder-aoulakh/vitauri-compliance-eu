@@ -579,7 +579,6 @@ export default function ReportsPage() {
           a.entity_id === selectedReport?.entity_id
         )}
         controllingPersons={allControllingPersons.filter(cp =>
-          cp.is_reportable &&
           allAccounts.some(a => a.id === cp.account_id && a.entity_id === selectedReport?.entity_id)
         )}
         open={showExportDialog}
