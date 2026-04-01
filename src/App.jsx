@@ -9,6 +9,9 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import MfaVerification from '@/pages/MfaVerification';
+import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -17,6 +20,37 @@ const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
+
+const MfaGate = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const [mfaVerified, setMfaVerified] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setChecking(false); return; }
+    // Check session first
+    if (sessionStorage.getItem("mfa_verified") === "true") {
+      setMfaVerified(true);
+      setMfaRequired(false);
+      setChecking(false);
+      return;
+    }
+    // Check if user has MFA enabled
+    base44.auth.me().then(u => {
+      if (u?.mfa_enabled) {
+        setMfaRequired(true);
+      }
+      setChecking(false);
+    }).catch(() => setChecking(false));
+  }, [isAuthenticated]);
+
+  if (checking) return null;
+  if (mfaRequired && !mfaVerified) {
+    return <MfaVerification onVerified={() => { setMfaVerified(true); setMfaRequired(false); }} />;
+  }
+  return children;
+};
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
@@ -43,6 +77,7 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
+    <MfaGate>
     <Routes>
       <Route path="/" element={
         <LayoutWrapper currentPageName={mainPageKey}>
@@ -62,6 +97,7 @@ const AuthenticatedApp = () => {
       ))}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </MfaGate>
   );
 };
 

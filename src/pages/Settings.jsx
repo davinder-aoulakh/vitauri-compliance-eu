@@ -41,7 +41,9 @@ export default function SettingsPage() {
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaSaving, setMfaSaving] = useState(false);
+
   // Accessibility Settings
   const [fontSize, setFontSize] = useState("medium");
   const [highContrast, setHighContrast] = useState(false);
@@ -115,6 +117,9 @@ export default function SettingsPage() {
       setTimezone(general.timezone || "UTC");
       setEmailEventConfig(general.emailEventConfig || {});
       
+      // Load MFA preference
+      setMfaEnabled(currentUser.mfa_enabled || false);
+
       // Load Vitauri branding from global platform settings
       try {
         const platformSettings = await base44.entities.PlatformSettings.filter({ setting_key: "vitauri_branding" });
@@ -272,6 +277,21 @@ export default function SettingsPage() {
       toast.error("Failed to save general settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleMfa = async (enabled) => {
+    setMfaSaving(true);
+    try {
+      await base44.auth.updateMe({ mfa_enabled: enabled });
+      setMfaEnabled(enabled);
+      // Clear MFA session so it re-challenges on next load if enabled
+      if (enabled) sessionStorage.removeItem("mfa_verified");
+      toast.success(enabled ? "Two-factor authentication enabled" : "Two-factor authentication disabled");
+    } catch (error) {
+      toast.error("Failed to update MFA settings");
+    } finally {
+      setMfaSaving(false);
     }
   };
 
@@ -1133,6 +1153,40 @@ export default function SettingsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Two-Factor Authentication */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-transparent">
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-indigo-600" />
+                Two-Factor Authentication (2FA)
+              </CardTitle>
+              <p className="text-sm text-slate-600 mt-1">
+                Add an extra layer of security to your account with email verification
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="space-y-1 flex-1">
+                  <Label className="text-base font-semibold">
+                    Email Verification on Login
+                  </Label>
+                  <p className="text-sm text-slate-600">
+                    A 6-digit code will be sent to <strong>{user?.email}</strong> each time you log in
+                  </p>
+                  {mfaEnabled && (
+                    <p className="text-xs text-green-700 font-medium mt-1">✓ 2FA is currently active on your account</p>
+                  )}
+                </div>
+                <Switch
+                  checked={mfaEnabled}
+                  onCheckedChange={handleToggleMfa}
+                  disabled={mfaSaving}
+                  aria-label="Toggle two-factor authentication"
+                />
               </div>
             </CardContent>
           </Card>

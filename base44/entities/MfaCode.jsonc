@@ -1,0 +1,29 @@
+{
+  "name": "MfaCode",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user requesting the MFA code"
+    },
+    "code": {
+      "type": "string",
+      "description": "The 6-digit MFA code"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this code expires"
+    },
+    "is_used": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this code has already been used"
+    }
+  },
+  "required": [
+    "user_email",
+    "code",
+    "expires_at"
+  ]
+}
