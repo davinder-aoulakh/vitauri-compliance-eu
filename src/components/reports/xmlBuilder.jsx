@@ -73,6 +73,8 @@ function buildAddressBlock(address, fallbackCountry, ns = '') {
   if (!address) return '';
   const countryCode = normalizeCountryCode(address.country || fallbackCountry);
   const hasCity = address.city && String(address.city).trim() !== '';
+  // Address sub-elements always use sfa: prefix per the STF FATCA types namespace
+  const inner = 'sfa:';
 
   if (!hasCity) {
     const countryDisplay = (() => {
@@ -86,20 +88,20 @@ function buildAddressBlock(address, fallbackCountry, ns = '') {
       .filter(Boolean).map(p => String(p).trim()).filter(Boolean);
     return `
           <${ns}Address>
-            <${ns}CountryCode>${countryCode}</${ns}CountryCode>
-            <${ns}AddressFree>${escapeXML(sanitizeText(parts.join(', ')))}</${ns}AddressFree>
+            <${inner}CountryCode>${countryCode}</${inner}CountryCode>
+            <${inner}AddressFree>${escapeXML(sanitizeText(parts.join(', ')))}</${inner}AddressFree>
           </${ns}Address>`;
   }
 
   const postCode = sanitizePostalCode(address.postal_code, countryCode);
   return `
           <${ns}Address>
-            <${ns}CountryCode>${countryCode}</${ns}CountryCode>
-            <${ns}AddressFix>
-              ${address.street ? `<${ns}Street>${escapeXML(sanitizeText(address.street))}</${ns}Street>` : ''}
-              <${ns}City>${escapeXML(sanitizeText(address.city))}</${ns}City>
-              ${postCode ? `<${ns}PostCode>${escapeXML(postCode)}</${ns}PostCode>` : ''}
-            </${ns}AddressFix>
+            <${inner}CountryCode>${countryCode}</${inner}CountryCode>
+            <${inner}AddressFix>
+              ${address.street ? `<${inner}Street>${escapeXML(sanitizeText(address.street))}</${inner}Street>` : ''}
+              <${inner}City>${escapeXML(sanitizeText(address.city))}</${inner}City>
+              ${postCode ? `<${inner}PostCode>${escapeXML(postCode)}</${inner}PostCode>` : ''}
+            </${inner}AddressFix>
           </${ns}Address>`;
 }
 
