@@ -502,7 +502,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
         <${ns}Organisation>
           ${orgResCountryCodeBlocks}
           ${tinBlocks.replace(/TIN/g, ns + 'TIN')}
-          <${ns}Name>${escapeXML(sanitizeText(account.account_holder_name))}</${ns}Name>
+          <${ns}Name NameType="OECD207">${escapeXML(sanitizeText(account.account_holder_name))}</${ns}Name>
           ${buildAddressBlock(account.account_holder_address, 'CW', ns)}
           ${hasUSResidency ? `<${ns}Recalcitrant>${account.is_recalcitrant === true ? 'true' : 'false'}</${ns}Recalcitrant>` : ''}
         </${ns}Organisation>`;
