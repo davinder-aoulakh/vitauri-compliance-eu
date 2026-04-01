@@ -100,9 +100,10 @@ export default function XMLValidator({
     }
   };
 
-  // Helper: get element by tag name, supporting both namespaced and non-namespaced variants
+  // Helper: get element by tag name, supporting all namespace prefix variants
   const getElem = (doc, tag) =>
     doc.getElementsByTagName(tag)[0] ||
+    doc.getElementsByTagName(`oecd_ftc:${tag}`)[0] ||
     doc.getElementsByTagName(`crs:${tag}`)[0] ||
     null;
 
@@ -228,7 +229,8 @@ export default function XMLValidator({
       const fiRequiredElements = ["ResCountryCode", "Name"];
       fiRequiredElements.forEach((elem, i) => {
         results.total_checks++;
-        const element = reportingFI.getElementsByTagName(elem)[0];
+        const element = reportingFI.getElementsByTagName(elem)[0] ||
+          reportingFI.getElementsByTagName(`oecd_ftc:${elem}`)[0];
         if (!element || !element.textContent?.trim()) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
@@ -243,9 +245,10 @@ export default function XMLValidator({
       });
     }
 
-    // Check AccountReport elements (non-namespaced)
+    // Check AccountReport elements
     const accountReports = [
       ...Array.from(xmlDoc.getElementsByTagName("AccountReport")),
+      ...Array.from(xmlDoc.getElementsByTagName("oecd_ftc:AccountReport")),
       ...Array.from(xmlDoc.getElementsByTagName("crs:AccountReport"))
     ];
     results.total_checks++;
@@ -276,7 +279,8 @@ export default function XMLValidator({
       accountReports.forEach((accReport, idx) => {
         // DocSpec validation
         results.total_checks++;
-        const docSpec = accReport.getElementsByTagName("DocSpec")[0];
+        const docSpec = accReport.getElementsByTagName("DocSpec")[0] ||
+          accReport.getElementsByTagName("oecd_ftc:DocSpec")[0];
         if (!docSpec) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
@@ -291,7 +295,8 @@ export default function XMLValidator({
 
         // AccountNumber validation
         results.total_checks++;
-        const accNum = accReport.getElementsByTagName("AccountNumber")[0];
+        const accNum = accReport.getElementsByTagName("AccountNumber")[0] ||
+          accReport.getElementsByTagName("oecd_ftc:AccountNumber")[0];
         if (!accNum || !accNum.textContent?.trim()) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
@@ -306,7 +311,8 @@ export default function XMLValidator({
 
         // AccountHolder validation
         results.total_checks++;
-        const accHolder = accReport.getElementsByTagName("AccountHolder")[0];
+        const accHolder = accReport.getElementsByTagName("AccountHolder")[0] ||
+          accReport.getElementsByTagName("oecd_ftc:AccountHolder")[0];
         if (!accHolder) {
           results.errors.push({
             category: VALIDATION_CATEGORIES.SCHEMA,
@@ -464,8 +470,9 @@ export default function XMLValidator({
       const xmlDoc = parser.parseFromString(xml, "text/xml");
       // Match both namespaced (crs:DocTypeIndic) and non-namespaced (DocTypeIndic)
       const allDocTypeElems = [
-        ...Array.from(xmlDoc.getElementsByTagName("crs:DocTypeIndic")),
-        ...Array.from(xmlDoc.getElementsByTagName("DocTypeIndic"))
+        ...Array.from(xmlDoc.getElementsByTagName("DocTypeIndic")),
+        ...Array.from(xmlDoc.getElementsByTagName("oecd_ftc:DocTypeIndic")),
+        ...Array.from(xmlDoc.getElementsByTagName("crs:DocTypeIndic"))
       ];
       const docTypeValues = allDocTypeElems.map(el => el.textContent.trim()).filter(Boolean);
       const TEST_CODES = new Set(['OECD11', 'OECD12', 'OECD13']);
