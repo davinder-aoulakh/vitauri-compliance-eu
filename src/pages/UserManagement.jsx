@@ -12,12 +12,14 @@ import {
   UserCheck,
   UserX,
   Search,
-  Building2
+  Building2,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -113,6 +115,14 @@ export default function UserManagement() {
     if (confirm("Are you sure you want to remove this user from your organization?")) {
       deleteUserMutation.mutate(userId);
     }
+  };
+
+  const handleToggleMfa = async (targetUser, enabled) => {
+    await base44.functions.invoke('updateTenantUser', {
+      userId: targetUser.id,
+      userData: { mfa_enabled: enabled }
+    });
+    queryClient.invalidateQueries(['tenant-users']);
   };
 
   const handleInviteComplete = () => {
@@ -299,6 +309,7 @@ export default function UserManagement() {
                       <TableHead>Role</TableHead>
                       <TableHead>Job Title</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>2FA</TableHead>
                       <TableHead>Last Login</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -338,6 +349,13 @@ export default function UserManagement() {
                              Active
                            </Badge>
                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={!!u.mfa_enabled}
+                            onCheckedChange={(enabled) => handleToggleMfa(u, enabled)}
+                            aria-label="Toggle 2FA"
+                          />
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-slate-600">
