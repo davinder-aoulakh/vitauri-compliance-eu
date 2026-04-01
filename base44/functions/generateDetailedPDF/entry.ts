@@ -264,12 +264,14 @@ Deno.serve(async (req) => {
           color: textColor,
           font: helvetica
         });
+        yPos -= 12;
       }
+      yPos -= 15;
     }
 
     // Validation Results
     if (validation && report.validation_results) {
-      if (yPos < 150) {
+      if (yPos < 200) {
         page = pdfDoc.addPage([595, 842]);
         yPos = 800;
       }
