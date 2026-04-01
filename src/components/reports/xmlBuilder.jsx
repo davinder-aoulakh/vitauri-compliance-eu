@@ -132,8 +132,11 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     messageTypeIndic = report.message_type_indic || 'CRS701';
   }
 
-  // Use oecd_ftc: prefix on all elements as required by the PFGU XSD validator
-  const ns = 'oecd_ftc:';
+  // Two-prefix rule required by the Curaçao MDES portal XSD:
+  // OECD_PREFIX: only the 3 structural wrappers (FATCA_CRS root, MessageHeader, MessageBody)
+  // SFA_PREFIX:  every data element inside those wrappers
+  const OECD_PREFIX = 'oecd_ftc:';
+  const ns = 'sfa_ftc:';
 
   const sendingCompanyIN = cribNumber;
   if (!sendingCompanyIN) {
@@ -167,7 +170,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
     const fatcaCode = FATCA_FILER_CATEGORY_MAP[entity.fi_registration_type];
     if (fatcaCode) {
       // Will be prefixed with ns when inserted into root element
-      filerCategoryXml = `\n    <oecd_ftc:FilerCategory>${fatcaCode}</oecd_ftc:FilerCategory>`;
+      filerCategoryXml = `\n    <sfa_ftc:FilerCategory>${fatcaCode}</sfa_ftc:FilerCategory>`;
     }
   }
 
@@ -201,7 +204,7 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       if (!report.correction_doc_ref_id) {
         throw new Error('CorrDocRefId is mandatory for the ReportingFI DocSpec in correction reports (CRS702) but correction_doc_ref_id is not set.');
       }
-      return `<oecd_ftc:CorrDocRefId>${report.correction_doc_ref_id}_FI</oecd_ftc:CorrDocRefId>`;
+      return `<sfa_ftc:CorrDocRefId>${report.correction_doc_ref_id}_FI</sfa_ftc:CorrDocRefId>`;
     }
     return '';
   })();
@@ -212,10 +215,10 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
       if (!report.correction_message_ref_id) {
         throw new Error('CorrMessageRefId is mandatory for correction reports (CRS702) but is not set.');
       }
-      return `<oecd_ftc:CorrMessageRefId>${report.correction_message_ref_id}</oecd_ftc:CorrMessageRefId>`;
+      return `<sfa_ftc:CorrMessageRefId>${report.correction_message_ref_id}</sfa_ftc:CorrMessageRefId>`;
     }
     return report.correction_message_ref_id
-      ? `<oecd_ftc:CorrMessageRefId>${report.correction_message_ref_id}</oecd_ftc:CorrMessageRefId>`
+      ? `<sfa_ftc:CorrMessageRefId>${report.correction_message_ref_id}</sfa_ftc:CorrMessageRefId>`
       : '';
   })();
 
@@ -566,18 +569,18 @@ export function buildCRSXML({ report, entity, tenant, accounts, controllingPerso
   xmlns:sfa_ftc="urn:oecd:ties:fatcacrstypes:v2"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:sfa="urn:oecd:ties:stffatcatypes:v2">
-  <${ns}MessageHeader>
-    <${ns}SendingCompanyIN>${sendingCompanyIN}</${ns}SendingCompanyIN>
-    <${ns}TransmittingCountry>CW</${ns}TransmittingCountry>
-    <${ns}ReceivingCountry>CW</${ns}ReceivingCountry>
-    <${ns}MessageType>FATCA-CRS</${ns}MessageType>
-    <${ns}MessageRefId>${messageRefId}</${ns}MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml}` : ''}
-    <${ns}MessageTypeIndic>${messageTypeIndic}</${ns}MessageTypeIndic>
-    <${ns}ReportingPeriod>${report.reporting_year}-12-31</${ns}ReportingPeriod>
-    <${ns}Timestamp>${timestamp}</${ns}Timestamp>
-  </${ns}MessageHeader>
+  <oecd_ftc:MessageHeader>
+    <sfa_ftc:SendingCompanyIN>${sendingCompanyIN}</sfa_ftc:SendingCompanyIN>
+    <sfa_ftc:TransmittingCountry>CW</sfa_ftc:TransmittingCountry>
+    <sfa_ftc:ReceivingCountry>CW</sfa_ftc:ReceivingCountry>
+    <sfa_ftc:MessageType>FATCA-CRS</sfa_ftc:MessageType>
+    <sfa_ftc:MessageRefId>${messageRefId}</sfa_ftc:MessageRefId>${corrMessageRefIdXml ? `\n    ${corrMessageRefIdXml}` : ''}
+    <sfa_ftc:MessageTypeIndic>${messageTypeIndic}</sfa_ftc:MessageTypeIndic>
+    <sfa_ftc:ReportingPeriod>${report.reporting_year}-12-31</sfa_ftc:ReportingPeriod>
+    <sfa_ftc:Timestamp>${timestamp}</sfa_ftc:Timestamp>
+  </oecd_ftc:MessageHeader>
   
-  <${ns}MessageBody>
+  <oecd_ftc:MessageBody>
     <${ns}ReportingFI>
       <${ns}ResCountryCode>CW</${ns}ResCountryCode>
       <${ns}TIN IssuedBy="${tinIssuedBy}">${escapeXML(tinValue)}</${ns}TIN>
