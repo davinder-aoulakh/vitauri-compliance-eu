@@ -555,6 +555,7 @@ export default function AccountsPage() {
                 </Button>
               </>
             )}
+            {(tenant?.enabled_features?.guided_tours === true) && (
             <Button 
               variant="outline"
               onClick={handleStartTour}
@@ -563,6 +564,7 @@ export default function AccountsPage() {
               <Sparkles className="w-4 h-4" />
               Page Tour
             </Button>
+            )}
             {(tenant?.enabled_features?.ai_bulk_import !== false) && (
               <Button 
                 onClick={() => setShowBulkImport(true)}
