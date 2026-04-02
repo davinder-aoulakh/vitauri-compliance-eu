@@ -746,7 +746,7 @@ const superAdminNav = filterMenuItems([
         </main>
 
         {/* AI Help Assistant - Floating Widget */}
-        {(tenant?.enabled_features?.ai_help_assistant !== false) && (
+        {(tenant?.enabled_features?.ai_help_assistant === true) && (
           <AIHelpAssistant currentPage={currentPageTitle} />
         )}
       </div>
