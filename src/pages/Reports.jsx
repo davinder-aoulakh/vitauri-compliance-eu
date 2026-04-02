@@ -248,6 +248,7 @@ export default function ReportsPage() {
             </p>
           </div>
         <div className="flex gap-2">
+        {(tenant?.enabled_features?.guided_tours === true) && (
           <Button 
             variant="outline"
             onClick={handleStartTour}
@@ -256,6 +257,7 @@ export default function ReportsPage() {
             <PlayCircle className="w-4 h-4" />
             Page Tour
           </Button>
+        )}
           <Button 
             onClick={() => setShowWizard(true)}
             className="gap-2 text-white shadow-lg"
