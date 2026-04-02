@@ -32,6 +32,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     advanced_reporting: true,
     audit_logging: true,
     user_management: true,
+    validation_rules: true,
    // custom_branding: true
   };
 
