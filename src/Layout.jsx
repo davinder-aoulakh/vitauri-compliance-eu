@@ -309,7 +309,7 @@ const superAdminNav = filterMenuItems([
     url: createPageUrl("WorkflowBuilder"),
     icon: GitBranch,
     roles: ["super_admin"],
-    featureKey: "workflow_automation" // Added featureKey
+    featureKey: null
   },
   {
     title: "Form Builder",
