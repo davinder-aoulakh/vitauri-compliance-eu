@@ -221,6 +221,15 @@ export default function Layout({ children }) {
 
   };
 
+  // Helper function to filter menu items based on enabled_features
+  const filterMenuItems = (items) => {
+  return items.filter(item => {
+    if (!item.url) return false;
+    if (item.featureKey === null) return true; 
+    return tenant?.enabled_features?.[item.featureKey] === true;
+  });
+};
+
   // Get menu order from tenant settings or use defaults
   const navigationSettings = tenant?.navigation_settings || {};
   const crsMenuOrder = navigationSettings.crs_menu_order || 
