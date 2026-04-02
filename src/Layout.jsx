@@ -305,7 +305,7 @@ export default function Layout({ children }) {
   ];
 
   // Determine which solutions are enabled for the tenant
-  const crsEnabled = tenant?.enabled_features?.crs_enabled !== false; // Default true
+  const crsEnabled = tenant?.enabled_features?.crs_enabled === true; // Default true
   const fatcaEnabled = tenant?.enabled_features?.fatca_enabled === true; // Default false
 
   // Helper to find current page title from all navigation items
