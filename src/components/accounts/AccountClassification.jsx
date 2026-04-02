@@ -284,23 +284,23 @@ console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()
           break;
         case "greater_than":
         case ">":
-          conditionMet = parseFloat(fieldValue) > parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "less_than":
         case "<":
-          conditionMet = parseFloat(fieldValue) < parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "greater_than_or_equal":
         case ">=":
-          conditionMet = parseFloat(fieldValue) >= parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "less_than_or_equal":
         case "<=":
-          conditionMet = parseFloat(fieldValue) <= parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(comparisonValue)} = ${conditionMet}`);
           break;
         case "contains":
           conditionMet = String(normalizedFieldValue).toLowerCase().includes(String(normalizedComparisonValue).toLowerCase());

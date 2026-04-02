@@ -133,7 +133,7 @@ export default function BeneficiaryManager({ account, tenant }) {
     const config = {
       reportable: { label: "Reportable", color: "bg-green-100 text-green-800", icon: CheckCircle2 },
       non_reportable: { label: "Non-Reportable", color: "bg-slate-100 text-slate-800", icon: CheckCircle2 },
-      pending_review: { label: "Pending Review", color: "bg-amber-100 text-amber-800", icon: AlertTriangle },
+      pending_review: { label: "Pending Review", color: "bg-amber-100 text-amber-800", icon: Clock },
       excluded: { label: "Excluded", color: "bg-red-100 text-red-800", icon: AlertCircle }
     };
     const { label, color, icon: Icon } = config[status] || config.pending_review;

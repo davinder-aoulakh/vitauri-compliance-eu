@@ -59,8 +59,6 @@ export default function AccountDetails({ account, entity }) {
     queryFn: () => base44.entities.ReferencedData.list()
   });
 
-  const [showAuditLog, setShowAuditLog] = React.useState(false);
-
   if (!account) return null;
 
   // Helper function to get label from value
@@ -73,6 +71,8 @@ export default function AccountDetails({ account, entity }) {
 
   const showBeneficiaries = account.account_holder_type === 'individual' && !account.account_holder_is_alive;
   const showControllingPersons = account.account_holder_type === 'entity';
+
+  const [showAuditLog, setShowAuditLog] = React.useState(false);
 
   const formatCurrency = (amount, currency = "USD") => {
     return new Intl.NumberFormat('en-US', {
