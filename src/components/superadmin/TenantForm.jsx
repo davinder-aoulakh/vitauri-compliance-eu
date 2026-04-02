@@ -164,6 +164,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
         { key: "dashboard_builder", label: "Dashboard Builder", description: "Custom dashboard creation", icon: LayoutDashboard },
         { key: "guided_tours", label: "Guided Tours", description: "Interactive onboarding tours", icon: PlayCircle },
         { key: "compliance_assistant", label: "Compliance Assistant", description: "AI compliance chat page", icon: Shield },
+         { key: "validation_rules", label: "Validation Rules", description: "Custom data validation rules", icon: Shield },
       //  { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
         { key: "advanced_reporting", label: "Advanced Reporting", description: "Enhanced report generation", icon: FileCheck },
         { key: "audit_logging", label: "Activity Audit Log", description: "Detailed activity tracking", icon: Eye },
