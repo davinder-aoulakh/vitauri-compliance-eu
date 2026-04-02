@@ -251,10 +251,12 @@ export default function Dashboard() {
             </div>
 
             <div className="flex gap-3">
+            {(tenant?.enabled_features?.guided_tours === true) && (
               <Button variant="outline" onClick={handleStartTour} className="gap-2">
                 <PlayCircle className="w-4 h-4" />
                 Page Tour
               </Button>
+            )}
               <Button variant="outline" onClick={() => {
                 const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
                 const filtered = completedTours.filter(t => t !== "app-overview-tour");
@@ -362,10 +364,12 @@ export default function Dashboard() {
           </div>
 
           <div className="flex gap-3">
+          {(tenant?.enabled_features?.guided_tours === true) && (
             <Button variant="outline" onClick={handleStartTour} className="gap-2">
               <PlayCircle className="w-4 h-4" />
               Page Tour
             </Button>
+          )}
             <Button variant="outline" onClick={() => {
               const completedTours = JSON.parse(localStorage.getItem("completedTours") || "[]");
               const filtered = completedTours.filter(t => t !== "app-overview-tour");
