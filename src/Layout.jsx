@@ -197,8 +197,8 @@ export default function Layout({ children }) {
     "RFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"], featureKey: "crs_enabled"},
     "FFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"], featureKey: "fatca_enabled"  },
     "Accounts": { url: createPageUrl("Accounts"), icon: Wallet, roles: ["tenant_admin", "tenant_user"],featureKey: null },
-    "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "crs_enabled"},
-    "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "fatca_enabled"},
+    "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "advanced_reporting"},
+    "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "advanced_reporting"},
     "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"], featureKey: "compliance_assistant" },
 
 
