@@ -199,7 +199,26 @@ export default function Layout({ children }) {
     "Accounts": { url: createPageUrl("Accounts"), icon: Wallet, roles: ["tenant_admin", "tenant_user"],featureKey: null },
     "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "crs_enabled"},
     "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "fatca_enabled"},
-    "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"], featureKey: "compliance_assistant" }
+    "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"], featureKey: "compliance_assistant" },
+
+
+
+   // Administration Navigation Items (for tenant_admin)
+  "Dashboard Builder": { url: createPageUrl("DashboardBuilder"), icon: LayoutDashboard, roles: ["tenant_admin"], featureKey: "dashboard_builder" },
+  "User Management": { url: createPageUrl("UserManagement"), icon: Users, roles: ["tenant_admin"], featureKey: "user_management" },
+  "Validation Rules": { url: createPageUrl("CustomValidationRules"), icon: Shield, roles: ["tenant_admin"], featureKey: null }, 
+  
+
+  // Super Admin Navigation Items
+  "Super Admin": { url: createPageUrl("SuperAdmin"), icon: Shield, roles: ["super_admin"], featureKey: null },
+  "Tenant Management": { url: createPageUrl("TenantManagement"), icon: Building2, roles: ["super_admin"], featureKey: null },
+  "Dashboard Templates": { url: createPageUrl("DashboardTemplates"), icon: LayoutDashboard, roles: ["super_admin"], featureKey: null },
+  "Workflows": { url: createPageUrl("WorkflowBuilder"), icon: GitBranch, roles: ["super_admin"], featureKey: "workflow_automation" },
+  "Form Builder": { url: createPageUrl("FormBuilder"), icon: Settings, roles: ["super_admin"], featureKey: null },
+  "Auto Classification Rules": { url: createPageUrl("AutoClassificationRules"), icon: Sparkles, roles: ["super_admin"], featureKey: null },
+  "Referenced Data": { url: createPageUrl("ReferencedDataManagement"), icon: Database, roles: ["super_admin"], featureKey: null },
+  "Jurisdiction CRS Config": { url: createPageUrl("JurisdictionSettings"), icon: Globe, roles: ["super_admin"], featureKey: null }
+
   };
 
   // Get menu order from tenant settings or use defaults
