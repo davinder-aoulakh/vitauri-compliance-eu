@@ -238,7 +238,7 @@ export default function Layout({ children }) {
     ["Dashboard", "Activity Log", "FFI Entities", "Accounts", "FATCA Reports"];
 
   // Build navigation arrays based on order
-  const crsNav = crsMenuOrder.map(title => ({
+  /*const crsNav = crsMenuOrder.map(title => ({
     title,
     ...menuItemMap[title]
   })).filter(item => item.url);
@@ -246,7 +246,17 @@ export default function Layout({ children }) {
   const fatcaNav = fatcaMenuOrder.map(title => ({
     title,
     ...menuItemMap[title]
-  })).filter(item => item.url);
+  })).filter(item => item.url);  */
+
+  const crsNav = filterMenuItems(crsMenuOrder.map(title => ({
+   title,
+    ...menuItemMap[title]
+    })));
+
+  const fatcaNav = filterMenuItems(fatcaMenuOrder.map(title => ({
+  title,
+  ...menuItemMap[title]
+    })));
 
   const administrationNav = [
     {
