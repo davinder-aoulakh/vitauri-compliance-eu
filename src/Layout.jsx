@@ -278,7 +278,7 @@ export default function Layout({ children }) {
     url: createPageUrl("CustomValidationRules"),
     icon: Shield,
     roles: ["tenant_admin"],
-    featureKey: null
+    featureKey: "validation_rules"
   }
 ]);
 
