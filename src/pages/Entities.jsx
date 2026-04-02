@@ -258,6 +258,7 @@ export default function EntitiesPage() {
             </p>
           </div>
           <div className="flex gap-2">
+          {(tenant?.enabled_features?.guided_tours === true) && (
             <Button 
               variant="outline"
               onClick={handleStartTour}
@@ -266,6 +267,7 @@ export default function EntitiesPage() {
               <PlayCircle className="w-4 h-4" />
               Page Tour
             </Button>
+          )}
 
             <Button 
               onClick={() => {
