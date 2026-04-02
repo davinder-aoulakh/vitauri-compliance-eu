@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -18,15 +19,16 @@ export default function WorkflowFlowChart({
   answers = {},
   compact = false 
 }) {
-  if (!workflow?.steps) return null;
-
   const stepMap = useMemo(() => {
+    if (!workflow?.steps) return {};
     const map = {};
     workflow.steps.forEach(step => {
       map[step.step_id] = step;
     });
     return map;
   }, [workflow]);
+
+  if (!workflow?.steps) return null;
 
   const buildFlowStructure = () => {
     const visited = new Set();

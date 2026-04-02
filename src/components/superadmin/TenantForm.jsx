@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush, Menu, GripVertical } from "lucide-react";
+import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Menu, GripVertical } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
@@ -163,11 +163,9 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
         { key: "dashboard_builder", label: "Dashboard Builder", description: "Custom dashboard creation", icon: LayoutDashboard },
         { key: "guided_tours", label: "Guided Tours", description: "Interactive onboarding tours", icon: PlayCircle },
         { key: "compliance_assistant", label: "Compliance Assistant", description: "AI compliance chat page", icon: Shield },
-        { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
         { key: "advanced_reporting", label: "Advanced Reporting", description: "Enhanced report generation", icon: FileCheck },
         { key: "audit_logging", label: "Activity Audit Log", description: "Detailed activity tracking", icon: Eye },
-        { key: "user_management", label: "User Management", description: "Invite and manage users", icon: Users },
-        { key: "custom_branding", label: "Custom Branding", description: "Logo and color customization", icon: Paintbrush }
+        { key: "user_management", label: "User Management", description: "Invite and manage users", icon: Users }
       ]
     }
   ];
