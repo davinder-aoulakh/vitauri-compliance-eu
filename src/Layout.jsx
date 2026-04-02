@@ -238,12 +238,6 @@ export default function Layout({ children }) {
       url: createPageUrl("CustomValidationRules"),
       icon: Shield,
       roles: ["tenant_admin"]
-    },
-    {
-      title: "Settings",
-      url: createPageUrl("Settings"),
-      icon: Settings,
-      roles: ["tenant_admin", "tenant_user"]
     }
   ];
 
