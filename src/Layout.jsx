@@ -192,14 +192,14 @@ export default function Layout({ children }) {
 
   // Menu item mapping
   const menuItemMap = {
-    "Dashboard": { url: createPageUrl("Dashboard"), icon: LayoutDashboard, roles: ["tenant_admin", "tenant_user"] },
-    "Activity Log": { url: createPageUrl("Activity"), icon: Eye, roles: ["tenant_admin"] },
-    "RFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"] },
-    "FFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"] },
-    "Accounts": { url: createPageUrl("Accounts"), icon: Wallet, roles: ["tenant_admin", "tenant_user"] },
-    "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"] },
-    "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"] },
-    "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"] }
+    "Dashboard": { url: createPageUrl("Dashboard"), icon: LayoutDashboard, roles: ["tenant_admin", "tenant_user"],  featureKey: null },
+    "Activity Log": { url: createPageUrl("Activity"), icon: Eye, roles: ["tenant_admin"], featureKey: "audit_logging"},
+    "RFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"], featureKey: "crs_enabled"},
+    "FFI Entities": { url: createPageUrl("Entities"), icon: Building2, roles: ["tenant_admin", "tenant_user"], featureKey: "fatca_enabled"  },
+    "Accounts": { url: createPageUrl("Accounts"), icon: Wallet, roles: ["tenant_admin", "tenant_user"],featureKey: null },
+    "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "crs_enabled"},
+    "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "fatca_enabled"},
+    "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"], featureKey: "compliance_assistant" }
   };
 
   // Get menu order from tenant settings or use defaults
