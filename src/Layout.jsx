@@ -258,83 +258,95 @@ export default function Layout({ children }) {
   ...menuItemMap[title]
     })));
 
-  const administrationNav = [
-    {
-      title: "Dashboard Builder",
-      url: createPageUrl("DashboardBuilder"),
-      icon: LayoutDashboard,
-      roles: ["tenant_admin"]
-    },
-    {
-      title: "User Management",
-      url: createPageUrl("UserManagement"),
-      icon: Users,
-      roles: ["tenant_admin"]
-    },
-    {
-      title: "Validation Rules",
-      url: createPageUrl("CustomValidationRules"),
-      icon: Shield,
-      roles: ["tenant_admin"]
-    }
-  ];
+  const administrationNav = filterMenuItems([
+  {
+    title: "Dashboard Builder",
+    url: createPageUrl("DashboardBuilder"),
+    icon: LayoutDashboard,
+    roles: ["tenant_admin"],
+    featureKey: "dashboard_builder"
+  },
+  {
+    title: "User Management",
+    url: createPageUrl("UserManagement"),
+    icon: Users,
+    roles: ["tenant_admin"],
+    featureKey: "user_management"
+  },
+  {
+    title: "Validation Rules",
+    url: createPageUrl("CustomValidationRules"),
+    icon: Shield,
+    roles: ["tenant_admin"],
+    featureKey: null
+  }
+]);
 
-  const superAdminNav = [
-    {
-      title: "Super Admin",
-      url: createPageUrl("SuperAdmin"),
-      icon: Shield,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Tenant Management",
-      url: createPageUrl("TenantManagement"),
-      icon: Building2,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Dashboard Templates",
-      url: createPageUrl("DashboardTemplates"),
-      icon: LayoutDashboard,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Workflows",
-      url: createPageUrl("WorkflowBuilder"),
-      icon: GitBranch,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Form Builder",
-      url: createPageUrl("FormBuilder"),
-      icon: Settings,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Auto Classification Rules",
-      url: createPageUrl("AutoClassificationRules"),
-      icon: Sparkles,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Referenced Data",
-      url: createPageUrl("ReferencedDataManagement"),
-      icon: Database,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Jurisdiction CRS Config",
-      url: createPageUrl("JurisdictionSettings"),
-      icon: Globe,
-      roles: ["super_admin"]
-    },
-    {
-      title: "Settings",
-      url: createPageUrl("Settings"),
-      icon: Settings,
-      roles: ["super_admin"]
-    }
-  ];
+const superAdminNav = filterMenuItems([
+  {
+    title: "Super Admin",
+    url: createPageUrl("SuperAdmin"),
+    icon: Shield,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Tenant Management",
+    url: createPageUrl("TenantManagement"),
+    icon: Building2,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Dashboard Templates",
+    url: createPageUrl("DashboardTemplates"),
+    icon: LayoutDashboard,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Workflows",
+    url: createPageUrl("WorkflowBuilder"),
+    icon: GitBranch,
+    roles: ["super_admin"],
+    featureKey: "workflow_automation" // Added featureKey
+  },
+  {
+    title: "Form Builder",
+    url: createPageUrl("FormBuilder"),
+    icon: Settings,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Auto Classification Rules",
+    url: createPageUrl("AutoClassificationRules"),
+    icon: Sparkles,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Referenced Data",
+    url: createPageUrl("ReferencedDataManagement"),
+    icon: Database,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Jurisdiction CRS Config",
+    url: createPageUrl("JurisdictionSettings"),
+    icon: Globe,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "Settings",
+    url: createPageUrl("Settings"),
+    icon: Settings,
+    roles: ["super_admin"],
+    featureKey: null
+  }
+]);
 
   // Determine which solutions are enabled for the tenant
   const crsEnabled = tenant?.enabled_features?.crs_enabled === true; // Default true
