@@ -28,11 +28,11 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     dashboard_builder: true,
     guided_tours: true,
     compliance_assistant: true,
-    workflow_automation: true,
+    //workflow_automation: true,
     advanced_reporting: true,
     audit_logging: true,
     user_management: true,
-    custom_branding: true
+   // custom_branding: true
   };
 
   const [formData, setFormData] = useState(tenant ? {
@@ -163,11 +163,11 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
         { key: "dashboard_builder", label: "Dashboard Builder", description: "Custom dashboard creation", icon: LayoutDashboard },
         { key: "guided_tours", label: "Guided Tours", description: "Interactive onboarding tours", icon: PlayCircle },
         { key: "compliance_assistant", label: "Compliance Assistant", description: "AI compliance chat page", icon: Shield },
-        { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
+      //  { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
         { key: "advanced_reporting", label: "Advanced Reporting", description: "Enhanced report generation", icon: FileCheck },
         { key: "audit_logging", label: "Activity Audit Log", description: "Detailed activity tracking", icon: Eye },
         { key: "user_management", label: "User Management", description: "Invite and manage users", icon: Users },
-        { key: "custom_branding", label: "Custom Branding", description: "Logo and color customization", icon: Paintbrush }
+       // { key: "custom_branding", label: "Custom Branding", description: "Logo and color customization", icon: Paintbrush }
       ]
     }
   ];
