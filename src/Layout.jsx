@@ -213,7 +213,7 @@ export default function Layout({ children }) {
   "Super Admin": { url: createPageUrl("SuperAdmin"), icon: Shield, roles: ["super_admin"], featureKey: null },
   "Tenant Management": { url: createPageUrl("TenantManagement"), icon: Building2, roles: ["super_admin"], featureKey: null },
   "Dashboard Templates": { url: createPageUrl("DashboardTemplates"), icon: LayoutDashboard, roles: ["super_admin"], featureKey: null },
-  "Workflows": { url: createPageUrl("WorkflowBuilder"), icon: GitBranch, roles: ["super_admin"], featureKey: "workflow_automation" },
+  "Workflows": { url: createPageUrl("WorkflowBuilder"), icon: GitBranch, roles: ["super_admin"], featureKey: null },
   "Form Builder": { url: createPageUrl("FormBuilder"), icon: Settings, roles: ["super_admin"], featureKey: null },
   "Auto Classification Rules": { url: createPageUrl("AutoClassificationRules"), icon: Sparkles, roles: ["super_admin"], featureKey: null },
   "Referenced Data": { url: createPageUrl("ReferencedDataManagement"), icon: Database, roles: ["super_admin"], featureKey: null },
