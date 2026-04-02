@@ -206,7 +206,7 @@ export default function Layout({ children }) {
    // Administration Navigation Items (for tenant_admin)
   "Dashboard Builder": { url: createPageUrl("DashboardBuilder"), icon: LayoutDashboard, roles: ["tenant_admin"], featureKey: "dashboard_builder" },
   "User Management": { url: createPageUrl("UserManagement"), icon: Users, roles: ["tenant_admin"], featureKey: "user_management" },
-  "Validation Rules": { url: createPageUrl("CustomValidationRules"), icon: Shield, roles: ["tenant_admin"], featureKey: null }, 
+  "Validation Rules": { url: createPageUrl("CustomValidationRules"), icon: Shield, roles: ["tenant_admin"], featureKey: "validation_rules" }, 
   
 
   // Super Admin Navigation Items
