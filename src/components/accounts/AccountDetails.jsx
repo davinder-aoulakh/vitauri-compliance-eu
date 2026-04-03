@@ -1,4 +1,5 @@
 import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +73,7 @@ export default function AccountDetails({ account, entity }) {
   const showBeneficiaries = account.account_holder_type === 'individual' && !account.account_holder_is_alive;
   const showControllingPersons = account.account_holder_type === 'entity';
 
-  const [showAuditLog, setShowAuditLog] = React.useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   const formatCurrency = (amount, currency = "USD") => {
     return new Intl.NumberFormat('en-US', {

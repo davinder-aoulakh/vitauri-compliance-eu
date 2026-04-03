@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import ExcelJS from "exceljs";
+// ExcelJS is loaded dynamically where needed
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,6 +109,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   };
 
   const downloadTemplate = async () => {
+    let ExcelJSModule;
+    try {
+      ExcelJSModule = await import("exceljs");
+    } catch {
+      alert("Excel support requires the 'exceljs' package. Please ask your administrator to install it.");
+      return;
+    }
+    const ExcelJS = ExcelJSModule.default || ExcelJSModule;
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "CRS Platform";
     workbook.created = new Date();
@@ -621,6 +629,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     let headers = [], data = [];
 
     if (isExcel) {
+      let ExcelJSModule;
+      try {
+        ExcelJSModule = await import("exceljs");
+      } catch {
+        setErrors(["Excel parsing requires the 'exceljs' package. Please upload a CSV file instead."]);
+        return;
+      }
+      const ExcelJS = ExcelJSModule.default || ExcelJSModule;
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await selectedFile.arrayBuffer());
       const sheet = workbook.worksheets.find(s => s.name.toLowerCase().includes("data")) || workbook.worksheets[0];

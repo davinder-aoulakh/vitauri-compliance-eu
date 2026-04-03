@@ -37,6 +37,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TenantForm from "../components/superadmin/TenantForm";
 import TenantHealthDashboard from "../components/superadmin/TenantHealthDashboard";
+import { createPageUrl } from "@/utils";
 
 export default function TenantManagement() {
   const [user, setUser] = useState(null);

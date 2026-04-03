@@ -106,7 +106,14 @@ export default function FITypeTemplateManager() {
     setUploading(fiType);
     setUploadError(null);
     try {
-      const ExcelJS = (await import("exceljs")).default;
+      // Dynamically load exceljs — requires the package to be installed
+      let ExcelJSModule;
+      try {
+        ExcelJSModule = await import("exceljs");
+      } catch {
+        throw new Error("Excel support requires the 'exceljs' package. Please ask your administrator to install it.");
+      }
+      const ExcelJS = ExcelJSModule.default || ExcelJSModule;
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
 
@@ -207,7 +214,14 @@ export default function FITypeTemplateManager() {
   // Download current template (DB-defined or default)
   const handleDownloadTemplate = async (fiType) => {
     const config = getEffectiveConfig(fiType);
-    const ExcelJS = (await import("exceljs")).default;
+    let ExcelJSModule;
+    try {
+      ExcelJSModule = await import("exceljs");
+    } catch {
+      setUploadError("Excel download requires the 'exceljs' package. Please ask your administrator to install it.");
+      return;
+    }
+    const ExcelJS = ExcelJSModule.default || ExcelJSModule;
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "CRS Platform";
     workbook.created = new Date();

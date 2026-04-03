@@ -284,23 +284,23 @@ console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()
           break;
         case "greater_than":
         case ">":
-          conditionMet = parseFloat(fieldValue) > parseFloat(comparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(comparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) > parseFloat(condition.value);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(condition.value)} = ${conditionMet}`);
           break;
         case "less_than":
         case "<":
-          conditionMet = parseFloat(fieldValue) < parseFloat(comparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(comparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) < parseFloat(condition.value);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(condition.value)} = ${conditionMet}`);
           break;
         case "greater_than_or_equal":
         case ">=":
-          conditionMet = parseFloat(fieldValue) >= parseFloat(comparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(comparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) >= parseFloat(condition.value);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(condition.value)} = ${conditionMet}`);
           break;
         case "less_than_or_equal":
         case "<=":
-          conditionMet = parseFloat(fieldValue) <= parseFloat(comparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(comparisonValue)} = ${conditionMet}`);
+          conditionMet = parseFloat(fieldValue) <= parseFloat(condition.value);
+      (`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(condition.value)} = ${conditionMet}`);
           break;
         case "contains":
           conditionMet = String(normalizedFieldValue).toLowerCase().includes(String(normalizedComparisonValue).toLowerCase());
