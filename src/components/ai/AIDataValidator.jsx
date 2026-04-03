@@ -30,7 +30,8 @@ import {
   Copy,
   Check,
   Lightbulb,
-  GitCompare
+  GitCompare,
+  Shield
 } from "lucide-react";
 
 export default function AIDataValidator({ accounts, entities, controllingPersons, onIssueSelect }) {

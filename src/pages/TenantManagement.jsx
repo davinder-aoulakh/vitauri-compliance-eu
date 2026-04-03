@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,7 +14,9 @@ import {
   XCircle,
   Mail,
   MapPin,
-  Activity
+  Activity,
+  RefreshCw,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,6 +240,7 @@ export default function TenantManagement() {
                       <TableHead className="text-indigo-200">Contact</TableHead>
                       <TableHead className="text-indigo-200">Status</TableHead>
                       <TableHead className="text-indigo-200">Tier</TableHead>
+                      <TableHead className="text-indigo-200">Support Hub Sync</TableHead>
                       <TableHead className="text-right text-indigo-200">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -290,6 +294,25 @@ export default function TenantManagement() {
                           <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200 capitalize">
                             {tenant.subscription_tier}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {tenant.support_hub_sync_status === "synced" ? (
+                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1 w-fit">
+                              <CheckCircle2 className="w-3 h-3" /> Synced
+                            </Badge>
+                          ) : tenant.support_hub_sync_status === "failed" ? (
+                            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 flex items-center gap-1 w-fit">
+                              <AlertTriangle className="w-3 h-3" /> Failed
+                            </Badge>
+                          ) : tenant.support_hub_sync_status === "pending" ? (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 flex items-center gap-1 w-fit">
+                              <RefreshCw className="w-3 h-3" /> Pending
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 flex items-center gap-1 w-fit">
+                              <Clock className="w-3 h-3" /> Not Synced
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

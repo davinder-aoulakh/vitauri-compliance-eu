@@ -23,6 +23,7 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
+  Clock,
   PlayCircle,
   Users,
   Eye,

@@ -10,6 +10,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import React, { useMemo } from "react";
 
 export default function WorkflowFlowChart({ 
   workflow, 
@@ -18,9 +19,9 @@ export default function WorkflowFlowChart({
   answers = {},
   compact = false 
 }) {
-  if (!workflow?.steps) return null;
-
   const stepMap = useMemo(() => {
+    if (!workflow?.steps) return {};
+
     const map = {};
     workflow.steps.forEach(step => {
       map[step.step_id] = step;
@@ -29,6 +30,7 @@ export default function WorkflowFlowChart({
   }, [workflow]);
 
   const buildFlowStructure = () => {
+    if (!workflow?.steps) return [];
     const visited = new Set();
     const structure = [];
     let currentId = workflow.steps[0]?.step_id;
