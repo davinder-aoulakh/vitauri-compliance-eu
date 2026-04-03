@@ -1,32 +1,33 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-
 const SUPPORT_HUB_API_URL = Deno.env.get("SUPPORT_HUB_API_URL");
 const SUPPORT_HUB_API_KEY = Deno.env.get("SUPPORT_HUB_API_KEY");
 
+// Fields that are purely internal/status fields - changes to ONLY these should not trigger a sync
+const INTERNAL_ONLY_FIELDS = ["support_hub_sync_status", "updated_date", "created_date"];
+
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const asService = base44.asServiceRole;
-
     const body = await req.json();
 
     // Support both direct call (tenant object) and automation payload (event + data)
     const tenant = body?.data || body;
     const changedFields = body?.changed_fields || [];
+    const eventType = body?.event?.type || "unknown";
 
     if (!tenant || !tenant.id) {
       return Response.json({ error: "Invalid tenant data: missing id" }, { status: 400 });
     }
 
-    // Guard: skip if the only change was the sync status itself (prevents infinite loop)
-    if (changedFields.length > 0 && changedFields.every(f => f === "support_hub_sync_status" || f === "updated_date")) {
-      console.log("[syncTenantToSupportHub] Skipping - only sync status changed, not a real update.");
-      return Response.json({ success: true, message: "Skipped: sync status update only." });
+    // Guard: for update events, skip if ONLY internal fields changed (prevents infinite loop)
+    if (eventType === "update" && changedFields.length > 0) {
+      const hasRealChange = changedFields.some(f => !INTERNAL_ONLY_FIELDS.includes(f));
+      if (!hasRealChange) {
+        console.log(`[syncTenantToSupportHub] Skipping tenant ${tenant.id} - only internal fields changed: ${changedFields.join(", ")}`);
+        return Response.json({ success: true, message: "Skipped: no meaningful field changes." });
+      }
     }
 
     if (!SUPPORT_HUB_API_URL || !SUPPORT_HUB_API_KEY) {
-      console.warn("Support Hub API URL or CRS_SYNC_API_KEY_EXPECTED not configured. Skipping sync.");
-      await asService.entities.Tenant.update(tenant.id, { support_hub_sync_status: "failed" });
+      console.warn("[syncTenantToSupportHub] Support Hub credentials not configured. Skipping sync.");
       return Response.json({ success: false, message: "Support Hub credentials not configured." });
     }
 
@@ -46,6 +47,8 @@ Deno.serve(async (req) => {
       navigation_settings: tenant.navigation_settings,
     };
 
+    console.log(`[syncTenantToSupportHub] Syncing tenant ${tenant.id} (event: ${eventType}, changed: ${changedFields.join(", ") || "n/a"})`);
+
     const response = await fetch(`${SUPPORT_HUB_API_URL}/createTenantFromCRS`, {
       method: "POST",
       headers: {
@@ -58,18 +61,16 @@ Deno.serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Support Hub tenant sync failed:", response.status, data);
-      await asService.entities.Tenant.update(tenant.id, { support_hub_sync_status: "failed" });
+      console.error(`[syncTenantToSupportHub] Sync failed for tenant ${tenant.id}:`, response.status, data);
       return Response.json({ error: "Failed to sync tenant to Support Hub", details: data }, { status: response.status });
     }
 
     const operation = data.operation || "unknown";
-    console.log(`[syncTenantToSupportHub] Tenant ${operation} in Support Hub:`, tenant.id);
-    await asService.entities.Tenant.update(tenant.id, { support_hub_sync_status: "synced" });
+    console.log(`[syncTenantToSupportHub] Tenant ${tenant.id} successfully ${operation} in Support Hub.`);
     return Response.json({ success: true, operation, tenant: data.tenant });
 
   } catch (error) {
-    console.error("Error in syncTenantToSupportHub:", error.message);
+    console.error("[syncTenantToSupportHub] Error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
