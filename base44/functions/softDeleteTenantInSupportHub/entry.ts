@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     console.log(`[softDeleteTenantInSupportHub] Initiating soft-delete for tenant ${deletedTenant.id} (event: ${eventType})`);
 
-    const response = await fetch(`${SUPPORT_HUB_API_URL}/functions/deleteTenantFromCRS`, {
+    const response = await fetch(`${SUPPORT_HUB_API_URL}/deleteTenantFromCRS`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
