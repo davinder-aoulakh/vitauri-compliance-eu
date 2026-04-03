@@ -30,9 +30,6 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, message: "Support Hub credentials not configured." });
     }
 
-    // Mark as pending before attempt
-    await asService.entities.Tenant.update(tenant.id, { support_hub_sync_status: "pending" });
-
     const tenantPayload = {
       id: tenant.id,
       name: tenant.name,
