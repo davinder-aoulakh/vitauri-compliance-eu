@@ -12,9 +12,16 @@ Deno.serve(async (req) => {
 
     // Support both direct call (tenant object) and automation payload (event + data)
     const tenant = body?.data || body;
+    const changedFields = body?.changed_fields || [];
 
     if (!tenant || !tenant.id) {
       return Response.json({ error: "Invalid tenant data: missing id" }, { status: 400 });
+    }
+
+    // Guard: skip if the only change was the sync status itself (prevents infinite loop)
+    if (changedFields.length > 0 && changedFields.every(f => f === "support_hub_sync_status" || f === "updated_date")) {
+      console.log("[syncTenantToSupportHub] Skipping - only sync status changed, not a real update.");
+      return Response.json({ success: true, message: "Skipped: sync status update only." });
     }
 
     if (!SUPPORT_HUB_API_URL || !SUPPORT_HUB_API_KEY) {
