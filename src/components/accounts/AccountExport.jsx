@@ -33,51 +33,70 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
   const handleExport = async () => {
     setExporting(true);
     try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "CRS Platform";
+      workbook.created = new Date();
+
       const entityMap = Object.fromEntries(entities.map(e => [e.id, e.entity_name]));
 
-      const columns = [
-        { header: "Account Number", key: "account_number" },
-        { header: "Account Holder Name", key: "account_holder_name" },
-        { header: "Account Holder Type", key: "account_holder_type" },
-        { header: "First Name", key: "first_name" },
-        { header: "Last Name", key: "last_name" },
-        { header: "Account Type", key: "account_type" },
-        { header: "Account Opening Date", key: "account_creation_date" },
-        { header: "RFI Entity", key: "entity_name" },
-        { header: "Reportability Status", key: "reportability_status" },
-        { header: "Year-end Cash Value", key: "year_end_cash_value" },
-        { header: "Year-end Currency", key: "year_end_cash_value_currency" },
-        { header: "Gross Payments", key: "gross_payments" },
-        { header: "Gross Payments Currency", key: "gross_payments_currency" },
-        { header: "Reporting Year", key: "reporting_year" },
-        { header: "Tax Residency 1 Country", key: "tax1_country" },
-        { header: "Tax Residency 1 TIN", key: "tax1_tin" },
-        { header: "Tax Residency 2 Country", key: "tax2_country" },
-        { header: "Tax Residency 2 TIN", key: "tax2_tin" },
-        { header: "Self Certification Obtained", key: "self_certification_obtained" },
-        { header: "Self Certification Date", key: "self_certification_date" },
-        { header: "Country of Residence", key: "country_of_residence" },
-        { header: "Email", key: "current_email" },
-        { header: "Phone", key: "current_phone" },
-        { header: "Account Status", key: "status" },
-        { header: "US Person Indicator", key: "us_person_indic" },
-        { header: "Entity Classification", key: "entity_classification" },
-        { header: "Date of Birth", key: "date_of_birth" },
-        { header: "Place of Birth", key: "place_of_birth" },
-        { header: "Pre-existing Account", key: "is_pre_existing" },
-      ];
-
-      const escapeCSV = (val) => {
-        const str = val == null ? "" : String(val);
-        return str.includes(",") || str.includes('"') || str.includes("\n")
-          ? `"${str.replace(/"/g, '""')}"` : str;
+      const styleHeader = (cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+        cell.border = { bottom: { style: "medium", color: { argb: "FF4F46E5" } } };
       };
 
-      const rows = [columns.map(c => escapeCSV(c.header)).join(",")];
+      const columns = [
+        { header: "Account Number", key: "account_number", width: 22 },
+        { header: "Account Holder Name", key: "account_holder_name", width: 28 },
+        { header: "Account Holder Type", key: "account_holder_type", width: 22 },
+        { header: "First Name", key: "first_name", width: 18 },
+        { header: "Last Name", key: "last_name", width: 18 },
+        { header: "Account Type", key: "account_type", width: 22 },
+        { header: "Account Opening Date", key: "account_creation_date", width: 24 },
+        { header: "RFI Entity", key: "entity_name", width: 28 },
+        { header: "Reportability Status", key: "reportability_status", width: 24 },
+        { header: "Year-end Cash Value", key: "year_end_cash_value", width: 22 },
+        { header: "Year-end Currency", key: "year_end_cash_value_currency", width: 20 },
+        { header: "Gross Payments", key: "gross_payments", width: 18 },
+        { header: "Gross Payments Currency", key: "gross_payments_currency", width: 24 },
+        { header: "Reporting Year", key: "reporting_year", width: 18 },
+        { header: "Tax Residency 1 Country", key: "tax1_country", width: 26 },
+        { header: "Tax Residency 1 TIN", key: "tax1_tin", width: 22 },
+        { header: "Tax Residency 2 Country", key: "tax2_country", width: 26 },
+        { header: "Tax Residency 2 TIN", key: "tax2_tin", width: 22 },
+        { header: "Self Certification Obtained", key: "self_certification_obtained", width: 28 },
+        { header: "Self Certification Date", key: "self_certification_date", width: 24 },
+        { header: "Country of Residence", key: "country_of_residence", width: 22 },
+        { header: "Email", key: "current_email", width: 28 },
+        { header: "Phone", key: "current_phone", width: 20 },
+        { header: "Account Status", key: "status", width: 18 },
+        { header: "US Person Indicator", key: "us_person_indic", width: 22 },
+        { header: "Entity Classification", key: "entity_classification", width: 26 },
+        { header: "Date of Birth", key: "date_of_birth", width: 18 },
+        { header: "Place of Birth", key: "place_of_birth", width: 20 },
+        { header: "Pre-existing Account", key: "is_pre_existing", width: 22 },
+      ];
+
+      const sheet = workbook.addWorksheet("Accounts Export", {
+        properties: { tabColor: { argb: "FF10B981" } }
+      });
+      sheet.columns = columns.map(c => ({ key: c.key, width: c.width }));
+
+      const headerRow = sheet.getRow(1);
+      columns.forEach((col, i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.value = col.header;
+        styleHeader(cell);
+      });
+      headerRow.height = 28;
+      sheet.views = [{ state: "frozen", ySplit: 1 }];
+
       filteredAccounts.forEach(a => {
         const tax1 = a.tax_residencies?.[0] || {};
         const tax2 = a.tax_residencies?.[1] || {};
-        const rowData = {
+        const row = sheet.addRow({
           account_number: a.account_number || "",
           account_holder_name: a.account_holder_name || "",
           account_holder_type: a.account_holder_type || "",
@@ -107,17 +126,48 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
           date_of_birth: a.date_of_birth || "",
           place_of_birth: a.place_of_birth || "",
           is_pre_existing: a.is_pre_existing != null ? String(a.is_pre_existing) : "",
+        });
+
+        // Color rows by reportability
+        const colors = {
+          reportable: "FFD1FAE5",
+          non_reportable: "FFF1F5F9",
+          pending_review: "FFFEF3C7",
+          excluded: "FFFEE2E2",
         };
-        rows.push(columns.map(c => escapeCSV(rowData[c.key])).join(","));
+        const bg = colors[a.reportability_status] || "FFFFFFFF";
+        row.eachCell(cell => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+        });
       });
 
-      const csvContent = rows.join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      // Summary sheet
+      const summarySheet = workbook.addWorksheet("Summary", { properties: { tabColor: { argb: "FF6366F1" } } });
+      summarySheet.columns = [{ key: "k", width: 30 }, { key: "v", width: 20 }];
+      const summaryData = [
+        ["Export Date", new Date().toLocaleDateString()],
+        ["Total Accounts Exported", filteredAccounts.length],
+        ["Reportable", filteredAccounts.filter(a => a.reportability_status === "reportable").length],
+        ["Non-Reportable", filteredAccounts.filter(a => a.reportability_status === "non_reportable").length],
+        ["Pending Review", filteredAccounts.filter(a => a.reportability_status === "pending_review").length],
+        ["Excluded", filteredAccounts.filter(a => a.reportability_status === "excluded").length],
+        ["Entity Filter", selectedEntityId === "all" ? "All Entities" : entityMap[selectedEntityId] || selectedEntityId],
+      ];
+      summaryData.forEach(([k, v], i) => {
+        const row = summarySheet.addRow([k, v]);
+        row.getCell(1).font = { bold: true };
+        row.eachCell(cell => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF" } };
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       const entityLabel = selectedEntityId === "all" ? "All_Entities" : (entityMap[selectedEntityId] || "").replace(/\s+/g, "_");
-      a.download = `CRS_Accounts_Export_${entityLabel}_${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `CRS_Accounts_Export_${entityLabel}_${new Date().toISOString().split("T")[0]}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -201,7 +251,7 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
               {exporting ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Exporting...</>
               ) : (
-                <><Download className="w-4 h-4" /> Export CSV</>
+                <><Download className="w-4 h-4" /> Export Excel</>
               )}
             </Button>
           </div>
