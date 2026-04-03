@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -10,7 +11,6 @@ import {
   AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useMemo } from "react";
 
 export default function WorkflowFlowChart({ 
   workflow, 
@@ -30,7 +30,6 @@ export default function WorkflowFlowChart({
   }, [workflow]);
 
   const buildFlowStructure = () => {
-    if (!workflow?.steps) return [];
     const visited = new Set();
     const structure = [];
     let currentId = workflow.steps[0]?.step_id;
