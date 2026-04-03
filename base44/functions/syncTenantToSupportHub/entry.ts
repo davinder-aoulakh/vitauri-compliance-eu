@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_API_URL = Deno.env.get("SUPPORT_HUB_API_URL");
-const CRS_SYNC_API_KEY_EXPECTED = Deno.env.get("CRS_SYNC_API_KEY_EXPECTED");
+const SUPPORT_HUB_API_KEY = Deno.env.get("SUPPORT_HUB_API_KEY");
 
 Deno.serve(async (req) => {
   try {
@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Invalid tenant data: missing id" }, { status: 400 });
     }
 
-    if (!SUPPORT_HUB_API_URL || !CRS_SYNC_API_KEY_EXPECTED) {
+    if (!SUPPORT_HUB_API_URL || !SUPPORT_HUB_API_KEY) {
       console.warn("Support Hub API URL or CRS_SYNC_API_KEY_EXPECTED not configured. Skipping sync.");
       await asService.entities.Tenant.update(tenant.id, { support_hub_sync_status: "failed" });
       return Response.json({ success: false, message: "Support Hub credentials not configured." });
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-crs-api-key": CRS_SYNC_API_KEY_EXPECTED,
+        "x-crs-api-key": SUPPORT_HUB_API_KEY,
       },
       body: JSON.stringify(tenantPayload),
     });
