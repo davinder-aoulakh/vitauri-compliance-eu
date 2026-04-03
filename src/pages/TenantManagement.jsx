@@ -58,7 +58,7 @@ export default function TenantManagement() {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       
-      if (currentUser.user_role !== "super_admin") {
+      if (currentUser.app_role !== "super_admin") {
         window.location.href = createPageUrl("Dashboard");
       }
     } catch (error) {
