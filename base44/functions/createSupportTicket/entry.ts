@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const allowedRoles = ["tenant_admin", "tenant_user"];
+    const allowedRoles = ["tenant_admin"];
     if (!allowedRoles.includes(user.app_role)) {
       return Response.json({ error: "Forbidden: Only tenant users can create tickets" }, { status: 403 });
     }
