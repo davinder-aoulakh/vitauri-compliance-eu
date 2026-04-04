@@ -149,7 +149,7 @@ export default function Support() {
         )}
 
         {view === "detail" && selectedTicket && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 h-[calc(100vh-10rem)] flex flex-col">
+          <div className="h-[calc(100vh-8rem)] flex flex-col">
             <TicketDetail
               ticket={selectedTicket}
               user={user}
