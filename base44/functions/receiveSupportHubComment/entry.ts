@@ -45,16 +45,32 @@ Deno.serve(async (req) => {
         console.log(`[receiveSupportHubComment] Comment ${support_hub_comment_id} updated.`);
         return Response.json({ success: true, comment_id: existing[0].id, action: "updated" });
       }
-      // If not found, fall through and create it
-      console.warn(`[receiveSupportHubComment] comment_updated but no existing comment found for ${support_hub_comment_id} — creating instead.`);
+      // Not found by hub ID — fall through to create
+      console.warn(`[receiveSupportHubComment] comment_updated: no match for ${support_hub_comment_id} — will create.`);
     }
 
-    // ── Idempotency: for comment_added, skip if already exists ───────────────
+    // ── Idempotency: skip if already exists by hub comment ID ────────────────
     if (support_hub_comment_id) {
       const existing = await base44.asServiceRole.entities.TicketComment.filter({ support_hub_comment_id });
       if (existing.length > 0) {
         console.log(`[receiveSupportHubComment] Comment ${support_hub_comment_id} already exists, skipping duplicate.`);
         return Response.json({ success: true, message: "Already processed (idempotent)" });
+      }
+    }
+
+    // ── CRS-originated echo: hub is bouncing back our own comment with a new hub ID.
+    //    Find the original CRS comment (no hub ID yet, same ticket + text) and just
+    //    stamp the hub comment ID onto it — do NOT create a duplicate. ────────────
+    if (isCrsOriginated && support_hub_comment_id) {
+      const allTicketComments = await base44.asServiceRole.entities.TicketComment.filter({
+        ticket_id: crs_internal_id,
+        source_app: "crs_compliance"
+      });
+      const match = allTicketComments.find(c => !c.support_hub_comment_id && c.comment_text === comment_text);
+      if (match) {
+        await base44.asServiceRole.entities.TicketComment.update(match.id, { support_hub_comment_id });
+        console.log(`[receiveSupportHubComment] Echo: stamped hub ID ${support_hub_comment_id} onto CRS comment ${match.id}.`);
+        return Response.json({ success: true, comment_id: match.id, action: "echo_stamped" });
       }
     }
 
