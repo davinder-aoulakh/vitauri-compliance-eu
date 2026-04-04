@@ -1,29 +1,9 @@
+import { createClient } from 'npm:@base44/sdk@0.8.23';
+
 const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
 const APP_ID = Deno.env.get("BASE44_APP_ID");
-const API_BASE = `https://api.base44.com/api/apps/${APP_ID}/entities`;
 
-// Direct REST helper — bypasses SDK auth requirement for unauthenticated webhooks
-async function dbFilter(entity, query) {
-  const res = await fetch(`${API_BASE}/${entity}/filter`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "app-id": APP_ID },
-    body: JSON.stringify(query)
-  });
-  if (!res.ok) throw new Error(`DB filter ${entity} failed: ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
-async function dbUpdate(entity, id, data) {
-  const res = await fetch(`${API_BASE}/${entity}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", "app-id": APP_ID },
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error(`DB update ${entity} failed: ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
-// Helper: only include field in update if the incoming value is explicitly provided (not undefined)
+// Helper: only include field in update if the incoming value is explicitly provided (not undefined/null)
 function ifProvided(value) {
   return value !== undefined && value !== null;
 }
@@ -68,11 +48,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown event_type: ${event_type}` }, { status: 400 });
     }
 
+    // Use service-role SDK client (no user auth needed — webhook context)
+    const base44 = createClient({ appId: APP_ID });
+
     // Fetch existing ticket — try by CRS internal id first, fallback to support_hub_ticket_id
-    let tickets = await dbFilter("Ticket", { id: crs_internal_id });
+    let tickets = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
     if (!tickets.length) {
       console.warn(`[syncSupportHubUpdates] Ticket not found by id "${crs_internal_id}", trying support_hub_ticket_id fallback...`);
-      tickets = await dbFilter("Ticket", { support_hub_ticket_id: crs_internal_id });
+      tickets = await base44.asServiceRole.entities.Ticket.filter({ support_hub_ticket_id: crs_internal_id });
     }
     if (!tickets.length) {
       console.error(`[syncSupportHubUpdates] Ticket not found by id or support_hub_ticket_id: ${crs_internal_id}`);
@@ -92,7 +75,6 @@ Deno.serve(async (req) => {
     // ── Build updates object ──────────────────────────────────────────────────
     const updates = {};
 
-    // All fields use explicit undefined check — allows empty string / null to be written
     if (ifProvided(hub_ticket_id))           updates.support_hub_ticket_id = hub_ticket_id;
     if (ifProvided(status))                  updates.status = status;
     if (ifProvided(priority))                updates.priority = priority;
@@ -114,7 +96,6 @@ Deno.serve(async (req) => {
       if (status === "Closed") {
         updates.closed_at = ifProvided(closed_at) ? closed_at : (ticket.status !== "Closed" ? new Date().toISOString() : ticket.closed_at);
       } else if (ticket.status === "Closed" && status !== "Closed") {
-        // Ticket was re-opened from Support Hub side
         updates.closed_at = null;
       }
     } else if (ifProvided(closed_at)) {
@@ -125,33 +106,23 @@ Deno.serve(async (req) => {
 
     // ── Unread notification logic ─────────────────────────────────────────────
     if (isInitialSync) {
-      // First confirmation back from Support Hub — clear any stale unread flags
       updates.has_unread_updates      = false;
       updates.unread_updates_count    = 0;
       updates.unread_update_summary   = [];
       updates.first_unread_comment_id = null;
       console.log(`[syncSupportHubUpdates] Initial sync confirmed for ticket ${crs_internal_id}`);
     } else if (!isCrsOriginated) {
-      // Real external update from Support Hub — track what changed for the tenant
       const currentSummarySet = new Set(ticket.unread_update_summary || []);
       const newSummaryItems = [];
 
-      if (ifProvided(status) && status !== ticket.status)
-        newSummaryItems.push("Status updated");
-      if (ifProvided(priority) && priority !== ticket.priority)
-        newSummaryItems.push("Priority updated");
-      if (ifProvided(ticket_type) && ticket_type !== ticket.ticket_type)
-        newSummaryItems.push("Type updated");
-      if (ifProvided(assigned_agent_name) && assigned_agent_name !== ticket.assigned_agent_name)
-        newSummaryItems.push("Agent assigned");
-      if (ifProvided(resolution_summary) && resolution_summary !== ticket.resolution_summary)
-        newSummaryItems.push("Resolution summary updated");
-      if (ifProvided(title) && title !== ticket.ticket_title)
-        newSummaryItems.push("Title updated");
-      if (ifProvided(description) && description !== ticket.description)
-        newSummaryItems.push("Description updated");
+      if (ifProvided(status) && status !== ticket.status)                                        newSummaryItems.push("Status updated");
+      if (ifProvided(priority) && priority !== ticket.priority)                                  newSummaryItems.push("Priority updated");
+      if (ifProvided(ticket_type) && ticket_type !== ticket.ticket_type)                         newSummaryItems.push("Type updated");
+      if (ifProvided(assigned_agent_name) && assigned_agent_name !== ticket.assigned_agent_name) newSummaryItems.push("Agent assigned");
+      if (ifProvided(resolution_summary) && resolution_summary !== ticket.resolution_summary)    newSummaryItems.push("Resolution summary updated");
+      if (ifProvided(title) && title !== ticket.ticket_title)                                    newSummaryItems.push("Title updated");
+      if (ifProvided(description) && description !== ticket.description)                         newSummaryItems.push("Description updated");
 
-      // Only new items not already in existing summary
       const trulyNewItems = newSummaryItems.filter(s => !currentSummarySet.has(s));
 
       if (trulyNewItems.length > 0) {
@@ -159,23 +130,22 @@ Deno.serve(async (req) => {
         updates.has_unread_updates    = true;
         updates.unread_updates_count  = (ticket.unread_updates_count || 0) + trulyNewItems.length;
         updates.unread_update_summary = Array.from(currentSummarySet);
-        console.log(`[syncSupportHubUpdates] Unread updates for ticket ${crs_internal_id}:`, trulyNewItems);
+        console.log(`[syncSupportHubUpdates] Unread updates for ticket ${ticket.id}:`, trulyNewItems);
       } else {
-        console.log(`[syncSupportHubUpdates] No new unread items for ticket ${crs_internal_id} (changes already known or no tracked fields changed)`);
+        console.log(`[syncSupportHubUpdates] No new unread items for ticket ${ticket.id}`);
       }
     } else {
-      console.log(`[syncSupportHubUpdates] CRS-originated update — skipping unread notification for ticket ${crs_internal_id}`);
+      console.log(`[syncSupportHubUpdates] CRS-originated update — skipping unread notification for ticket ${ticket.id}`);
     }
 
-    await dbUpdate("Ticket", crs_internal_id, updates);
+    await base44.asServiceRole.entities.Ticket.update(ticket.id, updates);
 
-    console.log(`[syncSupportHubUpdates] Ticket ${crs_internal_id} updated successfully. Fields applied: ${Object.keys(updates).join(", ")}. isInitialSync: ${isInitialSync}, isCrsOriginated: ${isCrsOriginated}`);
+    console.log(`[syncSupportHubUpdates] Ticket ${ticket.id} updated. Fields: ${Object.keys(updates).join(", ")}. isInitialSync: ${isInitialSync}, isCrsOriginated: ${isCrsOriginated}`);
     return Response.json({
       success: true,
       message: "Ticket updated",
       fields_applied: Object.keys(updates),
-      is_initial_sync: isInitialSync,
-      unread_items_added: updates.unread_update_summary ? updates.unread_update_summary.length : 0
+      is_initial_sync: isInitialSync
     });
 
   } catch (error) {
