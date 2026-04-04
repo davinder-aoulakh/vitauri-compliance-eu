@@ -252,10 +252,28 @@ export default function TicketList({ tickets, onSelectTicket, onCreateNew }) {
                             : ticket.ticket_title}
                         </span>
                         {ticket.has_unread_updates && (
-                          <span className="inline-flex items-center gap-0.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold flex-shrink-0">
-                            <Bell className="w-3 h-3" />
-                            {ticket.unread_updates_count || 1}
-                          </span>
+                          <div className="relative group flex-shrink-0">
+                            <span className="inline-flex items-center gap-0.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold cursor-default">
+                              <Bell className="w-3 h-3" />
+                              {ticket.unread_updates_count || 1}
+                            </span>
+                            {ticket.unread_update_summary?.length > 0 && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 hidden group-hover:block">
+                                <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap min-w-[160px]">
+                                  <p className="font-semibold text-slate-300 mb-1">Updates:</p>
+                                  <ul className="space-y-0.5">
+                                    {ticket.unread_update_summary.map((s, i) => (
+                                      <li key={i} className="flex items-center gap-1.5">
+                                        <span className="w-1 h-1 rounded-full bg-red-400 flex-shrink-0" />
+                                        {s}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
