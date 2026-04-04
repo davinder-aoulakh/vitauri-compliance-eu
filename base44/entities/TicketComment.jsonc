@@ -1,0 +1,80 @@
+{
+  "name": "TicketComment",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "Parent ticket reference"
+    },
+    "comment_text": {
+      "type": "string",
+      "description": "Content of the comment"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "User ID of comment author"
+    },
+    "created_by_user_email": {
+      "type": "string",
+      "description": "Email of comment author"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Display name of comment author"
+    },
+    "created_by_role": {
+      "type": "string",
+      "enum": [
+        "tenant_admin",
+        "tenant_user",
+        "support_team"
+      ],
+      "description": "Role of the comment author"
+    },
+    "attachment_urls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_size": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Attached files on comment"
+    },
+    "is_internal": {
+      "type": "boolean",
+      "default": false,
+      "description": "Internal notes not shown to tenant"
+    },
+    "support_hub_comment_id": {
+      "type": "string",
+      "description": "ID assigned by Support Hub (idempotency key)"
+    },
+    "source_app": {
+      "type": "string",
+      "enum": [
+        "crs_compliance",
+        "support_hub"
+      ],
+      "default": "crs_compliance",
+      "description": "Prevents echo loops"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "comment_text",
+    "created_by_role",
+    "source_app"
+  ]
+}

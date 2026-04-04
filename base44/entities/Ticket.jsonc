@@ -1,0 +1,135 @@
+{
+  "name": "Ticket",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "Human readable ID e.g. CRS-000001"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Which tenant owns this ticket"
+    },
+    "tenant_user_id": {
+      "type": "string",
+      "description": "Which user created it"
+    },
+    "ticket_title": {
+      "type": "string",
+      "description": "Title/subject of the ticket"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description of the issue"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Medium",
+      "description": "Ticket priority level"
+    },
+    "ticket_type": {
+      "type": "string",
+      "enum": [
+        "Issue",
+        "Bug",
+        "Support Request",
+        "Other"
+      ],
+      "default": "Support Request",
+      "description": "Type of support ticket"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "In Progress",
+        "Waiting for Customer",
+        "Resolved",
+        "Closed"
+      ],
+      "default": "Open",
+      "description": "Current ticket status"
+    },
+    "attachment_urls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_size": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Attached files"
+    },
+    "support_hub_ticket_id": {
+      "type": "string",
+      "description": "ID assigned by Support Hub after sync"
+    },
+    "support_hub_sync_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "synced",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Sync status with Support Hub"
+    },
+    "has_unread_updates": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if Support Hub sent updates not yet seen by tenant"
+    },
+    "unread_updates_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Count of unread updates"
+    },
+    "unread_update_summary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "e.g. ['Status updated', 'New comment added']"
+    },
+    "first_unread_comment_id": {
+      "type": "string",
+      "description": "ID of oldest unread comment (for UI scroll separator)"
+    },
+    "assigned_agent_name": {
+      "type": "string",
+      "description": "Populated by Support Hub webhook"
+    },
+    "assigned_agent_id": {
+      "type": "string",
+      "description": "Populated by Support Hub webhook"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the ticket was closed"
+    }
+  },
+  "required": [
+    "ticket_title",
+    "description",
+    "tenant_id",
+    "tenant_user_id"
+  ]
+}
