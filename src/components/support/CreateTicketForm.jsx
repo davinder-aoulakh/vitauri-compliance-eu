@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Paperclip, X, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Paperclip, X, Loader2, CheckCircle2, ArrowLeft, UploadCloud, FileText } from "lucide-react";
 
 export default function CreateTicketForm({ onBack, onSuccess }) {
   const [form, setForm] = useState({
@@ -17,12 +17,13 @@ export default function CreateTicketForm({ onBack, onSuccess }) {
   });
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
 
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
+  const uploadFiles = useCallback(async (files) => {
     if (!files.length) return;
     setUploading(true);
     try {
@@ -39,7 +40,22 @@ export default function CreateTicketForm({ onBack, onSuccess }) {
       setError("File upload failed: " + err.message);
     }
     setUploading(false);
+  }, []);
+
+  const handleFileInput = (e) => {
+    uploadFiles(Array.from(e.target.files));
+    e.target.value = "";
   };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) uploadFiles(files);
+  };
+
+  const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
+  const handleDragLeave = () => setDragOver(false);
 
   const removeAttachment = (idx) => {
     setAttachments(prev => prev.filter((_, i) => i !== idx));
@@ -145,17 +161,54 @@ export default function CreateTicketForm({ onBack, onSuccess }) {
             {/* Attachments */}
             <div>
               <Label>Attachments</Label>
-              <label className="mt-1 flex items-center gap-2 px-4 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-500 w-full">
-                <Paperclip className="w-4 h-4" />
-                {uploading ? "Uploading..." : "Click to attach files"}
-                <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
-              </label>
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                className={`mt-1 flex flex-col items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-xl cursor-pointer transition-all select-none ${
+                  dragOver
+                    ? "border-indigo-400 bg-indigo-50"
+                    : "border-slate-300 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/40"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileInput}
+                  disabled={uploading}
+                />
+                {uploading ? (
+                  <Loader2 className="w-7 h-7 text-indigo-400 animate-spin" />
+                ) : (
+                  <UploadCloud className={`w-7 h-7 ${dragOver ? "text-indigo-500" : "text-slate-400"}`} />
+                )}
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-600">
+                    {uploading ? "Uploading..." : dragOver ? "Drop files here" : "Drag & drop files here"}
+                  </p>
+                  {!uploading && !dragOver && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      or <span className="text-indigo-600 font-medium underline underline-offset-2">click to attach files</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {attachments.length > 0 && (
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-2 space-y-1.5">
                   {attachments.map((a, i) => (
-                    <li key={i} className="flex items-center justify-between text-sm bg-slate-50 px-3 py-1.5 rounded">
-                      <span className="truncate">{a.file_name}</span>
-                      <button type="button" onClick={() => removeAttachment(i)}>
+                    <li key={i} className="flex items-center justify-between text-sm bg-white border border-slate-200 px-3 py-2 rounded-lg">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="truncate text-slate-700">{a.file_name}</span>
+                        <span className="text-xs text-slate-400 flex-shrink-0">
+                          {a.file_size ? `(${(a.file_size / 1024).toFixed(0)} KB)` : ""}
+                        </span>
+                      </div>
+                      <button type="button" onClick={() => removeAttachment(i)} className="ml-2 flex-shrink-0">
                         <X className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
                       </button>
                     </li>
