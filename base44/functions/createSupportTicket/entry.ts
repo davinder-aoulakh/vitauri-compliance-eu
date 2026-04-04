@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-crs-api-key": SUPPORT_HUB_API_KEY
+            "x-api-key": SUPPORT_HUB_API_KEY
           },
           body: JSON.stringify({
             crs_ticket_id: newTicket.id,
