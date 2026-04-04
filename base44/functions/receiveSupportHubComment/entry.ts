@@ -89,15 +89,17 @@ Deno.serve(async (req) => {
 
     // ── Update Ticket unread badge — suppress if CRS-originated ───────────────
     if (!isCrsOriginated) {
-      const tickets = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
-      if (tickets.length > 0) {
-        const ticket = tickets[0];
+      let ticket = null;
+      try { ticket = await base44.asServiceRole.entities.Ticket.get(crs_internal_id); } catch (e) { /* not found */ }
+      if (ticket) {
         await base44.asServiceRole.entities.Ticket.update(crs_internal_id, {
           has_unread_updates:      true,
           unread_updates_count:    (ticket.unread_updates_count || 0) + 1,
           unread_update_summary:   [...(ticket.unread_update_summary || []), "New comment added"],
           first_unread_comment_id: ticket.first_unread_comment_id || newComment.id
         });
+      } else {
+        console.warn(`[receiveSupportHubComment] Could not find ticket ${crs_internal_id} to update unread badge.`);
       }
     } else {
       console.log(`[receiveSupportHubComment] CRS-originated comment — skipping unread notification.`);

@@ -51,18 +51,21 @@ Deno.serve(async (req) => {
     // Use service-role SDK client (no user auth needed — webhook context)
     const base44 = createClient({ appId: APP_ID });
 
-    // Fetch existing ticket — try by CRS internal id first, fallback to support_hub_ticket_id
-    let tickets = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
-    if (!tickets.length) {
+    // Fetch existing ticket — use .get() for id lookup (filter() doesn't support id)
+    let ticket = null;
+    try {
+      ticket = await base44.asServiceRole.entities.Ticket.get(crs_internal_id);
+    } catch (e) {
       console.warn(`[syncSupportHubUpdates] Ticket not found by id "${crs_internal_id}", trying support_hub_ticket_id fallback...`);
-      tickets = await base44.asServiceRole.entities.Ticket.filter({ support_hub_ticket_id: crs_internal_id });
     }
-    if (!tickets.length) {
+    if (!ticket) {
+      const byHub = await base44.asServiceRole.entities.Ticket.filter({ support_hub_ticket_id: crs_internal_id });
+      if (byHub.length > 0) ticket = byHub[0];
+    }
+    if (!ticket) {
       console.error(`[syncSupportHubUpdates] Ticket not found by id or support_hub_ticket_id: ${crs_internal_id}`);
       return Response.json({ error: "Ticket not found", crs_internal_id }, { status: 404 });
     }
-
-    const ticket = tickets[0];
     const isCrsOriginated = source_app === "crs_compliance";
 
     // isInitialSync: ONLY true when this is the first confirmation from Support Hub
