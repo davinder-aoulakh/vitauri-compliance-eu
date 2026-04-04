@@ -68,11 +68,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown event_type: ${event_type}` }, { status: 400 });
     }
 
-    // Fetch existing ticket
-    const tickets = await dbFilter("Ticket", { id: crs_internal_id });
+    // Fetch existing ticket — try by CRS internal id first, fallback to support_hub_ticket_id
+    let tickets = await dbFilter("Ticket", { id: crs_internal_id });
     if (!tickets.length) {
-      console.error(`[syncSupportHubUpdates] Ticket ${crs_internal_id} not found`);
-      return Response.json({ error: "Ticket not found" }, { status: 404 });
+      console.warn(`[syncSupportHubUpdates] Ticket not found by id "${crs_internal_id}", trying support_hub_ticket_id fallback...`);
+      tickets = await dbFilter("Ticket", { support_hub_ticket_id: crs_internal_id });
+    }
+    if (!tickets.length) {
+      console.error(`[syncSupportHubUpdates] Ticket not found by id or support_hub_ticket_id: ${crs_internal_id}`);
+      return Response.json({ error: "Ticket not found", crs_internal_id }, { status: 404 });
     }
 
     const ticket = tickets[0];
