@@ -54,16 +54,16 @@ Deno.serve(async (req) => {
     // Fetch existing ticket — use .get() for id lookup (filter() doesn't support id)
     let ticket = null;
     try {
-      ticket = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
+      ticket = await base44.asServiceRole.entities.Ticket.get(crs_internal_id);
     } catch (e) {
-      console.warn(`[syncSupportHubUpdates] Ticket not found by id "${crs_internal_id}", trying support_hub_ticket_id fallback...`);
+      console.warn(`[syncSupportHubUpdates] Ticket not found by id "${crs_internal_id}", trying hub_ticket_id fallback...`);
     }
-    if (!ticket) {
-      const byHub = await base44.asServiceRole.entities.Ticket.filter({ support_hub_ticket_id: support_hub_ticket_id });
+    if (!ticket && hub_ticket_id) {
+      const byHub = await base44.asServiceRole.entities.Ticket.filter({ support_hub_ticket_id: hub_ticket_id });
       if (byHub.length > 0) ticket = byHub[0];
     }
     if (!ticket) {
-      console.error(`[syncSupportHubUpdates] Ticket not found by id or support_hub_ticket_id: ${crs_internal_id}`);
+      console.error(`[syncSupportHubUpdates] Ticket not found by crs_internal_id or support_hub_ticket_id: ${crs_internal_id}`);
       return Response.json({ error: "Ticket not found", crs_internal_id }, { status: 404 });
     }
     const isCrsOriginated = source_app === "crs_compliance";
