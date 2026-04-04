@@ -119,9 +119,17 @@ export default function Support() {
       <div className="p-6 md:p-8 max-w-6xl mx-auto">
         {/* Page Header */}
         {view === "list" && (
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Compliance Support</h1>
-            <p className="text-slate-500 mt-1">Manage your support tickets and communicate with our support team.</p>
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Compliance Support</h1>
+              <p className="text-slate-500 mt-1">Raise tickets, track progress, and access help resources.</p>
+            </div>
+            <button
+              onClick={() => setView("create")}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow transition-colors"
+            >
+              <span className="text-lg leading-none">+</span> New Ticket
+            </button>
           </div>
         )}
 
