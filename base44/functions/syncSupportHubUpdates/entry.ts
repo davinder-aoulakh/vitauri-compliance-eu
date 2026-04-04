@@ -1,6 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClient } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
+const BASE44_APP_ID = Deno.env.get("BASE44_APP_ID");
+
+// Initialize a service-role client at module level — safe for unauthenticated webhooks
+const base44 = createClient({ appId: BASE44_APP_ID });
 
 Deno.serve(async (req) => {
   try {
@@ -42,11 +46,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown event_type: ${event_type}` }, { status: 400 });
     }
 
-    // Use service role directly — no user auth needed for incoming webhooks
-    const base44 = createClientFromRequest(req);
-
     // Fetch existing ticket
-    const tickets = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
+    const tickets = await base44.entities.Ticket.filter({ id: crs_internal_id });
     if (!tickets.length) {
       console.error(`[syncSupportHubUpdates] Ticket ${crs_internal_id} not found`);
       return Response.json({ error: "Ticket not found" }, { status: 404 });
@@ -122,7 +123,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    await base44.asServiceRole.entities.Ticket.update(crs_internal_id, updates);
+    await base44.entities.Ticket.update(crs_internal_id, updates);
 
     console.log(`[syncSupportHubUpdates] Ticket ${crs_internal_id} updated. Fields: ${Object.keys(updates).join(", ")}. Initial: ${isInitialSync}, CRS-originated: ${isCrsOriginated}`);
     return Response.json({ success: true, message: "Ticket updated", fields_applied: Object.keys(updates) });
