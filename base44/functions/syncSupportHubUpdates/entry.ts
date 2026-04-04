@@ -4,18 +4,16 @@ const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
 
 Deno.serve(async (req) => {
   try {
-    // Validate shared secret (supports both header names)
+    // Validate shared secret FIRST before anything else
     const incomingSecret = req.headers.get("x-shared-secret") || req.headers.get("x-webhook-secret");
     if (!SUPPORT_HUB_SHARED_SECRET || incomingSecret !== SUPPORT_HUB_SHARED_SECRET) {
       console.warn("[syncSupportHubUpdates] Unauthorized: invalid shared secret");
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const base44 = createClientFromRequest(req);
     const body = await req.json();
 
     const {
-      event_type,
       crs_internal_id,
       hub_ticket_id,
       status,
@@ -23,13 +21,15 @@ Deno.serve(async (req) => {
       ticket_type,
       assigned_agent_name,
       assigned_agent_id,
-      source_app,
       closed_at
     } = body;
 
     if (!crs_internal_id) {
       return Response.json({ error: "crs_internal_id is required" }, { status: 400 });
     }
+
+    // Use service role directly — no user auth needed for incoming webhooks
+    const base44 = createClientFromRequest(req);
 
     // Fetch existing ticket
     const tickets = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
@@ -40,11 +40,10 @@ Deno.serve(async (req) => {
 
     const ticket = tickets[0];
 
-    // Detect initial sync confirmation (ticket was pending and now getting its first update)
+    // Detect initial sync confirmation
     const isInitialSync = ticket.support_hub_sync_status === "pending" || !ticket.support_hub_ticket_id;
 
     if (isInitialSync) {
-      // This is the Support Hub confirming the ticket was received — reset unread flags
       await base44.asServiceRole.entities.Ticket.update(crs_internal_id, {
         support_hub_ticket_id: hub_ticket_id || ticket.support_hub_ticket_id,
         support_hub_sync_status: "synced",

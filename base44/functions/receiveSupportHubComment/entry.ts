@@ -4,32 +4,32 @@ const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
 
 Deno.serve(async (req) => {
   try {
-    // Validate shared secret
+    // Validate shared secret FIRST before anything else
     const incomingSecret = req.headers.get("x-shared-secret");
     if (!SUPPORT_HUB_SHARED_SECRET || incomingSecret !== SUPPORT_HUB_SHARED_SECRET) {
       console.warn("[receiveSupportHubComment] Unauthorized: invalid shared secret");
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const base44 = createClientFromRequest(req);
     const body = await req.json();
 
     const {
       crs_internal_id,
-      support_hub_ticket_id,
       support_hub_comment_id,
       comment_text,
       is_internal,
       author_name,
       author_email,
       attachment_urls,
-      source_app,
       crs_comment_id
     } = body;
 
     if (!crs_internal_id || !comment_text) {
       return Response.json({ error: "crs_internal_id and comment_text are required" }, { status: 400 });
     }
+
+    // Use service role directly — no user auth needed for incoming webhooks
+    const base44 = createClientFromRequest(req);
 
     // Idempotency: check if comment already exists
     if (support_hub_comment_id) {
@@ -41,13 +41,12 @@ Deno.serve(async (req) => {
     }
 
     // Echo loop prevention: if crs_comment_id is set, this is our own comment bouncing back
-    // Just store the hub's ID on the existing comment and skip notification
     if (crs_comment_id) {
       try {
         await base44.asServiceRole.entities.TicketComment.update(crs_comment_id, {
           support_hub_comment_id
         });
-        console.log(`[receiveSupportHubComment] Echo detected for crs_comment_id ${crs_comment_id}. Stored hub ID, skipping notification.`);
+        console.log(`[receiveSupportHubComment] Echo detected for crs_comment_id ${crs_comment_id}. Stored hub ID.`);
         return Response.json({ success: true, message: "Echo detected, stored hub ID" });
       } catch (e) {
         console.warn("[receiveSupportHubComment] Could not update crs_comment_id:", e.message);
