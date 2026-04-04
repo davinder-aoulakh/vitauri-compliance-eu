@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     const {
       event_type,
       crs_internal_id,
-      hub_ticket_id,
+      support_hub_ticket_id: hub_ticket_id,
       status,
       priority,
       ticket_type,
