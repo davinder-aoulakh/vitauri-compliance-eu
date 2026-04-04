@@ -19,9 +19,16 @@ Deno.serve(async (req) => {
       status,
       priority,
       ticket_type,
+      title,
+      description,
+      category,
+      resolution_summary,
+      root_cause,
       assigned_agent_name,
       assigned_agent_id,
-      closed_at
+      resolved_at,
+      closed_at,
+      attachment_urls
     } = body;
 
     if (!crs_internal_id) {
@@ -59,56 +66,53 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, message: "Initial sync confirmed" });
     }
 
-    // Real update — detect what changed
-    const changes = {};
+    // ── Always apply ALL fields from the incoming payload ──────────────────
+    // No diff detection — CRS always receives and stores the full current state
+    // from Support Hub. Build a summary of what was sent for the unread badge.
     const changeSummary = [];
 
-    if (status && status !== ticket.status) {
-      changes.status = status;
-      changeSummary.push(`Status updated to ${status}`);
-      if (status === "Closed" && closed_at) {
-        changes.closed_at = closed_at;
-      }
-    }
+    if (status && status !== ticket.status)                       changeSummary.push(`Status updated to ${status}`);
+    if (priority && priority !== ticket.priority)                 changeSummary.push(`Priority changed to ${priority}`);
+    if (ticket_type && ticket_type !== ticket.ticket_type)        changeSummary.push(`Type changed to ${ticket_type}`);
+    if (assigned_agent_name && assigned_agent_name !== ticket.assigned_agent_name) changeSummary.push(`Assigned to ${assigned_agent_name}`);
+    if (resolution_summary && resolution_summary !== ticket.resolution_summary)    changeSummary.push(`Resolution summary updated`);
+    if (status === "Closed" || status === "Resolved")             changeSummary.push(`Ticket ${status.toLowerCase()}`);
 
-    if (priority && priority !== ticket.priority) {
-      changes.priority = priority;
-      changeSummary.push(`Priority changed to ${priority}`);
-    }
+    // Deduplicate summary entries
+    const uniqueSummary = [...new Set(changeSummary)];
 
-    if (ticket_type && ticket_type !== ticket.ticket_type) {
-      changes.ticket_type = ticket_type;
-      changeSummary.push(`Type changed to ${ticket_type}`);
-    }
-
-    if (assigned_agent_name && assigned_agent_name !== ticket.assigned_agent_name) {
-      changes.assigned_agent_name = assigned_agent_name;
-      changes.assigned_agent_id = assigned_agent_id || ticket.assigned_agent_id;
-      changeSummary.push(`Assigned to ${assigned_agent_name}`);
-    }
-
-    if (hub_ticket_id && hub_ticket_id !== ticket.support_hub_ticket_id) {
-      changes.support_hub_ticket_id = hub_ticket_id;
-    }
-
-    if (changeSummary.length === 0) {
-      console.log(`[syncSupportHubUpdates] No meaningful changes for ticket ${crs_internal_id}`);
-      return Response.json({ success: true, message: "No changes detected" });
-    }
-
-    const currentCount = ticket.unread_updates_count || 0;
+    const currentCount   = ticket.unread_updates_count  || 0;
     const currentSummary = ticket.unread_update_summary || [];
 
-    await base44.asServiceRole.entities.Ticket.update(crs_internal_id, {
-      ...changes,
+    // Build the update payload — include every field that was sent
+    const updatePayload = {
       support_hub_sync_status: "synced",
-      has_unread_updates: true,
-      unread_updates_count: currentCount + changeSummary.length,
-      unread_update_summary: [...currentSummary, ...changeSummary]
-    });
+      has_unread_updates:      uniqueSummary.length > 0,
+      unread_updates_count:    currentCount + uniqueSummary.length,
+      unread_update_summary:   [...currentSummary, ...uniqueSummary]
+    };
 
-    console.log(`[syncSupportHubUpdates] Ticket ${crs_internal_id} updated:`, changeSummary);
-    return Response.json({ success: true, changes: changeSummary });
+    if (hub_ticket_id)       updatePayload.support_hub_ticket_id = hub_ticket_id;
+    if (status)              updatePayload.status = status;
+    if (priority)            updatePayload.priority = priority;
+    if (ticket_type)         updatePayload.ticket_type = ticket_type;
+    if (title)               updatePayload.ticket_title = title;
+    if (description)         updatePayload.description = description;
+    if (category)            updatePayload.category = category;
+    if (resolution_summary)  updatePayload.resolution_summary = resolution_summary;
+    if (root_cause)          updatePayload.root_cause = root_cause;
+    if (assigned_agent_name) updatePayload.assigned_agent_name = assigned_agent_name;
+    if (assigned_agent_id)   updatePayload.assigned_agent_id   = assigned_agent_id;
+    if (resolved_at)         updatePayload.resolved_at = resolved_at;
+    if (closed_at)           updatePayload.closed_at   = closed_at;
+    if (Array.isArray(attachment_urls) && attachment_urls.length > 0) {
+      updatePayload.attachment_urls = attachment_urls;
+    }
+
+    await base44.asServiceRole.entities.Ticket.update(crs_internal_id, updatePayload);
+
+    console.log(`[syncSupportHubUpdates] Ticket ${crs_internal_id} updated. Fields applied:`, Object.keys(updatePayload).join(", "));
+    return Response.json({ success: true, fields_applied: Object.keys(updatePayload), changes: uniqueSummary });
 
   } catch (error) {
     console.error("[syncSupportHubUpdates] Error:", error.message);
