@@ -215,7 +215,6 @@ export default function Layout({ children }) {
     "CRS Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "advanced_reporting"},
     "FATCA Reports": { url: createPageUrl("Reports"), icon: FileText, roles: ["tenant_admin", "tenant_user"], featureKey: "advanced_reporting"},
     "AI Assistant": { url: createPageUrl("ComplianceAssistant"), icon: Shield, roles: ["tenant_admin", "tenant_user"], featureKey: "compliance_assistant" },
-    "Compliance Support": { url: createPageUrl("Support"), icon: Headphones, roles: ["tenant_admin"], featureKey: null },
 
 
 
@@ -249,7 +248,7 @@ export default function Layout({ children }) {
   // Get menu order from tenant settings or use defaults
   const navigationSettings = tenant?.navigation_settings || {};
   const crsMenuOrder = navigationSettings.crs_menu_order || 
-    ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant", "Compliance Support"];
+    ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant"];
   const fatcaMenuOrder = navigationSettings.fatca_menu_order || 
     ["Dashboard", "Activity Log", "FFI Entities", "Accounts", "FATCA Reports"];
 
@@ -295,6 +294,13 @@ export default function Layout({ children }) {
     icon: Shield,
     roles: ["tenant_admin"],
     featureKey: "validation_rules"
+  },
+  {
+    title: "Compliance Support",
+    url: createPageUrl("Support"),
+    icon: Headphones,
+    roles: ["tenant_admin"],
+    featureKey: "compliance_support"
   }
 ]);
 
@@ -562,7 +568,12 @@ const superAdminNav = filterMenuItems([
                             >
                               <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
                                 <item.icon className="w-4 h-4" />
-                                <span className="font-medium text-sm">{item.title}</span>
+                                <span className="font-medium text-sm flex-1">{item.title}</span>
+                                {item.title === "Compliance Support" && supportUnreadCount > 0 && (
+                                  <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold min-w-[18px] text-center">
+                                    {supportUnreadCount}
+                                  </span>
+                                )}
                               </Link>
                             </SidebarMenuButton>
                           </SidebarMenuItem>
