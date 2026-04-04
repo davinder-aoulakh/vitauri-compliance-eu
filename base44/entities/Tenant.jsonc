@@ -1,4 +1,5 @@
 {
+  "name": "Tenant",
   "type": "object",
   "properties": {
     "name": {
@@ -184,6 +185,11 @@
           "type": "boolean",
           "default": true
         },
+        "compliance_support": {
+          "type": "boolean",
+          "default": false,
+          "description": "Compliance Support ticket management for tenant admins"
+        },
         "advanced_reporting": {
           "type": "boolean",
           "default": true
@@ -217,6 +223,5 @@
   "required": [
     "name",
     "jurisdiction"
-  ],
-  "name": "Tenant"
+  ]
 }
