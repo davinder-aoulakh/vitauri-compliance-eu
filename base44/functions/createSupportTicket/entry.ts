@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_API_URL = Deno.env.get("SUPPORT_HUB_API_URL");
-const INCOMING_TICKET_API_KEY = Deno.env.get("INCOMING_TICKET_API_KEY");
+const SUPPORT_HUB_API_KEY = Deno.env.get("SUPPORT_HUB_API_KEY");
 
 Deno.serve(async (req) => {
   try {
@@ -56,13 +56,13 @@ Deno.serve(async (req) => {
     });
 
     // Sync to Support Hub
-    if (SUPPORT_HUB_API_URL && INCOMING_TICKET_API_KEY) {
+    if (SUPPORT_HUB_API_URL && SUPPORT_HUB_API_KEY) {
       try {
         const response = await fetch(`${SUPPORT_HUB_API_URL}/createTicketFromCRS`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": INCOMING_TICKET_API_KEY
+            "x-crs-api-key": SUPPORT_HUB_API_KEY
           },
           body: JSON.stringify({
             crs_ticket_id: newTicket.id,
