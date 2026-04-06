@@ -54,9 +54,10 @@ function UnreadBadge({ ticket }) {
       {count}
       {show && (
         <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[9999] pointer-events-none"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[9999] pointer-events-none"
           style={{ minWidth: 220 }}
         >
+          <div className="w-0 h-0 mx-auto border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-slate-900" />
           <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-2xl max-h-48 overflow-y-auto">
             <p className="font-semibold text-slate-300 mb-1.5">Updates:</p>
             <ul className="space-y-1">
@@ -68,7 +69,6 @@ function UnreadBadge({ ticket }) {
               ))}
             </ul>
           </div>
-          <div className="w-0 h-0 mx-auto border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
         </div>
       )}
     </span>
