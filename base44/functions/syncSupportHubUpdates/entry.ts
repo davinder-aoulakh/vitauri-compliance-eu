@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
 
     const {
       event_type,
-      crs_internal_id,
+      crs_internal_id: _crs_internal_id,
+      crs_ticket_id: _crs_ticket_id,
       support_hub_ticket_id: hub_ticket_id,
       status,
       priority,
@@ -40,8 +41,11 @@ Deno.serve(async (req) => {
       source_app
     } = body;
 
+    // Accept both field names — Support Hub may send either crs_ticket_id or crs_internal_id
+    const crs_internal_id = _crs_internal_id || _crs_ticket_id;
+
     if (!event_type || !crs_internal_id) {
-      return Response.json({ error: "Missing event_type or crs_internal_id" }, { status: 400 });
+      return Response.json({ error: "Missing event_type or crs_internal_id/crs_ticket_id" }, { status: 400 });
     }
 
     if (event_type !== "ticket_updated") {
