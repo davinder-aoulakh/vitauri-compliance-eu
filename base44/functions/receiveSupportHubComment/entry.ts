@@ -2,7 +2,6 @@ import { createClient } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
 const APP_ID = Deno.env.get("BASE44_APP_ID");
-const SERVICE_TOKEN = Deno.env.get("BASE44_SERVICE_TOKEN");
 
 Deno.serve(async (req) => {
   try {
@@ -36,7 +35,7 @@ Deno.serve(async (req) => {
     const isCrsOriginated = source_app === "crs_compliance";
 
     // Use service-role SDK client (no user auth needed — webhook context)
-    const base44 = createClient({ appId: APP_ID, serviceToken: SERVICE_TOKEN });
+    const base44 = createClient({ appId: APP_ID });
 
     // ── comment_updated: find and update existing comment ──────────────────────
     if (event_type === "comment_updated" && support_hub_comment_id) {
