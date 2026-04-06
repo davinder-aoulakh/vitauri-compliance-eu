@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
             reopen_comment: reopen_comment || "Ticket reopened by tenant admin.",
             crs_comment_id: auditComment.id,
             user_details: {
-              user_id: user.id,
+              id: user.id,
               email: user.email,
               name: user.full_name,
               role: user.app_role
