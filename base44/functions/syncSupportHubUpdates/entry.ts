@@ -1,7 +1,6 @@
-import { createClient } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
-const APP_ID = Deno.env.get("BASE44_APP_ID");
 
 // Helper: only include field in update if the incoming value is explicitly provided (not undefined/null)
 function ifProvided(value) {
@@ -52,23 +51,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown event_type: ${event_type}` }, { status: 400 });
     }
 
-    // Use service-role SDK client (no user auth needed — webhook context)
-    const base44 = createClient({ appId: APP_ID });
+    const base44 = createClientFromRequest(req);
 
-    // Fetch existing ticket — use .get() for id lookup (filter() doesn't support id)
+    // Fetch existing ticket by id using filter (same pattern as reference)
     let ticket = null;
-    try {
-      ticket = await base44.asServiceRole.entities.Ticket.get(crs_internal_id);
-    } catch (e) {
-      console.warn(`[syncSupportHubUpdates] Ticket not found by id "${crs_internal_id}", trying hub_ticket_id fallback...`);
-    }
+    const byId = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
+    if (byId.length > 0) ticket = byId[0];
+
     if (!ticket && hub_ticket_id) {
       const byHub = await base44.asServiceRole.entities.Ticket.filter({ support_hub_ticket_id: hub_ticket_id });
       if (byHub.length > 0) ticket = byHub[0];
     }
     if (!ticket) {
-      console.error(`[syncSupportHubUpdates] Ticket not found by crs_internal_id or support_hub_ticket_id: ${crs_internal_id}`);
-      return Response.json({ error: "Ticket not found", crs_internal_id }, { status: 404 });
+      console.log(`[syncSupportHubUpdates] Ticket not found for crs_internal_id: ${crs_internal_id}. Skipping.`);
+      return Response.json({ success: true, message: "Ticket not found, skipping." });
     }
     const isCrsOriginated = source_app === "crs_compliance";
 
