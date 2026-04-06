@@ -1,7 +1,6 @@
-import { createClient } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
-const APP_ID = Deno.env.get("BASE44_APP_ID");
 
 Deno.serve(async (req) => {
   try {
@@ -34,8 +33,7 @@ Deno.serve(async (req) => {
 
     const isCrsOriginated = source_app === "crs_compliance";
 
-    // Use service-role SDK client (no user auth needed — webhook context)
-    const base44 = createClient({ appId: APP_ID });
+    const base44 = createClientFromRequest(req);
 
     // ── comment_updated: find and update existing comment ──────────────────────
     if (event_type === "comment_updated" && support_hub_comment_id) {
@@ -89,8 +87,8 @@ Deno.serve(async (req) => {
 
     // ── Update Ticket unread badge — suppress if CRS-originated ───────────────
     if (!isCrsOriginated) {
-      let ticket = null;
-      try { ticket = await base44.asServiceRole.entities.Ticket.get(crs_internal_id); } catch (e) { /* not found */ }
+      const ticketResults = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
+      const ticket = ticketResults[0] || null;
       if (ticket) {
         await base44.asServiceRole.entities.Ticket.update(crs_internal_id, {
           has_unread_updates:      true,
