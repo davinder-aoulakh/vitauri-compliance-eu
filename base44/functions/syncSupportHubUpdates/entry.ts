@@ -2,6 +2,7 @@ import { createClient } from 'npm:@base44/sdk@0.8.23';
 
 const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
 const APP_ID = Deno.env.get("BASE44_APP_ID");
+const SERVICE_TOKEN = Deno.env.get("BASE44_SERVICE_TOKEN");
 
 // Helper: only include field in update if the incoming value is explicitly provided (not undefined/null)
 function ifProvided(value) {
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
     }
 
     // Use service-role SDK client (no user auth needed — webhook context)
-    const base44 = createClient({ appId: APP_ID });
+    const base44 = createClient({ appId: APP_ID, serviceToken: SERVICE_TOKEN });
 
     // Fetch existing ticket — use .get() for id lookup (filter() doesn't support id)
     let ticket = null;
