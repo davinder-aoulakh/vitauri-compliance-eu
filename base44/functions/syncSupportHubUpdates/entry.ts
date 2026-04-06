@@ -118,22 +118,28 @@ Deno.serve(async (req) => {
       const currentSummarySet = new Set(ticket.unread_update_summary || []);
       const newSummaryItems = [];
 
-      if (ifProvided(status) && status !== ticket.status)                                        newSummaryItems.push("Status updated");
-      if (ifProvided(priority) && priority !== ticket.priority)                                  newSummaryItems.push("Priority updated");
-      if (ifProvided(ticket_type) && ticket_type !== ticket.ticket_type)                         newSummaryItems.push("Type updated");
-      if (ifProvided(assigned_agent_name) && assigned_agent_name !== ticket.assigned_agent_name) newSummaryItems.push("Agent assigned");
-      if (ifProvided(resolution_summary) && resolution_summary !== ticket.resolution_summary)    newSummaryItems.push("Resolution summary updated");
-      if (ifProvided(title) && title !== ticket.ticket_title)                                    newSummaryItems.push("Title updated");
-      if (ifProvided(description) && description !== ticket.description)                         newSummaryItems.push("Description updated");
+      if (ifProvided(status) && status !== ticket.status)
+        newSummaryItems.push(`Status: ${ticket.status} → ${status}`);
+      if (ifProvided(priority) && priority !== ticket.priority)
+        newSummaryItems.push(`Priority: ${ticket.priority} → ${priority}`);
+      if (ifProvided(ticket_type) && ticket_type !== ticket.ticket_type)
+        newSummaryItems.push(`Type: ${ticket.ticket_type || "—"} → ${ticket_type}`);
+      if (ifProvided(assigned_agent_name) && assigned_agent_name !== ticket.assigned_agent_name)
+        newSummaryItems.push(`Assigned: ${ticket.assigned_agent_name || "Unassigned"} → ${assigned_agent_name}`);
+      if (ifProvided(resolution_summary) && resolution_summary !== ticket.resolution_summary)
+        newSummaryItems.push("Resolution summary added");
+      if (ifProvided(title) && title !== ticket.ticket_title)
+        newSummaryItems.push(`Title updated`);
+      if (ifProvided(description) && description !== ticket.description)
+        newSummaryItems.push("Description updated");
 
-      const trulyNewItems = newSummaryItems.filter(s => !currentSummarySet.has(s));
-
-      if (trulyNewItems.length > 0) {
-        trulyNewItems.forEach(s => currentSummarySet.add(s));
+      if (newSummaryItems.length > 0) {
+        newSummaryItems.forEach(s => currentSummarySet.add(s));
+        const allSummary = Array.from(currentSummarySet);
         updates.has_unread_updates    = true;
-        updates.unread_updates_count  = (ticket.unread_updates_count || 0) + trulyNewItems.length;
-        updates.unread_update_summary = Array.from(currentSummarySet);
-        console.log(`[syncSupportHubUpdates] Unread updates for ticket ${ticket.id}:`, trulyNewItems);
+        updates.unread_updates_count  = allSummary.length;
+        updates.unread_update_summary = allSummary;
+        console.log(`[syncSupportHubUpdates] Unread updates for ticket ${ticket.id}:`, newSummaryItems);
       } else {
         console.log(`[syncSupportHubUpdates] No new unread items for ticket ${ticket.id}`);
       }

@@ -43,6 +43,7 @@ const PRIORITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 function UnreadBadge({ ticket }) {
   const [show, setShow] = useState(false);
   const summary = ticket.unread_update_summary || [];
+  const count = summary.length || ticket.unread_updates_count || 1;
   return (
     <span
       className="relative inline-flex items-center gap-0.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold flex-shrink-0 cursor-default"
@@ -50,19 +51,19 @@ function UnreadBadge({ ticket }) {
       onMouseLeave={() => setShow(false)}
     >
       <Bell className="w-3 h-3" />
-      {ticket.unread_updates_count || 1}
+      {count}
       {show && (
         <div
           className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[9999] pointer-events-none"
-          style={{ minWidth: 180 }}
+          style={{ minWidth: 220 }}
         >
-          <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-2xl">
+          <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-2xl max-h-48 overflow-y-auto">
             <p className="font-semibold text-slate-300 mb-1.5">Updates:</p>
             <ul className="space-y-1">
               {summary.map((s, i) => (
-                <li key={i} className="flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
-                  {s}
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0 mt-1" />
+                  <span>{s}</span>
                 </li>
               ))}
             </ul>
