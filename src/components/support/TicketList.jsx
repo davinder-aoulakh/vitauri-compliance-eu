@@ -41,24 +41,35 @@ const SORT_OPTIONS = [
 const PRIORITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 
 function UnreadBadge({ ticket }) {
-  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState(null);
   const summary = ticket.unread_update_summary || [];
   const count = summary.length || ticket.unread_updates_count || 1;
+
+  const handleMouseEnter = (e) => {
+    if (summary.length === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPos({ x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+  };
+
+  const handleMouseLeave = () => setPos(null);
+
   return (
-    <span
-      className="relative inline-flex items-center gap-0.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold flex-shrink-0 cursor-default"
-      onMouseEnter={() => summary.length > 0 && setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      <Bell className="w-3 h-3" />
-      {count}
-      {show && (
+    <>
+      <span
+        className="relative inline-flex items-center gap-0.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold flex-shrink-0 cursor-default"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <Bell className="w-3 h-3" />
+        {count}
+      </span>
+      {pos && (
         <div
-          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[9999] pointer-events-none"
-          style={{ minWidth: 220 }}
+          className="fixed z-[9999] pointer-events-none"
+          style={{ left: pos.x, top: pos.y, transform: "translateX(-50%)" }}
         >
           <div className="w-0 h-0 mx-auto border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-slate-900" />
-          <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-2xl max-h-48 overflow-y-auto">
+          <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-2xl max-h-48 overflow-y-auto" style={{ minWidth: 220 }}>
             <p className="font-semibold text-slate-300 mb-1.5">Updates:</p>
             <ul className="space-y-1">
               {summary.map((s, i) => (
@@ -71,7 +82,7 @@ function UnreadBadge({ ticket }) {
           </div>
         </div>
       )}
-    </span>
+    </>
   );
 }
 
