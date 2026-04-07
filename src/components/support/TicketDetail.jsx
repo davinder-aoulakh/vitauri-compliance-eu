@@ -116,7 +116,7 @@ export default function TicketDetail({ ticket: initialTicket, user, onBack }) {
   };
 
   const handleSendReply = async () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() && attachments.length === 0) return;
     setSending(true);
     const commentRole = user.app_role === "tenant_admin" ? "tenant_admin" : "tenant_user";
     try {
@@ -350,7 +350,7 @@ export default function TicketDetail({ ticket: initialTicket, user, onBack }) {
               )}
               <Button
                 onClick={handleSendReply}
-                disabled={sending || !replyText.trim()}
+                disabled={sending || (!replyText.trim() && attachments.length === 0)}
                 size="sm"
                 className="gap-2 ml-auto bg-indigo-600 hover:bg-indigo-700 text-white"
               >
