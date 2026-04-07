@@ -138,7 +138,7 @@ export default function TicketDetail({ ticket: initialTicket, user, onBack }) {
         base44.functions.invoke("sendCommentToSupportHub", {
           support_hub_ticket_id: ticket.support_hub_ticket_id,
           crs_comment_id: newComment.id,
-          comment_text: replyText,
+          comment_text: replyText || "",
           is_internal: false,
           created_by_user_id: user.id,
           created_by_name: user.full_name,

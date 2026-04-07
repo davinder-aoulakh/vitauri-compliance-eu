@@ -25,8 +25,11 @@ Deno.serve(async (req) => {
       attachment_urls
     } = body;
 
-    if (!support_hub_ticket_id || !comment_text) {
-      return Response.json({ error: "support_hub_ticket_id and comment_text are required" }, { status: 400 });
+    if (!support_hub_ticket_id) {
+      return Response.json({ error: "support_hub_ticket_id is required" }, { status: 400 });
+    }
+    if (!comment_text && (!attachment_urls || attachment_urls.length === 0)) {
+      return Response.json({ error: "Either comment_text or attachment_urls is required" }, { status: 400 });
     }
 
     if (!SUPPORT_HUB_API_URL || !SUPPORT_HUB_SHARED_SECRET) {
