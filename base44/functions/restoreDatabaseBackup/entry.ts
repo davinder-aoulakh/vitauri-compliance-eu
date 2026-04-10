@@ -62,8 +62,12 @@ Deno.serve(async (req) => {
     const INSERT_BATCH_SIZE = 25;
     for (let i = 0; i < records.length; i += INSERT_BATCH_SIZE) {
       const batch = records.slice(i, i + INSERT_BATCH_SIZE).map(record => {
-        // Strip system-managed fields so the DB assigns new ones correctly
-        const { created_date, updated_date, created_by_id, entity_name: _en, app_id, ...data } = record;
+        // Strip system-managed fields
+        const { created_date, updated_date, created_by_id, entity_name: _en, app_id, id, ...data } = record;
+        // Preserve original ID for Tenant to maintain referential integrity
+        if (entity_name === 'Tenant') {
+          return { id, ...data };
+        }
         return data;
       });
 
