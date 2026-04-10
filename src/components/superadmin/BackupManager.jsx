@@ -512,18 +512,46 @@ function RestorePanel() {
   const handleRestore = async () => {
     setShowConfirm(false);
     setRestoring(true);
-    setRestoreProgress(10);
+    setRestoreProgress(0);
     setMessage(null);
     setRestoreReport(null);
+
+    const report = { success: [], failed: [], skipped: [] };
+    const total = selectedEntities.length;
+
     try {
-      setRestoreProgress(30);
-      const response = await base44.functions.invoke('restoreDatabaseBackup', {
-        backup: backupFileData,
-        entities_to_restore: selectedEntities,
-        data_env: dbEnv
-      });
-      setRestoreProgress(90);
-      const { report, summary } = response.data;
+      for (let i = 0; i < total; i++) {
+        const entityName = selectedEntities[i];
+        const records = backupFileData.entities[entityName];
+        setRestoreProgress(Math.round(((i) / total) * 100));
+
+        if (!records || records.length === 0) {
+          report.skipped.push({ entity: entityName, reason: 'No records in backup' });
+          continue;
+        }
+
+        try {
+          const response = await base44.functions.invoke('restoreDatabaseBackup', {
+            entity_name: entityName,
+            records: records,
+            data_env: dbEnv
+          });
+          if (response.data?.success) {
+            report.success.push({ entity: entityName, records_restored: records.length });
+          } else {
+            report.failed.push({ entity: entityName, reason: response.data?.error || 'Unknown error' });
+          }
+        } catch (err) {
+          report.failed.push({ entity: entityName, reason: err.response?.data?.error || err.message });
+        }
+      }
+
+      const summary = {
+        restored: report.success.length,
+        failed: report.failed.length,
+        skipped: report.skipped.length
+      };
+
       setRestoreReport({ report, summary });
       setRestoreProgress(100);
       setMessage({

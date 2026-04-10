@@ -236,6 +236,11 @@ export default function FITypeTemplateManager() {
     // Use DB column_definitions if available, else use defaults
     const columns = getColumnsForFiType(config);
 
+    // Currency columns — validated against column F of Referenced Data sheet
+    const CURRENCY_KEYS = new Set([
+      "year_end_currency", "year_end_cash_value_currency", "gross_payments_currency",
+    ]);
+
     // Build a map of column key -> 1-based column index for VLOOKUP references
     const colIndexMap = {};
     columns.forEach((col, i) => { colIndexMap[col.key] = i + 1; });
@@ -431,11 +436,6 @@ export default function FITypeTemplateManager() {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF" } };
       });
     });
-
-    // Currency columns — validated against column F of Referenced Data sheet
-    const CURRENCY_KEYS = new Set([
-      "year_end_currency", "year_end_cash_value_currency", "gross_payments_currency",
-    ]);
 
     // Sheet 4: Referenced Data (country lookup + all dropdown sections in col D)
     const DROPDOWN_SECTIONS = [

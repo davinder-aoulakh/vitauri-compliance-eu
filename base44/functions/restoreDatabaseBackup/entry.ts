@@ -8,8 +8,10 @@ const RESTORABLE_ENTITIES = [
   'DashboardTemplate', 'FormConfiguration', 'ReferencedData', 'CrsCountryInfo',
   'JurisdictionConfig', 'CustomValidationRule', 'AutoClassificationRule',
   'EntityClassificationHistory', 'AccountClassificationHistory',
-  'ControllingPersonClassificationHistory', 'RolePermission', 'PlatformSettings','Ticket','TicketComment'
+  'ControllingPersonClassificationHistory', 'RolePermission', 'PlatformSettings', 'Ticket', 'TicketComment'
 ];
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 Deno.serve(async (req) => {
   try {
@@ -20,62 +22,67 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
     }
 
-    const { backup, entities_to_restore, data_env } = await req.json();
+    const { entity_name, records, data_env } = await req.json();
     const dataEnv = data_env === 'dev' ? 'dev' : 'prod';
 
-    if (!backup || !backup.entities) {
-      return Response.json({ error: 'Invalid backup file format' }, { status: 400 });
+    if (!entity_name || !records) {
+      return Response.json({ error: 'entity_name and records are required' }, { status: 400 });
     }
 
-    const entitiesToRestore = entities_to_restore || RESTORABLE_ENTITIES;
-    const report = { success: [], failed: [], skipped: [] };
-
-    for (const entityName of entitiesToRestore) {
-      if (!RESTORABLE_ENTITIES.includes(entityName)) {
-        report.skipped.push({ entity: entityName, reason: 'Not in restorable list' });
-        continue;
-      }
-
-      const records = backup.entities[entityName];
-      if (!records || records.length === 0) {
-        report.skipped.push({ entity: entityName, reason: 'No records in backup' });
-        continue;
-      }
-
-      try {
-        // Fetch existing records and delete them
-        const existing = await base44.asServiceRole.entities[entityName].list('-created_date', 10000, { data_env: dataEnv });
-        for (const record of existing) {
-          await base44.asServiceRole.entities[entityName].delete(record.id, { data_env: dataEnv });
-        }
-
-        // Re-insert records from backup in batches of 50
-        const BATCH_SIZE = 50;
-        for (let i = 0; i < records.length; i += BATCH_SIZE) {
-          const batch = records.slice(i, i + BATCH_SIZE).map(record => {
-            // Strip system-managed fields so the DB assigns new ones correctly
-            const { created_date, updated_date, created_by_id, entity_name, app_id, ...data } = record;
-            return data;
-          });
-          await base44.asServiceRole.entities[entityName].bulkCreate(batch, { data_env: dataEnv });
-        }
-
-        report.success.push({ entity: entityName, records_restored: records.length });
-      } catch (err) {
-        report.failed.push({ entity: entityName, reason: err.message });
-      }
+    if (!RESTORABLE_ENTITIES.includes(entity_name)) {
+      return Response.json({ error: `Entity '${entity_name}' is not in the restorable list` }, { status: 400 });
     }
 
+    if (!records || records.length === 0) {
+      return Response.json({ success: true, skipped: true, message: 'No records to restore', records_restored: 0 });
+    }
+
+    // ── Deletion phase: fetch in batches of 50, delete one by one with throttling ──
+    let iterations = 0;
+    const MAX_ITERATIONS = 200;
+
+    while (iterations < MAX_ITERATIONS) {
+      const existing = await base44.asServiceRole.entities[entity_name].list('-created_date', 50,
+        dataEnv === 'dev' ? { data_env: 'dev' } : undefined
+      );
+      if (!existing || existing.length === 0) break;
+
+      for (const record of existing) {
+        await base44.asServiceRole.entities[entity_name].delete(
+          record.id,
+          dataEnv === 'dev' ? { data_env: 'dev' } : undefined
+        );
+        await sleep(80);
+      }
+      await sleep(300);
+      iterations++;
+    }
+
+    // ── Insertion phase: insert in batches of 25 with throttling ──
+    const INSERT_BATCH_SIZE = 25;
+    for (let i = 0; i < records.length; i += INSERT_BATCH_SIZE) {
+      const batch = records.slice(i, i + INSERT_BATCH_SIZE).map(record => {
+        // Strip system-managed fields so the DB assigns new ones correctly
+        const { created_date, updated_date, created_by_id, entity_name: _en, app_id, ...data } = record;
+        return data;
+      });
+
+      await base44.asServiceRole.entities[entity_name].bulkCreate(
+        batch,
+        dataEnv === 'dev' ? { data_env: 'dev' } : undefined
+      );
+      await sleep(300);
+    }
+
+    console.log(`[restoreDatabaseBackup] Restored ${records.length} records for entity: ${entity_name}`);
     return Response.json({
       success: true,
-      report,
-      summary: {
-        restored: report.success.length,
-        failed: report.failed.length,
-        skipped: report.skipped.length
-      }
+      entity: entity_name,
+      records_restored: records.length
     });
+
   } catch (error) {
+    console.error('[restoreDatabaseBackup] Error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
