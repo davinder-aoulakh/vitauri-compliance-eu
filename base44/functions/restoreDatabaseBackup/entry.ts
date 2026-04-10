@@ -8,7 +8,7 @@ const RESTORABLE_ENTITIES = [
   'DashboardTemplate', 'FormConfiguration', 'ReferencedData', 'CrsCountryInfo',
   'JurisdictionConfig', 'CustomValidationRule', 'AutoClassificationRule',
   'EntityClassificationHistory', 'AccountClassificationHistory',
-  'ControllingPersonClassificationHistory', 'RolePermission', 'PlatformSettings'
+  'ControllingPersonClassificationHistory', 'RolePermission', 'PlatformSettings','Ticket','TicketComment'
 ];
 
 Deno.serve(async (req) => {
