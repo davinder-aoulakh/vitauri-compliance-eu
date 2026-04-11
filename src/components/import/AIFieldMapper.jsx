@@ -322,12 +322,11 @@ Return JSON:
         const newMappings = { ...existingMappings };
         const newConfidence = {};
         Object.entries(response.mappings).forEach(([csvHeader, mapping]) => {
+          // Never override an already-set instant mapping with an AI suggestion
+          if (existingMappings[csvHeader]) return;
           if (mapping.target_field) {
             newMappings[csvHeader] = mapping.target_field;
             newConfidence[csvHeader] = mapping.confidence;
-          } else {
-            // AI said skip — respect it unless we had a high-confidence instant match
-            if (!existingMappings[csvHeader]) delete newMappings[csvHeader];
           }
         });
         setMappings(newMappings);
