@@ -244,6 +244,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       self_certification_obtained: "boolean",
       entity_managed_by_fiduciary_trust: "boolean",
       entity_managed_by_asset_manager: "boolean",
+      gross_income_50_passive: "boolean",
       ...Object.fromEntries([1,2,3,4].flatMap(n => [
         [`cp${n}_control_type`,          "control_types"],
         [`cp${n}_self_cert_obtained`,    "boolean"],
@@ -688,6 +689,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     "account_closed_during_period", "us_person_indic", "self_certification_obtained",
     "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
     "self_cert_requested", "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
+    "gross_income_50_passive",
   ]);
 
   const parseBool = (v) => ["true", "yes", "1", "y"].includes(String(v).toLowerCase().trim());

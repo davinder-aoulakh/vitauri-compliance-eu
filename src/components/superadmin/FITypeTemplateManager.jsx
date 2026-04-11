@@ -809,6 +809,7 @@ function getDefaultColumns(config) {
     { header: "Year-end Currency", key: "year_end_currency", width: 20, required: false, note: "ISO code e.g. USD, AUD", validation_values: null, example_value: "USD" },
     { header: "Gross interest paid or credited to account", key: "gross_payments", width: 36, required: false, note: "Number", validation_values: null, example_value: "5000" },
     { header: "Gross Payments Currency", key: "gross_payments_currency", width: 24, required: false, note: "ISO code", validation_values: null, example_value: "USD" },
+    { header: "50% Passive Income (Gross Income)", key: "gross_income_50_passive", width: 30, required: false, note: "true | false — whether 50% or more of gross income is passive", validation_values: ["true", "false"], example_value: "false" },
     { header: "Reporting Year", key: "reporting_year", width: 18, required: false, note: "YYYY e.g. 2024", validation_values: null, example_value: "2024" },
     // ── Compliance
     { header: "US Person Indicator", key: "us_person_indic", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },

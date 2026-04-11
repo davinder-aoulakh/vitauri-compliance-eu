@@ -160,6 +160,10 @@
     "gross_income_from_financial_assets": {
       "type": "boolean"
     },
+    "gross_income_50_passive": {
+      "type": "boolean",
+      "description": "Whether 50% or more of the entity's gross income is passive income"
+    },
     "account_closed_during_period": {
       "type": "boolean",
       "default": false
