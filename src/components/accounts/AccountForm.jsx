@@ -657,13 +657,20 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     }
                     {referencedData.filter(item => item.entity_name === 'Account' && item.field_name === 'account_holder_entity_type').length === 0 && (
                       <>
-                        <SelectItem value="corporation">Corporation</SelectItem>
-                        <SelectItem value="trust">Trust</SelectItem>
-                        <SelectItem value="partnership">Partnership</SelectItem>
-                        <SelectItem value="fund">Fund</SelectItem>
-                        <SelectItem value="llc">LLC</SelectItem>
-                        <SelectItem value="foundation">Foundation</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="Naamloze Vennootschap (N.V.) (Limited Liability Company)">Naamloze Vennootschap (N.V.) (Limited Liability Company)</SelectItem>
+                        <SelectItem value="Besloten Vennootschap (B.V.) (Private Limited Liability Company)">Besloten Vennootschap (B.V.) (Private Limited Liability Company)</SelectItem>
+                        <SelectItem value="N.V. or B.V. acting with one 100% shareholder/director (100% DGA)">N.V. or B.V. acting with one 100% shareholder/director (100% DGA)</SelectItem>
+                        <SelectItem value="Stichting (Foundation) or other Non-Profit Organization">Stichting (Foundation) or other Non-Profit Organization</SelectItem>
+                        <SelectItem value="Stichting Particulier Fonds (SPF) (Private Foundation)">Stichting Particulier Fonds (SPF) (Private Foundation)</SelectItem>
+                        <SelectItem value="Stichting Administratiekantoor (STAK)">Stichting Administratiekantoor (STAK)</SelectItem>
+                        <SelectItem value="Curaçao Trust Arrangement">Curaçao Trust Arrangement</SelectItem>
+                        <SelectItem value="Holding Company">Holding Company</SelectItem>
+                        <SelectItem value="Treasury Center">Treasury Center</SelectItem>
+                        <SelectItem value="Partnership">Partnership</SelectItem>
+                        <SelectItem value="Real Estate Fund">Real Estate Fund</SelectItem>
+                        <SelectItem value="Vereniging met rechtspersoonlijkheid (Association with corporate capacity)">Vereniging met rechtspersoonlijkheid (Association with corporate capacity)</SelectItem>
+                        <SelectItem value="Cooperatie (Cooperation)">Cooperatie (Cooperation)</SelectItem>
+                        <SelectItem value="Onderlinge Waarborgmaatschappij (Mutual Guarantee Company)">Onderlinge Waarborgmaatschappij (Mutual Guarantee Company)</SelectItem>
                       </>
                     )}
                   </SelectContent>
