@@ -36,7 +36,9 @@ import {
   Sparkles,
   AlertCircle,
   Check,
-  X
+  X,
+  Play,
+  Loader2
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ConditionGroupBuilder from "../components/rules/ConditionGroupBuilder";
@@ -64,6 +66,33 @@ export default function AutoClassificationRulesPage() {
     triggered_on_fields: []
   });
   const [useGroupedConditions, setUseGroupedConditions] = useState(false);
+
+  // Ad-hoc run state
+  const [showRunDialog, setShowRunDialog] = useState(false);
+  const [runTenantId, setRunTenantId] = useState("");
+  const [runEntityId, setRunEntityId] = useState("");
+  const [runResult, setRunResult] = useState(null);
+  const [runLoading, setRunLoading] = useState(false);
+
+  const { data: tenants = [] } = useQuery({
+    queryKey: ['tenants-for-run'],
+    queryFn: () => base44.entities.Tenant.list(),
+  });
+
+  const { data: entities = [] } = useQuery({
+    queryKey: ['entities-for-run', runTenantId],
+    queryFn: () => runTenantId ? base44.entities.Entity.filter({ tenant_id: runTenantId }) : Promise.resolve([]),
+    enabled: !!runTenantId,
+  });
+
+  const handleRunAdHoc = async () => {
+    if (!runTenantId || !runEntityId) return;
+    setRunLoading(true);
+    setRunResult(null);
+    const response = await base44.functions.invoke('runAutoClassification', { tenantId: runTenantId, entityId: runEntityId });
+    setRunResult(response.data);
+    setRunLoading(false);
+  };
 
   const queryClient = useQueryClient();
 
@@ -307,16 +336,26 @@ export default function AutoClassificationRulesPage() {
               Configure automatic account classification based on field conditions
             </p>
           </div>
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            <Plus className="w-4 h-4" />
-            Add Rule
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => { setRunResult(null); setRunTenantId(""); setRunEntityId(""); setShowRunDialog(true); }}
+              variant="outline"
+              className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
+            >
+              <Play className="w-4 h-4" />
+              Run Ad-hoc
+            </Button>
+            <Button
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+              className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              <Plus className="w-4 h-4" />
+              Add Rule
+            </Button>
+          </div>
         </div>
 
         <Alert className="bg-blue-50 border-blue-200">
@@ -447,6 +486,76 @@ export default function AutoClassificationRulesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Ad-hoc Run Dialog */}
+      <Dialog open={showRunDialog} onOpenChange={setShowRunDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Play className="w-5 h-5 text-green-600" />
+              Run Auto Classification Ad-hoc
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Select a tenant and RFI entity. All active rules will be evaluated against accounts belonging to that entity.
+            </p>
+
+            <div>
+              <Label>Tenant *</Label>
+              <Select value={runTenantId} onValueChange={(v) => { setRunTenantId(v); setRunEntityId(""); }}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Select tenant..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.jurisdiction})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>RFI Entity *</Label>
+              <Select value={runEntityId} onValueChange={setRunEntityId} disabled={!runTenantId}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder={runTenantId ? "Select entity..." : "Select tenant first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {entities.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.entity_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {runResult && (
+              <Alert className={runResult.error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
+                <AlertDescription className={runResult.error ? "text-red-800" : "text-green-800"}>
+                  {runResult.error ? runResult.error : (
+                    <div className="space-y-1">
+                      <p className="font-semibold">{runResult.message}</p>
+                      <p className="text-sm">Total accounts processed: <strong>{runResult.processed}</strong></p>
+                      <p className="text-sm">Updated: <strong>{runResult.updated}</strong> | Skipped (no match): <strong>{runResult.skipped}</strong></p>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2 border-t">
+              <Button variant="outline" onClick={() => setShowRunDialog(false)}>Close</Button>
+              <Button
+                onClick={handleRunAdHoc}
+                disabled={!runTenantId || !runEntityId || runLoading}
+                className="bg-green-600 hover:bg-green-700 text-white gap-2"
+              >
+                {runLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Running...</> : <><Play className="w-4 h-4" />Run Now</>}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
