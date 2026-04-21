@@ -179,7 +179,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const evalConditionalLogic = async (logic, currentAnswer, allAnswers) => {
-    return await evaluateConditionalLogic(logic, currentAnswer, allAnswers, (fp, a) => getFieldValue(fp, a), workflow);
+    const boundEvalSingle = (condition) => evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {});
+    return await evaluateConditionalLogic(logic, allAnswers, boundEvalSingle);
   };
 
   const handleNext = async () => {
