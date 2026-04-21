@@ -136,13 +136,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   });
 
   const evaluateTriggerConditions = (triggerConfig, accountData, entityData = null) => {
-console.log('\n🔍 [TRIGGER EVALUATION] Starting...');
-console.log('  Trigger Config:', triggerConfig);
-console.log('  Account Data:', accountData);
-console.log('  Entity Data:', entityData);
-    
     if (!triggerConfig?.enabled) {
-  ('  ❌ Trigger not enabled');
       return false;
     }
 
@@ -150,15 +144,11 @@ console.log('  Entity Data:', entityData);
     const computedConditions = triggerConfig.computed_conditions || [];
 
     if (conditions.length === 0 && computedConditions.length === 0) {
-  ('  ✅ No conditions - auto-match');
       return true;
     }
 
     const getFieldValue = (fieldPath) => {
       if (!fieldPath) return null;
-
-console.log(`    🔎 Getting field value for: "${fieldPath}"`);
-
       if (fieldPath.includes('.')) {
         const parts = fieldPath.split('.');
         let value = accountData;
@@ -166,23 +156,10 @@ console.log(`    🔎 Getting field value for: "${fieldPath}"`);
           value = value?.[part];
           if (value === undefined) return null;
         }
-console.log(`      → Account nested field value: "${value}"`);
         return value;
       }
-
-      // Check account data first
-      if (accountData?.[fieldPath] !== undefined) {
-console.log(`      → Account field value: "${accountData[fieldPath]}"`);
-        return accountData[fieldPath];
-      }
-
-      // Check entity data ONLY if this is an entity account
-      if (accountData?.account_holder_type === "entity" && entityData?.[fieldPath] !== undefined) {
-console.log(`      → Entity field value: "${entityData[fieldPath]}"`);
-        return entityData[fieldPath];
-      }
-
-console.log(`      → Field not found (account_holder_type: ${accountData?.account_holder_type})`);
+      if (accountData?.[fieldPath] !== undefined) return accountData[fieldPath];
+      if (accountData?.account_holder_type === "entity" && entityData?.[fieldPath] !== undefined) return entityData[fieldPath];
       return null;
     };
 
@@ -239,10 +216,6 @@ console.log(`      → Field not found (account_holder_type: ${accountData?.acco
 
       const normalizedComparisonValue = comparisonValueRefData?.label || comparisonValue;
 
-  (`    🔄 Enum normalization for "${fieldName}":`);
-  (`       Original field value: "${fieldValue}" → Normalized: "${normalizedFieldValue}"`);
-  (`       Original comparison value: "${comparisonValue}" → Normalized: "${normalizedComparisonValue}"`);
-
       return { 
         fieldValue: normalizedFieldValue, 
         comparisonValue: normalizedComparisonValue 
@@ -252,21 +225,11 @@ console.log(`      → Field not found (account_holder_type: ${accountData?.acco
     let result = null;
     let currentAndGroup = [];
 
-console.log(`\n  📊 [CONDITION EVALUATION] Processing ${conditions.length} condition(s):`);
-    
     // Group conditions by AND/OR operators to properly handle precedence
     // AND has higher precedence than OR, so we evaluate AND groups first
     for (let idx = 0; idx < conditions.length; idx++) {
       const condition = conditions[idx];
-console.log(`\n  🔹 Condition ${idx + 1}/${conditions.length}:`);
-console.log(`     Field: "${condition.field}"`);
-console.log(`     Operator: "${condition.operator}"`);
-console.log(`     Expected Value: "${condition.value}"`);
-console.log(`     Logic Operator: "${condition.logic_operator}"`);
-      
       const fieldValue = getFieldValue(condition.field);
-console.log(`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof fieldValue})`);
-      
       // Normalize enum values for comparison
       const { fieldValue: normalizedFieldValue, comparisonValue: normalizedComparisonValue } = 
         normalizeEnumComparison(condition.field, fieldValue, condition.value);
@@ -276,81 +239,57 @@ console.log(`     📍 Actual Field Value: "${fieldValue}" (type: ${typeof field
       switch (condition.operator) {
         case "equals":
           conditionMet = String(normalizedFieldValue).toLowerCase() === String(normalizedComparisonValue).toLowerCase();
-console.log(`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" === "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "not_equals":
           conditionMet = String(normalizedFieldValue).toLowerCase() !== String(normalizedComparisonValue).toLowerCase();
-      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" !== "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "greater_than":
         case ">":
           conditionMet = parseFloat(fieldValue) > parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} > ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
           break;
         case "less_than":
         case "<":
           conditionMet = parseFloat(fieldValue) < parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} < ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
           break;
         case "greater_than_or_equal":
         case ">=":
           conditionMet = parseFloat(fieldValue) >= parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} >= ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
           break;
         case "less_than_or_equal":
         case "<=":
           conditionMet = parseFloat(fieldValue) <= parseFloat(normalizedComparisonValue);
-      (`     📐 Comparison: ${parseFloat(fieldValue)} <= ${parseFloat(normalizedComparisonValue)} = ${conditionMet}`);
           break;
         case "contains":
           conditionMet = String(normalizedFieldValue).toLowerCase().includes(String(normalizedComparisonValue).toLowerCase());
-      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" contains "${String(normalizedComparisonValue).toLowerCase()}" = ${conditionMet}`);
           break;
         case "in":
           const inValues = String(normalizedComparisonValue).split(",").map(v => v.trim().toLowerCase());
           conditionMet = inValues.includes(String(normalizedFieldValue).toLowerCase());
-      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" in [${inValues.join(', ')}] = ${conditionMet}`);
           break;
         case "not_in":
           const notInValues = String(normalizedComparisonValue).split(",").map(v => v.trim().toLowerCase());
           conditionMet = !notInValues.includes(String(normalizedFieldValue).toLowerCase());
-      (`     📐 Comparison: "${String(normalizedFieldValue).toLowerCase()}" not in [${notInValues.join(', ')}] = ${conditionMet}`);
           break;
         default:
           conditionMet = false;
-      (`     ⚠️ Unknown operator: ${condition.operator}`);
       }
 
-console.log(`     ✅ Condition Result: ${conditionMet}`);
       currentAndGroup.push(conditionMet);
 
       // Check if we need to evaluate the current AND group
       const isLastCondition = idx === conditions.length - 1;
       const nextOperator = !isLastCondition ? conditions[idx]?.logic_operator : null;
 
-  (`     🔗 Next Operator: ${nextOperator || '(none - last condition)'}`);
-  (`     📦 Current AND Group: [${currentAndGroup.join(', ')}]`);
-
       if (nextOperator === "OR" || isLastCondition) {
-        // Evaluate current AND group
         const andGroupResult = currentAndGroup.every(val => val === true);
-    (`     🎯 AND Group Result: ${andGroupResult} (all must be true)`);
-        
         if (result === null) {
           result = andGroupResult;
-      (`     💾 Setting initial result: ${result}`);
         } else {
-          const previousResult = result;
           result = result || andGroupResult;
-      (`     💾 OR combination: ${previousResult} OR ${andGroupResult} = ${result}`);
         }
-        
         currentAndGroup = [];
-    (`     🔄 Starting new AND group`);
       }
     }
-
-console.log(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' : '❌ WORKFLOW DOES NOT MATCH'}\n`);
 
     for (let idx = 0; idx < computedConditions.length; idx++) {
       const compCondition = computedConditions[idx];
@@ -420,32 +359,18 @@ console.log(`\n  🏁 [FINAL TRIGGER RESULT] ${result ? '✅ WORKFLOW MATCHES' :
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow && account) {
-      // Wait for entity data to load if this is an entity account
-      if (account.account_holder_type === "entity" && !linkedEntity) {
-    ('⏳ [WORKFLOW SELECTION] Waiting for linked entity to load...');
-        return;
-      }
-      
-console.log('\n🔵🔵🔵 [WORKFLOW SELECTION] Starting workflow selection...');
-console.log('  Available workflows:', workflows.map(w => w.workflow_name));
-console.log('  Account holder type:', account?.account_holder_type);
-console.log('  Linked Entity:', linkedEntity);
+      if (account.account_holder_type === "entity" && !linkedEntity) return;
       
       const matchingWorkflows = workflows.filter(w => {
-console.log(`\n  📋 Evaluating workflow: "${w.workflow_name}"`);
         if (w.trigger_conditions?.enabled) {
-          const matches = evaluateTriggerConditions(w.trigger_conditions, account, linkedEntity);
-console.log(`    Result: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
-          return matches;
+          return evaluateTriggerConditions(w.trigger_conditions, account, linkedEntity);
         }
-console.log(`    ⏭️ No trigger conditions`);
         return false;
       });
 
       let selectedWorkflow = null;
 
       if (matchingWorkflows.length > 0) {
-console.log(`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, matchingWorkflows.map(w => w.workflow_name));
         const sortedWorkflows = matchingWorkflows.sort((a, b) => {
           const priorityA = a.trigger_conditions?.priority || 0;
           const priorityB = b.trigger_conditions?.priority || 0;
@@ -453,9 +378,7 @@ console.log(`\n  ✅ Found ${matchingWorkflows.length} matching workflow(s):`, m
           return parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0");
         });
         selectedWorkflow = sortedWorkflows[0];
-console.log(`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_name}" (priority: ${selectedWorkflow.trigger_conditions?.priority || 0})`);
       } else {
-    (`\n  ⚠️ No workflows matched triggers - using fallback name matching`);
         const isIndividual = account?.account_holder_type === "individual";
         const fallbackWorkflows = workflows.filter(w => {
           const nameMatch = isIndividual
@@ -463,7 +386,6 @@ console.log(`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_n
             : w.workflow_name?.toLowerCase().includes("entity");
           return nameMatch;
         });
-
         if (fallbackWorkflows.length > 0) {
           const sortedFallback = fallbackWorkflows.sort((a, b) =>
             parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
@@ -473,13 +395,10 @@ console.log(`  🎯 Selected workflow by trigger: "${selectedWorkflow.workflow_n
       }
 
       if (selectedWorkflow) {
-console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         setWorkflow(selectedWorkflow);
         if (selectedWorkflow.steps && selectedWorkflow.steps.length > 0) {
           setCurrentNodeId(selectedWorkflow.steps[0].step_id);
         }
-      } else {
-    (`\n  ❌ No workflow selected`);
       }
     }
   }, [workflows, workflow, account, linkedEntity]);
@@ -489,9 +408,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
 
     const currentNode = stepMap[currentNodeId];
     const existingAnswer = answers[currentNodeId];
-
-(`[AccountClassification] Current step changed to: ${currentNode?.step_title}`);
-(`[AccountClassification] Existing answer for this step:`, existingAnswer);
 
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       const { _address_config, ...savedAddress } = existingAnswer;
@@ -512,7 +428,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
   useEffect(() => {
     if (account && !answers._account_data_loaded && workflow) {
       const currentAccount = latestAccountData || account;
-  ('[PREFILL] Using account data:', currentAccount);
 
       const preFillAnswers = {
         _account_data_loaded: true,
@@ -525,7 +440,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         if (step.mapped_field?.entity_type === "Account" && step.mapped_field?.field_name) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = currentAccount[fieldName];
-      (`[PREFILL] Step "${step.step_title}": field=${fieldName}, value="${fieldValue}"`);
 
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
@@ -536,7 +450,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
                 const countryInfo = crsCountryMap[normalizedCountry];
                 if (countryInfo) {
                   preFillAnswers[step.step_id] = countryInfo.isCrs ? 'YES' : 'NO';
-              (`[PREFILL] country_crs: ${fieldValue} -> ${countryInfo.isCrs ? 'YES' : 'NO'}`);
                 }
               } else if (prefillType === 'enum_match') {
                 const matchValues = step.mapped_field.prefill_config.match_values || [];
@@ -567,50 +480,18 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         if (step.mapped_field?.entity_type === "Entity" && step.mapped_field?.field_name && linkedEntity) {
           const fieldName = step.mapped_field.field_name;
           let fieldValue = linkedEntity[fieldName];
-          
-      (`\n========== [PREFILL - ENTITY] DETAILED DEBUG ==========`);
-      (`Step Title: "${step.step_title}"`);
-      (`Step ID: "${step.step_id}"`);
-      (`Question Type: "${step.question_type}"`);
-      (`Mapped Field Name: "${fieldName}"`);
-      (`Entity Field Value (raw): "${fieldValue}" (type: ${typeof fieldValue})`);
-      (`Entity full data:`, linkedEntity);
-      (`Available dropdown options:`, step.options);
 
           if (fieldValue !== undefined && fieldValue !== null && fieldValue !== "") {
             if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
               preFillAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-          (`[PREFILL - ENTITY] Boolean -> Yes/No: ${fieldValue} -> ${fieldValue ? 'YES' : 'NO'}`);
             } else if (step.question_type === 'single_choice') {
-              // Pre-fill dropdown - try matching by VALUE first, then by LABEL (case-insensitive)
               const stringValue = String(fieldValue);
-              
-          (`[PREFILL - ENTITY] Single choice dropdown:`);
-          (`  Value to pre-fill: "${stringValue}"`);
-          (`  Checking against dropdown options:`);
-              
-              // First try exact value match
               let matchingOption = step.options?.find(opt => opt.value === stringValue);
-              
-              // If no value match, try case-insensitive label match
               if (!matchingOption) {
-                matchingOption = step.options?.find(opt => 
-                  opt.label?.toLowerCase() === stringValue.toLowerCase()
-                );
+                matchingOption = step.options?.find(opt => opt.label?.toLowerCase() === stringValue.toLowerCase());
               }
-              
-              step.options?.forEach(opt => {
-                const valueMatches = opt.value === stringValue;
-                const labelMatches = opt.label?.toLowerCase() === stringValue.toLowerCase();
-            (`    Option: value="${opt.value}", label="${opt.label}", valueMatch=${valueMatches}, labelMatch=${labelMatches}`);
-              });
-              
               if (matchingOption) {
                 preFillAnswers[step.step_id] = matchingOption.value;
-            (`  ✅ MATCH FOUND: Using option "${matchingOption.label}" (value: ${matchingOption.value})`);
-              } else {
-            (`  ⚠️ NO MATCH FOUND! Entity value "${stringValue}" does not match any dropdown option values or labels`);
-            (`  Available options:`, step.options?.map(o => `${o.value}="${o.label}"`));
               }
             } else if (step.question_type === 'date_input') {
               preFillAnswers[step.step_id] = String(fieldValue);
@@ -619,10 +500,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
             } else {
               preFillAnswers[step.step_id] = String(fieldValue);
             }
-          } else {
-        (`  ⚠️ Field value is empty/null/undefined - NOT pre-filling`);
           }
-      (`========== END DETAILED DEBUG ==========\n`);
         }
 
         if (step.question_type === 'yes_no' && step.mapped_field?.field_name) {
@@ -659,7 +537,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         }
       });
 
-  ('[PREFILL] Final pre-fill answers:', preFillAnswers);
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
     }
   }, [account, workflow, latestAccountData, crsCountryMap, linkedEntity]);
@@ -669,7 +546,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
     } catch (error) {
-  ("Error loading user:", error);
+      console.error("Error loading user:", error);
     }
   };
 
@@ -684,12 +561,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
 
     for (const action of actions) {
       try {
-    (`[POST-COMPLETION ACTION] Executing action:`, action);
-
-        if (action.target_entity_type !== "Account" || !account?.id) {
-      (`[POST-COMPLETION ACTION] Unsupported target or no account ID:`, action.target_entity_type);
-          continue;
-        }
+        if (action.target_entity_type !== "Account" || !account?.id) continue;
 
         let valueToUpdate = null;
 
@@ -698,11 +570,9 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
           valueToUpdate = currentAnswers[sourceStepId];
-
           if (valueToUpdate === 'YES') valueToUpdate = true;
           if (valueToUpdate === 'NO') valueToUpdate = false;
         } else if (action.value_source === "from_workflow_outcome") {
-      (`[POST-COMPLETION ACTION] from_workflow_outcome not available mid-workflow`);
           continue;
         }
 
@@ -715,47 +585,22 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
 
           let conditionMet = false;
           switch (conditionOperator) {
-            case '=':
-              conditionMet = String(fieldValue || '').toLowerCase() === String(conditionValue || '').toLowerCase();
-              break;
-            case '!=':
-              conditionMet = String(fieldValue || '').toLowerCase() !== String(conditionValue || '').toLowerCase();
-              break;
-            case 'contains':
-              conditionMet = String(fieldValue || '').toLowerCase().includes(String(conditionValue || '').toLowerCase());
-              break;
-            case 'in':
-              conditionMet = String(conditionValue).split(',').map(v => v.trim().toLowerCase()).includes(String(fieldValue || '').toLowerCase());
-              break;
-            case 'not_in':
-              conditionMet = !String(conditionValue).split(',').map(v => v.trim().toLowerCase()).includes(String(fieldValue || '').toLowerCase());
-              break;
-            default:
-              conditionMet = false;
+            case '=': conditionMet = String(fieldValue || '').toLowerCase() === String(conditionValue || '').toLowerCase(); break;
+            case '!=': conditionMet = String(fieldValue || '').toLowerCase() !== String(conditionValue || '').toLowerCase(); break;
+            case 'contains': conditionMet = String(fieldValue || '').toLowerCase().includes(String(conditionValue || '').toLowerCase()); break;
+            case 'in': conditionMet = String(conditionValue).split(',').map(v => v.trim().toLowerCase()).includes(String(fieldValue || '').toLowerCase()); break;
+            case 'not_in': conditionMet = !String(conditionValue).split(',').map(v => v.trim().toLowerCase()).includes(String(fieldValue || '').toLowerCase()); break;
+            default: conditionMet = false;
           }
 
-      (`[POST-COMPLETION ACTION] Condition check: ${conditionField} ${conditionOperator} ${conditionValue} = ${conditionMet}`);
-
-          if (!conditionMet) {
-        (`[POST-COMPLETION ACTION] Condition not met, skipping action`);
-            continue;
-          }
+          if (!conditionMet) continue;
         }
 
         const fieldToUpdate = action.field_to_update;
-        const updateData = { [fieldToUpdate]: valueToUpdate };
-
-    (`[POST-COMPLETION ACTION] Updating Account.${fieldToUpdate} = "${valueToUpdate}"`);
-    (`[POST-COMPLETION ACTION] Update data:`, updateData);
-
-        await base44.entities.Account.update(account.id, updateData);
-
-    (`[POST-COMPLETION ACTION] Successfully updated Account field: ${fieldToUpdate}`);
-
+        await base44.entities.Account.update(account.id, { [fieldToUpdate]: valueToUpdate });
         window.dispatchEvent(new CustomEvent('account-updated', { detail: { accountId: account.id, field: fieldToUpdate, value: valueToUpdate } }));
       } catch (error) {
-    (`[POST-COMPLETION ACTION] Error executing action:`, error);
-    (`[POST-COMPLETION ACTION] Error details:`, error.message);
+        console.error("[POST-COMPLETION ACTION] Error:", error);
       }
     }
   };
@@ -777,18 +622,8 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
   // (isActionNode is now imported from workflowNavigationUtils)
 
   const handleNext = async () => {
-('\n\n🔵🔵🔵 ========== ACCOUNT CLASSIFICATION - HANDLE NEXT ========== 🔵🔵🔵');
-(`📍 Current Node ID: ${currentNodeId}`);
     const currentNode = stepMap[currentNodeId];
-    if (!currentNode) {
-  ('❌ Current node not found!');
-      return;
-    }
-
-(`📋 Step Title: ${currentNode.step_title}`);
-(`❓ Question Type: ${currentNode.question_type}`);
-(`📊 Selected Value:`, selectedValue);
-(`📦 All Answers (before update):`, answers);
+    if (!currentNode) return;
 
     const newAnswers = { ...answers };
 
@@ -818,10 +653,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         date_received: dateReceivedValue
       };
     } else if (currentNode.question_type === "multi_field_input") {
-  ('\n📝 MULTI-FIELD INPUT VALIDATION:');
-  ('  Multi-field values:', multiFieldValues);
-  ('  Multi-field definitions:', currentNode.multi_fields);
-
       const errors = {};
       const multiFields = currentNode.multi_fields || [];
 
@@ -829,50 +660,28 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         let isFieldVisible = true;
         if (field.conditional_visibility) {
           const condVis = field.conditional_visibility;
-          const dependsOnValue = multiFieldValues[condVis.depends_on_field];
-          isFieldVisible = String(dependsOnValue) === String(condVis.required_value);
-      (`  Field "${field.field_id}" conditional_visibility: depends_on="${condVis.depends_on_field}", required_value="${condVis.required_value}", current_value="${dependsOnValue}", visible=${isFieldVisible}`);
+          isFieldVisible = String(multiFieldValues[condVis.depends_on_field]) === String(condVis.required_value);
         }
-
-        if (!isFieldVisible) {
-      (`  Field "${field.field_id}" is hidden by conditional_visibility, skipping validation ⏭️`);
-          return;
-        }
+        if (!isFieldVisible) return;
 
         let isFieldRequired = field.is_required;
-
         if (field.conditional_required) {
           const condReq = field.conditional_required;
-          const dependsOnValue = multiFieldValues[condReq.depends_on_field];
-
-      (`  Field "${field.field_id}" has conditional_required: depends_on="${condReq.depends_on_field}", required_value="${condReq.required_value}", current_value=`, dependsOnValue);
-
-          isFieldRequired = String(dependsOnValue) === String(condReq.required_value);
-      (`  Conditional required evaluation: ${isFieldRequired}`);
+          isFieldRequired = String(multiFieldValues[condReq.depends_on_field]) === String(condReq.required_value);
         }
-
-    (`  Checking field "${field.field_id}" (${field.display_label}): visible=${isFieldVisible}, required=${isFieldRequired}, value=`, multiFieldValues[field.field_id]);
 
         if (isFieldRequired && !multiFieldValues[field.field_id]) {
           errors[field.field_id] = `${field.display_label} is required`;
-      (`    ❌ Required field missing!`);
-        } else {
-      (`    ✅ Field OK`);
         }
       });
 
-  ('  Validation errors:', errors);
-
       if (Object.keys(errors).length > 0) {
-    ('  ❌ Validation failed, setting errors and returning');
         setMultiFieldErrors(errors);
         return;
       }
 
-  ('  ✅ Validation passed');
       setMultiFieldErrors({});
       newAnswers[currentNodeId] = multiFieldValues;
-  ('  Saved multi-field values to answers:', multiFieldValues);
     } else if (currentNode.question_type === "address_input") {
       if (!addressValues.street || !addressValues.city || !addressValues.state ||
           !addressValues.postal_code || !addressValues.country) {
@@ -898,14 +707,12 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
     }
 
     setAnswers(newAnswers);
-(`✅ Answers updated:`, newAnswers);
 
     if (currentNode.post_completion_actions && currentNode.post_completion_actions.length > 0) {
       const afterStepActions = currentNode.post_completion_actions.filter(
         action => (action.execution_timing || "after_step") === "after_step"
       );
       if (afterStepActions.length > 0) {
-    (`[POST-COMPLETION ACTIONS] Executing ${afterStepActions.length} "after_step" action(s) for step: ${currentNode.step_title}`);
         await executePostCompletionActions(afterStepActions, newAnswers);
       }
     }
@@ -914,9 +721,7 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
       ? history
       : [...history, currentNodeId];
     setHistory(newHistory);
-(`📚 History updated:`, newHistory);
 
-('\n🔀 ========== DETERMINING NEXT STEP ========== 🔀');
     let nextNodeId = null;
 
     if (currentNode.question_type === "multiple_choice" &&
@@ -933,15 +738,11 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
       }
     }
 
-    // Multi-choice routing groups - advanced branching for multiple choice questions
     if (!nextNodeId && currentNode.question_type === "multiple_choice" &&
         currentNode.conditional_logic?.multi_choice_routing_groups?.length > 0) {
-  ('🔀 [MULTI-CHOICE ROUTING GROUPS]');
       const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
-  ('   Selected options:', selectedOptions);
       
       for (const group of currentNode.conditional_logic.multi_choice_routing_groups) {
-    (`   📋 Evaluating group: ${group.group_name || group.group_id}`);
         let groupMatches = group.group_operator === 'AND';
         
         for (const condition of group.conditions) {
@@ -949,7 +750,6 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
           
           if (condition.condition_type === 'selected_options') {
             conditionMet = selectedOptions.some(selectedOpt => condition.option_values?.includes(selectedOpt));
-        (`      - Selected options check: ${conditionMet}`);
           } else if (condition.condition_type === 'selection_count') {
             const count = selectedOptions.length;
             switch (condition.count_operator) {
@@ -960,10 +760,8 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
               case '>=': conditionMet = count >= condition.count_value; break;
               case '<=': conditionMet = count <= condition.count_value; break;
             }
-        (`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
             conditionMet = await evaluateSingleConditionWrapper(condition, newAnswers);
-        (`      - Field comparison: ${conditionMet}`);
           }
           
           if (group.group_operator === 'AND') {
@@ -976,21 +774,16 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
         }
         
         if (groupMatches) {
-      (`   ✅ Group matched! Navigating to: ${group.next_step}`);
           nextNodeId = group.next_step;
           break;
         }
       }
       
-      // If no groups matched, check for false_step on last evaluated group or use default
       if (!nextNodeId) {
-    ('   ⚠️ No routing groups matched');
         const lastGroup = currentNode.conditional_logic.multi_choice_routing_groups[currentNode.conditional_logic.multi_choice_routing_groups.length - 1];
         if (lastGroup?.false_step) {
-      (`   → Using last group's false_step: ${lastGroup.false_step}`);
           nextNodeId = lastGroup.false_step;
         } else if (currentNode.conditional_logic.multi_choice_default_step) {
-      (`   → Using default step: ${currentNode.conditional_logic.multi_choice_default_step}`);
           nextNodeId = currentNode.conditional_logic.multi_choice_default_step;
         }
       }
@@ -998,13 +791,10 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
 
     if (!nextNodeId && currentNode.question_type === "multiple_choice") {
       if (currentNode.conditional_logic?.selection_count_next_step || currentNode.conditional_logic?.selection_count_else_step) {
-    ('🔢 [COUNT-BASED BRANCHING] Detected selection count configuration');
         const selectedOptions = selectedValue ? selectedValue.split(',').filter(Boolean) : [];
         const selectionCount = selectedOptions.length;
         const countOperator = currentNode.conditional_logic.selection_count_operator || "=";
         const countValue = currentNode.conditional_logic.selection_count_value || 0;
-
-    (`   Selection count: ${selectionCount}, operator: ${countOperator}, target: ${countValue}`);
 
         let countConditionMet = false;
         switch (countOperator) {
@@ -1036,14 +826,10 @@ console.log(`\n  🏁 FINAL SELECTION: "${selectedWorkflow.workflow_name}"`);
             countConditionMet = false;
         }
 
-    (`   Condition met: ${countConditionMet}`);
-
         if (countConditionMet) {
           nextNodeId = currentNode.conditional_logic.selection_count_next_step;
-      (`   → Going to TRUE path: ${nextNodeId}`);
         } else {
           nextNodeId = currentNode.conditional_logic.selection_count_else_step;
-      (`   → Going to FALSE path: ${nextNodeId}`);
         }
       }
     }
