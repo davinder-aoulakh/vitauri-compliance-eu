@@ -44,12 +44,19 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
-      // If options are static, try to match by value then by label
+      // If options are static, try to match by value, then exact label, then case-insensitive label
       const options = step.options || [];
       if (options.length > 0) {
+        const strLower = strVal.toLowerCase();
         const byValue = options.find(o => o.value === strVal);
         const byLabel = options.find(o => o.label === strVal);
-        const matched = byValue || byLabel;
+        const byValueCI = options.find(o => o.value?.toLowerCase() === strLower);
+        const byLabelCI = options.find(o => o.label?.toLowerCase() === strLower);
+        // Partial match: stored value contains option label or vice versa
+        const byValueContains = options.find(o => strLower.includes(o.value?.toLowerCase()) || o.value?.toLowerCase().includes(strLower));
+        const byLabelContains = options.find(o => strLower.includes(o.label?.toLowerCase()) || o.label?.toLowerCase().includes(strLower));
+        const matched = byValue || byLabel || byValueCI || byLabelCI || byValueContains || byLabelContains;
+        console.log(`[computePrefillAnswers] single_choice options:`, options.map(o => `${o.value}="${o.label}"`).join(', '));
         console.log(`[computePrefillAnswers] single_choice (static options) match for "${strVal}": → using ${matched?.value || strVal}`);
         initialAnswers[step.step_id] = matched ? matched.value : strVal;
       } else {
