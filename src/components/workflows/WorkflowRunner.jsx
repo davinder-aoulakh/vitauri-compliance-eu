@@ -63,8 +63,20 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         setMappedEntityData(entityData);
         setMappedEntityType(entityType);
         setMappedEntityId(id);
-        const initialAnswers = await computePrefillAnswers(workflow, entityData, entityType);
-        setAnswers(prev => ({ ...prev, ...initialAnswers }));
+
+        // Prefill from primary entity (Account or Entity)
+        const primaryPrefill = await computePrefillAnswers(workflow, entityData, entityType);
+
+        // If primary is Account, also prefill from the related Entity (e.g. fi_type mapped to Entity)
+        let secondaryPrefill = {};
+        if (accountId && entityData.entity_id) {
+          const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
+          if (entityRecords[0]) {
+            secondaryPrefill = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
+          }
+        }
+
+        setAnswers(prev => ({ ...prev, ...primaryPrefill, ...secondaryPrefill }));
       }
     };
     loadMappedEntityData();
