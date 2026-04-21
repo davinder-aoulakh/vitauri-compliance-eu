@@ -38,8 +38,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     queryFn: () => base44.entities.Workflow.filter({ 
       workflow_type: 'entity_rfi_classification',
       status: 'published'
-    }),
-    staleTime: 0
+    })
   });
 
   useEffect(() => {
@@ -64,7 +63,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   });
 
   useEffect(() => {
-    if (workflows.length > 0) {
+    if (workflows.length > 0 && !workflow) {
       // Get the latest version
       const sortedWorkflows = workflows.sort((a, b) => 
         parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
