@@ -27,6 +27,7 @@ import CountrySelect from "../shared/CountrySelect";
 import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
 import { computePrefillAnswers } from "./workflowPrefillUtils";
+import WorkflowIntroFields from "./WorkflowIntroFields";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -72,18 +73,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleNext = async () => {
     const answer = answers[currentStep.step_id];
     
-    console.log(`\n========== HANDLE NEXT from Step ${currentStepIndex + 1}: ${currentStep.step_title} ==========`);
-    console.log(`Current answer:`, answer);
-    console.log(`Current step question_type:`, currentStep.question_type);
-    console.log(`Is answer an array:`, Array.isArray(answer));
-    console.log(`Has conditional_logic:`, !!currentStep.conditional_logic);
-    console.log(`Full conditional_logic object:`, JSON.stringify(currentStep.conditional_logic, null, 2));
-    console.log(`Has condition_groups:`, !!currentStep.conditional_logic?.condition_groups?.length);
-    console.log(`use_selection_count flag:`, currentStep.conditional_logic?.use_selection_count);
-    console.log(`selection_count_value:`, currentStep.conditional_logic?.selection_count_value);
-    console.log(`selection_count_operator:`, currentStep.conditional_logic?.selection_count_operator);
-    console.log(`selection_count_next_step:`, currentStep.conditional_logic?.selection_count_next_step);
-    console.log(`selection_count_else_step:`, currentStep.conditional_logic?.selection_count_else_step);
+    // Debug omitted for brevity
     
     if (currentStep.question_type === 'address_input' && answer) {
       try {
@@ -333,30 +323,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    console.log('\n🔍 [CHECKING SELECTION COUNT CONDITIONS]');
-    console.log('   Is multiple_choice?', currentStep.question_type === 'multiple_choice');
-    console.log('   Is answer array?', Array.isArray(answer));
-    console.log('   use_selection_count flag:', currentStep.conditional_logic?.use_selection_count);
-    console.log('   selection_count_value:', currentStep.conditional_logic?.selection_count_value);
-    console.log('   selection_count_operator:', currentStep.conditional_logic?.selection_count_operator);
-    console.log('   Has next_step:', !!currentStep.conditional_logic?.selection_count_next_step);
-    console.log('   Has else_step:', !!currentStep.conditional_logic?.selection_count_else_step);
-    
-    // DETAILED CONDITION CHECKS
-    const check1 = currentStep.question_type === 'multiple_choice';
-    const check2 = Array.isArray(answer);
-    const check3 = currentStep.conditional_logic?.use_selection_count;
-    const check4 = currentStep.conditional_logic?.selection_count_value !== undefined;
-    const check5 = currentStep.conditional_logic?.selection_count_value !== null;
-    
-    console.log('\n   ========== INDIVIDUAL CONDITION CHECKS ==========');
-    console.log(`   ✓ Check 1 - Is multiple_choice: ${check1}`);
-    console.log(`   ✓ Check 2 - Is answer array: ${check2}`);
-    console.log(`   ${check3 ? '✓' : '❌'} Check 3 - use_selection_count is true: ${check3} ⚠️ THIS IS THE PROBLEM`);
-    console.log(`   ✓ Check 4 - selection_count_value !== undefined: ${check4}`);
-    console.log(`   ✓ Check 5 - selection_count_value !== null: ${check5}`);
-    console.log(`   ========================================`);
-    console.log(`   FINAL: All checks pass? ${check1 && check2 && check3 && check4 && check5}`);
+
     
     // WORKAROUND: Check if selection count config exists even if flag is false
     if (currentStep.question_type === 'multiple_choice' && 
@@ -445,108 +412,45 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
     
     if (currentStep.conditional_logic) {
-      console.log('\n🔍🔍🔍 [CONDITIONAL LOGIC CHECK - START] 🔍🔍🔍');
-      console.log('Current Step:', currentStep.step_id, '-', currentStep.step_title);
-      console.log('Current Answer:', answer);
-      console.log('Question Type:', currentStep.question_type);
-      console.log('Has conditional_logic object:', !!currentStep.conditional_logic);
-      console.log('Full conditional_logic object:');
-      console.log(JSON.stringify(currentStep.conditional_logic, null, 2));
-      console.log('');
-      console.log('Checking for condition_groups...');
-      console.log('Has condition_groups:', !!currentStep.conditional_logic?.condition_groups);
-      console.log('Number of condition_groups:', currentStep.conditional_logic?.condition_groups?.length || 0);
-      console.log('Has trigger_field:', !!currentStep.conditional_logic?.trigger_field);
-      console.log('trigger_field value:', currentStep.conditional_logic?.trigger_field);
-      console.log('trigger_value:', currentStep.conditional_logic?.trigger_value);
-      console.log('');
-      console.log('All workflow answers so far:');
-      console.log(JSON.stringify(answers, null, 2));
-      console.log('');
+
       
       const nextStepId = await evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
       
-      console.log('');
-      console.log('🎯 [CONDITIONAL LOGIC RESULT]');
-      console.log('Returned next step ID:', nextStepId);
-      console.log('Next step ID type:', typeof nextStepId);
-      console.log('Next step ID is null/undefined:', nextStepId === null || nextStepId === undefined);
-      
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
-        console.log(`✅ Found next step at index ${nextIndex}:`, workflow.steps[nextIndex]?.step_title);
         if (nextIndex !== -1) {
-          console.log(`➡️ [CONDITIONAL LOGIC] Navigating to step index ${nextIndex + 1}: ${workflow.steps[nextIndex].step_title}`);
-          console.log('🔍🔍🔍 [CONDITIONAL LOGIC CHECK - END - NAVIGATING] 🔍🔍🔍\n');
           setCurrentStepIndex(nextIndex);
           return;
-        } else {
-          console.error(`❌ ERROR: Next step ID "${nextStepId}" not found in workflow steps!`);
-          console.log('Available step IDs:', workflow.steps.map(s => s.step_id));
         }
-      } else {
-        console.warn('⚠️ Conditional logic returned null/empty/undefined next step');
-        console.log('Will continue to check other navigation methods...');
       }
-      console.log('🔍🔍🔍 [CONDITIONAL LOGIC CHECK - END - NO RESULT] 🔍🔍🔍\n');
     } else {
       console.log('ℹ️ No conditional_logic on this step, skipping to option-based navigation');
     }
 
     if (currentStep.question_type === 'yes_no' || currentStep.question_type === 'single_choice') {
-      console.log('\n📋 [CHECKING OPTION-BASED NEXT STEP]');
-      console.log('Question type:', currentStep.question_type);
-      console.log('Current answer:', answer);
-      console.log('Available options:', currentStep.options?.map(o => ({ value: o.value, label: o.label, next_step: o.next_step })));
       const selectedOption = currentStep.options?.find(opt => opt.value === answer);
-      console.log('Selected option:', selectedOption);
-      console.log('Selected option has next_step:', !!selectedOption?.next_step);
       if (selectedOption?.next_step) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === selectedOption.next_step);
-        console.log(`➡️ [OPTION] Using option's next_step: ${selectedOption.next_step}`);
-        console.log(`Found at index ${nextIndex}:`, workflow.steps[nextIndex]?.step_title);
-        if (nextIndex !== -1) {
-          console.log(`✅ Navigating to step index ${nextIndex + 1} via option next_step`);
-          setCurrentStepIndex(nextIndex);
-          return;
-        }
-      } else {
-        console.log('⚠️ No next_step defined on selected option, continuing...');
+        if (nextIndex !== -1) { setCurrentStepIndex(nextIndex); return; }
       }
     }
 
     if (currentStep.default_next_step) {
-      console.log(`[DEFAULT NEXT STEP]: ${currentStep.default_next_step}`);
       const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.default_next_step);
-      if (nextIndex !== -1) {
-        console.log(`Navigating to step index ${nextIndex + 1} via default_next_step`);
-        setCurrentStepIndex(nextIndex);
-        return;
-      }
+      if (nextIndex !== -1) { setCurrentStepIndex(nextIndex); return; }
     }
 
-    console.log('[SEQUENTIAL NAVIGATION]');
-    
-    // Check if current step is an action node (result step or no next step defined)
     if (isActionNode(currentStep)) {
-      console.log('  🏁 Current step is action node - showing summary');
-      const uniquePath = [...new Set([...history, currentStep.step_id])];
-      setCompletedPath(uniquePath);
+      setCompletedPath([...new Set([...history, currentStep.step_id])]);
       setShowSummary(true);
-      console.log(`========== END HANDLE NEXT (SUMMARY) ==========\n`);
       return;
     }
-    
     if (currentStepIndex < workflow.steps.length - 1) {
-      console.log(`Going to next step in sequence: ${currentStepIndex + 2}`);
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
-      console.log('Last step reached, showing summary');
-      const uniquePath = [...new Set([...history, currentStep.step_id])];
-      setCompletedPath(uniquePath);
+      setCompletedPath([...new Set([...history, currentStep.step_id])]);
       setShowSummary(true);
     }
-    console.log(`========== END HANDLE NEXT ==========\n`);
   };
 
   const handleBack = () => {
@@ -554,8 +458,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       // Get the actual previous step from history
       const previousStepId = history[history.length - 1];
       const previousStepIndex = workflow.steps.findIndex(s => s.step_id === previousStepId);
-      
-      console.log('[BACK] Previous step from history:', previousStepId, 'at index:', previousStepIndex);
       
       if (previousStepIndex !== -1) {
         setCurrentStepIndex(previousStepIndex);
@@ -584,11 +486,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       return;
     }
 
-    console.log(`\n🎬 ========== POST-COMPLETION ACTIONS EXECUTION START ==========`);
-    console.log(`[POST-COMPLETION] Total actions to execute: ${actions.length}`);
-    console.log(`[POST-COMPLETION] Context - accountId: ${accountId}, entityId: ${entityId}`);
-    console.log(`[POST-COMPLETION] Context - initialData:`, JSON.stringify(initialData, null, 2));
-    console.log(`[POST-COMPLETION] All actions:`, JSON.stringify(actions, null, 2));
+  
 
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];
@@ -883,7 +781,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    console.log(`\n🎬 ========== POST-COMPLETION ACTIONS: ALL ${actions.length} ACTIONS PROCESSED ==========\n`);
+  
   };
 
   const isActionNode = (step) => {
@@ -942,20 +840,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const handleComplete = async () => {
     setLoading(true);
     
-    console.log(`\n🏁 ========== WORKFLOW COMPLETION STARTED ==========`);
-    console.log(`[COMPLETE] accountId:`, accountId);
-    console.log(`[COMPLETE] entityId:`, entityId);
-    console.log(`[COMPLETE] initialData:`, initialData);
-    console.log(`[COMPLETE] completedPath:`, completedPath);
-    console.log(`[COMPLETE] history:`, history);
-    console.log(`[COMPLETE] currentStep.step_id:`, currentStep.step_id);
-    console.log(`[COMPLETE] currentStep.question_type:`, currentStep.question_type);
-    
-    const allStepsInPath = completedPath.length > 0 ? completedPath : [...history, currentStep.step_id];
-    console.log(`[COMPLETE] allStepsInPath (steps to check for actions):`, allStepsInPath);
-    
-    console.log(`\n[POST-COMPLETION ACTIONS] Checking for actions across ${allStepsInPath.length} steps`);
-    console.log(`[POST-COMPLETION ACTIONS] NOTE: Looking for "after_workflow" actions + "after_step" actions on result/summary steps`);
+      const allStepsInPath = completedPath.length > 0 ? completedPath : [...history, currentStep.step_id];
     
     for (const stepId of allStepsInPath) {
       const step = workflow.steps.find(s => s.step_id === stepId);
@@ -992,8 +877,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     
-    console.log(`\n✅ [POST-COMPLETION ACTIONS] All completion actions finished`);
-    console.log(`========== WORKFLOW COMPLETION: MOVING TO DATA SAVE ==========\n`);
+  
     
     const completionData = Object.entries(answers).map(([stepId, answer]) => {
       const step = workflow.steps.find(s => s.step_id === stepId);
@@ -1103,18 +987,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       case 'multiple_choice':
         const selectedOptions = answer ? (Array.isArray(answer) ? answer : answer.split(',').filter(Boolean)) : [];
         
-        console.log('🎯 [MULTIPLE CHOICE RENDER]');
-        console.log('   Step ID:', currentStep.step_id);
-        console.log('   Answer value:', answer);
-        console.log('   Selected options array:', selectedOptions);
-        console.log('   Available options:', currentStep.options?.map(o => ({ value: o.value, label: o.label })));
-        
+
         return (
           <div className="space-y-3">
             {currentStep.options?.map((option, index) => {
               const isSelected = selectedOptions.includes(option.value);
-              
-              console.log(`   Option ${index + 1}: value="${option.value}", label="${option.label}", isSelected=${isSelected}`);
               
               return (
                 <div 
@@ -1128,17 +1005,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    console.log(`\n🖱️ [CLICK EVENT] Option ${index + 1} clicked`);
-                    console.log('   Clicked option value:', option.value);
-                    console.log('   Current selectedOptions before change:', selectedOptions);
-                    console.log('   isSelected before change:', isSelected);
-                    
-                    const newValues = isSelected
+                            const newValues = isSelected
                       ? selectedOptions.filter(v => v !== option.value)
                       : [...selectedOptions, option.value];
-                    
-                    console.log('   New values array:', newValues);
-                    console.log('   Calling handleAnswer with:', { stepId: currentStep.step_id, newValues });
                     
                     handleAnswer(currentStep.step_id, newValues);
                   }}
@@ -1713,36 +1582,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   // Summary Screen
   if (showSummary) {
-    console.log('\n🎯 ========== RENDERING SUMMARY SCREEN ==========');
-    console.log('completedPath:', completedPath);
-    console.log('completedPath.length:', completedPath.length);
-    console.log('Last step ID in path:', completedPath[completedPath.length - 1]);
-    
     const finalStep = workflow.steps.find(s => s.step_id === completedPath[completedPath.length - 1]) || currentStep;
-    console.log('Final step found:', finalStep?.step_id, '-', finalStep?.step_title);
-    console.log('Final step result_status:', finalStep?.result_status);
-    console.log('Final step post_completion_actions:', finalStep?.post_completion_actions);
-    
     let summaryStatus = finalStep?.result_status || "pending_review";
-    console.log('Initial summaryStatus from result_status:', summaryStatus);
-    
-    // Extract status from post-completion actions if available
     if (finalStep?.post_completion_actions?.length > 0) {
-      console.log('\n📋 Checking post-completion actions for status...');
       const statusAction = finalStep.post_completion_actions.find(
         action => action.field_to_update === "reportability_status" || action.field_to_update === "is_reportable"
       );
-      console.log('Found status action:', statusAction);
       if (statusAction && statusAction.value_source === "static_value") {
         summaryStatus = statusAction.value;
-        console.log('✅ Updated summaryStatus from post-completion action:', summaryStatus);
       }
     }
-    
-    console.log('\n🎯 FINAL SUMMARY STATUS:', summaryStatus);
-    console.log('Is reportable?', summaryStatus === "reportable" || summaryStatus === true);
-    console.log('Is pending?', summaryStatus === "pending_review");
-    console.log('========================================\n');
     
     const isReportable = summaryStatus === "reportable" || summaryStatus === true;
     const isPending = summaryStatus === "pending_review";
@@ -1964,86 +1813,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   {workflow.workflow_introduction_text}
                 </p>
               )}
-              {workflow.workflow_introduction_fields && workflow.workflow_introduction_fields.length > 0 && mappedEntityData && (
-                <div className="space-y-1 mt-2">
-                  {workflow.workflow_introduction_fields.map((field, idx) => {
-                    const isComputedCondition = field.field_type === "computed_condition";
-
-                    if (isComputedCondition) {
-                      const value1 = Number(mappedEntityData[field.computation_field_1]) || 0;
-                      const value2 = Number(mappedEntityData[field.computation_field_2]) || 0;
-                      
-                      let computedResult = 0;
-                      switch (field.computation_operator) {
-                        case "add":
-                          computedResult = value1 + value2;
-                          break;
-                        case "subtract":
-                          computedResult = value1 - value2;
-                          break;
-                        case "multiply":
-                          computedResult = value1 * value2;
-                          break;
-                        case "divide":
-                          computedResult = value2 !== 0 ? value1 / value2 : 0;
-                          break;
-                        default:
-                          computedResult = value1 + value2;
-                      }
-
-                      const threshold = Number(field.threshold_value) || 0;
-                      let conditionMet = false;
-                      switch (field.comparison_operator) {
-                        case "greater_than":
-                          conditionMet = computedResult > threshold;
-                          break;
-                        case "less_than":
-                          conditionMet = computedResult < threshold;
-                          break;
-                        case "equals":
-                          conditionMet = computedResult === threshold;
-                          break;
-                        case "greater_than_or_equal":
-                          conditionMet = computedResult >= threshold;
-                          break;
-                        case "less_than_or_equal":
-                          conditionMet = computedResult <= threshold;
-                          break;
-                        case "not_equals":
-                          conditionMet = computedResult !== threshold;
-                          break;
-                        default:
-                          conditionMet = computedResult > threshold;
-                      }
-
-                      const displayText = conditionMet ? field.true_text : field.false_text;
-                      
-                      return (
-                        <div key={idx} className="text-sm text-blue-800">
-                          {field.display_label && <strong>{field.display_label}: </strong>}
-                          {displayText || 'N/A'}
-                        </div>
-                      );
-                    } else {
-                      let fieldValue = mappedEntityData[field.field_name];
-                      
-                      if (field.value_formatter === 'boolean_alive_deceased' && typeof fieldValue === 'boolean') {
-                        fieldValue = fieldValue ? 'Alive' : 'Deceased';
-                      } else if (field.value_formatter === 'pre_existing_new' && typeof fieldValue === 'boolean') {
-                        fieldValue = fieldValue ? 'Pre-existing (before 2018)' : 'New (after 2018)';
-                      } else if (field.value_formatter === 'capitalize' && typeof fieldValue === 'string') {
-                        fieldValue = fieldValue.charAt(0).toUpperCase() + fieldValue.slice(1);
-                      }
-                      
-                      return (
-                        <p key={idx} className="text-sm text-blue-800">
-                          <strong>{field.display_label}:</strong> {fieldValue || 'N/A'}
-                        </p>
-                      );
-                    }
-                  })}
-                </div>
-              )}
+              <WorkflowIntroFields introFields={workflow.workflow_introduction_fields} mappedEntityData={mappedEntityData} />
             </div>
           </AlertDescription>
         </Alert>

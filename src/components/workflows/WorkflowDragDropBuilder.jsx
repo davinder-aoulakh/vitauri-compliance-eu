@@ -14,6 +14,45 @@ import OutcomeRulesConfig from "./OutcomeRulesConfig";
 import StepEditor from "./StepEditor";
 import CopyWorkflowStepsDialog from "./CopyWorkflowStepsDialog";
 
+const ACCOUNT_FIELDS = [
+  { value: "account_number", label: "Account Number" },
+  { value: "account_number_type", label: "Account Number Type" },
+  { value: "account_creation_date", label: "Account Creation Date" },
+  { value: "account_type", label: "Account Type" },
+  { value: "account_holder_type", label: "Account Holder Type" },
+  { value: "account_holder_name", label: "Account Holder Name" },
+  { value: "first_name", label: "First Name" },
+  { value: "last_name", label: "Last Name" },
+  { value: "date_of_birth", label: "Date of Birth" },
+  { value: "place_of_birth", label: "Place of Birth" },
+  { value: "country_of_incorporation", label: "Country of Incorporation" },
+  { value: "is_pre_existing", label: "Pre-existing Account" },
+  { value: "is_recalcitrant", label: "Is Recalcitrant" },
+  { value: "account_holder_is_alive", label: "Account Holder Is Alive" },
+  { value: "account_holder_deceased_during_period", label: "Deceased During Period" },
+  { value: "account_closed_during_period", label: "Account Closed During Period" },
+  { value: "account_frozen_at_reporting_date", label: "Account Frozen at Reporting Date" },
+  { value: "account_dormant_at_reporting_date", label: "Account Dormant at Reporting Date" },
+  { value: "entity_managed_by_fiduciary_trust", label: "Managed by Fiduciary Trust" },
+  { value: "entity_managed_by_asset_manager", label: "Managed by Asset Manager" },
+  { value: "gross_income_from_financial_assets", label: "Gross Income from Financial Assets" },
+  { value: "gross_income_50_passive", label: "Gross Income 50%+ Passive" },
+  { value: "entity_classification", label: "Entity Classification" },
+  { value: "crs_entity_classification", label: "CRS Entity Classification" },
+  { value: "year_end_cash_value", label: "Year End Cash Value" },
+  { value: "year_end_cash_value_currency", label: "Year End Cash Value Currency" },
+  { value: "gross_payments", label: "Gross Payments" },
+  { value: "gross_payments_currency", label: "Gross Payments Currency" },
+  { value: "reporting_year", label: "Reporting Year" },
+  { value: "reportability_status", label: "Reportability Status" },
+  { value: "beneficiaries_count", label: "Beneficiaries Count" },
+  { value: "controlling_persons_count", label: "Controlling Persons Count" },
+  { value: "self_certification_obtained", label: "Self Certification Obtained" },
+  { value: "self_certification_date", label: "Self Certification Date" },
+  { value: "country_of_residence", label: "Country of Residence" },
+  { value: "status", label: "Account Status" },
+];
+
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
   const initialSteps = (workflow?.steps || []).map(step => {
     const normalizedConditions = (step.conditional_logic?.conditions || []).map(c => ({
@@ -219,14 +258,55 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                   {introFields.length === 0 ? (
                     <p className="text-xs text-slate-500 italic p-3 bg-white rounded border">No fields configured.</p>
                   ) : (
-                    <div className="space-y-2">
-                      {introFields.map((field, idx) => (
-                        <div key={idx} className="p-3 border rounded-lg bg-white flex items-center gap-2">
-                          <Input value={field.display_label} onChange={(e) => { const nf = [...introFields]; nf[idx] = { ...nf[idx], display_label: e.target.value }; setIntroFields(nf); }} placeholder="Label" className="flex-1 h-8 text-xs" />
-                          <Input value={field.field_name} onChange={(e) => { const nf = [...introFields]; nf[idx] = { ...nf[idx], field_name: e.target.value }; setIntroFields(nf); }} placeholder="Field name" className="flex-1 h-8 text-xs" />
-                          <Button type="button" variant="ghost" size="icon" onClick={() => setIntroFields(introFields.filter((_, i) => i !== idx))} className="h-6 w-6 text-red-600"><Trash2 className="w-3 h-3" /></Button>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {introFields.map((field, idx) => {
+                        const updateField = (updates) => {
+                          const nf = [...introFields];
+                          nf[idx] = { ...nf[idx], ...updates };
+                          setIntroFields(nf);
+                        };
+                        return (
+                          <div key={idx} className="p-3 border rounded-lg bg-white space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input value={field.display_label} onChange={(e) => updateField({ display_label: e.target.value })} placeholder="Display Label" className="flex-1 h-8 text-xs" />
+                              <Select value={field.field_name} onValueChange={(v) => updateField({ field_name: v })}>
+                                <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue placeholder="Select field..." /></SelectTrigger>
+                                <SelectContent className="max-h-72">
+                                  {ACCOUNT_FIELDS.map(f => <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <Select value={field.value_formatter || "default"} onValueChange={(v) => updateField({ value_formatter: v })}>
+                                <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Formatter..." /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default" className="text-xs">Default</SelectItem>
+                                  <SelectItem value="capitalize" className="text-xs">Capitalize</SelectItem>
+                                  <SelectItem value="boolean_alive_deceased" className="text-xs">Alive/Deceased</SelectItem>
+                                  <SelectItem value="pre_existing_new" className="text-xs">Pre-existing/New</SelectItem>
+                                  <SelectItem value="threshold_based_display" className="text-xs">High/Low Value (Threshold)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setIntroFields(introFields.filter((_, i) => i !== idx))} className="h-7 w-7 text-red-600 flex-shrink-0"><Trash2 className="w-3 h-3" /></Button>
+                            </div>
+                            {field.value_formatter === "threshold_based_display" && (
+                              <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-100">
+                                <Select value={field.comparison_operator || "greater_than"} onValueChange={(v) => updateField({ comparison_operator: v })}>
+                                  <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="greater_than" className="text-xs">&gt; Greater than</SelectItem>
+                                    <SelectItem value="greater_than_or_equal" className="text-xs">&ge; Greater or equal</SelectItem>
+                                    <SelectItem value="less_than" className="text-xs">&lt; Less than</SelectItem>
+                                    <SelectItem value="less_than_or_equal" className="text-xs">&le; Less or equal</SelectItem>
+                                    <SelectItem value="equals" className="text-xs">= Equals</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Input type="number" value={field.threshold_value || ""} onChange={(e) => updateField({ threshold_value: Number(e.target.value) })} placeholder="Threshold (e.g. 250000)" className="h-7 text-xs" />
+                                <Input value={field.true_text || ""} onChange={(e) => updateField({ true_text: e.target.value })} placeholder="If true (e.g. High Value)" className="h-7 text-xs" />
+                                <Input value={field.false_text || ""} onChange={(e) => updateField({ false_text: e.target.value })} placeholder="If false (e.g. Low Value)" className="h-7 text-xs" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
