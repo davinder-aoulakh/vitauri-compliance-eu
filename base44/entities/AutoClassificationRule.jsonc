@@ -1,0 +1,221 @@
+{
+  "name": "AutoClassificationRule",
+  "type": "object",
+  "properties": {
+    "rule_name": {
+      "type": "string",
+      "description": "Name of the auto-classification rule"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this rule does"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "Account"
+      ],
+      "default": "Account",
+      "description": "Type of entity this rule applies to"
+    },
+    "condition_group": {
+      "type": "object",
+      "properties": {
+        "logic_operator": {
+          "type": "string",
+          "enum": [
+            "AND",
+            "OR"
+          ],
+          "default": "AND"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "equals",
+                  "not_equals",
+                  "greater_than",
+                  "less_than",
+                  "greater_than_or_equal",
+                  "less_than_or_equal",
+                  "contains",
+                  "in",
+                  "not_in",
+                  "days_ago_greater_than",
+                  "days_ago_less_than",
+                  "months_ago_greater_than",
+                  "months_ago_less_than",
+                  "years_ago_greater_than",
+                  "years_ago_less_than",
+                  "is_empty",
+                  "is_not_empty"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "subGroups": {
+          "type": "array",
+          "description": "Nested condition groups for complex logic"
+        }
+      },
+      "description": "Root condition group with support for nested groups"
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "equals",
+              "not_equals",
+              "greater_than",
+              "less_than",
+              "greater_than_or_equal",
+              "less_than_or_equal",
+              "contains",
+              "in",
+              "not_in",
+              "days_ago_greater_than",
+              "days_ago_less_than",
+              "months_ago_greater_than",
+              "months_ago_less_than",
+              "years_ago_greater_than",
+              "years_ago_less_than",
+              "is_empty",
+              "is_not_empty"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "logic_operator": {
+            "type": "string",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "default": "AND"
+          }
+        }
+      },
+      "description": "Legacy flat conditions array (for backward compatibility)"
+    },
+    "classification_result": {
+      "type": "string",
+      "enum": [
+        "reportable",
+        "non_reportable",
+        "pending_review",
+        "excluded"
+      ],
+      "description": "The reportability status to set when this rule matches"
+    },
+    "classification_reason": {
+      "type": "string",
+      "description": "Reason for this classification"
+    },
+    "entity_classification_result": {
+      "type": "string",
+      "enum": [
+        "financial_institution",
+        "active_nfe",
+        "passive_nfe",
+        "not_applicable"
+      ],
+      "description": "Optional entity classification to set for entity accounts"
+    },
+    "priority": {
+      "type": "number",
+      "default": 0,
+      "description": "Priority when multiple rules match (higher = higher priority)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this rule is currently active"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of super admin who created this rule"
+    },
+    "last_modified_by": {
+      "type": "string",
+      "description": "Email of super admin who last modified this rule"
+    },
+    "trigger_events": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "create",
+          "update",
+          "delete",
+          "bulk_update",
+          "bulk_import"
+        ]
+      },
+      "default": [
+        "create",
+        "update",
+        "bulk_update",
+        "bulk_import"
+      ],
+      "description": "Events that trigger this rule evaluation"
+    },
+    "triggered_on_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specific fields that, when changed, trigger this rule"
+    },
+    "linked_workflow_id": {
+      "type": "string",
+      "description": "ID of the Workflow to simulate when this rule runs ad-hoc, for history generation"
+    },
+    "workflow_field_mappings": {
+      "type": "array",
+      "description": "Maps workflow step IDs to account/entity fields for headless simulation",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "description": "The workflow step ID"
+          },
+          "step_title": {
+            "type": "string",
+            "description": "Display title of the step"
+          },
+          "account_field": {
+            "type": "string",
+            "description": "The account or entity field to read the value from"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "rule_name",
+    "entity_type",
+    "classification_result",
+    "classification_reason"
+  ]
+}

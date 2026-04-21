@@ -1,0 +1,112 @@
+{
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Reference to the account being classified"
+    },
+    "classification_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this classification was performed"
+    },
+    "reportability_status": {
+      "type": "string",
+      "enum": [
+        "reportable",
+        "non_reportable",
+        "pending_review",
+        "excluded"
+      ],
+      "description": "The reportability determination"
+    },
+    "classification_reason": {
+      "type": "string",
+      "description": "Detailed reason for this classification"
+    },
+    "classification_source": {
+      "type": "string",
+      "enum": [
+        "workflow",
+        "auto_classification",
+        "manual"
+      ],
+      "default": "workflow",
+      "description": "How this classification was performed"
+    },
+    "rule_id": {
+      "type": "string",
+      "description": "Reference to the AutoClassificationRule that triggered this classification"
+    },
+    "rule_name": {
+      "type": "string",
+      "description": "Name of the rule at time of classification (for audit trail)"
+    },
+    "workflow_id": {
+      "type": "string",
+      "description": "Reference to the Workflow simulated during auto-classification"
+    },
+    "workflow_path_taken": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of step IDs visited during headless workflow simulation"
+    },
+    "reportable_jurisdictions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of jurisdictions where account is reportable"
+    },
+    "workflow_answers": {
+      "type": "object",
+      "description": "Complete workflow answers for audit trail (resolved from account fields)"
+    },
+    "indicia_found": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Foreign indicia identified during classification"
+    },
+    "self_certification_status": {
+      "type": "string",
+      "enum": [
+        "obtained",
+        "not_obtained",
+        "not_required"
+      ],
+      "description": "Self-certification status at time of classification"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email of user who performed classification"
+    },
+    "account_holder_name": {
+      "type": "string",
+      "description": "Account holder name at time of classification"
+    },
+    "account_number": {
+      "type": "string",
+      "description": "Account number at time of classification"
+    },
+    "account_balance": {
+      "type": "number",
+      "description": "Account balance at time of classification"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "account_id",
+    "classification_date",
+    "reportability_status",
+    "classification_reason"
+  ],
+  "name": "AccountClassificationHistory"
+}

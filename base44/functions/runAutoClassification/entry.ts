@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -8,17 +8,25 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
   }
 
-  const { tenantId, entityId } = await req.json();
+  const { tenantId, entityId, ruleId } = await req.json();
 
   if (!tenantId || !entityId) {
     return Response.json({ error: 'tenantId and entityId are required' }, { status: 400 });
   }
 
-  // Load active rules sorted by priority descending
-  const allRules = await base44.asServiceRole.entities.AutoClassificationRule.filter({ entity_type: 'Account' });
-  const rules = allRules
-    .filter(r => r.is_active !== false)
-    .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  // Load rules: either a specific rule or all active rules sorted by priority
+  let rules;
+  if (ruleId) {
+    const allRules = await base44.asServiceRole.entities.AutoClassificationRule.filter({ entity_type: 'Account' });
+    const specific = allRules.find(r => r.id === ruleId);
+    if (!specific) return Response.json({ error: 'Rule not found' }, { status: 404 });
+    rules = [specific];
+  } else {
+    const allRules = await base44.asServiceRole.entities.AutoClassificationRule.filter({ entity_type: 'Account' });
+    rules = allRules
+      .filter(r => r.is_active !== false)
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  }
 
   if (rules.length === 0) {
     return Response.json({ message: 'No active rules found', processed: 0, updated: 0 });
@@ -35,9 +43,17 @@ Deno.serve(async (req) => {
   const results = [];
 
   for (const account of accounts) {
-    const matchedRule = rules.find(rule => evaluateRule(rule, account));
+    let matchedRule = null;
+
+    if (ruleId) {
+      // For single rule run: apply it regardless (still evaluate conditions)
+      matchedRule = evaluateRule(rules[0], account) ? rules[0] : null;
+    } else {
+      matchedRule = rules.find(rule => evaluateRule(rule, account));
+    }
 
     if (matchedRule) {
+      // Update account reportability
       await base44.asServiceRole.entities.Account.update(account.id, {
         reportability_status: matchedRule.classification_result,
         reportability_reason: matchedRule.classification_reason,
@@ -45,8 +61,54 @@ Deno.serve(async (req) => {
           ? { entity_classification: matchedRule.entity_classification_result }
           : {}),
       });
+
+      // Build workflow simulation data if rule has a linked workflow
+      let workflowAnswers = {};
+      let workflowPathTaken = [];
+      let workflowId = null;
+
+      if (matchedRule.linked_workflow_id && matchedRule.workflow_field_mappings?.length > 0) {
+        workflowId = matchedRule.linked_workflow_id;
+
+        // Resolve answers from account fields using the mapping
+        for (const mapping of matchedRule.workflow_field_mappings) {
+          if (mapping.step_id && mapping.account_field) {
+            const value = resolveAccountField(account, mapping.account_field);
+            if (value !== undefined && value !== null) {
+              workflowAnswers[mapping.step_id] = value;
+              workflowPathTaken.push(mapping.step_id);
+            }
+          }
+        }
+      }
+
+      // Create classification history record
+      await base44.asServiceRole.entities.AccountClassificationHistory.create({
+        tenant_id: tenantId,
+        account_id: account.id,
+        classification_date: new Date().toISOString(),
+        reportability_status: matchedRule.classification_result,
+        classification_reason: matchedRule.classification_reason,
+        classification_source: 'auto_classification',
+        rule_id: matchedRule.id,
+        rule_name: matchedRule.rule_name,
+        workflow_id: workflowId,
+        workflow_answers: workflowAnswers,
+        workflow_path_taken: workflowPathTaken,
+        performed_by: user.email,
+        account_holder_name: account.account_holder_name || `${account.first_name || ''} ${account.last_name || ''}`.trim(),
+        account_number: account.account_number,
+        account_balance: account.year_end_cash_value,
+      });
+
       updated++;
-      results.push({ account_id: account.id, account_number: account.account_number, rule: matchedRule.rule_name, result: matchedRule.classification_result });
+      results.push({
+        account_id: account.id,
+        account_number: account.account_number,
+        rule: matchedRule.rule_name,
+        result: matchedRule.classification_result,
+        history_created: true,
+      });
     } else {
       skipped++;
     }
@@ -61,8 +123,18 @@ Deno.serve(async (req) => {
   });
 });
 
+function resolveAccountField(account, fieldPath) {
+  // Support dot notation for nested fields e.g. "current_address.country"
+  const parts = fieldPath.split('.');
+  let val = account;
+  for (const part of parts) {
+    if (val == null) return null;
+    val = val[part];
+  }
+  return val;
+}
+
 function evaluateRule(rule, account) {
-  // Support both grouped and legacy flat conditions
   if (rule.condition_group && (rule.condition_group.conditions?.length > 0 || rule.condition_group.subGroups?.length > 0)) {
     return evaluateGroup(rule.condition_group, account);
   }
@@ -75,14 +147,12 @@ function evaluateRule(rule, account) {
 function evaluateGroup(group, account) {
   const op = group.logic_operator || 'AND';
   const results = [];
-
   for (const condition of (group.conditions || [])) {
     results.push(evaluateCondition(condition, account));
   }
   for (const subGroup of (group.subGroups || [])) {
     results.push(evaluateGroup(subGroup, account));
   }
-
   if (results.length === 0) return false;
   return op === 'AND' ? results.every(Boolean) : results.some(Boolean);
 }
@@ -101,9 +171,7 @@ function evaluateCondition(condition, account) {
   const { field, operator, value } = condition;
   if (!field || !operator) return false;
 
-  // Support related entity fields like "entity.rfi_status" — skip for now as we don't have entity joined
   const fieldValue = field.includes('.') ? null : account[field];
-
   const strVal = fieldValue !== null && fieldValue !== undefined ? String(fieldValue) : null;
 
   switch (operator) {

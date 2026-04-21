@@ -38,10 +38,12 @@ import {
   Check,
   X,
   Play,
-  Loader2
+  Loader2,
+  History
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ConditionGroupBuilder from "../components/rules/ConditionGroupBuilder";
+import WorkflowFieldMappingEditor from "../components/rules/WorkflowFieldMappingEditor";
 
 export default function AutoClassificationRulesPage() {
   const [user, setUser] = useState(null);
@@ -63,7 +65,9 @@ export default function AutoClassificationRulesPage() {
     priority: 0,
     is_active: true,
     trigger_events: ["create", "update", "bulk_update", "bulk_import"],
-    triggered_on_fields: []
+    triggered_on_fields: [],
+    linked_workflow_id: null,
+    workflow_field_mappings: []
   });
   const [useGroupedConditions, setUseGroupedConditions] = useState(false);
 
@@ -73,6 +77,7 @@ export default function AutoClassificationRulesPage() {
   const [runEntityId, setRunEntityId] = useState("");
   const [runResult, setRunResult] = useState(null);
   const [runLoading, setRunLoading] = useState(false);
+  const [runTargetRule, setRunTargetRule] = useState(null); // null = all rules, rule object = specific rule
 
   const { data: tenants = [] } = useQuery({
     queryKey: ['tenants-for-run'],
@@ -89,9 +94,27 @@ export default function AutoClassificationRulesPage() {
     if (!runTenantId || !runEntityId) return;
     setRunLoading(true);
     setRunResult(null);
-    const response = await base44.functions.invoke('runAutoClassification', { tenantId: runTenantId, entityId: runEntityId });
+    const payload = { tenantId: runTenantId, entityId: runEntityId };
+    if (runTargetRule) payload.ruleId = runTargetRule.id;
+    const response = await base44.functions.invoke('runAutoClassification', payload);
     setRunResult(response.data);
     setRunLoading(false);
+  };
+
+  const openRunDialogForRule = (rule) => {
+    setRunTargetRule(rule);
+    setRunResult(null);
+    setRunTenantId("");
+    setRunEntityId("");
+    setShowRunDialog(true);
+  };
+
+  const openRunDialogAll = () => {
+    setRunTargetRule(null);
+    setRunResult(null);
+    setRunTenantId("");
+    setRunEntityId("");
+    setShowRunDialog(true);
   };
 
   const queryClient = useQueryClient();
@@ -164,7 +187,9 @@ export default function AutoClassificationRulesPage() {
       priority: 0,
       is_active: true,
       trigger_events: ["create", "update", "bulk_update", "bulk_import"],
-      triggered_on_fields: []
+      triggered_on_fields: [],
+      linked_workflow_id: null,
+      workflow_field_mappings: []
     });
     setEditingRule(null);
     setUseGroupedConditions(false);
@@ -190,7 +215,9 @@ export default function AutoClassificationRulesPage() {
       priority: rule.priority || 0,
       is_active: rule.is_active !== false,
       trigger_events: rule.trigger_events || ["create", "update", "bulk_update", "bulk_import"],
-      triggered_on_fields: rule.triggered_on_fields || []
+      triggered_on_fields: rule.triggered_on_fields || [],
+      linked_workflow_id: rule.linked_workflow_id || null,
+      workflow_field_mappings: rule.workflow_field_mappings || []
     });
     setShowForm(true);
   };
@@ -338,12 +365,12 @@ export default function AutoClassificationRulesPage() {
           </div>
           <div className="flex gap-2">
             <Button
-              onClick={() => { setRunResult(null); setRunTenantId(""); setRunEntityId(""); setShowRunDialog(true); }}
+              onClick={openRunDialogAll}
               variant="outline"
               className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
             >
               <Play className="w-4 h-4" />
-              Run Ad-hoc
+              Run All Rules
             </Button>
             <Button
               onClick={() => {
@@ -410,12 +437,17 @@ export default function AutoClassificationRulesPage() {
                     {rules.sort((a, b) => (b.priority || 0) - (a.priority || 0)).map((rule) => (
                       <TableRow key={rule.id} className="hover:bg-slate-50/50">
                         <TableCell>
-                          <div>
-                            <p className="font-semibold text-slate-900">{rule.rule_name}</p>
-                            {rule.description && (
-                              <p className="text-xs text-slate-500">{rule.description}</p>
-                            )}
-                          </div>
+                         <div>
+                           <p className="font-semibold text-slate-900">{rule.rule_name}</p>
+                           {rule.description && (
+                             <p className="text-xs text-slate-500">{rule.description}</p>
+                           )}
+                           {rule.linked_workflow_id && (
+                             <Badge variant="outline" className="mt-1 text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
+                               <History className="w-3 h-3 mr-1" /> Workflow linked
+                             </Badge>
+                           )}
+                         </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm space-y-1">
@@ -464,6 +496,15 @@ export default function AutoClassificationRulesPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openRunDialogForRule(rule)}
+                              className="text-green-600 hover:text-green-700"
+                              title="Run this rule ad-hoc"
+                            >
+                              <Play className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleEdit(rule)}>
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -493,13 +534,28 @@ export default function AutoClassificationRulesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Play className="w-5 h-5 text-green-600" />
-              Run Auto Classification Ad-hoc
+              {runTargetRule ? `Run Rule: ${runTargetRule.rule_name}` : "Run All Active Rules Ad-hoc"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Select a tenant and RFI entity. All active rules will be evaluated against accounts belonging to that entity.
-            </p>
+            {runTargetRule ? (
+              <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <Sparkles className="w-4 h-4 text-green-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">Running specific rule only</p>
+                  <p className="text-xs text-green-700 mt-0.5">{runTargetRule.description || runTargetRule.classification_reason}</p>
+                  {runTargetRule.linked_workflow_id && (
+                    <Badge className="mt-1 text-xs bg-indigo-100 text-indigo-800 border-indigo-200">
+                      <History className="w-3 h-3 mr-1" /> Workflow linked — history will be generated
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600">
+                All active rules will be evaluated in priority order against accounts belonging to the selected entity.
+              </p>
+            )}
 
             <div>
               <Label>Tenant *</Label>
@@ -533,10 +589,21 @@ export default function AutoClassificationRulesPage() {
               <Alert className={runResult.error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
                 <AlertDescription className={runResult.error ? "text-red-800" : "text-green-800"}>
                   {runResult.error ? runResult.error : (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <p className="font-semibold">{runResult.message}</p>
-                      <p className="text-sm">Total accounts processed: <strong>{runResult.processed}</strong></p>
-                      <p className="text-sm">Updated: <strong>{runResult.updated}</strong> | Skipped (no match): <strong>{runResult.skipped}</strong></p>
+                      <p className="text-sm">Processed: <strong>{runResult.processed}</strong> | Updated: <strong>{runResult.updated}</strong> | Skipped: <strong>{runResult.skipped}</strong></p>
+                      {runResult.results?.length > 0 && (
+                        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                          {runResult.results.map((r, i) => (
+                            <div key={i} className="text-xs flex items-center gap-2 bg-white/60 rounded px-2 py-1">
+                              <span className="font-mono text-slate-600">{r.account_number}</span>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">{r.result}</Badge>
+                              {r.history_created && <Badge className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200"><History className="w-3 h-3 mr-1" />History saved</Badge>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </AlertDescription>
@@ -956,6 +1023,15 @@ export default function AutoClassificationRulesPage() {
                 )}
               </div>
             </div>
+
+              <div className="pt-4 border-t">
+                <WorkflowFieldMappingEditor
+                  linkedWorkflowId={formData.linked_workflow_id}
+                  workflowFieldMappings={formData.workflow_field_mappings}
+                  onWorkflowChange={(v) => setFormData(prev => ({ ...prev, linked_workflow_id: v, workflow_field_mappings: [] }))}
+                  onMappingsChange={(v) => setFormData(prev => ({ ...prev, workflow_field_mappings: v }))}
+                />
+              </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button
