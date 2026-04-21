@@ -835,128 +835,53 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     if (!nextNodeId && (currentNode.conditional_logic?.condition_groups?.length > 0 || currentNode.conditional_logic?.conditions?.length > 0)) {
-  ('\n🔍🔍🔍 CHECKING CONDITIONAL LOGIC for step:', currentNodeId);
       const logic = currentNode.conditional_logic;
-  ('📜 Full Conditional Logic Config:', JSON.stringify(logic, null, 2));
-  ('🎯 Has condition_groups:', !!logic.condition_groups?.length);
-  ('🎯 Number of condition_groups:', logic.condition_groups?.length || 0);
-  ('🎯 Has legacy conditions:', !!logic.conditions?.length);
-  ('🎯 Trigger Field:', logic.trigger_field);
-  ('🎯 Trigger Value:', logic.trigger_value);
-
       let shouldEvaluateAdvancedLogic = true;
       if (logic.trigger_field && logic.trigger_value) {
-    ('\n⚡ TRIGGER EVALUATION:');
         const currentAnswer = newAnswers[currentNodeId];
-        const triggerAnswer = newAnswers[logic.trigger_field];
         shouldEvaluateAdvancedLogic = String(currentAnswer) === String(logic.trigger_value);
-
-    (`  🔑 Trigger Field: "${logic.trigger_field}"`);
-    (`  🎯 Expected Trigger Value: "${logic.trigger_value}"`);
-    (`  💬 Current Step Answer: "${currentAnswer}"`);
-    (`  💬 Trigger Field Answer: "${triggerAnswer}"`);
-    (`  ✅ Should Evaluate Advanced Logic: ${shouldEvaluateAdvancedLogic}`);
-
-        if (!shouldEvaluateAdvancedLogic) {
-      (`  ⚠️ TRIGGER NOT MET - skipping advanced conditional logic`);
-        }
-      } else {
-    ('ℹ️ No trigger defined - will evaluate conditional logic');
       }
 
       if (shouldEvaluateAdvancedLogic) {
         if (logic.condition_groups?.length > 0) {
-      ('\n✨✨✨ USING CONDITION GROUPS LOGIC (first match wins)');
           nextNodeId = await evaluateConditionalLogicWrapper(logic, newAnswers);
-      (`✅✅✅ Condition groups returned next step ID: "${nextNodeId}"`);
-
-          if (nextNodeId) {
-            const nextStep = stepMap[nextNodeId];
-        (`  📌 Next Step Title: "${nextStep?.step_title || 'NOT FOUND'}"`);
-            if (!nextStep) {
-          (`  ❌❌❌ CRITICAL: Next step "${nextNodeId}" NOT FOUND in stepMap!`);
-            }
-          } else {
-        (`  ⚠️ Condition groups returned null/undefined next step`);
-          }
-        }
-        else if (logic.conditions?.length > 0) {
-      ('\n📋 Using LEGACY simple conditions logic');
+        } else if (logic.conditions?.length > 0) {
           const conditionMet = await evaluateConditionalLogicWrapper(logic, newAnswers);
-      (`  Condition Met: ${conditionMet}`);
-          if (conditionMet) {
-            nextNodeId = logic.next_step;
-        (`  ➡️ Going to next_step: ${nextNodeId}`);
-          } else {
-            nextNodeId = logic.else_step;
-        (`  ➡️ Going to else_step: ${nextNodeId}`);
-          }
+          nextNodeId = conditionMet ? logic.next_step : logic.else_step;
         }
-      } else {
-    ('⏭️⏭️⏭️ Trigger not met, skipping conditional logic entirely');
       }
     }
 
-('\n🔸 Fallback Navigation Checks:');
     if (!nextNodeId && selectedValue && currentNode.options && currentNode.options.length > 0) {
-  ('  📋 Checking option-based next_step...');
-      const selectedOption = currentNode.options.find(opt =>
-        opt.value === selectedValue || opt.label === selectedValue
-      );
-  (`  Selected Option:`, selectedOption);
-      if (selectedOption?.next_step) {
-        nextNodeId = selectedOption.next_step;
-    (`  ✅ Found next_step from option: ${nextNodeId}`);
-      } else {
-    (`  ⚠️ Selected option has no next_step`);
-      }
+      const selectedOption = currentNode.options.find(opt => opt.value === selectedValue || opt.label === selectedValue);
+      if (selectedOption?.next_step) nextNodeId = selectedOption.next_step;
     }
 
     if (!nextNodeId && currentNode.default_next_step) {
-  (`  📋 Using default_next_step: ${currentNode.default_next_step}`);
       nextNodeId = currentNode.default_next_step;
     }
 
-(`\n🎯 FINAL NEXT NODE ID: "${nextNodeId}"`);
-
     if (nextNodeId && !stepMap[nextNodeId]) {
-  (`❌❌❌ CRITICAL ERROR: Next step "${nextNodeId}" not found in workflow stepMap!`);
-  ('Available step IDs in workflow:', Object.keys(stepMap));
-  (`Next step "${nextNodeId}" not found in workflow, showing summary`);
       nextNodeId = null;
-    } else if (nextNodeId) {
-      const nextStep = stepMap[nextNodeId];
-  (`✅ Next step validated - Title: "${nextStep.step_title}"`);
     }
 
     if (!nextNodeId && (currentNode.question_type === "controlling_person_input" || currentNode.question_type === "beneficiary_input")) {
       if (currentNode.default_next_step && stepMap[currentNode.default_next_step]) {
-    (`  Using default_next_step for ${currentNode.question_type}: ${currentNode.default_next_step}`);
         nextNodeId = currentNode.default_next_step;
       }
     }
 
     const uniquePath = [...new Set([...newHistory, currentNodeId])];
 
-(`\n🏁 FINAL DECISION:`);
-(`  Next Node ID: ${nextNodeId}`);
-(`  Is Action Node: ${isActionNode(currentNode)}`);
-
     if (!nextNodeId || isActionNode(currentNode)) {
-  (`  🏁 Ending workflow - showing summary`);
-  (`  Completed Path:`, uniquePath);
       setCompletedPath(uniquePath);
       setShowSummary(true);
-  ('🔵🔵🔵 ========== END HANDLE NEXT (SUMMARY) ========== 🔵🔵🔵\n\n');
       return;
     }
 
-(`  ➡️ Navigating to next step: ${nextNodeId} (${stepMap[nextNodeId]?.step_title})`);
     setCurrentNodeId(nextNodeId);
-('🔵🔵🔵 ========== END HANDLE NEXT (NAVIGATION) ========== 🔵🔵🔵\n\n');
 
     const existingAnswer = newAnswers[nextNodeId];
-(`[AccountClassification] Navigating to step ${stepMap[nextNodeId]?.step_title}, existing answer:`, existingAnswer);
 
     if (existingAnswer && typeof existingAnswer === 'object' && existingAnswer._address_config) {
       const { _address_config, ...savedAddress } = existingAnswer;
@@ -993,8 +918,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const handleBack = () => {
-('[AccountClassification] handleBack called');
-
     if (showSummary) {
       setShowSummary(false);
       return;
@@ -1014,7 +937,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     setCurrentNodeId(previousNodeId);
 
     const previousAnswer = answers[previousNodeId];
-(`[AccountClassification] Going back to step ${stepMap[previousNodeId]?.step_title}, answer:`, previousAnswer);
 
     if (previousAnswer && typeof previousAnswer === 'object' && previousAnswer._address_config) {
       const { _address_config, ...savedAddress } = previousAnswer;
@@ -1045,9 +967,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const completeClassification = async () => {
-('\n⚡⚡⚡ [COMPLETE CLASSIFICATION] Starting...');
-    const startTime = Date.now();
-    
     const finalNode = stepMap[history[history.length - 1]] || stepMap[currentNodeId];
     const finalAnswers = answers;
 
@@ -1072,8 +991,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
-(`[POST-COMPLETION ACTIONS] Checking for "after_workflow" actions across all steps`);
-    
     // Execute all after_workflow actions in parallel for speed
     const afterWorkflowPromises = [];
     for (const stepId of completedPath) {
@@ -1083,7 +1000,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           action => action.execution_timing === "after_workflow"
         );
         if (afterWorkflowActions.length > 0) {
-      (`[POST-COMPLETION ACTIONS] Queueing ${afterWorkflowActions.length} "after_workflow" action(s) from step: ${step.step_title}`);
           afterWorkflowPromises.push(executePostCompletionActions(afterWorkflowActions, cleanedAnswers));
         }
       }
@@ -1092,7 +1008,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Wait for all after_workflow actions to complete in parallel
     if (afterWorkflowPromises.length > 0) {
       await Promise.all(afterWorkflowPromises);
-  (`[POST-COMPLETION ACTIONS] Completed ${afterWorkflowPromises.length} after_workflow action groups`);
     }
 
     let reportabilityStatus = "pending_review";
@@ -1101,7 +1016,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Priority 1: Use explicit result_status from workflow step configuration
     if (finalNode?.result_status) {
       reportabilityStatus = finalNode.result_status;
-  (`[CLASSIFICATION] Using result_status from workflow step: ${reportabilityStatus}`);
     } 
     // Priority 2: Infer from post-completion actions (with proper value extraction)
     else if (finalNode?.post_completion_actions?.length > 0) {
@@ -1123,7 +1037,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
         
         if (extractedValue) {
           reportabilityStatus = extractedValue;
-      (`[CLASSIFICATION] Using reportability_status from post-completion action (${statusAction.value_source}): ${reportabilityStatus}`);
         }
       }
     }
@@ -1141,9 +1054,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         } else {
           reportabilityStatus = "reportable";
         }
-    (`[CLASSIFICATION] Inferred from text content: ${reportabilityStatus}`);
-      }
-    }
+        }
 
     const fileUploadAnswer = Object.values(cleanedAnswers).find(ans =>
       ans && typeof ans === 'object' && ans.file_url
@@ -1295,11 +1206,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       );
     }
     
-    // Wait for both to complete
     await Promise.all(parallelTasks);
-    
-    const endTime = Date.now();
-(`⚡⚡⚡ [COMPLETE CLASSIFICATION] Finished in ${endTime - startTime}ms\n`);
 
     // Pass redirect instruction if needed
     if (shouldRedirectToControllingPersons) {
@@ -1772,7 +1679,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     if (currentNode.question_type === "beneficiary_input") {
       const existingAnswer = answers[currentNodeId];
-  (`[AccountClassification] Rendering beneficiary_input, existing answer:`, existingAnswer);
 
       return (
         <BeneficiaryInputRenderer
@@ -1781,7 +1687,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           initialBeneficiaries={existingAnswer?.draftBeneficiaries}
           savedBeneficiaries={existingAnswer?.savedBeneficiaries}
           onBeneficiariesChange={(beneficiaries) => {
-        ('[AccountClassification] onBeneficiariesChange called:', beneficiaries);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -1791,7 +1696,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }));
           }}
           onBeneficiariesAdded={async (savedBeneficiaries) => {
-        ('[AccountClassification] onBeneficiariesAdded called:', savedBeneficiaries);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -1808,7 +1712,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 });
                 refetchAccount();
               } catch (error) {
-            ("Error updating beneficiaries count:", error);
+                console.error("Error updating beneficiaries count:", error);
               }
             }
           }}
@@ -1818,7 +1722,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     if (currentNode.question_type === "controlling_person_input") {
       const existingAnswer = answers[currentNodeId];
-  (`[AccountClassification] Rendering controlling_person_input, existing answer:`, existingAnswer);
 
       return (
         <ControllingPersonInputRenderer
@@ -1826,7 +1729,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           initialPersons={existingAnswer?.draftPersons}
           savedPersons={existingAnswer?.savedPersons}
           onPersonsChange={(persons) => {
-        ('[AccountClassification] onPersonsChange called:', persons);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -1836,7 +1738,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
             }));
           }}
           onControllingPersonsAdded={async (savedPersons) => {
-        ('[AccountClassification] onControllingPersonsAdded called:', savedPersons);
             setAnswers(prev => ({
               ...prev,
               [currentNodeId]: {
@@ -1851,7 +1752,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
                 refetchAccount();
               } catch (error) {
-            ("Error syncing controlling persons:", error);
+                console.error("Error syncing controlling persons:", error);
               }
             }
           }}
@@ -1930,79 +1831,38 @@ export default function AccountClassification({ account, onComplete, onCancel })
     // Determine reportability for summary display - use same logic as completeClassification
     let summaryReportabilityStatus = "pending_review";
     
-('\n🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Starting reportability status determination...');
-('  Final Node:', finalNode);
-('  Final Node Step Title:', finalNode?.step_title);
-('  Final Node result_status:', finalNode?.result_status);
-('  Final Node post_completion_actions:', finalNode?.post_completion_actions);
-('  All Answers:', answers);
-    
     let valueFoundInPriority1 = false;
     
-    // PRIORITY 1: Post-completion actions (what's actually being saved to the account)
+    // PRIORITY 1: Post-completion actions
     if (finalNode?.post_completion_actions?.length > 0) {
-  (`  📋 [PRIORITY 1] Checking post-completion actions (${finalNode.post_completion_actions.length} actions)`);
-      
-      const statusAction = finalNode.post_completion_actions.find(
-        action => action.field_to_update === "reportability_status"
-      );
-      
+      const statusAction = finalNode.post_completion_actions.find(action => action.field_to_update === "reportability_status");
       if (statusAction) {
-    ('    Found reportability_status action:', statusAction);
         let extractedValue = null;
-        
         if (statusAction.value_source === "static_value") {
           extractedValue = statusAction.value;
-      (`    → static_value: "${extractedValue}"`);
         } else if (statusAction.value_source === "from_step_answer") {
-          const sourceStepId = statusAction.value;
-          extractedValue = answers[sourceStepId];
-      (`    → from_step_answer: step="${sourceStepId}", value="${extractedValue}"`);
-        } else if (statusAction.value_source === "from_workflow_outcome") {
-      (`    → from_workflow_outcome (not available at summary screen)`);
-        } else {
-      (`    → Unknown value_source: "${statusAction.value_source}"`);
+          extractedValue = answers[statusAction.value];
         }
-        
         if (extractedValue) {
           summaryReportabilityStatus = extractedValue;
           valueFoundInPriority1 = true;
-      (`  ✅✅✅ [PRIORITY 1 - LOCKED IN] Using post-completion action value: "${summaryReportabilityStatus}" - will NOT be overwritten`);
-        } else {
-      (`  ⚠️ [PRIORITY 1] Could not extract value from post-completion action`);
         }
-      } else {
-    ('    ⚠️ No reportability_status action found in post-completion actions');
       }
     }
     
-    // PRIORITY 2: Explicit result_status from workflow step (ONLY if PRIORITY 1 didn't find a value)
+    // PRIORITY 2: Explicit result_status
     if (!valueFoundInPriority1 && finalNode?.result_status) {
       summaryReportabilityStatus = finalNode.result_status;
-  (`  ✅ [PRIORITY 2] Using result_status from workflow config: "${summaryReportabilityStatus}"`);
-    } else if (valueFoundInPriority1) {
-  (`  ⏭️ [PRIORITY 2] Skipping - value already found in PRIORITY 1`);
     }
     
-    // PRIORITY 3: Fallback to text-based inference only if still pending_review
+    // PRIORITY 3: Text-based inference
     if (summaryReportabilityStatus === "pending_review" && !valueFoundInPriority1) {
-  (`  🔤 [PRIORITY 3] Using text-based inference (still pending_review)`);
-      if (finalNode?.step_title?.toLowerCase().includes("reportable") &&
-          !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
+      if (finalNode?.step_title?.toLowerCase().includes("reportable") && !finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "reportable";
-    (`    ✅ Inferred "reportable" from step title`);
       } else if (finalNode?.step_title?.toLowerCase().includes("non-reportable")) {
         summaryReportabilityStatus = "non_reportable";
-    (`    ✅ Inferred "non_reportable" from step title`);
-      } else {
-    (`    ℹ️ No text match found, remaining as "pending_review"`);
       }
-    } else if (valueFoundInPriority1) {
-  (`  ⏭️ [PRIORITY 3] Skipping - value already found in PRIORITY 1`);
     }
-    
-(`\n  🎯 FINAL SUMMARY STATUS: "${summaryReportabilityStatus}"`);
-('🔍🔍🔍 [SUMMARY DISPLAY - DEBUG] Complete\n');
     
     const isReportable = summaryReportabilityStatus === "reportable";
     const isPending = summaryReportabilityStatus === "pending_review";

@@ -80,17 +80,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         const addressConfig = currentStep.address_config || {};
         const targetField = addressConfig.target_field || 'current_address';
         
-        console.log(`\n[ADDRESS INPUT] Processing address update`);
-        console.log(`   Target field: ${targetField}`);
-        console.log(`   accountId: ${accountId}`);
-        console.log(`   initialData.controlling_person: ${!!initialData?.controlling_person}`);
-        console.log(`   initialData.controlling_person.id: ${initialData?.controlling_person?.id}`);
-        console.log(`   Address data:`, answer);
-        
-        // Handle controlling person address update
         if (targetField === 'controlling_person_address' && initialData?.controlling_person?.id) {
           const controllingPersonId = initialData.controlling_person.id;
-          console.log(`[ADDRESS INPUT] Updating ControllingPerson address (ID: ${controllingPersonId})`);
           
           await base44.entities.ControllingPerson.update(controllingPersonId, {
             address: {
@@ -101,8 +92,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               country: answer.country
             }
           });
-          
-          console.log(`[ADDRESS INPUT] ControllingPerson address updated successfully`);
           
           // Update tax residencies if TIN provided
           if (answer.tin && answer.country) {
@@ -135,20 +124,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             await base44.entities.ControllingPerson.update(controllingPersonId, {
               tax_residencies: updatedTaxResidencies
             });
-            
-            console.log(`[ADDRESS INPUT] Updated ControllingPerson tax_residencies with TIN for ${answer.country}`);
           }
           
-          // Refresh controlling person data
-          const updatedPersons = await base44.entities.ControllingPerson.filter({ id: controllingPersonId });
-          if (updatedPersons[0]) {
-            console.log(`[ADDRESS INPUT] Refreshed ControllingPerson data:`, updatedPersons[0].address);
-          }
+          await base44.entities.ControllingPerson.filter({ id: controllingPersonId });
         }
-        // Handle account address update
         else if (accountId) {
-          console.log(`[ADDRESS INPUT] Updating Account ${targetField} (ID: ${accountId})`);
-          
           const addressUpdate = {
             [targetField]: {
               street: answer.street,
@@ -160,8 +140,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           };
           
           await base44.entities.Account.update(accountId, addressUpdate);
-          console.log(`[ADDRESS INPUT] Updated ${targetField} on account`);
-          
           if (answer.tin && answer.country) {
             const currentAccount = await base44.entities.Account.filter({ id: accountId });
             const existingTaxResidencies = currentAccount[0]?.tax_residencies || [];
@@ -192,17 +170,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             await base44.entities.Account.update(accountId, {
               tax_residencies: updatedTaxResidencies
             });
-            
-            console.log(`[ADDRESS INPUT] Updated tax_residencies with TIN for ${answer.country}`);
           }
           
           const updatedAccounts = await base44.entities.Account.filter({ id: accountId });
           if (updatedAccounts[0]) {
             setMappedEntityData(updatedAccounts[0]);
           }
-        } else {
-          console.warn(`[ADDRESS INPUT] No valid target found - accountId: ${accountId}, controlling_person: ${!!initialData?.controlling_person}`);
         }
+      
       } catch (error) {
         console.error('[ADDRESS INPUT] Error updating address and tax residencies:', error);
         alert('Failed to update address and tax residency: ' + error.message);
