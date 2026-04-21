@@ -17,11 +17,15 @@ export const evaluateComputedComparison = (cfg, entityData) => {
  */
 export const computePrefillAnswers = async (workflow, entityData, entityType) => {
   const initialAnswers = {};
+  console.log(`[computePrefillAnswers] entityType=${entityType}, checking ${workflow.steps.length} steps`);
   for (const step of workflow.steps) {
+    if (!step.mapped_field) continue;
+    console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType, '| match:', step.mapped_field.entity_type === entityType);
     if (!step.mapped_field || step.mapped_field.entity_type !== entityType || !step.mapped_field.field_name) continue;
     const fieldName = step.mapped_field.field_name;
     const fieldValue = entityData[fieldName];
-    if (fieldValue === undefined || fieldValue === null || fieldValue === "") continue;
+    console.log(`[computePrefillAnswers] step "${step.step_title}" fieldName="${fieldName}" fieldValue="${fieldValue}" question_type="${step.question_type}"`);
+    if (fieldValue === undefined || fieldValue === null || fieldValue === "") { console.log(`[computePrefillAnswers] Skipping - field value is empty`); continue; }
 
     if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
       const prefillType = step.mapped_field.prefill_config.prefill_type;

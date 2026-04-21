@@ -69,24 +69,36 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // Load latest account data and prefill answers (from both Account and Entity)
   useEffect(() => {
     if (!account?.id) return;
+    console.log('[PREFILL] Effect triggered - account.id:', account?.id, 'workflow?.id:', workflow?.id, 'workflow loaded:', !!workflow);
+    if (!workflow) {
+      console.log('[PREFILL] Workflow not loaded yet, skipping');
+      return;
+    }
     base44.entities.Account.filter({ id: account.id }).then(async records => {
       const latest = records[0] || account;
       setLatestAccountData(latest);
-      if (!workflow) return;
+      console.log('[PREFILL] Account loaded - entity_id:', latest.entity_id, 'fi_type:', latest.fi_type);
 
       // Prefill from Account fields
       const accountPrefilled = await computePrefillAnswers(workflow, latest, "Account");
+      console.log('[PREFILL] Account prefilled answers:', accountPrefilled);
 
       // Also prefill from Entity fields (e.g. fi_type mapped to Entity)
       let entityPrefilled = {};
       if (latest.entity_id) {
         const entityRecords = await base44.entities.Entity.filter({ id: latest.entity_id });
+        console.log('[PREFILL] Entity records found:', entityRecords.length, 'fi_type:', entityRecords[0]?.fi_type);
         if (entityRecords[0]) {
           entityPrefilled = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
+          console.log('[PREFILL] Entity prefilled answers:', entityPrefilled);
         }
+      } else {
+        console.log('[PREFILL] No entity_id on account, skipping entity prefill');
       }
 
-      setAnswers(prev => ({ ...prev, ...accountPrefilled, ...entityPrefilled }));
+      const merged = { ...accountPrefilled, ...entityPrefilled };
+      console.log('[PREFILL] Final merged answers:', merged);
+      setAnswers(prev => ({ ...prev, ...merged }));
     });
   }, [account?.id, workflow?.id]);
 
