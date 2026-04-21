@@ -337,18 +337,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
     switch (currentNode.question_type) {
       case 'yes_no': {
         const opts = currentNode.options || [{ value: 'YES', label: 'Yes' }, { value: 'NO', label: 'No' }];
+        const yesNoVal = answers[currentNodeId] || null;
         return (
           <div className="space-y-3">
-            <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
+            <RadioGroup value={yesNoVal} onValueChange={v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
               {opts.map(opt => (
                 <div
                   key={opt.value}
                   className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-                  onClick={() => setSelectedValue(opt.value)}
+                  onClick={() => { setSelectedValue(opt.value); setAnswers(p => ({ ...p, [currentNodeId]: opt.value })); }}
                 >
                   <RadioGroupItem value={opt.value} id={opt.value} />
                   <Label htmlFor={opt.value} className="flex-1 cursor-pointer font-medium text-slate-900">{opt.label}</Label>
-                  {opt.value === selectedValue && <CheckCircle2 className="w-5 h-5 text-indigo-600" />}
+                  {opt.value === yesNoVal && <CheckCircle2 className="w-5 h-5 text-indigo-600" />}
                 </div>
               ))}
             </RadioGroup>
@@ -358,7 +359,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       case 'single_choice':
         return (
-          <Select value={selectedValue} onValueChange={setSelectedValue}>
+          <Select value={answers[currentNodeId] || ""} onValueChange={v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
             <SelectTrigger className="w-full h-12">
               <SelectValue placeholder="Select an option..." />
             </SelectTrigger>
@@ -371,7 +372,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         );
 
       case 'multiple_choice': {
-        const selected = Array.isArray(selectedValue) ? selectedValue : [];
+        const selected = Array.isArray(answers[currentNodeId]) ? answers[currentNodeId] : [];
         return (
           <div className="space-y-3">
             {currentNode.options?.map(opt => {
@@ -383,6 +384,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   onClick={() => {
                     const newVals = isSel ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
                     setSelectedValue(newVals);
+                    setAnswers(p => ({ ...p, [currentNodeId]: newVals }));
                   }}
                 >
                   <Checkbox checked={isSel} onCheckedChange={() => {}} />
