@@ -66,21 +66,31 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const stepMap = steps.reduce((acc, s) => { acc[s.step_id] = s; return acc; }, {});
 
-  // Load latest account data and prefill answers
+  // Load latest account data and prefill answers (from both Account and Entity)
   useEffect(() => {
     if (!account?.id) return;
-    base44.entities.Account.filter({ id: account.id }).then(records => {
+    base44.entities.Account.filter({ id: account.id }).then(async records => {
       const latest = records[0] || account;
       setLatestAccountData(latest);
-      if (workflow) {
-        computePrefillAnswers(workflow, latest, "Account").then(prefilled => {
-          setAnswers(prev => ({ ...prev, ...prefilled }));
-        });
+      if (!workflow) return;
+
+      // Prefill from Account fields
+      const accountPrefilled = await computePrefillAnswers(workflow, latest, "Account");
+
+      // Also prefill from Entity fields (e.g. fi_type mapped to Entity)
+      let entityPrefilled = {};
+      if (latest.entity_id) {
+        const entityRecords = await base44.entities.Entity.filter({ id: latest.entity_id });
+        if (entityRecords[0]) {
+          entityPrefilled = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
+        }
       }
+
+      setAnswers(prev => ({ ...prev, ...accountPrefilled, ...entityPrefilled }));
     });
   }, [account?.id, workflow?.id]);
 
-  // Sync selectedValue / multiFieldValues / addressValues when step changes
+  // Sync selectedValue / multiFieldValues / addressValues when step changes OR when answers are prefilled
   useEffect(() => {
     if (!currentNode) return;
     const existingAnswer = answers[currentNodeId];
@@ -94,7 +104,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     } else {
       setSelectedValue(existingAnswer || null);
     }
-  }, [currentNodeId]);
+  }, [currentNodeId, answers[currentNodeId]]);
 
   if (!workflow || steps.length === 0) {
     return (
