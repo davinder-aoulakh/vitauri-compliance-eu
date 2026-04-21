@@ -43,14 +43,21 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
-      // Try to match field value against option values first, then option labels
       const strVal = String(fieldValue);
+      // If options are static, try to match by value then by label
       const options = step.options || [];
-      const byValue = options.find(o => o.value === strVal);
-      const byLabel = options.find(o => o.label === strVal);
-      const matched = byValue || byLabel;
-      console.log(`[computePrefillAnswers] single_choice match for "${strVal}": byValue=${byValue?.value} byLabel=${byLabel?.value} → using ${matched?.value || strVal}`);
-      initialAnswers[step.step_id] = matched ? matched.value : strVal;
+      if (options.length > 0) {
+        const byValue = options.find(o => o.value === strVal);
+        const byLabel = options.find(o => o.label === strVal);
+        const matched = byValue || byLabel;
+        console.log(`[computePrefillAnswers] single_choice (static options) match for "${strVal}": → using ${matched?.value || strVal}`);
+        initialAnswers[step.step_id] = matched ? matched.value : strVal;
+      } else {
+        // Options come from referenced data — store the raw field value directly
+        // The value in the entity field should already match ReferencedData.value
+        console.log(`[computePrefillAnswers] single_choice (referenced data) — storing raw value: "${strVal}"`);
+        initialAnswers[step.step_id] = strVal;
+      }
     } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
       initialAnswers[step.step_id] = fieldValue;
     } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {

@@ -66,6 +66,39 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const stepMap = steps.reduce((acc, s) => { acc[s.step_id] = s; return acc; }, {});
 
+  // Fetch ReferencedData options for single_choice steps that use referenced_data_key
+  const referencedDataKeys = steps
+    .filter(s => s.question_type === 'single_choice' && s.referenced_data_key)
+    .map(s => s.referenced_data_key);
+
+  const { data: referencedDataCache = {} } = useQuery({
+    queryKey: ['workflow-step-referenced-data', referencedDataKeys],
+    queryFn: async () => {
+      const cache = {};
+      for (const key of referencedDataKeys) {
+        const [source, ...rest] = key.split('.');
+        if (source === 'ReferencedData') {
+          const [entityName, fieldName] = rest;
+          const data = await base44.entities.ReferencedData.filter({ entity_name: entityName, field_name: fieldName, is_published: true });
+          cache[key] = data.map(d => ({ value: d.value, label: d.label }));
+        } else if (source === 'CrsCountryInfo') {
+          const countries = await base44.entities.CrsCountryInfo.list();
+          cache[key] = countries.map(c => ({ value: c.country_code, label: c.country_name }));
+        }
+      }
+      return cache;
+    },
+    enabled: referencedDataKeys.length > 0,
+  });
+
+  // Get options for current step (static options or from referenced data)
+  const getStepOptions = (step) => {
+    if (step?.referenced_data_key && referencedDataCache[step.referenced_data_key]) {
+      return referencedDataCache[step.referenced_data_key];
+    }
+    return step?.options || [];
+  };
+
   // Load latest account data and prefill answers (from both Account and Entity)
   useEffect(() => {
     if (!account?.id) return;
@@ -370,19 +403,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
         );
       }
 
-      case 'single_choice':
+      case 'single_choice': {
+        const singleOpts = getStepOptions(currentNode);
         return (
           <Select value={answers[currentNodeId] || ""} onValueChange={v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
             <SelectTrigger className="w-full h-12">
               <SelectValue placeholder="Select an option..." />
             </SelectTrigger>
             <SelectContent>
-              {currentNode.options?.map(opt => (
+              {singleOpts.map(opt => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         );
+      }
 
       case 'multiple_choice': {
         const selected = Array.isArray(answers[currentNodeId]) ? answers[currentNodeId] : [];
