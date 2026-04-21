@@ -288,20 +288,37 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                               <Button type="button" variant="ghost" size="icon" onClick={() => setIntroFields(introFields.filter((_, i) => i !== idx))} className="h-7 w-7 text-red-600 flex-shrink-0"><Trash2 className="w-3 h-3" /></Button>
                             </div>
                             {field.value_formatter === "threshold_based_display" && (
-                              <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-100">
-                                <Select value={field.comparison_operator || "greater_than"} onValueChange={(v) => updateField({ comparison_operator: v })}>
-                                  <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="greater_than" className="text-xs">&gt; Greater than</SelectItem>
-                                    <SelectItem value="greater_than_or_equal" className="text-xs">&ge; Greater or equal</SelectItem>
-                                    <SelectItem value="less_than" className="text-xs">&lt; Less than</SelectItem>
-                                    <SelectItem value="less_than_or_equal" className="text-xs">&le; Less or equal</SelectItem>
-                                    <SelectItem value="equals" className="text-xs">= Equals</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Input type="number" value={field.threshold_value || ""} onChange={(e) => updateField({ threshold_value: Number(e.target.value) })} placeholder="Threshold (e.g. 250000)" className="h-7 text-xs" />
-                                <Input value={field.true_text || ""} onChange={(e) => updateField({ true_text: e.target.value })} placeholder="If true (e.g. High Value)" className="h-7 text-xs" />
-                                <Input value={field.false_text || ""} onChange={(e) => updateField({ false_text: e.target.value })} placeholder="If false (e.g. Low Value)" className="h-7 text-xs" />
+                              <div className="space-y-2 pt-1 border-t border-slate-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-slate-500 w-16 flex-shrink-0">Field 1:</span>
+                                  <Select value={field.field_name || ""} onValueChange={(v) => updateField({ field_name: v })}>
+                                    <SelectTrigger className="flex-1 h-7 text-xs"><SelectValue placeholder="Primary field..." /></SelectTrigger>
+                                    <SelectContent className="max-h-60">{ACCOUNT_FIELDS.map(f => <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                  <span className="text-xs text-slate-400">+</span>
+                                  <Select value={field.threshold_field_2 || ""} onValueChange={(v) => updateField({ threshold_field_2: v === "_none_" ? "" : v })}>
+                                    <SelectTrigger className="flex-1 h-7 text-xs"><SelectValue placeholder="Add 2nd field (optional)..." /></SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                      <SelectItem value="_none_" className="text-xs italic text-slate-400">None</SelectItem>
+                                      {ACCOUNT_FIELDS.map(f => <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                  <Select value={field.comparison_operator || "greater_than"} onValueChange={(v) => updateField({ comparison_operator: v })}>
+                                    <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="greater_than" className="text-xs">&gt; Greater than</SelectItem>
+                                      <SelectItem value="greater_than_or_equal" className="text-xs">&ge; Greater or equal</SelectItem>
+                                      <SelectItem value="less_than" className="text-xs">&lt; Less than</SelectItem>
+                                      <SelectItem value="less_than_or_equal" className="text-xs">&le; Less or equal</SelectItem>
+                                      <SelectItem value="equals" className="text-xs">= Equals</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Input type="number" value={field.threshold_value || ""} onChange={(e) => updateField({ threshold_value: Number(e.target.value) })} placeholder="Threshold (e.g. 1000000)" className="h-7 text-xs" />
+                                  <Input value={field.true_text || ""} onChange={(e) => updateField({ true_text: e.target.value })} placeholder="If true (e.g. High Value)" className="h-7 text-xs" />
+                                  <Input value={field.false_text || ""} onChange={(e) => updateField({ false_text: e.target.value })} placeholder="If false (e.g. Low Value)" className="h-7 text-xs" />
+                                </div>
                               </div>
                             )}
                           </div>

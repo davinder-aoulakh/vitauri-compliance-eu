@@ -43,7 +43,9 @@ export default function WorkflowIntroFields({ introFields, mappedEntityData }) {
           } else if (field.value_formatter === 'capitalize' && typeof fieldValue === 'string') {
             fieldValue = fieldValue.charAt(0).toUpperCase() + fieldValue.slice(1);
           } else if (field.value_formatter === 'threshold_based_display') {
-            const numVal = Number(fieldValue) || 0;
+            const numVal1 = Number(mappedEntityData[field.field_name]) || 0;
+            const numVal2 = field.threshold_field_2 ? (Number(mappedEntityData[field.threshold_field_2]) || 0) : 0;
+            const numVal = numVal1 + numVal2;
             const threshold = Number(field.threshold_value) || 0;
             let conditionMet = false;
             switch (field.comparison_operator) {
