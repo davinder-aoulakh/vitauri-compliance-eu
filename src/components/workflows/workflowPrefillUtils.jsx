@@ -43,7 +43,14 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
-      initialAnswers[step.step_id] = String(fieldValue);
+      // Try to match field value against option values first, then option labels
+      const strVal = String(fieldValue);
+      const options = step.options || [];
+      const byValue = options.find(o => o.value === strVal);
+      const byLabel = options.find(o => o.label === strVal);
+      const matched = byValue || byLabel;
+      console.log(`[computePrefillAnswers] single_choice match for "${strVal}": byValue=${byValue?.value} byLabel=${byLabel?.value} → using ${matched?.value || strVal}`);
+      initialAnswers[step.step_id] = matched ? matched.value : strVal;
     } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
       initialAnswers[step.step_id] = fieldValue;
     } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {
