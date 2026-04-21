@@ -30,6 +30,7 @@ import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
 import { computePrefillAnswers } from "../workflows/workflowPrefillUtils";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
+import PreviousAnswers from "./PreviousAnswers";
 
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -821,43 +822,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       {/* View Previous Answers */}
       {history.length > 0 && (
-        <Card className="border border-slate-200">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <FileCheck className="w-4 h-4" />
-              View Previous Answers ({history.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="space-y-2">
-              {history.map((stepId) => {
-                const step = stepMap[stepId];
-                if (!step || step.question_type === 'info' || step.question_type === 'result') return null;
-                const ans = answers[stepId];
-                let displayAnswer = '';
-                if (ans === null || ans === undefined || ans === '') return null;
-                if (typeof ans === 'boolean') displayAnswer = ans ? 'Yes' : 'No';
-                else if (ans === 'YES') displayAnswer = 'Yes';
-                else if (ans === 'NO') displayAnswer = 'No';
-                else if (Array.isArray(ans)) displayAnswer = ans.join(', ');
-                else if (typeof ans === 'object') displayAnswer = ans.file_name || JSON.stringify(ans);
-                else {
-                  // Try to find label from options
-                  const opts = getStepOptions(step);
-                  const matched = opts.find(o => o.value === ans);
-                  displayAnswer = matched ? matched.label : String(ans);
-                }
-                if (!displayAnswer) return null;
-                return (
-                  <div key={stepId} className="flex items-start justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
-                    <span className="text-xs text-slate-600 flex-1">{step.step_title}</span>
-                    <span className="text-xs font-medium text-slate-900 text-right max-w-[200px]">{displayAnswer}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <PreviousAnswers history={history} stepMap={stepMap} answers={answers} getStepOptions={getStepOptions} />
       )}
 
       {/* AI Helper */}
