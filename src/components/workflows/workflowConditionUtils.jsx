@@ -203,9 +203,6 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
   if (logic?.condition_groups && logic.condition_groups.length > 0) {
     console.log('\n🔷🔷🔷 [CONDITION GROUPS] Starting evaluation...');
     console.log('  Total Groups:', logic.condition_groups.length);
-    console.log('  Current Answers:', currentAnswers);
-    
-    const groupResults = [];
 
     for (let i = 0; i < logic.condition_groups.length; i++) {
       const group = logic.condition_groups[i];
@@ -214,19 +211,7 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       console.log('  Conditions:', group.conditions?.length || 0);
 
       if (!group.conditions || group.conditions.length === 0) {
-        groupResults.push({ group, result: false, skipped: true });
-        continue;
-      }
-
-      // Check first condition to see if this group is applicable
-      const firstCondition = group.conditions[0];
-      console.log(`  [First Condition Check]`);
-      const firstConditionMet = await evaluateSingleConditionFn(firstCondition);
-      
-      // For AND groups, if first condition is false, skip entire group
-      if (!firstConditionMet && group.group_operator === 'AND') {
-        console.log(`  ⏭️ First condition false with AND operator - skipping this group`);
-        groupResults.push({ group, result: false, skipped: true });
+        console.log('  ⚠️ No conditions - skipping group');
         continue;
       }
 
@@ -254,44 +239,27 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
         }
       }
 
-      console.log(`  🎯 Group ${i + 1} Final Result:`, groupResult);
-      console.log(`  → True Step: ${group.true_step}`);
-      console.log(`  → False Step: ${group.false_step}`);
-      
-      groupResults.push({ group, result: groupResult, skipped: false });
-    }
+      console.log(`  🎯 Group ${i + 1} Final Result: ${groupResult}`);
+      console.log(`  → True Step: ${group.true_step} | False Step: ${group.false_step}`);
 
-    // If no group matched via first condition logic, find first TRUE group
-    console.log('\n🏁 [FINAL DECISION] Evaluating all group results...');
-    for (let i = 0; i < groupResults.length; i++) {
-      const { group, result, skipped } = groupResults[i];
-      if (skipped) continue;
-      console.log(`  Group ${i + 1} (${group.group_name}): ${result}`);
-      if (result) {
-        console.log(`  ✅ First TRUE group found - using true_step: ${group.true_step}`);
+      if (groupResult) {
+        console.log(`  ✅ Group matched - routing to true_step: ${group.true_step}`);
         console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
         return group.true_step;
       }
     }
 
     // No groups were TRUE - use last group's false_step as fallback
-    const lastGroup = groupResults[groupResults.length - 1]?.group;
+    const lastGroup = logic.condition_groups[logic.condition_groups.length - 1];
     const fallbackStep = lastGroup?.false_step || logic.overall_false_step;
-    console.log(`  ❌ No TRUE groups - using last group's false_step: ${fallbackStep}`);
+    console.log(`  ❌ No TRUE groups - fallback step: ${fallbackStep}`);
     console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
     return fallbackStep;
   }
 
-  // Legacy conditions evaluation
+  // Simple conditions evaluation
   if (!logic?.conditions || logic.conditions.length === 0) {
-    return false;
-  }
-
-  if (logic.trigger_field && logic.trigger_value) {
-    const triggerAnswer = currentAnswers[logic.trigger_field];
-    if (String(triggerAnswer) !== String(logic.trigger_value)) {
-      return false;
-    }
+    return logic.else_step || null;
   }
 
   let result = true;
@@ -312,5 +280,7 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
     }
   }
 
-  return result;
+  const resultStep = result ? logic.next_step : logic.else_step;
+  console.log(`\n🏁 [SIMPLE CONDITIONS] Result: ${result} → step: ${resultStep}`);
+  return resultStep || null;
 };
