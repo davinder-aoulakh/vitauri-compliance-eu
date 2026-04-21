@@ -103,6 +103,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   }, [account?.id, workflow?.id]);
 
   // Sync selectedValue / multiFieldValues / addressValues when step changes OR when answers are prefilled
+  const currentAnswerForSync = answers[currentNodeId];
   useEffect(() => {
     if (!currentNode) return;
     const existingAnswer = answers[currentNodeId];
@@ -116,7 +117,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     } else {
       setSelectedValue(existingAnswer || null);
     }
-  }, [currentNodeId, answers[currentNodeId]]);
+  }, [currentNodeId, currentAnswerForSync]);
 
   if (!workflow || steps.length === 0) {
     return (
@@ -586,8 +587,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       if (currentNode.file_upload_config?.require_date_received) return !!dateReceivedValue;
       return true;
     }
-    if (qt === 'multiple_choice') return Array.isArray(selectedValue) && selectedValue.length > 0;
-    return !!selectedValue;
+    // For all other types (yes_no, single_choice, multiple_choice, text, number, date)
+    // read directly from answers so prefilled values enable the Next button
+    const currentAnswer = answers[currentNodeId];
+    if (qt === 'multiple_choice') return Array.isArray(currentAnswer) && currentAnswer.length > 0;
+    return !!currentAnswer;
   };
 
   const currentStepNumber = history.length + 1;
