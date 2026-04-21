@@ -171,14 +171,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
   }
 
   const getFieldValue = (fieldPath, allAnswers) => {
-    return getFieldValueUtil(fieldPath, allAnswers, { account: latestAccountData || account }, workflow);
+    const acc = latestAccountData || account;
+    return getFieldValueUtil(fieldPath, acc, null, allAnswers);
   };
 
   const evalSingleCondition = async (condition, allAnswers) => {
-    return await evaluateSingleCondition(condition, (fp, a) => getFieldValue(fp, a), allAnswers);
+    return await evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {});
   };
 
   const evalConditionalLogic = async (logic, currentAnswer, allAnswers) => {
+    // Check trigger guard first (same as workflowRunnerLogic)
+    if (logic.trigger_field && logic.trigger_value) {
+      const triggerAnswer = allAnswers[logic.trigger_field];
+      if (String(triggerAnswer) !== String(logic.trigger_value)) {
+        return null;
+      }
+    }
     const boundEvalSingle = (condition) => evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {});
     return await evaluateConditionalLogic(logic, allAnswers, boundEvalSingle);
   };
