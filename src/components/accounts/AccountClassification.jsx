@@ -1054,7 +1054,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
         } else {
           reportabilityStatus = "reportable";
         }
-        }
+      }
+    }
 
     const fileUploadAnswer = Object.values(cleanedAnswers).find(ans =>
       ans && typeof ans === 'object' && ans.file_url
@@ -1067,25 +1068,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
       self_certification_obtained: finalNode?.step_title?.toLowerCase().includes("self-certification obtained") || !!fileUploadAnswer
     };
 
-    const allCompletedSteps = [...completedPath];
-    for (const stepId of allCompletedSteps) {
+    for (const stepId of [...completedPath]) {
       const step = stepMap[stepId];
       if (step?.post_completion_actions?.length > 0) {
         for (const action of step.post_completion_actions) {
           if (action.target_entity_type === "Account" && (!action.execution_timing || action.execution_timing === "after_step")) {
             let newValue = action.value;
-
-            if (action.value_source === "from_step_answer") {
-              newValue = cleanedAnswers[action.value] || action.value;
-            } else if (action.value_source === "from_workflow_outcome") {
-              if (action.value === "reportability_status") {
-                newValue = reportabilityStatus;
-              }
-            }
-
-            if (action.field_to_update && newValue) {
-              classificationData[action.field_to_update] = newValue;
-            }
+            if (action.value_source === "from_step_answer") newValue = cleanedAnswers[action.value] || action.value;
+            else if (action.value_source === "from_workflow_outcome" && action.value === "reportability_status") newValue = reportabilityStatus;
+            if (action.field_to_update && newValue) classificationData[action.field_to_update] = newValue;
           }
         }
       }
@@ -1095,18 +1086,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
       for (const action of finalNode.post_completion_actions) {
         if (action.target_entity_type === "Account" && (!action.execution_timing || action.execution_timing === "after_step")) {
           let newValue = action.value;
-
-          if (action.value_source === "from_step_answer") {
-            newValue = cleanedAnswers[action.value] || action.value;
-          } else if (action.value_source === "from_workflow_outcome") {
-            if (action.value === "reportability_status") {
-              newValue = reportabilityStatus;
-            }
-          }
-
-          if (action.field_to_update && newValue) {
-            classificationData[action.field_to_update] = newValue;
-          }
+          if (action.value_source === "from_step_answer") newValue = cleanedAnswers[action.value] || action.value;
+          else if (action.value_source === "from_workflow_outcome" && action.value === "reportability_status") newValue = reportabilityStatus;
+          if (action.field_to_update && newValue) classificationData[action.field_to_update] = newValue;
         }
       }
     }
@@ -1114,7 +1096,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (fileUploadAnswer) {
       const currentAccount = latestAccountData || account;
       const existingDocuments = currentAccount.documents || [];
-      const newDocument = {
+      classificationData.documents = [...existingDocuments, {
         id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         document_url: fileUploadAnswer.file_url,
         document_name: fileUploadAnswer.file_name,
@@ -1123,97 +1105,60 @@ export default function AccountClassification({ account, onComplete, onCancel })
         uploaded_by_email: user?.email || "Unknown",
         uploaded_by_name: user?.full_name || "Unknown User",
         notes: fileUploadAnswer.date_received ? `Uploaded via classification workflow - Date Received: ${fileUploadAnswer.date_received}` : "Uploaded via classification workflow"
-      };
-      classificationData.documents = [...existingDocuments, newDocument];
+      }];
       classificationData.self_certification_obtained = true;
-      
-      // Clear overdue flags when new self-certification is received
       classificationData.self_certification_request_date = null;
       classificationData.self_certification_overdue = false;
     }
 
-    // Set request date if workflow asked for it
     if (selfCertRequestDate) {
       classificationData.self_certification_request_date = selfCertRequestDate;
       classificationData.self_certification_overdue = false;
     }
 
-    const addressAnswer = Object.values(cleanedAnswers).find(ans =>
-      ans && typeof ans === 'object' && ans._address_config
-    );
-
+    const addressAnswer = Object.values(cleanedAnswers).find(ans => ans && typeof ans === 'object' && ans._address_config);
     if (addressAnswer) {
       const { _address_config, ...newAddress } = addressAnswer;
       const targetField = _address_config.target_field || "current_address";
       const currentAccount = latestAccountData || account;
       const previousAddress = currentAccount[targetField] || {};
-
       classificationData[targetField] = newAddress;
-
       if (_address_config.track_changes !== false) {
         try {
           await base44.entities.AuditLog.create({
-            tenant_id: account.tenant_id,
-            action_type: "account_updated",
-            actor_email: user?.email || "unknown",
-            actor_role: user?.user_role || "unknown",
-            target_entity_type: "Account",
-            target_entity_id: account.id,
-            changes: {
-              field: targetField,
-              previous_value: previousAddress,
-              new_value: newAddress
-            },
+            tenant_id: account.tenant_id, action_type: "account_updated",
+            actor_email: user?.email || "unknown", actor_role: user?.user_role || "unknown",
+            target_entity_type: "Account", target_entity_id: account.id,
+            changes: { field: targetField, previous_value: previousAddress, new_value: newAddress },
             timestamp: new Date().toISOString()
           });
-        } catch (error) {
-      ("Error creating address change audit log:", error);
-        }
+        } catch (e) {}
       }
     }
 
-    // Execute history creation and controlling persons sync in parallel
-    const parallelTasks = [];
-    
-    // Task 1: Save classification history
-    parallelTasks.push(
+    const parallelTasks = [
       base44.entities.AccountClassificationHistory.create({
-        tenant_id: account.tenant_id,
-        account_id: account.id,
+        tenant_id: account.tenant_id, account_id: account.id,
         classification_date: new Date().toISOString(),
-        reportability_status: reportabilityStatus,
-        classification_reason: reason,
-        reportable_jurisdictions: [],
-        workflow_answers: cleanedAnswers,
-        indicia_found: [],
+        reportability_status: reportabilityStatus, classification_reason: reason,
+        reportable_jurisdictions: [], workflow_answers: cleanedAnswers, indicia_found: [],
         self_certification_status: classificationData.self_certification_obtained ? "obtained" : "not_obtained",
         performed_by: user?.email || "unknown",
-        account_holder_name: account.account_holder_name,
-        account_number: account.account_number,
+        account_holder_name: account.account_holder_name, account_number: account.account_number,
         account_balance: account.account_balance
-      }).catch(error => {
-    ("Error saving classification history:", error);
-      })
-    );
-    
-    // Task 2: Sync controlling persons (if needed)
+      }).catch(() => {})
+    ];
+
     if (account?.id && shouldRedirectToControllingPersons) {
       parallelTasks.push(
-        base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id })
-          .catch(error => {
-        ("Error syncing controlling persons:", error);
-          })
+        base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id }).catch(() => {})
       );
     }
-    
+
     await Promise.all(parallelTasks);
 
-    // Pass redirect instruction if needed
     if (shouldRedirectToControllingPersons) {
-      onComplete({
-        ...classificationData,
-        _redirectToControllingPersons: true
-      });
+      onComplete({ ...classificationData, _redirectToControllingPersons: true });
     } else {
       onComplete(classificationData);
     }
