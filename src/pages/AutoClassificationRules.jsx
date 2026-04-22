@@ -39,11 +39,14 @@ import {
   X,
   Play,
   Loader2,
-  History
+  History,
+  FlaskConical
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ConditionGroupBuilder from "../components/rules/ConditionGroupBuilder";
 import WorkflowFieldMappingEditor from "../components/rules/WorkflowFieldMappingEditor";
+import RuleSimulator from "../components/rules/RuleSimulator";
 
 export default function AutoClassificationRulesPage() {
   const [user, setUser] = useState(null);
@@ -629,6 +632,20 @@ export default function AutoClassificationRulesPage() {
           <DialogHeader>
             <DialogTitle>{editingRule ? "Edit Rule" : "Add New Rule"}</DialogTitle>
           </DialogHeader>
+          <Tabs defaultValue="config">
+            <TabsList className="mb-4 w-full">
+              <TabsTrigger value="config" className="flex-1">Configuration</TabsTrigger>
+              <TabsTrigger value="simulate" className="flex-1 gap-2">
+                <FlaskConical className="w-3.5 h-3.5" />
+                Simulation Mode
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="simulate">
+              <RuleSimulator rules={rules} formData={formData} editingRule={editingRule} />
+            </TabsContent>
+
+            <TabsContent value="config">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div>
@@ -1049,6 +1066,8 @@ export default function AutoClassificationRulesPage() {
               </Button>
             </div>
           </form>
+          </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
