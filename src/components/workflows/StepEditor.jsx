@@ -73,6 +73,7 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "gross_payments", label: "Gross Payments", type: "number" },
   { value: "reporting_year", label: "Reporting Year", type: "string" },
   { value: "reportability_status", label: "Reportability Status", type: "string" },
+  { value: "reportability_reason", label: "Reportability Reason", type: "string" },
   { value: "us_person_indic", label: "US Person Indicia", type: "boolean" },
   { value: "self_certification_obtained", label: "Self-Certification Obtained", type: "boolean" },
   { value: "self_certification_date", label: "Self-Certification Date", type: "date" },
