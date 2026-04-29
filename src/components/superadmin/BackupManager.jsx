@@ -519,6 +519,9 @@ function RestorePanel() {
     const report = { success: [], failed: [], skipped: [] };
     const total = selectedEntities.length;
 
+    // Accumulated ID map across all entity restores: { EntityName: { old_id: new_id } }
+    const globalIdMap = {};
+
     try {
       for (let i = 0; i < total; i++) {
         const entityName = selectedEntities[i];
@@ -534,10 +537,19 @@ function RestorePanel() {
           const response = await base44.functions.invoke('restoreDatabaseBackup', {
             entity_name: entityName,
             records: records,
-            data_env: dbEnv
+            data_env: dbEnv,
+            id_map_input: globalIdMap   // Pass accumulated ID map so backend can remap foreign keys
           });
+
           if (response.data?.success) {
-            report.success.push({ entity: entityName, records_restored: records.length });
+            // Merge this entity's ID map into the global map for downstream entities
+            if (response.data.id_map) {
+              globalIdMap[entityName] = response.data.id_map;
+            }
+            report.success.push({
+              entity: entityName,
+              stats: response.data.stats || {}
+            });
           } else {
             report.failed.push({ entity: entityName, reason: response.data?.error || 'Unknown error' });
           }
@@ -546,17 +558,27 @@ function RestorePanel() {
         }
       }
 
+      // Aggregate totals across all entities
+      const totalUpdated = report.success.reduce((s, r) => s + (r.stats?.updated || 0), 0);
+      const totalInserted = report.success.reduce((s, r) => s + (r.stats?.inserted || 0), 0);
+      const totalDeleted = report.success.reduce((s, r) => s + (r.stats?.deleted || 0), 0);
+      const totalRemapped = report.success.reduce((s, r) => s + (r.stats?.id_remapped || 0), 0);
+
       const summary = {
         restored: report.success.length,
         failed: report.failed.length,
-        skipped: report.skipped.length
+        skipped: report.skipped.length,
+        totalUpdated,
+        totalInserted,
+        totalDeleted,
+        totalRemapped
       };
 
       setRestoreReport({ report, summary });
       setRestoreProgress(100);
       setMessage({
         type: summary.failed > 0 ? 'warning' : 'success',
-        text: `Restore complete — ${summary.restored} entities restored, ${summary.failed} failed, ${summary.skipped} skipped.`
+        text: `Sync complete — ${summary.restored} entities processed, ${summary.failed} failed, ${summary.skipped} skipped. ${totalUpdated} updated, ${totalInserted} inserted, ${totalDeleted} deleted.`
       });
     } catch (err) {
       setMessage({ type: 'error', text: 'Restore failed: ' + (err.response?.data?.error || err.message) });
@@ -828,7 +850,7 @@ function RestorePanel() {
         <Alert className="bg-amber-900/20 border-amber-500/30">
           <Shield className="w-4 h-4 text-amber-400" />
           <AlertDescription className="text-amber-200 text-xs">
-            Restore will <strong>delete and replace</strong> selected table data. Export a fresh backup first as a precaution.
+            Restore will <strong>synchronize</strong> selected tables with the backup: existing records are updated, missing records are inserted, and extra records (not in backup) are deleted. Export a fresh backup first as a precaution.
           </AlertDescription>
         </Alert>
 
@@ -847,11 +869,12 @@ function RestorePanel() {
         {restoreReport && (
           <div className="space-y-3 pt-2 border-t border-white/10">
             <p className="text-xs font-semibold text-white uppercase tracking-wide flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Restore Report
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Sync Report
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            {/* Entity-level summary */}
+            <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'Restored', value: restoreReport.summary.restored, color: 'text-emerald-400' },
+                { label: 'Entities OK', value: restoreReport.summary.restored, color: 'text-emerald-400' },
                 { label: 'Failed', value: restoreReport.summary.failed, color: 'text-red-400' },
                 { label: 'Skipped', value: restoreReport.summary.skipped, color: 'text-amber-400' },
               ].map(s => (
@@ -861,6 +884,36 @@ function RestorePanel() {
                 </div>
               ))}
             </div>
+            {/* Record-level breakdown */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'Updated', value: restoreReport.summary.totalUpdated, color: 'text-blue-400' },
+                { label: 'Inserted', value: restoreReport.summary.totalInserted, color: 'text-emerald-400' },
+                { label: 'Deleted', value: restoreReport.summary.totalDeleted, color: 'text-red-400' },
+                { label: 'ID Remapped', value: restoreReport.summary.totalRemapped, color: 'text-amber-400' },
+              ].map(s => (
+                <div key={s.label} className="bg-white/5 rounded-lg p-2 text-center border border-white/10">
+                  <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-indigo-300 mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            {/* Per-entity detail */}
+            {restoreReport.report.success.length > 0 && (
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {restoreReport.report.success.map((r, i) => (
+                  <div key={i} className="text-xs flex items-center justify-between bg-emerald-900/10 border border-emerald-500/20 rounded px-2 py-1">
+                    <span className="text-emerald-300 font-medium">{r.entity}</span>
+                    <span className="text-indigo-300 space-x-2">
+                      <span>↑{r.stats?.updated || 0}</span>
+                      <span>+{r.stats?.inserted || 0}</span>
+                      <span>−{r.stats?.deleted || 0}</span>
+                      {r.stats?.id_remapped > 0 && <span className="text-amber-400">~{r.stats.id_remapped} remapped</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             {restoreReport.report.failed.map((f, i) => (
               <div key={i} className="text-xs text-red-300 bg-red-900/20 rounded px-2 py-1">
                 <strong>{f.entity}:</strong> {f.reason}
@@ -893,7 +946,7 @@ function RestorePanel() {
               <Alert className="bg-red-50 border-red-200">
                 <Trash2 className="w-4 h-4 text-red-600" />
                 <AlertDescription className="text-red-800 text-xs">
-                  All existing data in the selected tables will be <strong>permanently deleted</strong> and replaced. This cannot be undone.
+                  Selected tables will be <strong>synchronized</strong> with the backup: existing records updated, new records inserted, and records absent from the backup will be <strong>permanently deleted</strong>. This cannot be undone.
                 </AlertDescription>
               </Alert>
             </div>
