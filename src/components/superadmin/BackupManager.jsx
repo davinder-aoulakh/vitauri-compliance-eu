@@ -509,6 +509,9 @@ function RestorePanel() {
     reader.readAsText(file);
   };
 
+  // ── Chunked restore constants ────────────────────────────────────────────────
+  const CHUNK_SIZE = 300; // Records per backend call — safe limit to avoid timeouts
+
   const handleRestore = async () => {
     setShowConfirm(false);
     setRestoring(true);
@@ -517,51 +520,106 @@ function RestorePanel() {
     setRestoreReport(null);
 
     const report = { success: [], failed: [], skipped: [] };
-    const total = selectedEntities.length;
 
-    // Accumulated ID map across all entity restores: { EntityName: { old_id: new_id } }
+    // Accumulated cross-entity ID map: { EntityName: { old_id: new_id } }
     const globalIdMap = {};
 
-    try {
-      for (let i = 0; i < total; i++) {
-        const entityName = selectedEntities[i];
-        const records = backupFileData.entities[entityName];
-        setRestoreProgress(Math.round(((i) / total) * 100));
+    // Pre-compute total chunks across all entities for accurate progress tracking
+    const entityChunkCounts = selectedEntities.map(entityName => {
+      const records = backupFileData.entities[entityName] || [];
+      return Math.max(1, Math.ceil(records.length / CHUNK_SIZE));
+    });
+    const totalChunks = entityChunkCounts.reduce((s, c) => s + c, 0);
+    let completedChunks = 0;
 
-        if (!records || records.length === 0) {
+    try {
+      for (let ei = 0; ei < selectedEntities.length; ei++) {
+        const entityName = selectedEntities[ei];
+        const allRecords = backupFileData.entities[entityName] || [];
+
+        if (allRecords.length === 0) {
           report.skipped.push({ entity: entityName, reason: 'No records in backup' });
+          completedChunks += entityChunkCounts[ei];
+          setRestoreProgress(Math.round((completedChunks / totalChunks) * 100));
           continue;
         }
 
-        try {
-          const response = await base44.functions.invoke('restoreDatabaseBackup', {
-            entity_name: entityName,
-            records: records,
-            data_env: dbEnv,
-            id_map_input: globalIdMap   // Pass accumulated ID map so backend can remap foreign keys
-          });
-
-          if (response.data?.success) {
-            // Merge this entity's ID map into the global map for downstream entities
-            if (response.data.id_map) {
-              globalIdMap[entityName] = response.data.id_map;
-            }
-            report.success.push({
-              entity: entityName,
-              stats: response.data.stats || {}
-            });
-          } else {
-            report.failed.push({ entity: entityName, reason: response.data?.error || 'Unknown error' });
-          }
-        } catch (err) {
-          report.failed.push({ entity: entityName, reason: err.response?.data?.error || err.message });
+        // Split into chunks
+        const chunks = [];
+        for (let offset = 0; offset < allRecords.length; offset += CHUNK_SIZE) {
+          chunks.push(allRecords.slice(offset, offset + CHUNK_SIZE));
         }
+
+        // Full list of all backup IDs for this entity (needed by backend for delete phase on final chunk)
+        const allBackupIds = allRecords.map(r => r.id);
+
+        // Per-entity accumulated id map — grows chunk by chunk
+        let entityIdMap = {};
+
+        // Aggregate stats across all chunks for this entity
+        const entityStats = { updated: 0, inserted: 0, deleted: 0, id_remapped: 0 };
+        let entityFailed = false;
+        let entityFailReason = '';
+
+        for (let ci = 0; ci < chunks.length; ci++) {
+          const chunk = chunks[ci];
+          const isFinalChunk = ci === chunks.length - 1;
+
+          try {
+            const response = await base44.functions.invoke('restoreDatabaseBackup', {
+              entity_name: entityName,
+              records: chunk,
+              data_env: dbEnv,
+              id_map_input: globalIdMap,          // Cross-entity parent ID map
+              accumulated_id_map: entityIdMap,     // This entity's ID map from prior chunks
+              is_final_chunk: isFinalChunk,
+              all_backup_ids: isFinalChunk ? allBackupIds : null, // Only needed on final chunk for delete
+            });
+
+            if (response.data?.success) {
+              // Carry over accumulated entity id map from backend response
+              entityIdMap = response.data.id_map || entityIdMap;
+
+              // Accumulate stats
+              const s = response.data.stats || {};
+              entityStats.updated    += s.updated    || 0;
+              entityStats.inserted   += s.inserted   || 0;
+              entityStats.deleted    += s.deleted    || 0;
+              entityStats.id_remapped += s.id_remapped || 0;
+            } else {
+              entityFailed = true;
+              entityFailReason = response.data?.error || 'Unknown error';
+              break; // Stop processing remaining chunks for this entity on error
+            }
+          } catch (err) {
+            entityFailed = true;
+            entityFailReason = err.response?.data?.error || err.message;
+            break;
+          }
+
+          completedChunks++;
+          setRestoreProgress(Math.round((completedChunks / totalChunks) * 100));
+        }
+
+        if (entityFailed) {
+          report.failed.push({ entity: entityName, reason: entityFailReason });
+          // Still count remaining chunks as done for progress accuracy
+          const remainingChunks = chunks.length - (completedChunks % chunks.length);
+          completedChunks += remainingChunks > chunks.length ? 0 : remainingChunks;
+        } else {
+          // Merge this entity's final ID map into globalIdMap for downstream entities
+          globalIdMap[entityName] = entityIdMap;
+          report.success.push({ entity: entityName, stats: entityStats });
+          // Ensure chunk counter is accurate when entity fully processed
+        }
+
+        setRestoreProgress(Math.round((completedChunks / totalChunks) * 100));
       }
 
       // Aggregate totals across all entities
-      const totalUpdated = report.success.reduce((s, r) => s + (r.stats?.updated || 0), 0);
-      const totalInserted = report.success.reduce((s, r) => s + (r.stats?.inserted || 0), 0);
-      const totalDeleted = report.success.reduce((s, r) => s + (r.stats?.deleted || 0), 0);
+      const totalUpdated  = report.success.reduce((s, r) => s + (r.stats?.updated    || 0), 0);
+      const totalInserted = report.success.reduce((s, r) => s + (r.stats?.inserted   || 0), 0);
+      const totalDeleted  = report.success.reduce((s, r) => s + (r.stats?.deleted    || 0), 0);
       const totalRemapped = report.success.reduce((s, r) => s + (r.stats?.id_remapped || 0), 0);
 
       const summary = {
@@ -838,12 +896,17 @@ function RestorePanel() {
           </div>
         )}
 
-        {restoreProgress > 0 && (
+        {restoring && restoreProgress >= 0 && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-indigo-200">
-              <span>Restoring...</span><span>{restoreProgress}%</span>
+              <span className="flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Restoring in chunks (300 records/batch)…
+              </span>
+              <span>{restoreProgress}%</span>
             </div>
             <Progress value={restoreProgress} className="h-2" />
+            <p className="text-xs text-indigo-400">Large tables are automatically split into batches to prevent timeouts.</p>
           </div>
         )}
 

@@ -13,7 +13,6 @@ const RESTORABLE_ENTITIES = [
 ];
 
 // Foreign key relationships: which fields in child entities reference parent entity IDs
-// Format: { childEntity: [{ field: 'field_name', referencesEntity: 'ParentEntity' }] }
 const ENTITY_RELATIONSHIPS = {
   Entity:                            [{ field: 'tenant_id', referencesEntity: 'Tenant' }],
   Account:                           [{ field: 'tenant_id', referencesEntity: 'Tenant' },
@@ -81,7 +80,21 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { entity_name, records, data_env, id_map_input } = body;
+    const {
+      entity_name,
+      records,
+      data_env,
+      id_map_input,
+      // Chunking control flags:
+      // is_final_chunk: true  → run Phase 3 (delete stale records) after upserting
+      // is_final_chunk: false → skip Phase 3 (more chunks coming)
+      // accumulated_id_map: the entity-level id map built from previous chunks of the SAME entity
+      is_final_chunk = true,
+      accumulated_id_map = {},
+      // all_backup_ids: full set of backup IDs for this entity (used in Phase 3 delete on final chunk)
+      all_backup_ids = null,
+    } = body;
+
     const dataEnv = data_env === 'dev' ? 'dev' : 'prod';
     const dataEnvOpts = dataEnv === 'dev' ? { data_env: 'dev' } : null;
 
@@ -92,35 +105,43 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Entity '${entity_name}' is not in the restorable list` }, { status: 400 });
     }
     if (!records || records.length === 0) {
-      return Response.json({ success: true, skipped: true, message: 'No records to restore', stats: { updated: 0, inserted: 0, deleted: 0, id_remapped: 0 } });
+      return Response.json({
+        success: true,
+        skipped: true,
+        message: 'No records to restore',
+        stats: { updated: 0, inserted: 0, deleted: 0, id_remapped: 0 },
+        id_map: {}
+      });
     }
 
     const entityApi = base44.asServiceRole.entities[entity_name];
 
-    // ── Ingest the global ID map built from previously restored entities ──────
-    // id_map_input: { EntityName: { old_id: new_id, ... }, ... }
+    // Global cross-entity ID map (parent entities already restored)
     const globalIdMap = id_map_input || {};
 
-    // ── PHASE 0: Fetch all existing records from DB ────────────────────────────
-    console.log(`[restore:${entity_name}] Fetching existing records...`);
+    // ── PHASE 0: Fetch all existing DB records ─────────────────────────────────
+    // Only needed on first chunk (or single-chunk) to get the existingById map,
+    // and also on the final chunk for the delete phase.
+    // We always fetch here — chunk calls are short-lived so this stays fast.
+    console.log(`[restore:${entity_name}] Fetching existing records from DB...`);
     const existingRecords = await fetchAllRecords(entityApi, dataEnvOpts);
     const existingById = new Map(existingRecords.map(r => [r.id, r]));
 
-    // Build a set of backup IDs for quick lookup
-    const backupIdSet = new Set(records.map(r => r.id));
+    // Build set of this chunk's backup IDs
+    const chunkBackupIdSet = new Set(records.map(r => r.id));
 
-    // Track stats
+    // Stats for THIS chunk
     const stats = { updated: 0, inserted: 0, deleted: 0, id_remapped: 0 };
-    // old_id → new_id mapping for records that get new IDs on insert
-    const localIdMap = {}; // { old_id: new_id }
 
-    // ── PHASE 1: UPSERT (Update existing, insert missing) ──────────────────────
-    console.log(`[restore:${entity_name}] Phase 1: Upserting ${records.length} records...`);
+    // Merge previous chunk id maps for this entity into localIdMap
+    const localIdMap = { ...accumulated_id_map };
+
+    // ── PHASE 1: UPSERT this chunk ─────────────────────────────────────────────
+    console.log(`[restore:${entity_name}] Upserting chunk of ${records.length} records...`);
 
     for (const backupRecord of records) {
       const backupId = backupRecord.id;
 
-      // Apply any foreign key remappings from previously restored parent entities
       const recordToWrite = cleanRecord({ ...backupRecord });
 
       // Remap foreign keys based on globalIdMap from parent entities
@@ -137,7 +158,6 @@ Deno.serve(async (req) => {
         try {
           await entityApi.update(backupId, recordToWrite, dataEnvOpts || undefined);
           stats.updated++;
-          // No ID change — map to itself so Phase 3 knows this ID is still valid
           localIdMap[backupId] = backupId;
         } catch (e) {
           console.error(`[restore:${entity_name}] Update failed for id=${backupId}:`, e.message);
@@ -145,13 +165,11 @@ Deno.serve(async (req) => {
       } else {
         // ── Record DOES NOT EXIST → INSERT ─────────────────────────────────
         try {
-          // Try to preserve the original ID
           const insertPayload = { id: backupId, ...recordToWrite };
           let inserted;
           try {
             inserted = await entityApi.create(insertPayload, dataEnvOpts || undefined);
           } catch {
-            // If preserving ID fails, insert without ID (platform assigns new one)
             const { id: _omit, ...withoutId } = recordToWrite;
             inserted = await entityApi.create(withoutId, dataEnvOpts || undefined);
           }
@@ -168,40 +186,43 @@ Deno.serve(async (req) => {
           console.error(`[restore:${entity_name}] Insert failed for id=${backupId}:`, e.message);
         }
       }
+
       await sleep(50);
     }
 
-    // ── PHASE 3: DELETE EXTRA RECORDS ─────────────────────────────────────────
-    // "Extra" = in DB but NOT in backup AND NOT a newly-inserted record from this restore
-    console.log(`[restore:${entity_name}] Phase 3: Identifying extra records to delete...`);
+    // ── PHASE 3: DELETE STALE RECORDS — only on final chunk ───────────────────
+    if (is_final_chunk) {
+      console.log(`[restore:${entity_name}] Final chunk — running Phase 3 (delete stale records)...`);
 
-    // All IDs that SHOULD exist after restore:
-    // - backup IDs that were found and updated
-    // - new IDs generated when inserting backup records
-    const expectedNewIds = new Set(Object.values(localIdMap));
+      // The complete set of backup IDs for this entity (passed by frontend from all chunks combined)
+      const fullBackupIdSet = all_backup_ids ? new Set(all_backup_ids) : chunkBackupIdSet;
 
-    for (const existingRecord of existingRecords) {
-      const dbId = existingRecord.id;
+      // All new IDs that now exist after this full restore (old_id → new_id values)
+      const expectedNewIds = new Set(Object.values(localIdMap));
 
-      // If this DB record's ID is NOT in backup AND NOT a newly created record from this restore
-      if (!backupIdSet.has(dbId) && !expectedNewIds.has(dbId)) {
-        try {
-          await entityApi.delete(dbId, dataEnvOpts || undefined);
-          stats.deleted++;
-          await sleep(80);
-        } catch (e) {
-          console.error(`[restore:${entity_name}] Delete failed for id=${dbId}:`, e.message);
+      for (const existingRecord of existingRecords) {
+        const dbId = existingRecord.id;
+        if (!fullBackupIdSet.has(dbId) && !expectedNewIds.has(dbId)) {
+          try {
+            await entityApi.delete(dbId, dataEnvOpts || undefined);
+            stats.deleted++;
+            await sleep(80);
+          } catch (e) {
+            console.error(`[restore:${entity_name}] Delete failed for id=${dbId}:`, e.message);
+          }
         }
       }
+    } else {
+      console.log(`[restore:${entity_name}] Intermediate chunk — skipping Phase 3 (more chunks pending).`);
     }
 
-    console.log(`[restore:${entity_name}] Done — updated:${stats.updated} inserted:${stats.inserted} deleted:${stats.deleted} remapped:${stats.id_remapped}`);
+    console.log(`[restore:${entity_name}] Chunk done — updated:${stats.updated} inserted:${stats.inserted} deleted:${stats.deleted} remapped:${stats.id_remapped}`);
 
     return Response.json({
       success: true,
       entity: entity_name,
       stats,
-      id_map: localIdMap  // Return this so frontend can pass it to dependent entity restores
+      id_map: localIdMap  // Accumulated map for this entity — returned so frontend can pass to next chunk/entity
     });
 
   } catch (error) {
