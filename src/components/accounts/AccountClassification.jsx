@@ -55,9 +55,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
     queryFn: () => base44.entities.Workflow.filter({ status: 'published' }),
   });
 
-  // Pick the appropriate workflow - always use account_reportability for accounts,
-  // regardless of whether the account holder is an individual or entity
-  const workflow = workflows.find(w => w.workflow_type === 'account_reportability') || workflows[0];
+  // Pick the appropriate workflow based on account holder type
+  // First try to find a workflow matching the holder type by name, then fall back to any account_reportability
+  const workflow = workflows.find(w =>
+    w.workflow_type === 'account_reportability' &&
+    (isEntityWorkflow
+      ? w.workflow_name?.toLowerCase().includes('entity')
+      : w.workflow_name?.toLowerCase().includes('individual'))
+  ) || workflows.find(w => w.workflow_type === 'account_reportability') || workflows[0];
 
   const steps = workflow?.steps || [];
   const currentNode = steps[currentStepIndex];
