@@ -50,6 +50,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [entityData, setEntityData] = useState(null);
+  const [entityDataLoaded, setEntityDataLoaded] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
 
   // Fetch published workflows
@@ -60,16 +61,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   // Fetch related entity data so trigger conditions on fi_type etc. can be evaluated
   useEffect(() => {
-    if (!account?.entity_id) return;
+    if (!account?.entity_id) {
+      setEntityDataLoaded(true); // no entity to load
+      return;
+    }
     base44.entities.Entity.filter({ id: account.entity_id }).then(records => {
       if (records[0]) setEntityData(records[0]);
+      setEntityDataLoaded(true);
     });
   }, [account?.entity_id]);
 
-  // Select the best workflow using auto-trigger evaluation (merges account + entity fields),
-  // falling back to name-matching, then any account_reportability workflow.
+  // Select the best workflow ONLY after entity data has been loaded
   useEffect(() => {
-    if (!workflows.length) return;
+    if (!workflows.length || !entityDataLoaded) return;
 
     const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
     if (!accountReportabilityWorkflows.length) {
@@ -79,8 +83,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     // Merge account + entity data so conditions on fi_type (from Entity) are resolved
     const mergedData = { ...account, ...(entityData || {}) };
+    console.log('[WORKFLOW SELECT] mergedData fi_type:', mergedData.fi_type, 'account_holder_type:', mergedData.account_holder_type);
 
     evaluateWorkflowTriggers(mergedData, 'account_created', accountReportabilityWorkflows).then(matched => {
+      console.log('[WORKFLOW SELECT] trigger-matched workflows:', matched.map(w => w.workflow_name));
       if (matched.length > 0) {
         setSelectedWorkflow(matched[0]);
       } else {
@@ -90,10 +96,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
             ? w.workflow_name?.toLowerCase().includes('entity')
             : w.workflow_name?.toLowerCase().includes('individual')
         );
+        console.log('[WORKFLOW SELECT] fallback by name:', byName?.workflow_name);
         setSelectedWorkflow(byName || accountReportabilityWorkflows[0]);
       }
     });
-  }, [workflows, entityData, account?.id]);
+  }, [workflows, entityData, entityDataLoaded, account?.id]);
 
   const workflow = selectedWorkflow;
 
