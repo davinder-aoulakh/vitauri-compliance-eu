@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
 import { computePrefillAnswers } from "../workflows/workflowPrefillUtils";
+import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
 
@@ -48,6 +49,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [dateReceivedValue, setDateReceivedValue] = useState("");
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
+  const [entityData, setEntityData] = useState(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState(null);
 
   // Fetch published workflows
   const { data: workflows = [] } = useQuery({
@@ -55,14 +58,44 @@ export default function AccountClassification({ account, onComplete, onCancel })
     queryFn: () => base44.entities.Workflow.filter({ status: 'published' }),
   });
 
-  // Pick the appropriate workflow based on account holder type
-  // First try to find a workflow matching the holder type by name, then fall back to any account_reportability
-  const workflow = workflows.find(w =>
-    w.workflow_type === 'account_reportability' &&
-    (isEntityWorkflow
-      ? w.workflow_name?.toLowerCase().includes('entity')
-      : w.workflow_name?.toLowerCase().includes('individual'))
-  ) || workflows.find(w => w.workflow_type === 'account_reportability') || workflows[0];
+  // Fetch related entity data so trigger conditions on fi_type etc. can be evaluated
+  useEffect(() => {
+    if (!account?.entity_id) return;
+    base44.entities.Entity.filter({ id: account.entity_id }).then(records => {
+      if (records[0]) setEntityData(records[0]);
+    });
+  }, [account?.entity_id]);
+
+  // Select the best workflow using auto-trigger evaluation (merges account + entity fields),
+  // falling back to name-matching, then any account_reportability workflow.
+  useEffect(() => {
+    if (!workflows.length) return;
+
+    const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
+    if (!accountReportabilityWorkflows.length) {
+      setSelectedWorkflow(workflows[0]);
+      return;
+    }
+
+    // Merge account + entity data so conditions on fi_type (from Entity) are resolved
+    const mergedData = { ...account, ...(entityData || {}) };
+
+    evaluateWorkflowTriggers(mergedData, 'account_created', accountReportabilityWorkflows).then(matched => {
+      if (matched.length > 0) {
+        setSelectedWorkflow(matched[0]);
+      } else {
+        // Fallback: match by name
+        const byName = accountReportabilityWorkflows.find(w =>
+          isEntityWorkflow
+            ? w.workflow_name?.toLowerCase().includes('entity')
+            : w.workflow_name?.toLowerCase().includes('individual')
+        );
+        setSelectedWorkflow(byName || accountReportabilityWorkflows[0]);
+      }
+    });
+  }, [workflows, entityData, account?.id]);
+
+  const workflow = selectedWorkflow;
 
   const steps = workflow?.steps || [];
   const currentNode = steps[currentStepIndex];
