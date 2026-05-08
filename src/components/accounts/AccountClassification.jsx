@@ -49,8 +49,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [dateReceivedValue, setDateReceivedValue] = useState("");
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
-  const [entityData, setEntityData] = useState(null);
-  const [entityDataLoaded, setEntityDataLoaded] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
 
   // Fetch published workflows
@@ -59,21 +57,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     queryFn: () => base44.entities.Workflow.filter({ status: 'published' }),
   });
 
-  // Fetch related entity data so trigger conditions on fi_type etc. can be evaluated
+  // Fetch entity data and select the best matching workflow via trigger evaluation
   useEffect(() => {
-    if (!account?.entity_id) {
-      setEntityDataLoaded(true); // no entity to load
-      return;
-    }
-    base44.entities.Entity.filter({ id: account.entity_id }).then(records => {
-      if (records[0]) setEntityData(records[0]);
-      setEntityDataLoaded(true);
-    });
-  }, [account?.entity_id]);
-
-  // Select the best workflow ONLY after entity data has been loaded
-  useEffect(() => {
-    if (!workflows.length || !entityDataLoaded) return;
+    if (!workflows.length) return;
 
     const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
     if (!accountReportabilityWorkflows.length) {
@@ -81,26 +67,30 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return;
     }
 
-    // Merge account + entity data so conditions on fi_type (from Entity) are resolved
-    const mergedData = { ...account, ...(entityData || {}) };
-    console.log('[WORKFLOW SELECT] mergedData fi_type:', mergedData.fi_type, 'account_holder_type:', mergedData.account_holder_type);
+    const selectWorkflow = async () => {
+      // Build merged data: account fields + related entity fields (fi_type, rfi_status, etc.)
+      let mergedData = { ...account };
+      if (account?.entity_id) {
+        const entityRecords = await base44.entities.Entity.filter({ id: account.entity_id });
+        if (entityRecords[0]) {
+          // Merge entity fields so trigger conditions referencing fi_type, rfi_status etc. resolve correctly
+          mergedData = { ...mergedData, ...entityRecords[0] };
+        }
+      }
 
-    evaluateWorkflowTriggers(mergedData, 'account_created', accountReportabilityWorkflows).then(matched => {
-      console.log('[WORKFLOW SELECT] trigger-matched workflows:', matched.map(w => w.workflow_name));
+      // Use trigger evaluation to find the best matching workflow
+      const matched = await evaluateWorkflowTriggers(mergedData, 'account_created', accountReportabilityWorkflows);
+
       if (matched.length > 0) {
         setSelectedWorkflow(matched[0]);
       } else {
-        // Fallback: match by name
-        const byName = accountReportabilityWorkflows.find(w =>
-          isEntityWorkflow
-            ? w.workflow_name?.toLowerCase().includes('entity')
-            : w.workflow_name?.toLowerCase().includes('individual')
-        );
-        console.log('[WORKFLOW SELECT] fallback by name:', byName?.workflow_name);
-        setSelectedWorkflow(byName || accountReportabilityWorkflows[0]);
+        // Fallback: first workflow of the correct type
+        setSelectedWorkflow(accountReportabilityWorkflows[0]);
       }
-    });
-  }, [workflows, entityData, entityDataLoaded, account?.id]);
+    };
+
+    selectWorkflow();
+  }, [workflows, account?.id]);
 
   const workflow = selectedWorkflow;
 
