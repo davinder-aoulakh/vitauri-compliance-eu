@@ -164,6 +164,55 @@
       "type": "boolean",
       "description": "Whether 50% or more of the entity's gross income is passive income"
     },
+    "non_reportable_exception_type": {
+      "type": "string",
+      "enum": [
+        "inheritance_estate",
+        "escrow_court_decree",
+        "qualifying_pension",
+        "overdraft_deposit",
+        "pre_existing_dormant_below_1k",
+        "publicly_traded",
+        "purely_domestic",
+        "international_organization",
+        "liquidation_dissolution",
+        "none"
+      ],
+      "description": "CRS S3-1 gate. When set to anything other than 'none' the account is immediately Non-Reportable \u2014 engine stops without running S4\u2013S6."
+    },
+    "potential_exception_type": {
+      "type": "string",
+      "enum": [
+        "None",
+        "DGA",
+        "Foundation",
+        "STAK",
+        "HoldCo",
+        "TreasuryCtr",
+        "RealEstateFund"
+      ],
+      "description": "S4-1 routing. Routes account to exception sub-section 4A\u20134F. 'None' = run the main FI / A-NFE / P-NFE classification tree."
+    },
+    "treasury_activities_operational": {
+      "type": "boolean",
+      "description": "S4E criterion 1. Treasury activities are functional and operational (cash pooling, FX hedging, intercompany lending), not investment-driven."
+    },
+    "treasury_part_of_nonfinancial_group": {
+      "type": "boolean",
+      "description": "S4E criterion 2. Entity is part of a group primarily engaged in non-financial business (e.g. manufacturing, retail, services)."
+    },
+    "treasury_main_fn_finance_hedge_group": {
+      "type": "boolean",
+      "description": "S4E criterion 3. Main function is to finance or hedge transactions for operating companies within the same group."
+    },
+    "treasury_50pct_passive_income_fails": {
+      "type": "boolean",
+      "description": "S4E criterion 4. true = <50% of gross income is passive (passes). false = \u226550% passive (fails). NOTE: inverted vs the Excel column name."
+    },
+    "treasury_still_operational_despite_failing_50pct": {
+      "type": "boolean",
+      "description": "GAP 1 FIX. Only relevant when treasury_50pct_passive_income_fails is false (entity has \u226550% passive income). true = entity is still operationally active \u2192 A-NFE (Non-Reportable). false = genuinely non-operational \u2192 P-NFE (routes to Stage 2 Double Test)."
+    },
     "account_closed_during_period": {
       "type": "boolean",
       "default": false
