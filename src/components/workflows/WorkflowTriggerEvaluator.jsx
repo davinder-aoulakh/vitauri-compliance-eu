@@ -13,13 +13,18 @@ export const evaluateWorkflowTriggers = async (entityData, eventType, workflows)
   for (const workflow of workflows) {
     const triggerConfig = workflow.trigger_conditions;
     
+    console.log(`[TRIGGER EVAL] Workflow: "${workflow.workflow_name}" | enabled: ${triggerConfig?.enabled} | event: ${triggerConfig?.trigger_event} | conditions: ${JSON.stringify(triggerConfig?.conditions)}`);
+
     // Skip if triggers not enabled or wrong event type
     if (!triggerConfig?.enabled || triggerConfig.trigger_event !== eventType) {
+      console.log(`[TRIGGER EVAL] Skipped "${workflow.workflow_name}" - not enabled or wrong event`);
       continue;
     }
 
     // Evaluate all conditions
-    if (await evaluateConditions(entityData, triggerConfig)) {
+    const matched = await evaluateConditions(entityData, triggerConfig);
+    console.log(`[TRIGGER EVAL] "${workflow.workflow_name}" conditions matched: ${matched}`);
+    if (matched) {
       matchingWorkflows.push({
         workflow,
         priority: triggerConfig.priority || 0
