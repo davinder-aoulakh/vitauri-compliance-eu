@@ -41,6 +41,9 @@ export const evaluateWorkflowTriggers = async (entityData, eventType, workflows)
  */
 const evaluateConditions = async (entityData, triggerConfig) => {
   const { conditions = [], computed_conditions = [] } = triggerConfig;
+
+  // If no conditions defined, this workflow does not match via triggers
+  if (conditions.length === 0 && computed_conditions.length === 0) return false;
   
   // Evaluate regular conditions
   let result = true;
