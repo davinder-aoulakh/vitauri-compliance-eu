@@ -1,0 +1,98 @@
+{
+  "name": "FITypeTemplate",
+  "type": "object",
+  "properties": {
+    "fi_type": {
+      "type": "string",
+      "enum": [
+        "custodial_institution",
+        "depository_institution",
+        "investment_entity",
+        "specified_insurance_company",
+        "not_applicable"
+      ],
+      "description": "The FI type this template applies to"
+    },
+    "label": {
+      "type": "string",
+      "description": "Display label for this FI type"
+    },
+    "allowed_account_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of allowed account types for this FI type"
+    },
+    "account_type_note": {
+      "type": "string",
+      "description": "Instruction note shown in the template for the Account Type column"
+    },
+    "example_account_type": {
+      "type": "string",
+      "description": "Example account type used in the template example row"
+    },
+    "column_definitions": {
+      "type": "array",
+      "description": "Full column structure extracted from an uploaded Excel template",
+      "items": {
+        "type": "object",
+        "properties": {
+          "header": {
+            "type": "string",
+            "description": "Column header text"
+          },
+          "key": {
+            "type": "string",
+            "description": "Field key used for mapping"
+          },
+          "width": {
+            "type": "number",
+            "description": "Column width in Excel"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the column is required"
+          },
+          "note": {
+            "type": "string",
+            "description": "Instruction note for the column"
+          },
+          "validation_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Dropdown validation values for this column"
+          },
+          "example_value": {
+            "type": "string",
+            "description": "Example value for the column"
+          }
+        }
+      }
+    },
+    "example_row": {
+      "type": "object",
+      "description": "Example data row extracted from the uploaded template (key: value pairs)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes about this template configuration"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this template configuration is active"
+    },
+    "last_updated_by": {
+      "type": "string",
+      "description": "Email of the super admin who last updated this"
+    }
+  },
+  "required": [
+    "fi_type",
+    "label",
+    "allowed_account_types"
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "name": "JurisdictionConfig",
+  "type": "object",
+  "properties": {
+    "jurisdiction_code": {
+      "type": "string",
+      "description": "ISO country code (e.g., AU, GB, US)"
+    },
+    "jurisdiction_name": {
+      "type": "string",
+      "description": "Full name of the jurisdiction/tax authority"
+    },
+    "supported_schema_versions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "v2.0",
+        "v2.1"
+      ],
+      "description": "List of supported CRS XML schema versions for this jurisdiction"
+    },
+    "default_schema_version": {
+      "type": "string",
+      "default": "v2.0",
+      "description": "Default CRS XML schema version"
+    },
+    "schema_version_by_year": {
+      "type": "object",
+      "description": "Map of reporting year ranges to required schema versions (e.g., {'2024': 'v2.1', '2023': 'v2.0'})"
+    },
+    "file_naming_pattern": {
+      "type": "string",
+      "description": "Pattern for XML filename generation"
+    },
+    "doc_ref_id_format": {
+      "type": "string",
+      "description": "Format for document reference IDs"
+    },
+    "requires_encryption": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether XML must be encrypted"
+    },
+    "requires_giin": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether GIIN is required"
+    },
+    "allow_blank_postal_codes": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether blank postal codes are permitted"
+    },
+    "forbidden_elements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "XML elements that must not be included for this jurisdiction"
+    },
+    "controlled_code_lists": {
+      "type": "object",
+      "description": "Controlled code lists for this jurisdiction (e.g., Payment types CRS501-504)"
+    },
+    "residence_basis_lists": {
+      "type": "object",
+      "description": "Residence basis code lists for this jurisdiction"
+    },
+    "tin_format_regex": {
+      "type": "string",
+      "description": "Regular expression for TIN validation"
+    },
+    "tin_format_description": {
+      "type": "string",
+      "description": "Human-readable TIN format description"
+    },
+    "reporting_deadline": {
+      "type": "string",
+      "description": "Annual reporting deadline (e.g., 'May 31')"
+    },
+    "nil_report_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether NIL reports are mandatory"
+    },
+    "specific_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Jurisdiction-specific requirements and notes"
+    },
+    "message_type_indicator": {
+      "type": "string",
+      "default": "CRS701",
+      "description": "MessageTypeIndic value for this jurisdiction"
+    },
+    "custom_validation_rules": {
+      "type": "object",
+      "description": "Custom validation rules specific to this jurisdiction"
+    },
+    "api_endpoints": {
+      "type": "object",
+      "properties": {
+        "submission_url": {
+          "type": "string"
+        },
+        "notification_url": {
+          "type": "string"
+        },
+        "auth_type": {
+          "type": "string",
+          "enum": [
+            "oauth",
+            "token",
+            "basic"
+          ]
+        },
+        "requires_scheduling": {
+          "type": "boolean"
+        }
+      },
+      "description": "API endpoints for automated submission to tax authority"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this jurisdiction configuration is active"
+    },
+    "last_updated_by": {
+      "type": "string",
+      "description": "Email of super admin who last updated this config"
+    }
+  },
+  "required": [
+    "jurisdiction_code",
+    "jurisdiction_name"
+  ]
+}

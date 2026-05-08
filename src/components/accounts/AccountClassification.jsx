@@ -55,11 +55,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
     queryFn: () => base44.entities.Workflow.filter({ status: 'published' }),
   });
 
-  // Pick the appropriate workflow
-  const workflow = workflows.find(w => {
-    if (isEntityWorkflow) return w.workflow_type === 'account_reportability' || w.workflow_type === 'entity_rfi_classification';
-    return w.workflow_type === 'account_reportability';
-  }) || workflows.find(w => w.workflow_type === 'account_reportability') || workflows[0];
+  // Pick the appropriate workflow - always use account_reportability for accounts,
+  // regardless of whether the account holder is an individual or entity
+  const workflow = workflows.find(w => w.workflow_type === 'account_reportability') || workflows[0];
 
   const steps = workflow?.steps || [];
   const currentNode = steps[currentStepIndex];

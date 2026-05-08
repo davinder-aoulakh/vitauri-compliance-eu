@@ -1,0 +1,109 @@
+{
+  "name": "CustomValidationRule",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "rule_name": {
+      "type": "string",
+      "description": "Name of the validation rule"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what this rule validates"
+    },
+    "target_entity_type": {
+      "type": "string",
+      "enum": [
+        "Account",
+        "Entity",
+        "ControllingPerson",
+        "Beneficiary"
+      ],
+      "description": "Which entity type this rule applies to"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium",
+      "description": "Severity level when this rule is violated"
+    },
+    "rule_type": {
+      "type": "string",
+      "enum": [
+        "field_validation",
+        "cross_field_validation",
+        "threshold",
+        "pattern_match",
+        "custom_logic"
+      ],
+      "description": "Type of validation rule"
+    },
+    "field_name": {
+      "type": "string",
+      "description": "Primary field this rule validates (for field_validation)"
+    },
+    "condition": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "type": "string",
+          "enum": [
+            "equals",
+            "not_equals",
+            "greater_than",
+            "less_than",
+            "contains",
+            "not_contains",
+            "is_empty",
+            "is_not_empty",
+            "matches_pattern",
+            "between"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "description": "Value to compare against"
+        },
+        "secondary_value": {
+          "type": "string",
+          "description": "For 'between' operator, the upper bound"
+        },
+        "field_reference": {
+          "type": "string",
+          "description": "For cross-field validation, reference another field"
+        }
+      },
+      "description": "Condition that defines when the rule is violated"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Custom error message when rule is violated"
+    },
+    "suggested_action": {
+      "type": "string",
+      "description": "Recommended action to resolve the violation"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this rule is currently active"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of user who created the rule"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "rule_name",
+    "target_entity_type",
+    "rule_type"
+  ]
+}

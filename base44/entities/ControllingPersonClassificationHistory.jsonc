@@ -1,0 +1,79 @@
+{
+  "name": "ControllingPersonClassificationHistory",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "controlling_person_id": {
+      "type": "string",
+      "description": "Reference to the controlling person being classified"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Reference to the associated account"
+    },
+    "classification_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this classification was performed"
+    },
+    "reportability_status": {
+      "type": "boolean",
+      "description": "Whether the controlling person is reportable (true) or non-reportable (false)"
+    },
+    "classification_reason": {
+      "type": "string",
+      "description": "Detailed reason for this classification"
+    },
+    "classification_source": {
+      "type": "string",
+      "enum": [
+        "workflow",
+        "manual"
+      ],
+      "default": "workflow",
+      "description": "How this classification was performed"
+    },
+    "tax_residencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "tin": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Tax residencies at time of classification"
+    },
+    "workflow_answers": {
+      "type": "object",
+      "description": "Complete workflow answers for audit trail"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email of user who performed classification"
+    },
+    "controlling_person_name": {
+      "type": "string",
+      "description": "Controlling person name at time of classification"
+    },
+    "control_type": {
+      "type": "string",
+      "description": "Control type at time of classification"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "controlling_person_id",
+    "account_id",
+    "classification_date",
+    "reportability_status",
+    "classification_reason"
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Reference to the associated Account"
+    },
+    "first_name": {
+      "type": "string",
+      "description": "First name of the beneficiary"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Last name of the beneficiary"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the beneficiary (legacy field)"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth of the beneficiary"
+    },
+    "place_of_birth": {
+      "type": "string",
+      "description": "Country of birth"
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      },
+      "description": "Full address of the beneficiary"
+    },
+    "tax_residencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "tin": {
+            "type": "string"
+          },
+          "tin_unavailable_reason": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Tax residency information for beneficiary"
+    },
+    "reportability_status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "reportable",
+        "non_reportable",
+        "excluded"
+      ],
+      "default": "pending_review",
+      "description": "Reportability status of the beneficiary"
+    },
+    "reportability_reason": {
+      "type": "string",
+      "description": "Reason for the reportability status"
+    },
+    "classification_answers": {
+      "type": "object",
+      "description": "Stored answers from beneficiary reportability questionnaire"
+    },
+    "classification_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this beneficiary was last classified"
+    },
+    "classified_by": {
+      "type": "string",
+      "description": "Email of user who performed classification"
+    },
+    "self_certification_request_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when a new self-certification was requested"
+    },
+    "self_certification_overdue": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if 90 days have passed since self_certification_request_date and no new self-certification received"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "account_id"
+  ],
+  "name": "Beneficiary"
+}

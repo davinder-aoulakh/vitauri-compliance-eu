@@ -1,0 +1,63 @@
+{
+  "name": "BackupStorage",
+  "type": "object",
+  "properties": {
+    "backup_type": {
+      "type": "string",
+      "enum": [
+        "full_export",
+        "table_export",
+        "adhoc",
+        "scheduled"
+      ],
+      "description": "Type of backup run"
+    },
+    "entity_name": {
+      "type": "string",
+      "description": "For table exports: the entity name exported"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to the stored backup JSON file"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original filename of the backup"
+    },
+    "total_records": {
+      "type": "number",
+      "description": "Total number of records in this backup"
+    },
+    "entity_count": {
+      "type": "number",
+      "description": "Number of entity tables in this backup"
+    },
+    "exported_by": {
+      "type": "string",
+      "description": "Email of user or 'scheduled' if automated"
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the backup was taken"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this backup should be purged based on retention policy"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "default": "completed"
+    }
+  },
+  "required": [
+    "backup_type",
+    "exported_at",
+    "exported_by"
+  ]
+}

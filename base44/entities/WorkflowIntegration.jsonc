@@ -1,0 +1,113 @@
+{
+  "type": "object",
+  "properties": {
+    "integration_name": {
+      "type": "string",
+      "description": "Name of the integration"
+    },
+    "integration_type": {
+      "type": "string",
+      "enum": [
+        "data_validation",
+        "data_enrichment",
+        "risk_scoring",
+        "document_generation",
+        "notification",
+        "external_api",
+        "webhook"
+      ],
+      "description": "Type of integration"
+    },
+    "description": {
+      "type": "string"
+    },
+    "endpoint_url": {
+      "type": "string",
+      "description": "API endpoint URL"
+    },
+    "http_method": {
+      "type": "string",
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "default": "POST"
+    },
+    "authentication": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "none",
+            "api_key",
+            "bearer_token",
+            "basic_auth",
+            "oauth2"
+          ]
+        },
+        "config": {
+          "type": "object",
+          "description": "Auth configuration (keys stored securely)"
+        }
+      }
+    },
+    "request_mapping": {
+      "type": "object",
+      "description": "How to map workflow data to API request"
+    },
+    "response_mapping": {
+      "type": "object",
+      "description": "How to map API response back to workflow"
+    },
+    "trigger_point": {
+      "type": "string",
+      "enum": [
+        "step_start",
+        "step_end",
+        "workflow_start",
+        "workflow_end",
+        "condition_met"
+      ],
+      "description": "When to trigger this integration"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "retry_config": {
+      "type": "object",
+      "properties": {
+        "max_retries": {
+          "type": "number",
+          "default": 3
+        },
+        "retry_delay": {
+          "type": "number",
+          "default": 1000,
+          "description": "Delay in milliseconds"
+        }
+      }
+    },
+    "timeout": {
+      "type": "number",
+      "default": 30000,
+      "description": "Timeout in milliseconds"
+    },
+    "usage_count": {
+      "type": "number",
+      "default": 0
+    },
+    "last_executed": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "integration_name",
+    "integration_type"
+  ],
+  "name": "WorkflowIntegration"
+}

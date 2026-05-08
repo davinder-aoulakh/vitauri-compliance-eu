@@ -1,0 +1,1002 @@
+{
+  "name": "Workflow",
+  "type": "object",
+  "properties": {
+    "workflow_name": {
+      "type": "string",
+      "description": "Name of the workflow"
+    },
+    "workflow_type": {
+      "type": "string",
+      "enum": [
+        "entity_rfi_classification",
+        "account_reportability",
+        "beneficiary_classification",
+        "controlling_person_classification",
+        "custom"
+      ],
+      "description": "Type of compliance workflow"
+    },
+    "version": {
+      "type": "string",
+      "description": "Version number of this workflow (e.g., 1.0, 1.1)"
+    },
+    "parent_workflow_id": {
+      "type": "string",
+      "description": "ID of the parent workflow if this is a new version"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Specific jurisdiction if workflow is jurisdiction-specific"
+    },
+    "display_workflow_introduction": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to show the workflow introduction section at the start"
+    },
+    "workflow_introduction_text": {
+      "type": "string",
+      "description": "Main description text shown in the introduction section (e.g., 'This workflow follows CRS due diligence procedures for individual accounts')"
+    },
+    "workflow_introduction_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field_type": {
+            "type": "string",
+            "enum": [
+              "simple_field",
+              "computed_condition"
+            ],
+            "default": "simple_field",
+            "description": "Type of introduction field: simple_field shows a value, computed_condition shows conditional text based on computation"
+          },
+          "field_name": {
+            "type": "string",
+            "description": "Field name from Account or Entity (for simple_field type)"
+          },
+          "display_label": {
+            "type": "string",
+            "description": "Label to display"
+          },
+          "value_formatter": {
+            "type": "string",
+            "enum": [
+              "default",
+              "boolean_alive_deceased",
+              "pre_existing_new",
+              "capitalize"
+            ],
+            "default": "default",
+            "description": "How to format the value for display (for simple_field type)"
+          },
+          "computation_field_1": {
+            "type": "string",
+            "description": "First field for computation (for computed_condition type)"
+          },
+          "computation_field_2": {
+            "type": "string",
+            "description": "Second field for computation (for computed_condition type)"
+          },
+          "computation_operator": {
+            "type": "string",
+            "enum": [
+              "add",
+              "subtract",
+              "multiply",
+              "divide"
+            ],
+            "description": "How to combine the two fields (for computed_condition type)"
+          },
+          "comparison_operator": {
+            "type": "string",
+            "enum": [
+              "greater_than",
+              "less_than",
+              "equals",
+              "greater_than_or_equal",
+              "less_than_or_equal",
+              "not_equals"
+            ],
+            "description": "How to compare computed result with threshold (for computed_condition type)"
+          },
+          "threshold_value": {
+            "type": "number",
+            "description": "Value to compare against (for computed_condition type)"
+          },
+          "true_text": {
+            "type": "string",
+            "description": "Text to display when condition is true (for computed_condition type)"
+          },
+          "false_text": {
+            "type": "string",
+            "description": "Text to display when condition is false (for computed_condition type)"
+          }
+        }
+      },
+      "description": "Array of fields to display in the introduction section with their labels and formatting"
+    },
+    "trigger_conditions": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether auto-trigger is enabled"
+        },
+        "trigger_event": {
+          "type": "string",
+          "enum": [
+            "account_created",
+            "account_updated",
+            "entity_created",
+            "entity_updated"
+          ],
+          "description": "Which event triggers the evaluation"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "Field name to check (e.g., account_holder_is_alive, year_end_cash_value)"
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "equals",
+                  "not_equals",
+                  "greater_than",
+                  "less_than",
+                  "greater_than_or_equal",
+                  "less_than_or_equal",
+                  "contains",
+                  "in",
+                  "not_in"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "description": "Value to compare against"
+              },
+              "logic_operator": {
+                "type": "string",
+                "enum": [
+                  "AND",
+                  "OR"
+                ],
+                "default": "AND",
+                "description": "How to combine with next condition"
+              }
+            }
+          },
+          "description": "Array of conditions that must be met to trigger this workflow"
+        },
+        "computed_conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "expression": {
+                "type": "string",
+                "description": "Computed expression (e.g., 'year_end_cash_value + gross_payments')"
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "greater_than",
+                  "less_than",
+                  "greater_than_or_equal",
+                  "less_than_or_equal",
+                  "equals"
+                ]
+              },
+              "value": {
+                "type": "number"
+              },
+              "logic_operator": {
+                "type": "string",
+                "enum": [
+                  "AND",
+                  "OR"
+                ],
+                "default": "AND"
+              }
+            }
+          },
+          "description": "Conditions based on computed values from multiple fields"
+        },
+        "priority": {
+          "type": "number",
+          "default": 0,
+          "description": "Priority when multiple workflows match (higher = higher priority)"
+        }
+      },
+      "description": "Conditions for automatically triggering this workflow"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "step_title": {
+            "type": "string"
+          },
+          "step_description": {
+            "type": "string"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "yes_no",
+              "single_choice",
+              "multiple_choice",
+              "text_input",
+              "number_input",
+              "date_input",
+              "file_upload",
+              "multi_field_input",
+              "address_input",
+              "beneficiary_input",
+              "controlling_person_input",
+              "info",
+              "result"
+            ]
+          },
+          "file_upload_config": {
+            "type": "object",
+            "description": "Configuration for file_upload question type",
+            "properties": {
+              "allow_multiple_files": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether to allow multiple files to be uploaded"
+              },
+              "supported_file_types": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Array of supported file extensions (e.g., ['.pdf', '.jpg'])"
+              },
+              "max_file_size_mb": {
+                "type": "number",
+                "default": 10,
+                "description": "Maximum file size in MB"
+              },
+              "require_date_received": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether to require a date received field for the upload"
+              }
+            }
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "next_step": {
+                  "type": "string",
+                  "description": "ID of next step based on this answer"
+                }
+              }
+            }
+          },
+          "default_next_step": {
+            "type": "string",
+            "description": "Default next step for input-type questions (text, number, date, file, multi-field, address)"
+          },
+          "result_status": {
+            "type": "string",
+            "enum": [
+              "reportable",
+              "non_reportable",
+              "pending_review",
+              "excluded"
+            ],
+            "description": "For result-type steps: the reportability status to set"
+          },
+          "result_description": {
+            "type": "string",
+            "description": "For result-type steps: description of the result"
+          },
+          "result_action": {
+            "type": "string",
+            "description": "For result-type steps: action code (e.g., manual_report_total, report_per_beneficiary)"
+          },
+          "multi_fields": {
+            "type": "array",
+            "description": "Array of field definitions for multi_field_input question type",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field_id": {
+                  "type": "string",
+                  "description": "Unique ID for this sub-field"
+                },
+                "display_label": {
+                  "type": "string",
+                  "description": "Label shown to the user"
+                },
+                "field_type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "number",
+                    "date",
+                    "boolean",
+                    "select",
+                    "email",
+                    "textarea"
+                  ],
+                  "description": "Type of input field"
+                },
+                "placeholder": {
+                  "type": "string",
+                  "description": "Placeholder text for the input"
+                },
+                "is_required": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether this field is required"
+                },
+                "referenced_data_key": {
+                  "type": "string",
+                  "description": "Key for select fields to fetch options (e.g., 'CrsCountryInfo.country_name', 'ReferencedData.Countries')"
+                },
+                "options": {
+                  "type": "array",
+                  "description": "Static options for select fields if not using referenced data",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "conditional_visibility": {
+                  "type": "object",
+                  "description": "Configuration for conditional field visibility within multi-field inputs",
+                  "properties": {
+                    "depends_on_field": {
+                      "type": "string",
+                      "description": "Field ID of the field this depends on (must be earlier in the array)"
+                    },
+                    "required_value": {
+                      "type": "string",
+                      "description": "Value that the dependent field must have for this field to be visible (e.g., 'yes', 'no', or specific select values)"
+                    }
+                  }
+                },
+                "validation": {
+                  "type": "object",
+                  "description": "Validation rules for the field",
+                  "properties": {
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "min_length": {
+                      "type": "number"
+                    },
+                    "max_length": {
+                      "type": "number"
+                    },
+                    "pattern": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "field_id",
+                "display_label",
+                "field_type"
+              ]
+            }
+          },
+          "address_config": {
+            "type": "object",
+            "description": "Configuration for address_input question type",
+            "properties": {
+              "target_field": {
+                "type": "string",
+                "enum": [
+                  "current_address",
+                  "account_holder_address",
+                  "controlling_person_address",
+                  "beneficiary_address"
+                ],
+                "default": "current_address",
+                "description": "Which address field to update (Account, ControllingPerson, or Beneficiary)"
+              },
+              "track_changes": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether to log address changes in audit log"
+              }
+            }
+          },
+          "conditional_logic": {
+            "type": "object",
+            "description": "Advanced branching with multi-condition support",
+            "properties": {
+              "trigger_field": {
+                "type": "string",
+                "description": "Step ID whose answer triggers this conditional logic evaluation"
+              },
+              "trigger_value": {
+                "type": "string",
+                "description": "Answer value that triggers this conditional logic (e.g., 'NO', 'YES')"
+              },
+              "condition_groups": {
+                "type": "array",
+                "description": "Array of condition groups for complex branching rules",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "group_id": {
+                      "type": "string",
+                      "description": "Unique ID for the group"
+                    },
+                    "group_name": {
+                      "type": "string",
+                      "description": "Display name for the group"
+                    },
+                    "group_operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ],
+                      "default": "AND",
+                      "description": "Logical operator for conditions within this group"
+                    },
+                    "conditions": {
+                      "type": "array",
+                      "description": "Array of individual conditions within this group",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "condition_id": {
+                            "type": "string",
+                            "description": "Unique ID for the condition"
+                          },
+                          "field": {
+                            "type": "string",
+                            "description": "Field name to check (e.g., account_holder_address.country, step_ID.sub_field)"
+                          },
+                          "operator": {
+                            "type": "string",
+                            "enum": [
+                              "=",
+                              "!=",
+                              ">",
+                              "<",
+                              ">=",
+                              "<=",
+                              "contains",
+                              "in",
+                              "not_in",
+                              "is_crs",
+                              "is_not_crs"
+                            ],
+                            "description": "Comparison operator"
+                          },
+                          "value": {
+                            "type": "string",
+                            "description": "Value to compare against"
+                          },
+                          "value_type": {
+                            "type": "string",
+                            "enum": [
+                              "static",
+                              "field_reference"
+                            ],
+                            "default": "static",
+                            "description": "Whether value is a static value or a reference to another field"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "operator",
+                          "value",
+                          "value_type"
+                        ]
+                      }
+                    },
+                    "true_step": {
+                      "type": "string",
+                      "description": "Next step if this group evaluates to true"
+                    },
+                    "false_step": {
+                      "type": "string",
+                      "description": "Next step if this group evaluates to false"
+                    }
+                  },
+                  "required": [
+                    "group_id",
+                    "group_operator",
+                    "conditions",
+                    "true_step",
+                    "false_step"
+                  ]
+                }
+              },
+              "overall_logic_operator": {
+                "type": "string",
+                "enum": [
+                  "AND",
+                  "OR"
+                ],
+                "description": "Logical operator to combine results of all condition_groups"
+              },
+              "overall_true_step": {
+                "type": "string",
+                "description": "Final next step if overall logic evaluates to true"
+              },
+              "overall_false_step": {
+                "type": "string",
+                "description": "Final next step if overall logic evaluates to false"
+              },
+              "conditions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "=",
+                        "!=",
+                        ">",
+                        "<",
+                        ">=",
+                        "<=",
+                        "contains",
+                        "in",
+                        "not_in",
+                        "is_crs",
+                        "is_not_crs"
+                      ]
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "value_type": {
+                      "type": "string",
+                      "enum": [
+                        "static",
+                        "field_reference"
+                      ],
+                      "default": "static",
+                      "description": "Whether value is a static value or a reference to another field"
+                    },
+                    "logic_operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ]
+                    }
+                  }
+                }
+              },
+              "next_step": {
+                "type": "string"
+              },
+              "else_step": {
+                "type": "string"
+              },
+              "use_selection_count": {
+                "type": "boolean",
+                "default": false
+              },
+              "selection_count_operator": {
+                "type": "string"
+              },
+              "selection_count_value": {
+                "type": "number"
+              },
+              "selection_count_next_step": {
+                "type": "string"
+              },
+              "selection_count_else_step": {
+                "type": "string"
+              },
+              "option_values": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Specific option values to match for multiple choice branching (e.g., ['OPT1', 'OPT2'])"
+              },
+              "option_values_next_step": {
+                "type": "string",
+                "description": "Next step if any of the option_values are selected"
+              },
+              "option_values_else_step": {
+                "type": "string",
+                "description": "Next step if none of the option_values are selected"
+              },
+              "multi_choice_routing_groups": {
+                "type": "array",
+                "description": "Advanced routing groups for multiple-choice questions with complex conditions",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "group_id": {
+                      "type": "string",
+                      "description": "Unique identifier for this routing group"
+                    },
+                    "group_name": {
+                      "type": "string",
+                      "description": "Display name for this routing group (e.g., 'Route to Active NFE')"
+                    },
+                    "group_operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ],
+                      "default": "AND",
+                      "description": "How to combine conditions within this group"
+                    },
+                    "conditions": {
+                      "type": "array",
+                      "description": "Array of conditions for this routing group",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "condition_id": {
+                            "type": "string",
+                            "description": "Unique ID for this condition"
+                          },
+                          "condition_type": {
+                            "type": "string",
+                            "enum": [
+                              "selected_options",
+                              "selection_count",
+                              "field_comparison"
+                            ],
+                            "description": "Type of condition: selected_options checks if specific options are selected, selection_count checks count, field_comparison checks other field values"
+                          },
+                          "option_values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "For selected_options type: which option values to check (e.g., ['OPT1', 'OPT2'])"
+                          },
+                          "count_operator": {
+                            "type": "string",
+                            "enum": [
+                              "=",
+                              "!=",
+                              ">",
+                              "<",
+                              ">=",
+                              "<="
+                            ],
+                            "description": "For selection_count type: comparison operator"
+                          },
+                          "count_value": {
+                            "type": "number",
+                            "description": "For selection_count type: count to compare against"
+                          },
+                          "field": {
+                            "type": "string",
+                            "description": "For field_comparison type: field to check"
+                          },
+                          "operator": {
+                            "type": "string",
+                            "enum": [
+                              "=",
+                              "!=",
+                              ">",
+                              "<",
+                              ">=",
+                              "<=",
+                              "contains",
+                              "in",
+                              "not_in",
+                              "is_crs",
+                              "is_not_crs"
+                            ],
+                            "description": "For field_comparison type: comparison operator"
+                          },
+                          "value": {
+                            "type": "string",
+                            "description": "For field_comparison type: value to compare against"
+                          },
+                          "value_type": {
+                            "type": "string",
+                            "enum": [
+                              "static",
+                              "field_reference"
+                            ],
+                            "default": "static",
+                            "description": "For field_comparison type: whether value is static or field reference"
+                          }
+                        }
+                      }
+                    },
+                    "next_step": {
+                      "type": "string",
+                      "description": "Step to navigate to if this group's conditions are met"
+                    },
+                    "false_step": {
+                      "type": "string",
+                      "description": "Step to navigate to if this group's conditions are NOT met (optional - if empty, continues to next group)"
+                    }
+                  },
+                  "required": [
+                    "group_id",
+                    "conditions",
+                    "next_step"
+                  ]
+                }
+              },
+              "multi_choice_default_step": {
+                "type": "string",
+                "description": "Default next step if no routing groups match for multiple choice questions"
+              }
+            }
+          },
+          "post_completion_actions": {
+            "type": "array",
+            "description": "Actions to execute after this step completes",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action_type": {
+                  "type": "string",
+                  "enum": [
+                    "update_entity_field",
+                    "update_account_field"
+                  ],
+                  "description": "Type of action to perform"
+                },
+                "target_entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "Entity",
+                    "Account",
+                    "ControllingPerson",
+                    "Beneficiary"
+                  ],
+                  "description": "Which entity type to update"
+                },
+                "field_to_update": {
+                  "type": "string",
+                  "description": "The field name to update (e.g., rfi_status, fi_type)"
+                },
+                "value_source": {
+                  "type": "string",
+                  "enum": [
+                    "static_value",
+                    "from_step_answer",
+                    "from_workflow_outcome"
+                  ],
+                  "description": "How to determine the new value"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Static value or reference to step ID/outcome"
+                },
+                "execution_timing": {
+                  "type": "string",
+                  "enum": [
+                    "after_step",
+                    "after_workflow"
+                  ],
+                  "default": "after_step",
+                  "description": "When to execute: after_step = when user clicks Next on this step, after_workflow = when entire workflow completes"
+                },
+                "condition": {
+                  "type": "object",
+                  "description": "Optional condition for this action",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "=",
+                        "!=",
+                        "contains",
+                        "in",
+                        "not_in"
+                      ]
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "action_type",
+                "target_entity_type",
+                "field_to_update",
+                "value_source"
+              ]
+            }
+          },
+          "help_text": {
+            "type": "string"
+          },
+          "regulatory_reference": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "default": true
+          },
+          "mapped_field": {
+            "type": "object",
+            "properties": {
+              "entity_type": {
+                "type": "string",
+                "enum": [
+                  "Account",
+                  "Entity"
+                ]
+              },
+              "field_name": {
+                "type": "string"
+              },
+              "prefill_config": {
+                "type": "object",
+                "description": "Configuration for intelligent pre-filling of Yes/No questions based on mapped field values",
+                "properties": {
+                  "prefill_type": {
+                    "type": "string",
+                    "enum": [
+                      "enum_match",
+                      "country_crs"
+                    ],
+                    "description": "Type of pre-fill logic: enum_match for dropdown value matching, country_crs for CRS country checking"
+                  },
+                  "match_values": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "For enum_match: array of dropdown values that should trigger YES pre-fill"
+                  }
+                }
+              }
+            },
+            "description": "Maps this workflow step to an Account or Entity field for pre-filling and post-completion updates."
+          }
+        }
+      }
+    },
+    "outcome_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string",
+            "description": "Logic to evaluate answers"
+          },
+          "result_classification": {
+            "type": "string"
+          },
+          "result_description": {
+            "type": "string"
+          },
+          "account_context_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status_color": {
+            "type": "string",
+            "enum": [
+              "green",
+              "amber",
+              "red",
+              "blue"
+            ]
+          }
+        }
+      },
+      "description": "Rules to determine final classification based on answers"
+    },
+    "published_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_modified_by": {
+      "type": "string"
+    },
+    "change_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "changed_by": {
+            "type": "string"
+          },
+          "changed_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "changes_description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "History of changes made to this workflow"
+    },
+    "usage_stats": {
+      "type": "object",
+      "properties": {
+        "total_executions": {
+          "type": "number",
+          "default": 0
+        },
+        "avg_completion_time": {
+          "type": "number",
+          "description": "Average time in seconds"
+        },
+        "last_used_date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  "required": [
+    "workflow_name",
+    "workflow_type",
+    "steps"
+  ]
+}

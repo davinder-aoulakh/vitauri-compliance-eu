@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "properties": {
+    "entity_name": {
+      "type": "string",
+      "enum": [
+        "Account",
+        "Entity"
+      ],
+      "description": "Which entity this dropdown option belongs to"
+    },
+    "field_name": {
+      "type": "string",
+      "description": "Field name (e.g., account_type, entity_type)"
+    },
+    "value": {
+      "type": "string",
+      "description": "Technical value stored in database"
+    },
+    "label": {
+      "type": "string",
+      "description": "User-facing label displayed in dropdown"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description/help text"
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this option is active for tenants"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order in dropdown"
+    },
+    "category": {
+      "type": "string",
+      "description": "Optional category for grouping options"
+    }
+  },
+  "required": [
+    "entity_name",
+    "field_name",
+    "value",
+    "label"
+  ],
+  "name": "ReferencedData"
+}

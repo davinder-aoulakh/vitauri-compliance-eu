@@ -1,0 +1,26 @@
+{
+  "name": "PlatformSettings",
+  "type": "object",
+  "properties": {
+    "setting_key": {
+      "type": "string",
+      "description": "Unique key for the setting (e.g., 'vitauri_branding')"
+    },
+    "setting_value": {
+      "type": "object",
+      "description": "JSON object containing the setting data"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this setting controls"
+    },
+    "updated_by": {
+      "type": "string",
+      "description": "Email of super admin who last updated"
+    }
+  },
+  "required": [
+    "setting_key",
+    "setting_value"
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "entity_created",
+        "entity_updated",
+        "entity_deleted",
+        "entity_classified",
+        "account_created",
+        "account_updated",
+        "account_deleted",
+        "account_classified",
+        "report_generated",
+        "report_submitted",
+        "user_invited",
+        "user_role_changed",
+        "user_removed",
+        "workflow_published",
+        "workflow_archived",
+        "settings_changed",
+        "login",
+        "logout",
+        "dashboard_created",
+        "dashboard_updated",
+        "dashboard_deleted",
+        "dashboard_published",
+        "widget_added",
+        "widget_updated",
+        "widget_removed",
+        "data_exported",
+        "data_imported",
+        "permission_changed",
+        "bulk_import_initiated",
+        "bulk_import_completed",
+        "bulk_import_failed"
+      ],
+      "description": "Type of action performed"
+    },
+    "actor_email": {
+      "type": "string",
+      "description": "Email of user who performed action"
+    },
+    "actor_role": {
+      "type": "string"
+    },
+    "target_entity_type": {
+      "type": "string",
+      "description": "Type of entity acted upon (Entity, Account, User, Dashboard, etc.)"
+    },
+    "target_entity_id": {
+      "type": "string",
+      "description": "ID of the specific record affected"
+    },
+    "target_entity_name": {
+      "type": "string",
+      "description": "Name/title of the affected record for display purposes"
+    },
+    "changes": {
+      "type": "object",
+      "description": "Before and after values for updates"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to associated file (e.g., uploaded CSV for bulk imports)"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "action_type",
+    "actor_email"
+  ],
+  "name": "AuditLog"
+}

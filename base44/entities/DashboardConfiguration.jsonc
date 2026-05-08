@@ -1,0 +1,113 @@
+{
+  "name": "DashboardConfiguration",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "dashboard_name": {
+      "type": "string",
+      "description": "Name of the dashboard"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the dashboard purpose"
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this dashboard is active for tenant users"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is the default dashboard for the tenant"
+    },
+    "layout": {
+      "type": "array",
+      "description": "Array of widget configurations with positions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "widget_id": {
+            "type": "string",
+            "description": "Unique identifier for this widget instance"
+          },
+          "widget_type": {
+            "type": "string",
+            "enum": [
+              "stats_card",
+              "chart_bar",
+              "chart_pie",
+              "chart_line",
+              "recent_activity",
+              "entity_list",
+              "account_list",
+              "compliance_summary",
+              "reportability_breakdown",
+              "pending_tasks",
+              "quick_actions",
+              "custom_metric"
+            ],
+            "description": "Type of widget"
+          },
+          "title": {
+            "type": "string",
+            "description": "Widget display title"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "type": "number"
+              },
+              "h": {
+                "type": "number"
+              }
+            },
+            "description": "Grid position and size"
+          },
+          "config": {
+            "type": "object",
+            "description": "Widget-specific configuration options"
+          }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "primary_color": {
+          "type": "string"
+        },
+        "card_style": {
+          "type": "string",
+          "enum": [
+            "default",
+            "bordered",
+            "shadow",
+            "minimal"
+          ]
+        }
+      }
+    },
+    "published_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "published_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "dashboard_name"
+  ]
+}

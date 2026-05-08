@@ -1,0 +1,131 @@
+{
+  "name": "DashboardTemplate",
+  "type": "object",
+  "properties": {
+    "template_name": {
+      "type": "string",
+      "description": "Name of the dashboard template"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the template purpose"
+    },
+    "template_type": {
+      "type": "string",
+      "enum": [
+        "crs_overview",
+        "fatca_overview",
+        "compliance_summary",
+        "custom"
+      ],
+      "default": "custom",
+      "description": "Type of template for categorization"
+    },
+    "layout": {
+      "type": "array",
+      "description": "Array of widget configurations with positions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "widget_id": {
+            "type": "string"
+          },
+          "widget_type": {
+            "type": "string",
+            "enum": [
+              "stats_card",
+              "chart_bar",
+              "chart_pie",
+              "chart_line",
+              "recent_activity",
+              "entity_list",
+              "account_list",
+              "compliance_summary",
+              "reportability_breakdown",
+              "pending_tasks",
+              "quick_actions",
+              "custom_metric"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "type": "number"
+              },
+              "h": {
+                "type": "number"
+              }
+            }
+          },
+          "config": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "primary_color": {
+          "type": "string"
+        },
+        "card_style": {
+          "type": "string",
+          "enum": [
+            "default",
+            "bordered",
+            "shadow",
+            "minimal"
+          ]
+        }
+      }
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this template is available for deployment"
+    },
+    "is_default_template": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is the default template for new tenants"
+    },
+    "deployment_stats": {
+      "type": "object",
+      "properties": {
+        "deployed_to_tenant_count": {
+          "type": "number",
+          "default": 0
+        },
+        "last_deployment_date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of super admin who created this template"
+    },
+    "last_modified_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "template_name",
+    "layout"
+  ],
+  "rls": {
+    "read": {}
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "name": "RolePermission",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "role_name": {
+      "type": "string",
+      "enum": [
+        "super_admin",
+        "tenant_admin",
+        "tenant_user",
+        "tenant_supervisor"
+      ],
+      "description": "The role this permission applies to"
+    },
+    "resource_type": {
+      "type": "string",
+      "enum": [
+        "Account",
+        "Entity",
+        "Report",
+        "Workflow",
+        "User",
+        "Dashboard",
+        "Settings"
+      ],
+      "description": "The type of resource this permission controls"
+    },
+    "can_view": {
+      "type": "boolean",
+      "default": false,
+      "description": "Permission to view/read the resource"
+    },
+    "can_create": {
+      "type": "boolean",
+      "default": false,
+      "description": "Permission to create new records"
+    },
+    "can_edit": {
+      "type": "boolean",
+      "default": false,
+      "description": "Permission to update existing records"
+    },
+    "can_delete": {
+      "type": "boolean",
+      "default": false,
+      "description": "Permission to delete records"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of this permission rule"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "role_name",
+    "resource_type"
+  ]
+}

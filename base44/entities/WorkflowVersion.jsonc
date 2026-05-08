@@ -1,0 +1,61 @@
+{
+  "name": "WorkflowVersion",
+  "type": "object",
+  "properties": {
+    "workflow_id": {
+      "type": "string",
+      "description": "Reference to the parent Workflow record"
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "Name of the workflow at snapshot time (denormalised for display)"
+    },
+    "version_number": {
+      "type": "string",
+      "description": "Version label e.g. 1.0, 1.1, 2.0"
+    },
+    "version_label": {
+      "type": "string",
+      "enum": [
+        "major",
+        "minor",
+        "manual"
+      ],
+      "default": "minor",
+      "description": "How this version was triggered"
+    },
+    "snapshot": {
+      "type": "object",
+      "description": "Full copy of the Workflow data at the time of saving"
+    },
+    "change_summary": {
+      "type": "string",
+      "description": "Description of what changed in this version"
+    },
+    "saved_by": {
+      "type": "string",
+      "description": "Email of the user who saved this version"
+    },
+    "saved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this snapshot was taken"
+    },
+    "is_published_snapshot": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this snapshot was taken when the workflow was published"
+    },
+    "step_count": {
+      "type": "number",
+      "description": "Number of steps in the workflow at snapshot time (for quick display)"
+    }
+  },
+  "required": [
+    "workflow_id",
+    "version_number",
+    "snapshot",
+    "saved_by",
+    "saved_at"
+  ]
+}

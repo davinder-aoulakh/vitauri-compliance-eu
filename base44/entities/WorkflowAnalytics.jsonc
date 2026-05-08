@@ -1,0 +1,71 @@
+{
+  "type": "object",
+  "properties": {
+    "workflow_id": {
+      "type": "string",
+      "description": "Reference to the workflow"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant who executed this workflow"
+    },
+    "execution_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the workflow was executed"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the workflow was completed"
+    },
+    "completion_time": {
+      "type": "number",
+      "description": "Time taken to complete in seconds"
+    },
+    "steps_completed": {
+      "type": "number",
+      "description": "Number of steps completed"
+    },
+    "total_steps": {
+      "type": "number",
+      "description": "Total steps in workflow"
+    },
+    "drop_off_step": {
+      "type": "string",
+      "description": "Step ID where user dropped off (if incomplete)"
+    },
+    "path_taken": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of step IDs in order taken"
+    },
+    "final_classification": {
+      "type": "string",
+      "description": "Final result/classification"
+    },
+    "answers": {
+      "type": "object",
+      "description": "All answers collected"
+    },
+    "step_durations": {
+      "type": "object",
+      "description": "Time spent on each step (step_id: seconds)"
+    },
+    "executed_by": {
+      "type": "string",
+      "description": "User email who executed"
+    },
+    "ab_test_variant": {
+      "type": "string",
+      "description": "A/B test variant if applicable"
+    }
+  },
+  "required": [
+    "workflow_id",
+    "execution_date"
+  ],
+  "name": "WorkflowAnalytics"
+}

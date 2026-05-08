@@ -1,0 +1,36 @@
+{
+  "name": "UserEntityAccess",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user being granted access"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user (denormalised for display)"
+    },
+    "rfi_entity_id": {
+      "type": "string",
+      "description": "ID of the RFI Entity this access record applies to"
+    },
+    "permission_level": {
+      "type": "string",
+      "enum": [
+        "view",
+        "edit"
+      ],
+      "description": "Access level: view = read-only, edit = full read/write. Accounts inherit the same level."
+    }
+  },
+  "required": [
+    "tenant_id",
+    "user_id",
+    "rfi_entity_id",
+    "permission_level"
+  ]
+}

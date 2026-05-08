@@ -1,0 +1,110 @@
+{
+  "type": "object",
+  "properties": {
+    "component_name": {
+      "type": "string",
+      "description": "Name of the reusable workflow component"
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "question_module",
+        "decision_logic",
+        "data_collection",
+        "validation_rule",
+        "custom"
+      ],
+      "description": "Type of component"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this component does"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "financial_institution_check",
+        "tax_residency_collection",
+        "indicia_search",
+        "self_certification",
+        "controlling_persons",
+        "entity_classification",
+        "account_review",
+        "general"
+      ],
+      "description": "Category for organization"
+    },
+    "steps": {
+      "type": "array",
+      "description": "The workflow steps in this component",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "step_title": {
+            "type": "string"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "yes_no",
+              "single_choice",
+              "multiple_choice",
+              "text_input",
+              "number_input",
+              "date_input"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "help_text": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Configurable parameters for this component (e.g., thresholds, jurisdictions)"
+    },
+    "usage_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of workflows using this component"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this component is available to all tenants"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for searching/filtering"
+    }
+  },
+  "required": [
+    "component_name",
+    "component_type",
+    "steps"
+  ],
+  "name": "WorkflowComponent"
+}

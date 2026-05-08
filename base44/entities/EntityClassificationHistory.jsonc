@@ -1,0 +1,67 @@
+{
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Reference to the owning tenant"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Reference to the entity being classified"
+    },
+    "classification_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this classification was performed"
+    },
+    "classification_result": {
+      "type": "string",
+      "enum": [
+        "reporting_fi",
+        "non_reporting_fi",
+        "nfe_active",
+        "nfe_passive"
+      ],
+      "description": "The classification result"
+    },
+    "classification_reason": {
+      "type": "string",
+      "description": "Detailed reason for this classification"
+    },
+    "fi_type": {
+      "type": "string",
+      "enum": [
+        "custodial_institution",
+        "depository_institution",
+        "investment_entity",
+        "specified_insurance_company",
+        "not_applicable"
+      ],
+      "description": "Type of financial institution if applicable"
+    },
+    "workflow_answers": {
+      "type": "object",
+      "description": "Complete workflow answers for audit trail"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email of user who performed classification"
+    },
+    "entity_name": {
+      "type": "string",
+      "description": "Entity name at time of classification"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Entity type at time of classification"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "entity_id",
+    "classification_date",
+    "classification_result",
+    "classification_reason"
+  ],
+  "name": "EntityClassificationHistory"
+}
