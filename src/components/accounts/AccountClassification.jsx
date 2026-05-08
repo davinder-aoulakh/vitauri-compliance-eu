@@ -57,39 +57,44 @@ export default function AccountClassification({ account, onComplete, onCancel })
     queryFn: () => base44.entities.Workflow.filter({ status: 'published' }),
   });
 
-  // Fetch entity data and select the best matching workflow via trigger evaluation
+  // Single effect: fetch entity data → select correct workflow → prefill answers
+  // All three steps happen sequentially so there is no race condition.
   useEffect(() => {
-    if (!workflows.length) return;
+    if (!workflows.length || !account?.id) return;
 
-    const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
-    if (!accountReportabilityWorkflows.length) {
-      setSelectedWorkflow(workflows[0]);
-      return;
-    }
+    const initialize = async () => {
+      // 1. Fetch latest account data
+      const accountRecords = await base44.entities.Account.filter({ id: account.id });
+      const latestAccount = accountRecords[0] || account;
+      setLatestAccountData(latestAccount);
 
-    const selectWorkflow = async () => {
-      // Build merged data: account fields + related entity fields (fi_type, rfi_status, etc.)
-      let mergedData = { ...account };
-      if (account?.entity_id) {
-        const entityRecords = await base44.entities.Entity.filter({ id: account.entity_id });
-        if (entityRecords[0]) {
-          // Merge entity fields so trigger conditions referencing fi_type, rfi_status etc. resolve correctly
-          mergedData = { ...mergedData, ...entityRecords[0] };
-        }
+      // 2. Fetch related entity data (fi_type, rfi_status etc. live on Entity, not Account)
+      let entityRecord = null;
+      if (latestAccount.entity_id) {
+        const entityRecords = await base44.entities.Entity.filter({ id: latestAccount.entity_id });
+        entityRecord = entityRecords[0] || null;
       }
 
-      // Use trigger evaluation to find the best matching workflow
-      const matched = await evaluateWorkflowTriggers(mergedData, 'account_created', accountReportabilityWorkflows);
+      // 3. Select workflow using trigger evaluation on merged account + entity data
+      const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
+      const candidateWorkflows = accountReportabilityWorkflows.length ? accountReportabilityWorkflows : workflows;
 
-      if (matched.length > 0) {
-        setSelectedWorkflow(matched[0]);
-      } else {
-        // Fallback: first workflow of the correct type
-        setSelectedWorkflow(accountReportabilityWorkflows[0]);
+      const mergedData = { ...latestAccount, ...(entityRecord || {}) };
+      const matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
+      const chosenWorkflow = matched[0] || candidateWorkflows[0];
+      setSelectedWorkflow(chosenWorkflow);
+
+      // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
+      if (chosenWorkflow) {
+        const accountPrefilled = await computePrefillAnswers(chosenWorkflow, latestAccount, "Account");
+        const entityPrefilled = entityRecord
+          ? await computePrefillAnswers(chosenWorkflow, entityRecord, "Entity")
+          : {};
+        setAnswers(prev => ({ ...prev, ...accountPrefilled, ...entityPrefilled }));
       }
     };
 
-    selectWorkflow();
+    initialize();
   }, [workflows, account?.id]);
 
   const workflow = selectedWorkflow;
@@ -132,42 +137,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
     return step?.options || [];
   };
-
-  // Load latest account data and prefill answers (from both Account and Entity)
-  useEffect(() => {
-    if (!account?.id) return;
-    console.log('[PREFILL] Effect triggered - account.id:', account?.id, 'workflow?.id:', workflow?.id, 'workflow loaded:', !!workflow);
-    if (!workflow) {
-      console.log('[PREFILL] Workflow not loaded yet, skipping');
-      return;
-    }
-    base44.entities.Account.filter({ id: account.id }).then(async records => {
-      const latest = records[0] || account;
-      setLatestAccountData(latest);
-      console.log('[PREFILL] Account loaded - entity_id:', latest.entity_id, 'fi_type:', latest.fi_type);
-
-      // Prefill from Account fields
-      const accountPrefilled = await computePrefillAnswers(workflow, latest, "Account");
-      console.log('[PREFILL] Account prefilled answers:', accountPrefilled);
-
-      // Also prefill from Entity fields (e.g. fi_type mapped to Entity)
-      let entityPrefilled = {};
-      if (latest.entity_id) {
-        const entityRecords = await base44.entities.Entity.filter({ id: latest.entity_id });
-        console.log('[PREFILL] Entity records found:', entityRecords.length, 'fi_type:', entityRecords[0]?.fi_type);
-        if (entityRecords[0]) {
-          entityPrefilled = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
-          console.log('[PREFILL] Entity prefilled answers:', entityPrefilled);
-        }
-      } else {
-        console.log('[PREFILL] No entity_id on account, skipping entity prefill');
-      }
-
-      const merged = { ...accountPrefilled, ...entityPrefilled };
-      console.log('[PREFILL] Final merged answers:', merged);
-      setAnswers(prev => ({ ...prev, ...merged }));
-    });
-  }, [account?.id, workflow?.id]);
 
   // Sync selectedValue / multiFieldValues / addressValues when step changes OR when answers are prefilled
   const currentAnswerForSync = answers[currentNodeId];
