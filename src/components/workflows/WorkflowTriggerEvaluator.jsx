@@ -106,10 +106,10 @@ const evaluateSingleCondition = async (entityData, condition) => {
   switch (condition.operator) {
     case 'equals':
     case '=':
-      return String(fieldValue) === String(compareValue);
+      return String(fieldValue).toLowerCase() === String(compareValue).toLowerCase();
     case 'not_equals':
     case '!=':
-      return String(fieldValue) !== String(compareValue);
+      return String(fieldValue).toLowerCase() !== String(compareValue).toLowerCase();
     case 'greater_than':
     case '>':
       return parseFloat(fieldValue) > parseFloat(compareValue);
