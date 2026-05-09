@@ -235,6 +235,11 @@ export default function AccountsPage() {
       // Create audit log entry
       const auditLogStart = performance.now();
       try {
+        // Build a meaningful changes object from what was actually updated
+        const changesData = { ...variables.data };
+        // Remove large/noisy fields from audit log
+        delete changesData.classification_answers;
+        delete changesData.documents;
         await base44.entities.AuditLog.create({
           tenant_id: user.tenant_id,
           action_type: "account_updated",
@@ -242,10 +247,7 @@ export default function AccountsPage() {
           actor_role: user.user_role,
           target_entity_type: "Account",
           target_entity_id: updatedAccount.id,
-          changes: {
-            account_number: updatedAccount.account_number,
-            account_holder_name: updatedAccount.account_holder_name
-          },
+          changes: changesData,
           timestamp: new Date().toISOString()
         });
         console.log(`⏱️ [MUTATION] Audit log created in ${Math.round(performance.now() - auditLogStart)}ms`);
@@ -1076,72 +1078,72 @@ export default function AccountsPage() {
             </DialogTitle>
           </DialogHeader>
           <AccountClassification
-            account={selectedAccount}
-            onComplete={async (data) => {
-              console.log('\n🔄🔄🔄 [REDIRECT] onComplete callback started in Accounts page');
-              const redirectFlowStart = performance.now();
-              
-              const shouldRedirect = data._redirectToControllingPersons;
-              const { _redirectToControllingPersons, ...cleanData } = data;
-              
-              console.log(`⏱️ [REDIRECT] shouldRedirect: ${shouldRedirect}`);
-              
-              // Store account ID for redirect
-              const accountId = selectedAccount.id;
-              console.log(`⏱️ [REDIRECT] Account ID: ${accountId}`);
-              
-              // Merge classification data with existing account data to preserve documents
-              const mergedData = {
-                ...cleanData,
-                // If classification adds new documents, they're already in data.documents
-                // which was built from existing account.documents + new upload
-              };
-              
-              // Update the account (skip hooks to avoid auto-classification and workflow checks)
-              console.log('⏱️ [REDIRECT] Starting database update (skipHooks=true to speed up redirect)');
-              const dbUpdateStart = performance.now();
-              await updateMutation.mutateAsync({ id: accountId, data: mergedData, skipHooks: true });
-              console.log(`⏱️ [REDIRECT] Database update completed in ${Math.round(performance.now() - dbUpdateStart)}ms`);
-              
-              // Close classification dialog
-              console.log('⏱️ [REDIRECT] Closing classification dialog');
-              const dialogCloseStart = performance.now();
-              setShowClassification(false);
-              console.log(`⏱️ [REDIRECT] Dialog closed in ${Math.round(performance.now() - dialogCloseStart)}ms`);
-              
-              // If redirect is needed, open controlling persons manager
-              if (shouldRedirect) {
-                console.log('⏱️ [REDIRECT] Starting query invalidation for fresh data');
-                const invalidateStart = performance.now();
-                
-                // Ensure fresh account data is loaded
-                await queryClient.invalidateQueries(['accounts']);
-                await queryClient.invalidateQueries(['controlling-persons']);
-                
-                console.log(`⏱️ [REDIRECT] Query invalidation completed in ${Math.round(performance.now() - invalidateStart)}ms`);
-                
-                // Wait for queries to refresh and get the updated account
-                console.log('⏱️ [REDIRECT] Scheduling controlling persons dialog open in 200ms (reduced from 500ms)');
-                setTimeout(() => {
-                  console.log('⏱️ [REDIRECT] Timeout fired - opening controlling persons manager');
-                  const finalSetupStart = performance.now();
-                  
-                  const refreshedAccount = queryClient.getQueryData(['accounts', user?.tenant_id])?.find(a => a.id === accountId);
-                  console.log('⏱️ [REDIRECT] Refreshed account found:', !!refreshedAccount);
-                  
-                  setSelectedAccount(refreshedAccount);
-                  setShowControllingPersons(true);
-                  
-                  console.log(`⏱️ [REDIRECT] Final setup completed in ${Math.round(performance.now() - finalSetupStart)}ms`);
-                  console.log(`🔄🔄🔄 [REDIRECT] Total redirect flow took ${Math.round(performance.now() - redirectFlowStart)}ms\n`);
-                }, 200);
-              } else {
-                // If no redirect, deselect account
-                console.log('⏱️ [REDIRECT] No redirect needed, deselecting account');
-                setSelectedAccount(null);
-                console.log(`🔄🔄🔄 [REDIRECT] Total completion flow (no redirect) took ${Math.round(performance.now() - redirectFlowStart)}ms\n`);
-              }
-            }}
+          account={selectedAccount}
+          onComplete={async (data) => {
+            const shouldRedirect = data._redirectToControllingPersons;
+            const { _redirectToControllingPersons, ...cleanData } = data;
+            const accountId = selectedAccount.id;
+
+            // Update the account (skip hooks to avoid auto-classification and workflow checks)
+            await updateMutation.mutateAsync({ id: accountId, data: cleanData, skipHooks: true });
+
+            // Create classification history record
+            try {
+              await base44.entities.AccountClassificationHistory.create({
+                tenant_id: user.tenant_id,
+                account_id: accountId,
+                classification_date: new Date().toISOString(),
+                reportability_status: cleanData.reportability_status,
+                classification_reason: cleanData.reportability_reason || '',
+                classification_source: 'workflow',
+                workflow_answers: cleanData.classification_answers || {},
+                performed_by: user.email,
+                account_holder_name: selectedAccount.account_holder_name,
+                account_number: selectedAccount.account_number,
+                account_balance: selectedAccount.year_end_cash_value,
+                self_certification_status: cleanData.self_certification_obtained ? 'obtained' : 'not_obtained',
+              });
+              queryClient.invalidateQueries(['account-classification-history', accountId]);
+            } catch (error) {
+              console.error("Error creating classification history:", error);
+            }
+
+            // Create audit log with meaningful field changes
+            try {
+              await base44.entities.AuditLog.create({
+                tenant_id: user.tenant_id,
+                action_type: "account_classified",
+                actor_email: user.email,
+                target_entity_type: "Account",
+                target_entity_id: accountId,
+                changes: {
+                  reportability_status: cleanData.reportability_status,
+                  reportability_reason: cleanData.reportability_reason,
+                  ...(cleanData.self_certification_obtained !== undefined && {
+                    self_certification_obtained: cleanData.self_certification_obtained
+                  }),
+                },
+                timestamp: new Date().toISOString()
+              });
+              queryClient.invalidateQueries(['audit-log', 'account', accountId]);
+            } catch (error) {
+              console.error("Error creating audit log:", error);
+            }
+
+            setShowClassification(false);
+
+            if (shouldRedirect) {
+              await queryClient.invalidateQueries(['accounts']);
+              await queryClient.invalidateQueries(['controlling-persons']);
+              setTimeout(() => {
+                const refreshedAccount = queryClient.getQueryData(['accounts', user?.tenant_id])?.find(a => a.id === accountId);
+                setSelectedAccount(refreshedAccount || selectedAccount);
+                setShowControllingPersons(true);
+              }, 200);
+            } else {
+              setSelectedAccount(null);
+            }
+          }}
             onCancel={() => setShowClassification(false)}
           />
         </DialogContent>
