@@ -678,7 +678,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
       return 'pending_review';
     };
-    const summaryStatus = deriveStatus(finalStep);
+    // Prefer the status already written to the account by post-completion actions
+    const accountStatus = (latestAccountData || account)?.reportability_status;
+    const summaryStatus = (accountStatus && accountStatus !== 'pending_review')
+      ? accountStatus
+      : deriveStatus(finalStep);
     const isReportable = summaryStatus === 'reportable';
     const isPending = summaryStatus === 'pending_review';
 
