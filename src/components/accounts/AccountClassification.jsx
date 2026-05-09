@@ -182,9 +182,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const evalConditionalLogic = async (logic, currentAnswer, allAnswers) => {
-    // Check trigger guard first (same as workflowRunnerLogic)
+    // Check trigger guard: trigger_field may be a step ID or a step title
     if (logic.trigger_field && logic.trigger_value) {
-      const triggerAnswer = allAnswers[logic.trigger_field];
+      // Try direct lookup by step ID first
+      let triggerAnswer = allAnswers[logic.trigger_field];
+
+      // If not found, try to resolve by step title
+      if (triggerAnswer === undefined) {
+        const matchedStep = steps.find(
+          s => s.step_title === logic.trigger_field || s.step_id === logic.trigger_field
+        );
+        if (matchedStep) {
+          triggerAnswer = allAnswers[matchedStep.step_id];
+        }
+      }
+
       if (String(triggerAnswer) !== String(logic.trigger_value)) {
         return null;
       }
