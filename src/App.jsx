@@ -109,6 +109,9 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  useEffect(() => {
+    document.title = "Vitauri Compliance";
+  }, []);
 
   return (
     <AuthProvider>
