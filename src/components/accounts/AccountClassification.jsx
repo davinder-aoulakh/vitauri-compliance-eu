@@ -237,7 +237,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     }
 
     const nextNode = steps[currentStepIndex + 1];
-    if (isActionNode(currentNode) || !nextNode) {
+    if (isActionNode(currentNode) || currentNode.question_type === 'info' || !nextNode) {
       setCompletedPath([...new Set([...newHistory])]);
       setShowSummary(true);
     } else {
@@ -651,6 +651,29 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const isReportable = summaryStatus === 'reportable';
     const isPending = summaryStatus === 'pending_review';
 
+    // Build previous answers rows for summary
+    const summaryAnswerRows = completedPath
+      .map((stepId) => {
+        const step = stepMap[stepId];
+        if (!step || step.question_type === 'info' || step.question_type === 'result') return null;
+        const ans = answers[stepId];
+        if (ans === null || ans === undefined || ans === '') return null;
+        let displayAnswer = '';
+        if (typeof ans === 'boolean') displayAnswer = ans ? 'Yes' : 'No';
+        else if (ans === 'YES') displayAnswer = 'Yes';
+        else if (ans === 'NO') displayAnswer = 'No';
+        else if (Array.isArray(ans)) displayAnswer = ans.join(', ');
+        else if (typeof ans === 'object') displayAnswer = ans.file_name || JSON.stringify(ans);
+        else {
+          const opts = getStepOptions(step);
+          const matched = opts.find(o => o.value === ans);
+          displayAnswer = matched ? matched.label : String(ans);
+        }
+        if (!displayAnswer) return null;
+        return { stepId, step, displayAnswer };
+      })
+      .filter(Boolean);
+
     return (
       <div className="space-y-6">
         <div className="text-center">
@@ -662,7 +685,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </div>
 
         <Card className={`border-2 ${isReportable ? 'bg-amber-50 border-amber-200' : isPending ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">Status:</span>
               <Badge className={`text-sm ${isReportable ? 'bg-amber-600 text-white' : isPending ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>
@@ -670,13 +693,28 @@ export default function AccountClassification({ account, onComplete, onCancel })
               </Badge>
             </div>
             {finalStep?.result_description && (
-              <div className="flex items-start justify-between mt-3">
-                <span className="text-sm font-medium text-slate-700">Result:</span>
-                <span className="text-sm text-slate-900 text-right max-w-md">{finalStep.result_description}</span>
+              <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200">
+                <span className="text-sm font-medium text-slate-700 flex-shrink-0">Reason:</span>
+                <span className="text-sm text-slate-900 text-right">{finalStep.result_description}</span>
+              </div>
+            )}
+            {!finalStep?.result_description && finalStep?.question_text && (
+              <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200">
+                <span className="text-sm font-medium text-slate-700 flex-shrink-0">Reason:</span>
+                <span className="text-sm text-slate-900 text-right">{finalStep.question_text}</span>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {summaryAnswerRows.length > 0 && (
+          <PreviousAnswers
+            history={completedPath}
+            stepMap={stepMap}
+            answers={answers}
+            getStepOptions={getStepOptions}
+          />
+        )}
 
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button variant="outline" onClick={() => setShowSummary(false)} size="lg">
