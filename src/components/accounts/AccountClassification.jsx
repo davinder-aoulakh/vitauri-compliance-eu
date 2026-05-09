@@ -368,9 +368,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
     // Build result data
     const finalStep = steps.find(s => s.step_id === allSteps[allSteps.length - 1]);
+    const deriveStatusForComplete = (step) => {
+      if (step?.result_status) return step.result_status;
+      if (step?.result_action) {
+        if (step.result_action.includes('non_reportable') || step.result_action.includes('excluded')) return 'non_reportable';
+        if (step.result_action.includes('reportable')) return 'reportable';
+      }
+      return 'pending_review';
+    };
     const classificationData = {
-      reportability_status: finalStep?.result_status || 'pending_review',
-      reportability_reason: finalStep?.result_description || '',
+      reportability_status: deriveStatusForComplete(finalStep),
+      reportability_reason: finalStep?.result_description || finalStep?.question_text || '',
       classification_answers: answers,
     };
 
@@ -647,7 +655,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
   // Summary screen
   if (showSummary) {
     const finalStep = steps.find(s => s.step_id === completedPath[completedPath.length - 1]) || currentNode;
-    const summaryStatus = finalStep?.result_status || 'pending_review';
+    // For info/result steps, derive status from result_status or result_action
+    const deriveStatus = (step) => {
+      if (step?.result_status) return step.result_status;
+      if (step?.result_action) {
+        if (step.result_action.includes('non_reportable') || step.result_action.includes('excluded')) return 'non_reportable';
+        if (step.result_action.includes('reportable')) return 'reportable';
+      }
+      return 'pending_review';
+    };
+    const summaryStatus = deriveStatus(finalStep);
     const isReportable = summaryStatus === 'reportable';
     const isPending = summaryStatus === 'pending_review';
 
@@ -692,16 +709,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 {isReportable ? 'Reportable' : isPending ? 'Pending Review' : 'Non-Reportable'}
               </Badge>
             </div>
-            {finalStep?.result_description && (
+            {(finalStep?.result_description || finalStep?.question_text) && (
               <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200">
                 <span className="text-sm font-medium text-slate-700 flex-shrink-0">Reason:</span>
-                <span className="text-sm text-slate-900 text-right">{finalStep.result_description}</span>
-              </div>
-            )}
-            {!finalStep?.result_description && finalStep?.question_text && (
-              <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200">
-                <span className="text-sm font-medium text-slate-700 flex-shrink-0">Reason:</span>
-                <span className="text-sm text-slate-900 text-right">{finalStep.question_text}</span>
+                <span className="text-sm text-slate-900 text-right">{finalStep.result_description || finalStep.question_text}</span>
               </div>
             )}
           </CardContent>
