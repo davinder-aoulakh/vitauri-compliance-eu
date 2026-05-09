@@ -72,7 +72,6 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
       !a.compliance_issues_resolved?.includes('pending_review')
     ),
     missingSelfCert: accounts.filter(a => 
-      a.account_holder_type === 'individual' && 
       !a.self_certification_obtained &&
       a.reportability_status !== 'non_reportable' &&
       !a.compliance_issues_resolved?.includes('missing_self_cert')
@@ -172,7 +171,9 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
   };
 
   const IssueCard = ({ title, description, accounts, icon: Icon, color, actionText, issueType }) => {
+    const [expanded, setExpanded] = useState(false);
     if (accounts.length === 0) return null;
+    const displayedAccounts = expanded ? accounts : accounts.slice(0, 5);
 
     return (
       <Card className={`border-2 ${color.border} ${color.bg}`}>
@@ -193,8 +194,8 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {accounts.slice(0, 5).map((account) => (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {displayedAccounts.map((account) => (
               <div 
                 key={account.id}
                 className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
@@ -229,9 +230,12 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
               </div>
             ))}
             {accounts.length > 5 && (
-              <p className="text-xs text-slate-500 text-center py-2">
-                +{accounts.length - 5} more accounts
-              </p>
+              <button
+                onClick={() => setExpanded(e => !e)}
+                className="w-full text-xs text-indigo-600 hover:text-indigo-800 font-medium text-center py-2 hover:underline"
+              >
+                {expanded ? 'Show less' : `+${accounts.length - 5} more accounts`}
+              </button>
             )}
           </div>
         </CardContent>
