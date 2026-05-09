@@ -197,7 +197,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
       }
 
-      if (String(triggerAnswer) !== String(logic.trigger_value)) {
+      // Only block if the trigger step was actually answered AND doesn't match.
+      // If the trigger step was never visited (undefined), allow condition groups to evaluate.
+      if (triggerAnswer !== undefined && String(triggerAnswer) !== String(logic.trigger_value)) {
         return null;
       }
     }
