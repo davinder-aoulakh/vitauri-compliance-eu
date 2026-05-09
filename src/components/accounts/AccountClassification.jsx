@@ -390,9 +390,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
       return 'pending_review';
     };
+    // Prefer the status already written to the account by post-completion actions (e.g. info steps)
+    const currentAccountStatus = (latestAccountData || account)?.reportability_status;
+    const resolvedStatus = (currentAccountStatus && currentAccountStatus !== 'pending_review')
+      ? currentAccountStatus
+      : deriveStatusForComplete(finalStep);
     const classificationData = {
-      reportability_status: deriveStatusForComplete(finalStep),
-      reportability_reason: finalStep?.result_description || finalStep?.question_text || '',
+      reportability_status: resolvedStatus,
+      reportability_reason: (latestAccountData || account)?.reportability_reason
+        || finalStep?.result_description || finalStep?.question_text || '',
       classification_answers: answers,
     };
 
