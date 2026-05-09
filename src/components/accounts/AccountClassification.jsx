@@ -709,12 +709,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 {isReportable ? 'Reportable' : isPending ? 'Pending Review' : 'Non-Reportable'}
               </Badge>
             </div>
-            {(finalStep?.result_description || finalStep?.question_text) && (
-              <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200">
-                <span className="text-sm font-medium text-slate-700 flex-shrink-0">Reason:</span>
-                <span className="text-sm text-slate-900 text-right">{finalStep.result_description || finalStep.question_text}</span>
-              </div>
-            )}
+            {(() => {
+              const reason = (latestAccountData || account)?.reportability_reason
+                || finalStep?.result_description
+                || finalStep?.question_text;
+              return reason ? (
+                <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200">
+                  <span className="text-sm font-medium text-slate-700 flex-shrink-0">Reason:</span>
+                  <span className="text-sm text-slate-900 text-right">{reason}</span>
+                </div>
+              ) : null;
+            })()}
           </CardContent>
         </Card>
 
