@@ -110,7 +110,7 @@ const AuthenticatedApp = () => {
 
 function App() {
   useEffect(() => {
-    document.title = "Vitauri Compliance";
+    document.title = "Vitauri Compliance EU";
   }, []);
 
   return (
