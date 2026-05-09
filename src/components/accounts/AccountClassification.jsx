@@ -894,12 +894,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     <AlertDescription className="text-sm text-blue-900">{currentNode.help_text}</AlertDescription>
                   </Alert>
                 )}
-                {currentNode.regulatory_reference && (
-                  <p className="text-xs text-slate-500 italic mb-3 flex items-center gap-2">
-                    <FileCheck className="w-3 h-3" />
-                    Reference: {currentNode.regulatory_reference}
-                  </p>
-                )}
+
               </div>
             </div>
             <div className="pl-16">
