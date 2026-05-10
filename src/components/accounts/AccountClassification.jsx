@@ -566,9 +566,38 @@ export default function AccountClassification({ account, onComplete, onCancel })
         );
       }
 
-      case 'address_input':
+      case 'address_input': {
+        // Find the most recent file_upload answer from previous steps
+        const prevUploadedFile = history.slice().reverse().map(sid => answers[sid]).find(a => a?.file_url);
+
         return (
           <div className="space-y-4">
+            {prevUploadedFile?.file_url && (
+              <div className="rounded-lg border border-slate-200 overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+                  <span className="text-xs font-medium text-slate-600 flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-indigo-500" />
+                    {prevUploadedFile.file_name || "Uploaded Document"}
+                  </span>
+                  <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Open in new tab</a>
+                </div>
+                {prevUploadedFile.file_url.toLowerCase().includes('.pdf') || !prevUploadedFile.file_name || prevUploadedFile.file_name?.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={prevUploadedFile.file_url}
+                    className="w-full"
+                    style={{ height: '400px' }}
+                    title="Uploaded Document"
+                  />
+                ) : (
+                  <div className="p-4 text-center">
+                    <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium text-sm">
+                      <FileCheck className="w-4 h-4" />
+                      Download {prevUploadedFile.file_name || "Document"} to view
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <Label className="text-sm font-medium text-slate-700">Street Address <span className="text-red-600">*</span></Label>
               <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" />
@@ -597,6 +626,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             </div>
           </div>
         );
+      }
 
       case 'beneficiary_input':
         return (
