@@ -81,7 +81,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       const mergedData = { ...latestAccount, ...(entityRecord || {}) };
       const matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
-      const chosenWorkflow = matched[0] || candidateWorkflows[0];
+
+      // Smart fallback: if no trigger conditions matched, pick a workflow that suits the account_holder_type.
+      // This prevents an entity workflow from being selected for an individual account and vice versa.
+      let chosenWorkflow = matched[0];
+      if (!chosenWorkflow) {
+        const holderType = latestAccount.account_holder_type; // 'individual' or 'entity'
+        if (holderType === 'entity') {
+          // Prefer workflows whose name contains 'entity' (case-insensitive)
+          chosenWorkflow = candidateWorkflows.find(w => w.workflow_name?.toLowerCase().includes('entity'))
+            || candidateWorkflows[0];
+        } else {
+          // For individuals: prefer workflows that do NOT contain 'entity' in the name
+          chosenWorkflow = candidateWorkflows.find(w => !w.workflow_name?.toLowerCase().includes('entity'))
+            || candidateWorkflows[0];
+        }
+      }
       setSelectedWorkflow(chosenWorkflow);
 
       // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
