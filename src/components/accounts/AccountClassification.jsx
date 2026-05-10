@@ -76,25 +76,42 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       // 3. Select workflow using trigger evaluation on merged account + entity data
-      const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
-      const candidateWorkflows = accountReportabilityWorkflows.length ? accountReportabilityWorkflows : workflows;
+      // First, narrow candidates by account_holder_type to avoid cross-type matching
+      const holderType = latestAccount.account_holder_type; // 'individual' or 'entity'
+      const allAccountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
+      const allCandidates = allAccountReportabilityWorkflows.length ? allAccountReportabilityWorkflows : workflows;
+
+      // Split by whether the workflow name indicates entity vs individual
+      const entityWorkflows = allCandidates.filter(w => w.workflow_name?.toLowerCase().includes('entity'));
+      const individualWorkflows = allCandidates.filter(w => !w.workflow_name?.toLowerCase().includes('entity'));
+
+      // Only evaluate workflows relevant to this account_holder_type
+      const candidateWorkflows = holderType === 'entity'
+        ? (entityWorkflows.length ? entityWorkflows : allCandidates)
+        : (individualWorkflows.length ? individualWorkflows : allCandidates);
 
       const mergedData = { ...latestAccount, ...(entityRecord || {}) };
       const matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
 
       // Smart fallback: if no trigger conditions matched, pick a workflow that suits the account_holder_type.
-      // This prevents an entity workflow from being selected for an individual account and vice versa.
+      // Use workflow_type field first, then fall back to name-based matching.
       let chosenWorkflow = matched[0];
       if (!chosenWorkflow) {
         const holderType = latestAccount.account_holder_type; // 'individual' or 'entity'
         if (holderType === 'entity') {
-          // Prefer workflows whose name contains 'entity' (case-insensitive)
-          chosenWorkflow = candidateWorkflows.find(w => w.workflow_name?.toLowerCase().includes('entity'))
-            || candidateWorkflows[0];
+          // Prefer entity classification workflows
+          chosenWorkflow = candidateWorkflows.find(w =>
+            w.workflow_type === 'entity_rfi_classification' ||
+            w.workflow_name?.toLowerCase().includes('entity')
+          ) || candidateWorkflows[0];
         } else {
-          // For individuals: prefer workflows that do NOT contain 'entity' in the name
-          chosenWorkflow = candidateWorkflows.find(w => !w.workflow_name?.toLowerCase().includes('entity'))
-            || candidateWorkflows[0];
+          // For individuals: prefer account_reportability workflows that are NOT entity-specific
+          chosenWorkflow = candidateWorkflows.find(w =>
+            w.workflow_type === 'account_reportability' &&
+            !w.workflow_name?.toLowerCase().includes('entity')
+          ) || candidateWorkflows.find(w =>
+            !w.workflow_name?.toLowerCase().includes('entity')
+          ) || candidateWorkflows[0];
         }
       }
       setSelectedWorkflow(chosenWorkflow);
