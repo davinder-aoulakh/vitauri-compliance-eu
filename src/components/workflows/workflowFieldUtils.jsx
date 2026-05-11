@@ -19,14 +19,33 @@ const DISPLAY_NAME_MAP = {
   'fi type': 'fi_type',
 };
 
-export const getFieldValue = (fieldPath, account, linkedEntity, answers, answersOverride = null) => {
+export const getFieldValue = (fieldPath, account, linkedEntity, answers, answersOverride = null, workflowSteps = null) => {
   const answersToUse = answersOverride || answers;
 
   // Resolve display-name labels first (case-insensitive)
   const displayMapped = DISPLAY_NAME_MAP[fieldPath?.toLowerCase?.()];
   if (displayMapped) {
     // Recurse with the resolved real field path
-    return getFieldValue(displayMapped, account, linkedEntity, answers, answersOverride);
+    return getFieldValue(displayMapped, account, linkedEntity, answers, answersOverride, workflowSteps);
+  }
+
+  // Handle "Step Title → sub_field" separator (from workflow builder UI)
+  if (fieldPath.includes('→')) {
+    const [stepTitle, subField] = fieldPath.split('→').map(s => s.trim());
+    // Try to resolve step title to step ID using workflow steps
+    let stepAnswer = null;
+    if (workflowSteps) {
+      const matchedStep = workflowSteps.find(s => s.step_title === stepTitle || s.step_id === stepTitle);
+      if (matchedStep) {
+        stepAnswer = answersToUse[matchedStep.step_id];
+      }
+    }
+    // Fallback: try direct title key (unlikely but safe)
+    if (!stepAnswer) stepAnswer = answersToUse[stepTitle];
+    if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
+      return stepAnswer[subField];
+    }
+    return null;
   }
 
   if (fieldPath.includes('.')) {
