@@ -41,8 +41,23 @@ const fieldNameLabels = {
   classification_completed_date: "Classification Completed Date",
   status: "Status",
   address: "Address",
-  giin: "GIIN"
+  giin: "GIIN",
+  is_ffi: "Is FFI",
+  is_sponsored_ffi: "Is Sponsored FFI",
+  fi_registration_type: "FI Registration Type",
+  policy_pre_existing_account_status: "Policy: Pre-existing Account Status",
+  policy_reporting_method: "Policy: Reporting Method",
+  policy_report_under_threshold: "Policy: Report Under Threshold",
+  policy_dormant_no_contact_period: "Policy: Dormant No-Contact Period",
+  policy_dormant_no_contact_unit: "Policy: Dormant No-Contact Unit",
+  policy_dormant_status: "Policy: Dormant Status"
 };
+
+// Fields to exclude from the audit log display (classification answers, internal IDs, metadata)
+const EXCLUDED_FIELDS = new Set([
+  'classification_answers', 'tenant_id', 'id', 'created_date', 'updated_date',
+  'created_by', 'created_by_id', 'updated_by', 'updated_by_id'
+]);
 
 const getFieldLabel = (fieldName) =>
   fieldNameLabels[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -87,7 +102,9 @@ export default function EntityAuditLog({ entity }) {
       changeEntries = [[source.field, source.new_value ?? source.previous_value]];
     } else {
       changeEntries = Object.entries(source).filter(([k]) =>
-        !['field', 'previous_value', 'new_value', 'before', 'after'].includes(k) && !k.startsWith('_')
+        !['field', 'previous_value', 'new_value', 'before', 'after'].includes(k) &&
+        !k.startsWith('_') &&
+        !EXCLUDED_FIELDS.has(k)
       );
     }
 
