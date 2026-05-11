@@ -13,8 +13,6 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
-  AlertCircle,
-  ArrowRight,
   Loader2
 } from "lucide-react";
 
@@ -118,39 +116,13 @@ export default function AccountAuditLog({ account }) {
 
   const formatChanges = (changes) => {
     if (!changes) return null;
-    
-    // Handle single field change
-    if (changes.field) {
-      return (
-        <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm">
-          <span className="font-medium text-slate-700">{getFieldLabel(changes.field)}</span>
-          <div className="mt-2 space-y-1">
-            <div className="flex items-start gap-2">
-              <span className="text-xs text-slate-500 w-16 flex-shrink-0">Before:</span>
-              <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-xs">
-                {formatValue(changes.previous_value)}
-              </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-xs text-slate-500 w-16 flex-shrink-0">After:</span>
-              <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">
-                {formatValue(changes.new_value)}
-              </span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Handle multiple field changes
     const changeEntries = Object.entries(changes).filter(([k]) => !k.startsWith('_'));
     if (changeEntries.length === 0) return null;
-
     return (
       <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm space-y-2">
         {changeEntries.map(([field, value]) => (
           <div key={field} className="flex items-start gap-2">
-            <span className="font-medium text-slate-700 min-w-[120px]">{getFieldLabel(field)}:</span>
+            <span className="font-medium text-slate-700 min-w-[160px]">{getFieldLabel(field)}:</span>
             <span className="text-slate-600">{formatValue(value)}</span>
           </div>
         ))}
