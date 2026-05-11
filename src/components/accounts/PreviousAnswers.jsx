@@ -25,6 +25,9 @@ export default function PreviousAnswers({ history, stepMap, answers, getStepOpti
         // file_upload: show filename
         if (ans.file_name) {
           displayAnswer = ans.file_name;
+        } else if (step.question_type === 'address_input') {
+          // For address steps, show a neutral summary to avoid browser autofill detection
+          displayAnswer = ans.country ? `Address provided (${ans.country})` : 'Address provided';
         } else {
           // multi_field_input: render as "Label: value" pairs from multi_fields config
           const fields = step.multi_fields || [];
