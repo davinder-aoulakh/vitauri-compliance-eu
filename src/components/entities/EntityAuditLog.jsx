@@ -78,13 +78,16 @@ export default function EntityAuditLog({ entity }) {
   const formatChanges = (changes) => {
     if (!changes) return null;
 
-    // Flatten single-field change format { field, previous_value, new_value } into entries
+    // Handle { before, after } format — show only the "after" (new) values
+    const source = changes.after ?? changes.before ?? changes;
+
+    // Handle { field, previous_value, new_value } format
     let changeEntries;
-    if (changes.field) {
-      changeEntries = [[changes.field, changes.new_value ?? changes.previous_value]];
+    if (source.field && ('new_value' in source || 'previous_value' in source)) {
+      changeEntries = [[source.field, source.new_value ?? source.previous_value]];
     } else {
-      changeEntries = Object.entries(changes).filter(([k]) =>
-        !['field', 'previous_value', 'new_value'].includes(k) && !k.startsWith('_')
+      changeEntries = Object.entries(source).filter(([k]) =>
+        !['field', 'previous_value', 'new_value', 'before', 'after'].includes(k) && !k.startsWith('_')
       );
     }
 
