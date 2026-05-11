@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -215,14 +214,12 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
         
         return (
           <div key={field.field_id} className="space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Label className="text-sm font-medium text-slate-700">
                 {field.display_label}
               </Label>
               {field.is_required && (
-                <Badge variant="outline" className="text-xs text-red-600 border-red-200">
-                  Required
-                </Badge>
+                <span className="text-red-500 font-bold text-sm leading-none">*</span>
               )}
             </div>
             

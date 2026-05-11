@@ -58,11 +58,17 @@ export const canProceedFromStep = (currentStep, answer) => {
       const dependentFieldValue = answer[dependsOnField];
       
       // Normalize boolean values
-      let normalizedValue = dependentFieldValue;
+      let normalizedValue;
       if (typeof dependentFieldValue === 'boolean') {
         normalizedValue = dependentFieldValue ? 'yes' : 'no';
+      } else if (dependentFieldValue === true || dependentFieldValue === 'YES' || dependentFieldValue === 'yes') {
+        normalizedValue = 'yes';
+      } else if (dependentFieldValue === false || dependentFieldValue === 'NO' || dependentFieldValue === 'no') {
+        normalizedValue = 'no';
       } else if (typeof dependentFieldValue === 'string') {
         normalizedValue = dependentFieldValue.toLowerCase();
+      } else {
+        normalizedValue = dependentFieldValue;
       }
       
       // Only include this field if its visibility condition is met
