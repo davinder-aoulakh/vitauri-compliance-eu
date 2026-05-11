@@ -629,26 +629,51 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Open in new tab</a>
                 </div>
                 {(() => {
-                  const isPdf = prevUploadedFile.file_name?.toLowerCase().endsWith('.pdf') 
-                    || prevUploadedFile.file_url?.toLowerCase().includes('.pdf')
-                    || prevUploadedFile.file_url?.toLowerCase().includes('application/pdf')
-                    || (!prevUploadedFile.file_name?.includes('.'));
-                  return isPdf ? (
-                    <iframe
-                      src={prevUploadedFile.file_url + '#toolbar=1&view=FitH'}
-                      className="w-full border-0"
-                      style={{ height: '450px' }}
-                      title="Uploaded Document"
-                    />
-                  ) : (
-                    <div className="p-6 text-center bg-slate-50">
-                      <p className="text-sm text-slate-500 mb-3">This file type cannot be previewed in the browser.</p>
-                      <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium text-sm">
-                        <FileCheck className="w-4 h-4" />
-                        Download {prevUploadedFile.file_name || "Document"} to view
-                      </a>
-                    </div>
-                  );
+                  const fileName = prevUploadedFile.file_name?.toLowerCase() || '';
+                  const fileUrl = prevUploadedFile.file_url?.toLowerCase() || '';
+                  const isPdf = fileName.endsWith('.pdf') || fileUrl.includes('.pdf') || fileUrl.includes('application/pdf') || (!fileName.includes('.'));
+                  const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].some(ext => fileName.endsWith(ext));
+                  const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc');
+
+                  if (isPdf) {
+                    return (
+                      <iframe
+                        src={prevUploadedFile.file_url + '#toolbar=1&view=FitH'}
+                        className="w-full border-0"
+                        style={{ height: '450px' }}
+                        title="Uploaded Document"
+                      />
+                    );
+                  } else if (isImage) {
+                    return (
+                      <div className="p-4 bg-slate-50 flex items-center justify-center">
+                        <img
+                          src={prevUploadedFile.file_url}
+                          alt={prevUploadedFile.file_name || "Uploaded image"}
+                          className="max-w-full max-h-96 rounded-lg object-contain shadow-sm"
+                        />
+                      </div>
+                    );
+                  } else if (isDocx) {
+                    return (
+                      <iframe
+                        src={`https://docs.google.com/gview?url=${encodeURIComponent(prevUploadedFile.file_url)}&embedded=true`}
+                        className="w-full border-0"
+                        style={{ height: '450px' }}
+                        title="Uploaded Document"
+                      />
+                    );
+                  } else {
+                    return (
+                      <div className="p-6 text-center bg-slate-50">
+                        <p className="text-sm text-slate-500 mb-3">This file type cannot be previewed in the browser.</p>
+                        <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium text-sm">
+                          <FileCheck className="w-4 h-4" />
+                          Download {prevUploadedFile.file_name || "Document"} to view
+                        </a>
+                      </div>
+                    );
+                  }
                 })()}
               </div>
             )}
