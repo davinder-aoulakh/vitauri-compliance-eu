@@ -726,7 +726,25 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const qt = currentNode.question_type;
     if (qt === 'info' || qt === 'result') return true;
     if (!currentNode.required) return true;
-    if (qt === 'multi_field_input') return Object.keys(multiFieldValues).length > 0;
+    if (qt === 'multi_field_input') {
+      const visibleRequiredFields = (currentNode.multi_fields || []).filter(field => {
+        if (!field.is_required) return false;
+        if (!field.conditional_visibility) return true;
+        const dependsOnField = field.conditional_visibility.depends_on_field;
+        const requiredValue = field.conditional_visibility.required_value?.toLowerCase();
+        const depVal = multiFieldValues[dependsOnField];
+        let normalized;
+        if (typeof depVal === 'boolean') normalized = depVal ? 'yes' : 'no';
+        else if (depVal === true || depVal === 'YES' || depVal === 'yes') normalized = 'yes';
+        else if (depVal === false || depVal === 'NO' || depVal === 'no') normalized = 'no';
+        else normalized = typeof depVal === 'string' ? depVal.toLowerCase() : depVal;
+        return normalized === requiredValue;
+      });
+      return visibleRequiredFields.every(field => {
+        const val = multiFieldValues[field.field_id];
+        return val !== undefined && val !== null && val !== '';
+      });
+    }
     if (qt === 'address_input') return !!(addressValues.street && addressValues.city && addressValues.state && addressValues.postal_code && addressValues.country);
     if (qt === 'beneficiary_input') return !!answers[currentNodeId]?.savedBeneficiaries?.length;
     if (qt === 'controlling_person_input') return !!answers[currentNodeId]?.savedPersons?.length;
