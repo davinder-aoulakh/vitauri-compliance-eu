@@ -13,8 +13,6 @@ export default function PreviousAnswers({ history, stepMap, answers, getStepOpti
       if (ans === null || ans === undefined || ans === '') return null;
       let displayAnswer = '';
       if (typeof ans === 'boolean') displayAnswer = ans ? 'Yes' : 'No';
-      else if (ans === 'YES') displayAnswer = 'Yes';
-      else if (ans === 'NO') displayAnswer = 'No';
       else if (Array.isArray(ans)) {
         // Map values to labels using step options
         const opts = getStepOptions(step);
@@ -42,9 +40,18 @@ export default function PreviousAnswers({ history, stepMap, answers, getStepOpti
         }
       }
       else {
+        // Try label lookup first (covers yes_no with custom options, single_choice, etc.)
         const opts = getStepOptions(step);
         const matched = opts.find(o => o.value === ans);
-        displayAnswer = matched ? matched.label : String(ans);
+        if (matched) {
+          displayAnswer = matched.label;
+        } else if (ans === 'YES') {
+          displayAnswer = 'Yes';
+        } else if (ans === 'NO') {
+          displayAnswer = 'No';
+        } else {
+          displayAnswer = String(ans);
+        }
       }
       if (!displayAnswer) return null;
       return { stepId, step, displayAnswer };
