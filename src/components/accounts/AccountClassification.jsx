@@ -967,7 +967,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
                     <AlertDescription className="text-sm text-blue-900">{currentNode.help_text}</AlertDescription>
                   </Alert>
                 )}
-
               </div>
             </div>
             <div className="pl-16">

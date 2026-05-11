@@ -996,20 +996,9 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         { value: "NO", label: "No" }
       ];
       
-      // Check if this step has a pre-filled answer
-      const preFilledAnswer = answers[currentNodeId];
-      const hasPreFill = !!preFilledAnswer;
-      
       return (
         <div className="space-y-3">
-          {hasPreFill && (
-            <Alert className="bg-blue-50 border-blue-200">
-              <Info className="w-4 h-4 text-blue-600" />
-              <AlertDescription className="text-sm text-blue-900">
-                This answer has been pre-filled based on the entity's data. You can change it if needed.
-              </AlertDescription>
-            </Alert>
-          )}
+
           <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
             {options.map((option) => (
               <div 
