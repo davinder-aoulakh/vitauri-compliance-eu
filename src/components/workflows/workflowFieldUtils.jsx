@@ -2,9 +2,33 @@
  * Utility function to get field values for workflow evaluation
  * Supports nested field paths, account data, entity data, and answer overrides
  */
+// Map display-name labels used by the workflow builder UI to actual data field paths
+const DISPLAY_NAME_MAP = {
+  // Account address fields
+  'current address country': 'current_address.country',
+  'current address street': 'current_address.street',
+  'current address city': 'current_address.city',
+  'current address state': 'current_address.state',
+  'current address postal code': 'current_address.postal_code',
+  'account holder address country': 'account_holder_address.country',
+  // Entity fields
+  'country of incorporation': 'country_of_incorporation',
+  'entity name': 'entity_name',
+  'entity type': 'entity_type',
+  'rfi status': 'rfi_status',
+  'fi type': 'fi_type',
+};
+
 export const getFieldValue = (fieldPath, account, linkedEntity, answers, answersOverride = null) => {
   const answersToUse = answersOverride || answers;
-  
+
+  // Resolve display-name labels first (case-insensitive)
+  const displayMapped = DISPLAY_NAME_MAP[fieldPath?.toLowerCase?.()];
+  if (displayMapped) {
+    // Recurse with the resolved real field path
+    return getFieldValue(displayMapped, account, linkedEntity, answers, answersOverride);
+  }
+
   if (fieldPath.includes('.')) {
     const parts = fieldPath.split('.');
     const stepAnswer = answersToUse[parts[0]];

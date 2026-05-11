@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [completedPath, setCompletedPath] = useState([]);
   const [loading, setLoading] = useState(false);
   const [latestAccountData, setLatestAccountData] = useState(null);
+  const linkedEntityRef = useRef(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [multiFieldValues, setMultiFieldValues] = useState({});
   const [addressValues, setAddressValues] = useState({ street: "", city: "", state: "", postal_code: "", country: "" });
@@ -114,6 +115,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           ) || candidateWorkflows[0];
         }
       }
+      linkedEntityRef.current = entityRecord;
       setSelectedWorkflow(chosenWorkflow);
 
       // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
@@ -206,7 +208,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const getFieldValue = (fieldPath, allAnswers) => {
     const acc = latestAccountData || account;
-    return getFieldValueUtil(fieldPath, acc, null, allAnswers);
+    return getFieldValueUtil(fieldPath, acc, linkedEntityRef.current, allAnswers);
   };
 
   const evalSingleCondition = async (condition, allAnswers) => {
