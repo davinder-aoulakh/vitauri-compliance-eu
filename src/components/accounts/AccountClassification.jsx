@@ -45,7 +45,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const linkedEntityRef = useRef(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [multiFieldValues, setMultiFieldValues] = useState({});
-  const [addressValues, setAddressValues] = useState({ street: "", city: "", state: "", postal_code: "", country: "" });
+  const [addressValues, setAddressValues] = useState({ street: "", city: "", state: "", postal_code: "", country: "", tax_residence_country: "", tin: "" });
   const [selectedValue, setSelectedValue] = useState(null);
   const [dateReceivedValue, setDateReceivedValue] = useState("");
 
@@ -180,7 +180,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (currentNode.question_type === 'multi_field_input') {
       setMultiFieldValues(existingAnswer || {});
     } else if (currentNode.question_type === 'address_input') {
-      setAddressValues(existingAnswer || { street: "", city: "", state: "", postal_code: "", country: "" });
+      setAddressValues(existingAnswer || { street: "", city: "", state: "", postal_code: "", country: "", tax_residence_country: "", tin: "" });
     } else if (currentNode.question_type === 'file_upload') {
       setSelectedValue(existingAnswer || null);
       setDateReceivedValue(existingAnswer?.date_received || "");
@@ -257,9 +257,26 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (currentNode.question_type === 'address_input' && currentAnswer && account?.id) {
       const addressConfig = currentNode.address_config || {};
       const targetField = addressConfig.target_field || 'current_address';
-      await base44.entities.Account.update(account.id, {
+
+      const updatePayload = {
         [targetField]: { street: currentAnswer.street, city: currentAnswer.city, state: currentAnswer.state, postal_code: currentAnswer.postal_code, country: currentAnswer.country }
-      });
+      };
+
+      // Persist tax residency if country provided and not already present
+      if (currentAnswer.tax_residence_country) {
+        const existingResidencies = (latestAccountData || account)?.tax_residencies || [];
+        const alreadyExists = existingResidencies.some(
+          r => r.country === currentAnswer.tax_residence_country
+        );
+        if (!alreadyExists) {
+          updatePayload.tax_residencies = [
+            ...existingResidencies,
+            { country: currentAnswer.tax_residence_country, tin: currentAnswer.tin || "" }
+          ];
+        }
+      }
+
+      await base44.entities.Account.update(account.id, updatePayload);
       const updated = await base44.entities.Account.filter({ id: account.id });
       if (updated[0]) setLatestAccountData(updated[0]);
     }
@@ -716,6 +733,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 </div>
               </div>
             </div>
+            <div className="border-t border-slate-200 pt-4 mt-2 grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Country of Tax Residence <span className="text-red-600">*</span></Label>
+                <div className="mt-1.5">
+                  <CountrySelect value={addressValues.tax_residence_country || ""} onValueChange={v => setAddressValues(p => ({ ...p, tax_residence_country: v }))} placeholder="Select country..." />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Tax Identification Number (TIN) <span className="text-red-600">*</span></Label>
+                <Input value={addressValues.tin || ""} onChange={e => setAddressValues(p => ({ ...p, tin: e.target.value }))} placeholder="Enter TIN..." className="mt-1.5" autoComplete="off" name="crs-tin" data-lpignore="true" data-1p-ignore />
+              </div>
+            </div>
           </div>
         );
       }
@@ -794,7 +823,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return val !== undefined && val !== null && val !== '';
       });
     }
-    if (qt === 'address_input') return !!(addressValues.street && addressValues.city && addressValues.state && addressValues.postal_code && addressValues.country);
+    if (qt === 'address_input') return !!(addressValues.street && addressValues.city && addressValues.state && addressValues.postal_code && addressValues.country && addressValues.tax_residence_country && addressValues.tin);
     if (qt === 'beneficiary_input') return !!answers[currentNodeId]?.savedBeneficiaries?.length;
     if (qt === 'controlling_person_input') return !!answers[currentNodeId]?.savedPersons?.length;
     if (qt === 'file_upload') {
