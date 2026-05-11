@@ -623,10 +623,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           : [];
 
         return (
-          <form autoComplete="off" onSubmit={e => e.preventDefault()} className="space-y-4">
-            {/* Hidden dummy fields trick browsers into not auto-filling the real fields below */}
-            <input type="text" name="prevent_autofill" style={{ display: 'none' }} readOnly />
-            <input type="password" name="prevent_autofill_pw" style={{ display: 'none' }} readOnly />
+          <div className="space-y-4" data-form-type="other" data-lpignore="true">
 
             {prevUploadedFile?.file_url && (
               <div className="rounded-lg border border-slate-200 overflow-hidden">
@@ -688,22 +685,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
             )}
             <div>
               <Label className="text-sm font-medium text-slate-700">Street Address <span className="text-red-600">*</span></Label>
-              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="new-password" name="crs-street" />
+              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="off" name="crs-addr-1" data-lpignore="true" data-1p-ignore />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">City <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="new-password" name="crs-city" />
+                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="off" name="crs-addr-2" data-lpignore="true" data-1p-ignore />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">State <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="new-password" name="crs-state" />
+                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="off" name="crs-addr-3" data-lpignore="true" data-1p-ignore />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">Postal Code <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="new-password" name="crs-postal" />
+                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="off" name="crs-addr-4" data-lpignore="true" data-1p-ignore />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">Country <span className="text-red-600">*</span></Label>
@@ -712,7 +709,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 </div>
               </div>
             </div>
-          </form>
+          </div>
         );
       }
 
@@ -852,7 +849,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       .filter(Boolean);
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" data-form-type="other">
         <div className="text-center">
           <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${isReportable ? 'bg-amber-100' : isPending ? 'bg-blue-100' : 'bg-green-100'}`}>
             {isReportable ? <AlertCircle className="w-10 h-10 text-amber-600" /> : isPending ? <Info className="w-10 h-10 text-blue-600" /> : <CheckCircle2 className="w-10 h-10 text-green-600" />}
@@ -906,7 +903,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-form-type="other">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
