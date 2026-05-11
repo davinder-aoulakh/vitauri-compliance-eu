@@ -623,7 +623,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
           : [];
 
         return (
-          <div className="space-y-4">
+          <form autoComplete="off" onSubmit={e => e.preventDefault()} className="space-y-4">
+            {/* Hidden dummy fields trick browsers into not auto-filling the real fields below */}
+            <input type="text" name="prevent_autofill" style={{ display: 'none' }} readOnly />
+            <input type="password" name="prevent_autofill_pw" style={{ display: 'none' }} readOnly />
             {addrParts.length > 0 && (
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Current Address on File</p>
@@ -714,7 +717,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 </div>
               </div>
             </div>
-          </div>
+          </form>
         );
       }
 
