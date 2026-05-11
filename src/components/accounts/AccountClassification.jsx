@@ -550,21 +550,31 @@ export default function AccountClassification({ account, onComplete, onCancel })
       case 'file_upload': {
         const fileConfig = currentNode.file_upload_config || {};
         const uploadedFile = selectedValue;
+        const handleFileUpload = async (file) => {
+          if (!file) return;
+          setUploadingFile(true);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          setSelectedValue({ file_url, file_name: file.name, file_size: file.size });
+          setUploadingFile(false);
+        };
         return (
           <div className="space-y-4">
-            <div className="border-2 border-dashed rounded-lg p-8 text-center border-slate-300 hover:border-indigo-400 hover:bg-slate-50">
+            <div
+              className="border-2 border-dashed rounded-lg p-8 text-center border-slate-300 hover:border-indigo-400 hover:bg-slate-50 transition-colors"
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-400', 'bg-indigo-50'); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove('border-indigo-400', 'bg-indigo-50'); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-indigo-400', 'bg-indigo-50');
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+            >
               <input
                 type="file"
                 id={`file-upload-${currentNodeId}`}
                 className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadingFile(true);
-                  const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                  setSelectedValue({ file_url, file_name: file.name, file_size: file.size });
-                  setUploadingFile(false);
-                }}
+                onChange={(e) => handleFileUpload(e.target.files?.[0])}
               />
               {uploadingFile ? (
                 <Loader2 className="w-8 h-8 mx-auto animate-spin text-indigo-600" />
@@ -579,6 +589,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               ) : (
                 <>
                   <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                  <p className="text-sm text-slate-500 mb-3">Drag & drop a file here, or</p>
                   <label htmlFor={`file-upload-${currentNodeId}`} className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer">
                     <Upload className="w-4 h-4 mr-2" />
                     Choose File
