@@ -116,7 +116,17 @@ export default function AccountAuditLog({ account }) {
 
   const formatChanges = (changes) => {
     if (!changes) return null;
-    const changeEntries = Object.entries(changes).filter(([k]) => !k.startsWith('_'));
+
+    // Flatten single-field change format { field, previous_value, new_value } into entries
+    let changeEntries;
+    if (changes.field) {
+      changeEntries = [[changes.field, changes.new_value ?? changes.previous_value]];
+    } else {
+      changeEntries = Object.entries(changes).filter(([k]) =>
+        !['field', 'previous_value', 'new_value'].includes(k) && !k.startsWith('_')
+      );
+    }
+
     if (changeEntries.length === 0) return null;
     return (
       <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm space-y-2">
