@@ -60,6 +60,21 @@ export const getFieldValue = (fieldPath, account, linkedEntity, answers, answers
     return account?.place_of_birth;
   }
 
+  // Fields that live on Entity, not Account — always prefer linkedEntity for these
+  const ENTITY_PRIMARY_FIELDS = [
+    'country_of_incorporation', 'entity_name', 'entity_type',
+    'rfi_status', 'fi_type', 'non_reporting_reason',
+  ];
+
+  if (ENTITY_PRIMARY_FIELDS.includes(fieldPath)) {
+    const entityVal = linkedEntity?.[fieldPath];
+    if (entityVal !== undefined && entityVal !== null && entityVal !== '') return entityVal;
+    // Fall back to account only if entity has no value
+    const accountVal = account?.[fieldPath];
+    if (accountVal !== undefined && accountVal !== null && accountVal !== '') return accountVal;
+    return entityVal ?? accountVal ?? null;
+  }
+
   if (account?.[fieldPath] !== undefined) {
     return account[fieldPath];
   }
