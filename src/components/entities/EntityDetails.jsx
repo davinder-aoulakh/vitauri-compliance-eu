@@ -191,13 +191,7 @@ export default function EntityDetails({ entity }) {
               value={getFITypeBadge(entity.fi_type)}
               icon={Building2}
             />
-            {entity.non_reporting_reason && (
-              <InfoRow 
-                label="Non-Reporting Reason" 
-                value={entity.non_reporting_reason}
-                icon={Info}
-              />
-            )}
+
             {entity.classification_completed_date && (
               <InfoRow 
                 label="Classification Completed" 
