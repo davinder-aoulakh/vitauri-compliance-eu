@@ -1026,12 +1026,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 {currentNode.question_text && (
                   <p className="text-slate-700 mb-3 leading-relaxed">{currentNode.question_text}</p>
                 )}
-                {currentNode.help_text && (
-                  <Alert className="bg-blue-50 border-blue-200 mb-4">
-                    <Info className="w-4 h-4 text-blue-600" />
-                    <AlertDescription className="text-sm text-blue-900">{currentNode.help_text}</AlertDescription>
-                  </Alert>
-                )}
+
               </div>
             </div>
             <div className="pl-16">
