@@ -242,16 +242,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const handleNext = async () => {
-    // For address steps: blur all inputs and wipe their DOM values before Edge can capture them
-    if (currentNode.question_type === 'address_input') {
-      document.querySelectorAll('input, select, textarea').forEach(el => {
-        el.blur();
-        try { el.value = ''; } catch {}
-      });
-      // Small delay to let Edge's autofill detector see empty fields before we navigate
-      await new Promise(r => setTimeout(r, 50));
-    }
-
     // Save current answer
     let currentAnswer = selectedValue;
     if (currentNode.question_type === 'multi_field_input') currentAnswer = multiFieldValues;
