@@ -166,12 +166,19 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
 
     // Show refresh indicator in stats card
 
+    // Helper to append entity_id param to account/entity drilldown URLs
+    const withEntityFilter = (baseUrl) => {
+      if (!selectedEntityId) return baseUrl;
+      const sep = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${sep}entity_id=${selectedEntityId}`;
+    };
+
     switch (metric) {
       case 'total_accounts':
         value = accountsData.length;
         icon = <Wallet className="w-6 h-6 text-indigo-600" />;
         iconBgColor = 'bg-indigo-100';
-        drilldownUrl = createPageUrl("Accounts");
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts"));
         break;
       case 'total_entities':
         value = entitiesData.length;
@@ -188,27 +195,27 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
         if (pendingReviewCount > 0 && !trendLabel) {
           trendLabel = `${pendingReviewCount} pending review`;
         }
-        drilldownUrl = createPageUrl("Accounts") + "?status=reportable";
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=reportable");
         break;
       case 'non_reportable_accounts':
         value = accountsData.filter(a => a.reportability_status === 'non_reportable').length;
         icon = <CheckCircle className="w-6 h-6 text-green-600" />;
         iconBgColor = 'bg-green-100';
         if (!subDescription) subDescription = `${accountsData.length} total accounts`;
-        drilldownUrl = createPageUrl("Accounts") + "?status=non_reportable";
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=non_reportable");
         break;
       case 'pending_review':
         value = pendingReviewCount;
         icon = <Clock className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
-        drilldownUrl = createPageUrl("Accounts") + "?status=pending_review";
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=pending_review");
         break;
       case 'excluded_accounts':
         value = accountsData.filter(a => a.reportability_status === 'excluded').length;
         icon = <AlertTriangle className="w-6 h-6 text-slate-600" />;
         iconBgColor = 'bg-slate-100';
         if (!subDescription) subDescription = `${accountsData.length} total accounts`;
-        drilldownUrl = createPageUrl("Accounts") + "?status=excluded";
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=excluded");
         break;
       case 'classified_entities':
         value = entitiesData.filter(e => e.rfi_status !== 'pending_classification').length;
@@ -235,14 +242,14 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
         icon = <Building2 className="w-6 h-6 text-blue-600" />;
         iconBgColor = 'bg-blue-100';
         if (!subDescription) subDescription = `${entitiesData.length} total entities`;
-        drilldownUrl = createPageUrl("Accounts") + "?entity_classification=active_nfe";
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?entity_classification=active_nfe");
         break;
       case 'passive_nfe_entities':
         value = accountsData.filter(a => a.entity_classification === 'passive_nfe').length;
         icon = <Building2 className="w-6 h-6 text-purple-600" />;
         iconBgColor = 'bg-purple-100';
         if (!subDescription) subDescription = `${entitiesData.length} total entities`;
-        drilldownUrl = createPageUrl("Accounts") + "?entity_classification=passive_nfe";
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?entity_classification=passive_nfe");
         break;
       case 'total_crs_reports':
         value = reportsData.length;

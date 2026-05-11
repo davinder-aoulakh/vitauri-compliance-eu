@@ -92,7 +92,10 @@ export default function AccountsPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get('status') || "all";
   });
-  const [entityFilter, setEntityFilter] = useState("all");
+  const [entityFilter, setEntityFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('entity_id') || "all";
+  });
   const [classificationFilter, setClassificationFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("accounts");
