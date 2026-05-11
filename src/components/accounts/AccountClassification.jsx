@@ -208,7 +208,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const getFieldValue = (fieldPath, allAnswers) => {
     const acc = latestAccountData || account;
-    return getFieldValueUtil(fieldPath, acc, linkedEntityRef.current, allAnswers, null, steps);
+    return getFieldValueUtil(fieldPath, acc, linkedEntityRef.current, allAnswers);
   };
 
   const evalSingleCondition = async (condition, allAnswers) => {
@@ -346,16 +346,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
       return met ? step.conditional_logic.selection_count_next_step : step.conditional_logic.selection_count_else_step;
     }
 
-    // If conditional logic is configured, it takes priority over per-option next_step
-    if (step.conditional_logic) {
-      const nextId = await evalConditionalLogic(step.conditional_logic, answer, allAnswers);
-      if (nextId) return nextId;
-    }
-
-    // Option-based next step as fallback (when no conditional logic is set)
+    // Option-based next step takes priority for yes_no and single_choice
+    // (the workflow builder explicitly set next_step per option)
     if (step.question_type === 'yes_no' || step.question_type === 'single_choice') {
       const opt = step.options?.find(o => o.value === answer);
       if (opt?.next_step) return opt.next_step;
+    }
+
+    // Conditional logic as fallback (for when options don't define a next_step)
+    if (step.conditional_logic) {
+      const nextId = await evalConditionalLogic(step.conditional_logic, answer, allAnswers);
+      if (nextId) return nextId;
     }
 
     // Default next step
