@@ -892,7 +892,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       .filter(Boolean);
 
     return (
-      <div className="space-y-6" data-form-type="other">
+      <div className="space-y-6" data-form-type="other" autoComplete="off" data-ms-editor="false">
         <div className="text-center">
           <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${isReportable ? 'bg-amber-100' : isPending ? 'bg-blue-100' : 'bg-green-100'}`}>
             {isReportable ? <AlertCircle className="w-10 h-10 text-amber-600" /> : isPending ? <Info className="w-10 h-10 text-blue-600" /> : <CheckCircle2 className="w-10 h-10 text-green-600" />}
@@ -946,7 +946,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   }
 
   return (
-    <div className="space-y-6" data-form-type="other">
+    <div className="space-y-6" data-form-type="other" autoComplete="off" data-ms-editor="false">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
