@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   Building2, 
   MapPin, 
@@ -11,11 +12,14 @@ import {
   CheckCircle2, 
   Info,
   Shield,
-  Globe
+  Globe,
+  History
 } from "lucide-react";
 import { format } from "date-fns";
+import EntityAuditLog from "./EntityAuditLog";
 
 export default function EntityDetails({ entity }) {
+  const [showAuditLog, setShowAuditLog] = useState(false);
   // Fetch country info for name lookup
   const { data: countryMap = {} } = useQuery({
     queryKey: ['country-name-map'],
@@ -130,10 +134,30 @@ export default function EntityDetails({ entity }) {
                   </Badge>
                 )}
               </div>
+              <div className="mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAuditLog(!showAuditLog)}
+                  className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  {showAuditLog ? "Hide Audit Log" : "View Audit Log"}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Audit Log Section */}
+      {showAuditLog && (
+        <Card className="border-2 border-indigo-100">
+          <CardContent className="p-6">
+            <EntityAuditLog entity={entity} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Basic Information */}
       <Card className="border-0 shadow-lg">
@@ -274,28 +298,7 @@ export default function EntityDetails({ entity }) {
         </Card>
       )}
 
-      {/* Metadata */}
-      <Card className="border-0 shadow-lg bg-slate-50">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <p className="text-slate-500 mb-1">Created</p>
-              <p className="text-slate-900 font-medium">
-                {entity.created_date ? format(new Date(entity.created_date), 'MMM d, yyyy h:mm a') : '—'}
-              </p>
-              {entity.created_by && (
-                <p className="text-slate-600 text-xs mt-0.5">by {entity.created_by}</p>
-              )}
-            </div>
-            <div>
-              <p className="text-slate-500 mb-1">Last Updated</p>
-              <p className="text-slate-900 font-medium">
-                {entity.updated_date ? format(new Date(entity.updated_date), 'MMM d, yyyy h:mm a') : '—'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
     </div>
   );
 }
