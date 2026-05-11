@@ -15,8 +15,32 @@ export default function PreviousAnswers({ history, stepMap, answers, getStepOpti
       if (typeof ans === 'boolean') displayAnswer = ans ? 'Yes' : 'No';
       else if (ans === 'YES') displayAnswer = 'Yes';
       else if (ans === 'NO') displayAnswer = 'No';
-      else if (Array.isArray(ans)) displayAnswer = ans.join(', ');
-      else if (typeof ans === 'object') displayAnswer = ans.file_name || JSON.stringify(ans);
+      else if (Array.isArray(ans)) {
+        // Map values to labels using step options
+        const opts = getStepOptions(step);
+        displayAnswer = ans.map(v => {
+          const matched = opts.find(o => o.value === v);
+          return matched ? matched.label : v;
+        }).join(', ');
+      }
+      else if (typeof ans === 'object') {
+        // file_upload: show filename
+        if (ans.file_name) {
+          displayAnswer = ans.file_name;
+        } else {
+          // multi_field_input: render as "Label: value" pairs from multi_fields config
+          const fields = step.multi_fields || [];
+          const pairs = Object.entries(ans)
+            .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== false)
+            .map(([k, v]) => {
+              const fieldDef = fields.find(f => f.field_id === k);
+              const label = fieldDef?.display_label || k;
+              const val = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
+              return `${label}: ${val}`;
+            });
+          displayAnswer = pairs.join(' | ');
+        }
+      }
       else {
         const opts = getStepOptions(step);
         const matched = opts.find(o => o.value === ans);
