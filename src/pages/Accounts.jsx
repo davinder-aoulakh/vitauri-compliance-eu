@@ -96,7 +96,10 @@ export default function AccountsPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get('entity_id') || "all";
   });
-  const [classificationFilter, setClassificationFilter] = useState("all");
+  const [classificationFilter, setClassificationFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('entity_classification') || "all";
+  });
   const [countryFilter, setCountryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("accounts");
   const [selectedAccountIds, setSelectedAccountIds] = useState([]);
