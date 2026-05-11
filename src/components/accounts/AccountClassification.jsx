@@ -624,7 +624,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
         return (
           <div className="space-y-4" data-form-type="other" data-lpignore="true">
-
+            {addrParts.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Current Address on File</p>
+                <p className="text-sm text-slate-800">{addrParts.join(', ')}</p>
+              </div>
+            )}
             {prevUploadedFile?.file_url && (
               <div className="rounded-lg border border-slate-200 overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
