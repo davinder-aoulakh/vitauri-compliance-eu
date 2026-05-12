@@ -33,6 +33,67 @@ import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator"
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
 
+// ─── AUTOFILL DEBUG LOGGER ───────────────────────────────────────────────────
+// Watches for DOM mutations that add address-like inputs, and logs every
+// focusin / change on any input so we can see what Edge is reacting to.
+// Remove this block once the root cause is identified.
+if (typeof window !== 'undefined' && !window.__crsAutofillDebugInstalled) {
+  window.__crsAutofillDebugInstalled = true;
+
+  // 1. MutationObserver: log whenever a new <input> appears in the DOM
+  const mo = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        const inputs = node.matches?.('input') ? [node] : [...(node.querySelectorAll?.('input') || [])];
+        inputs.forEach(inp => {
+          console.log('[CRS-AUTOFILL] New input added to DOM:', {
+            name: inp.name,
+            id: inp.id,
+            type: inp.type,
+            autoComplete: inp.autocomplete,
+            readOnly: inp.readOnly,
+            hidden: inp.hidden,
+            offsetParent: inp.offsetParent,
+            parentHTML: inp.parentElement?.outerHTML?.substring(0, 200),
+          });
+        });
+      }
+    }
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+
+  // 2. Log every focusin on an input (tells us which field Edge focused)
+  document.addEventListener('focusin', (e) => {
+    if (e.target.tagName === 'INPUT') {
+      console.log('[CRS-AUTOFILL] Input focused:', {
+        name: e.target.name,
+        id: e.target.id,
+        type: e.target.type,
+        autoComplete: e.target.autocomplete,
+        value: e.target.value?.substring(0, 30),
+        readOnly: e.target.readOnly,
+      });
+    }
+  }, true);
+
+  // 3. Log every change/input event (tells us if Edge wrote a value)
+  document.addEventListener('change', (e) => {
+    if (e.target.tagName === 'INPUT') {
+      console.log('[CRS-AUTOFILL] Input changed:', {
+        name: e.target.name,
+        id: e.target.id,
+        type: e.target.type,
+        autoComplete: e.target.autocomplete,
+        value: e.target.value?.substring(0, 30),
+      });
+    }
+  }, true);
+
+  console.log('[CRS-AUTOFILL] Debug logger installed.');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AccountClassification({ account, onComplete, onCancel }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -136,6 +197,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const steps = workflow?.steps || [];
   const currentNode = steps[currentStepIndex];
   const currentNodeId = currentNode?.step_id;
+
+  // Log every step change so we know which step was active when Edge prompted
+  useEffect(() => {
+    if (!currentNode) return;
+    console.log('[CRS-AUTOFILL] Step changed:', {
+      stepIndex: currentStepIndex,
+      stepId: currentNode.step_id,
+      stepTitle: currentNode.step_title,
+      questionType: currentNode.question_type,
+      inputsInDOM: document.querySelectorAll('input').length,
+      inputDetails: [...document.querySelectorAll('input')].map(i => ({
+        name: i.name, type: i.type, autoComplete: i.autocomplete, readOnly: i.readOnly,
+      })),
+    });
+  }, [currentStepIndex]);
 
   const stepMap = steps.reduce((acc, s) => { acc[s.step_id] = s; return acc; }, {});
 
