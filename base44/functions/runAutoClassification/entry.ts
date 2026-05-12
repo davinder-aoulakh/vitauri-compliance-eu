@@ -181,8 +181,8 @@ function evaluateCondition(condition, account) {
   switch (operator) {
     case 'is_empty': return fieldValue === null || fieldValue === undefined || fieldValue === '';
     case 'is_not_empty': return fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
-    case 'equals': return strVal === String(value);
-    case 'not_equals': return strVal !== String(value);
+    case 'equals':     return strVal?.toLowerCase() === String(value).toLowerCase();
+    case 'not_equals': return strVal?.toLowerCase() !== String(value).toLowerCase();
     case 'contains': return strVal?.toLowerCase().includes(String(value).toLowerCase()) ?? false;
     case 'greater_than': return parseFloat(fieldValue) > parseFloat(value);
     case 'less_than': return parseFloat(fieldValue) < parseFloat(value);
