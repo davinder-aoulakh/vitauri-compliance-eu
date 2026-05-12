@@ -203,6 +203,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         "legal_arrangement_protector_equivalent", "legal_arrangement_beneficiary_equivalent",
         "legal_arrangement_other_equivalent"
       ]},
+    { key: "non_reportable_exception_types",
+      label: "Non-Reportable Exception Types",
+      values: ["inheritance_estate","escrow_court_decree","qualifying_pension",
+        "overdraft_deposit","pre_existing_dormant_below_1k","publicly_traded",
+        "purely_domestic","international_organization","liquidation_dissolution","none"] },
+    { key: "potential_exception_types",
+      label: "Potential Exception Types",
+      values: ["None","DGA","Foundation","STAK","HoldCo","TreasuryCtr","RealEstateFund"] },
     ];
 
     // Pre-compute row ranges for each section in column D of the Referenced Data sheet
@@ -245,6 +253,13 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       entity_managed_by_fiduciary_trust: "boolean",
       entity_managed_by_asset_manager: "boolean",
       gross_income_50_passive: "boolean",
+      non_reportable_exception_type:                    "non_reportable_exception_types",
+      potential_exception_type:                         "potential_exception_types",
+      treasury_activities_operational:                  "boolean",
+      treasury_part_of_nonfinancial_group:              "boolean",
+      treasury_main_fn_finance_hedge_group:             "boolean",
+      treasury_50pct_passive_income_fails:              "boolean",
+      treasury_still_operational_despite_failing_50pct: "boolean",
       ...Object.fromEntries([1,2,3,4].flatMap(n => [
         [`cp${n}_control_type`,          "control_types"],
         [`cp${n}_self_cert_obtained`,    "boolean"],
@@ -324,6 +339,13 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         "type_of_financial_institution",
         "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
         "gross_income_from_financial_assets", "entity_classification",
+        "non_reportable_exception_type",
+        "potential_exception_type",
+        "treasury_activities_operational",
+        "treasury_part_of_nonfinancial_group",
+        "treasury_main_fn_finance_hedge_group",
+        "treasury_50pct_passive_income_fails",
+        "treasury_still_operational_despite_failing_50pct",
       ]);
       // CP fields → grey out when type = "individual"
       const CP_KEY_PREFIX_RE = /^cp\d_/;
@@ -690,6 +712,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
     "self_cert_requested", "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
     "gross_income_50_passive",
+    "treasury_activities_operational",
+    "treasury_part_of_nonfinancial_group",
+    "treasury_main_fn_finance_hedge_group",
+    "treasury_50pct_passive_income_fails",
+    "treasury_still_operational_despite_failing_50pct",
   ]);
 
   const parseBool = (v) => ["true", "yes", "1", "y"].includes(String(v).toLowerCase().trim());
