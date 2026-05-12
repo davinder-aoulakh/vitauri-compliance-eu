@@ -171,7 +171,11 @@ function evaluateCondition(condition, account) {
   const { field, operator, value } = condition;
   if (!field || !operator) return false;
 
-  const fieldValue = field.includes('.') ? null : account[field];
+  // Resolve dot-notation paths (e.g. "current_address.country")
+  // Bug: previously returned null for ALL dot-notation fields — silent failure.
+  const fieldValue = field.includes('.')
+    ? field.split('.').reduce((obj, key) => (obj != null ? obj[key] : undefined), account)
+    : account[field];
   const strVal = fieldValue !== null && fieldValue !== undefined ? String(fieldValue) : null;
 
   switch (operator) {
