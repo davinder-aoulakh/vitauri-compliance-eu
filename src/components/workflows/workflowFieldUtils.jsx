@@ -38,6 +38,14 @@ export const getFieldValue = (fieldPath, account, linkedEntity, answers, answers
     if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
       return account?.[parts[0]]?.[parts[1]];
     }
+    if (parts[0] === 'tax_residencies') {
+      // Return first tax residency entry's field (country or tin)
+      const residencies = account?.tax_residencies;
+      if (Array.isArray(residencies) && residencies.length > 0) {
+        return residencies[0][parts[1]];
+      }
+      return null;
+    }
     if (linkedEntity && parts[0] === 'entity') {
       return linkedEntity[parts[1]];
     }

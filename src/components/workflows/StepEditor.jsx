@@ -80,7 +80,9 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "self_certification_request_date", label: "Self-Certification Request Date", type: "date" },
   { value: "self_certification_overdue", label: "Self-Certification Overdue", type: "boolean" },
   { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean" },
-  { value: "status", label: "Status", type: "string" }
+  { value: "status", label: "Status", type: "string" },
+  { value: "tax_residencies.country", label: "Tax Residency - Country of Tax Residence", type: "string", isCountry: true },
+  { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
 ];
 
 const ENTITY_FIELDS_SCHEMA = [
@@ -218,16 +220,18 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
         });
       }
       if (s.question_type === 'address_input') {
-        ['street', 'city', 'state', 'postal_code', 'country'].forEach(id => {
-          fields.push({ value: `${s.step_id}.${id}`, label: `${s.step_title} → ${id}`, type: 'string', isCountry: id === 'country', group: 'Address Inputs' });
+        ['street', 'city', 'state', 'postal_code', 'country', 'tax_residency_country', 'tax_residency_tin'].forEach(id => {
+          const labelMap = { tax_residency_country: 'Country of Tax Residence', tax_residency_tin: 'TIN' };
+          fields.push({ value: `${s.step_id}.${id}`, label: `${s.step_title} → ${labelMap[id] || id}`, type: 'string', isCountry: id === 'country' || id === 'tax_residency_country', group: 'Address Inputs' });
         });
       }
     });
 
     allSteps.forEach(s => {
       if (s.question_type === 'address_input' && !fields.some(f => f.value === `${s.step_id}.country`)) {
-        ['street', 'city', 'state', 'postal_code', 'country'].forEach(id => {
-          fields.push({ value: `${s.step_id}.${id}`, label: `${s.step_title} → ${id}`, type: 'string', isCountry: id === 'country', group: 'Address Inputs' });
+        ['street', 'city', 'state', 'postal_code', 'country', 'tax_residency_country', 'tax_residency_tin'].forEach(id => {
+          const labelMap = { tax_residency_country: 'Country of Tax Residence', tax_residency_tin: 'TIN' };
+          fields.push({ value: `${s.step_id}.${id}`, label: `${s.step_title} → ${labelMap[id] || id}`, type: 'string', isCountry: id === 'country' || id === 'tax_residency_country', group: 'Address Inputs' });
         });
       }
     });
