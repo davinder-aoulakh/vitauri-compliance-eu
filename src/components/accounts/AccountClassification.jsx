@@ -630,80 +630,126 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       case 'address_input': {
+        // Find the most recent file_upload answer from previous steps
+        // File upload answers are stored as { file_url, file_name, file_size, date_received }
+        const prevUploadedFile = history.slice().reverse()
+          .map(sid => answers[sid])
+          .find(a => a && typeof a === 'object' && a.file_url && !Array.isArray(a));
+
+        const currentAddr = (latestAccountData || account)?.current_address;
+        const addrParts = currentAddr
+          ? [currentAddr.street, currentAddr.city, currentAddr.state, currentAddr.postal_code, currentAddr.country].filter(Boolean)
+          : [];
+
         return (
           <div className="space-y-4">
-            {/* Decoy fields: browser autofill scanner finds these first and considers
-                the address form already handled — suppresses the "Save address?" prompt.
-                Must be in the DOM (not display:none) so Edge/Chrome doesn't skip them.
-                readOnly prevents any values being written. */}
-            <div
-              aria-hidden="true"
-              style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, overflow: 'hidden', zIndex: -1 }}
-            >
-              <input type="text"     tabIndex={-1} autoComplete="street-address" readOnly />
-              <input type="text"     tabIndex={-1} autoComplete="address-level2" readOnly />
-              <input type="text"     tabIndex={-1} autoComplete="address-level1" readOnly />
-              <input type="text"     tabIndex={-1} autoComplete="postal-code"    readOnly />
-              <input type="text"     tabIndex={-1} autoComplete="country-name"   readOnly />
-              <input type="password" tabIndex={-1} autoComplete="new-password"   readOnly />
-            </div>
+            {/* Hidden honeypot form to absorb browser autofill/save prompts */}
+            <form aria-hidden="true" style={{ display: 'none' }} autoComplete="on">
+              <input type="text" name="address" autoComplete="street-address" />
+              <input type="text" name="city" autoComplete="address-level2" />
+              <input type="text" name="postal" autoComplete="postal-code" />
+              <input type="text" name="country" autoComplete="country" />
+            </form>
+            {addrParts.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Current Address on File</p>
+                <p className="text-sm text-slate-800">{addrParts.join(', ')}</p>
+              </div>
+            )}
+            {prevUploadedFile?.file_url && (
+              <div className="rounded-lg border border-slate-200 overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+                  <span className="text-xs font-medium text-slate-600 flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-indigo-500" />
+                    {prevUploadedFile.file_name || "Uploaded Document"}
+                  </span>
+                  <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Open in new tab</a>
+                </div>
+                {(() => {
+                  const fileName = prevUploadedFile.file_name?.toLowerCase() || '';
+                  const fileUrl = prevUploadedFile.file_url?.toLowerCase() || '';
+                  const isPdf = fileName.endsWith('.pdf') || fileUrl.includes('.pdf') || fileUrl.includes('application/pdf') || (!fileName.includes('.'));
+                  const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].some(ext => fileName.endsWith(ext));
+                  const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc');
+
+                  if (isPdf) {
+                    return (
+                      <iframe
+                        src={prevUploadedFile.file_url + '#toolbar=1&view=FitH'}
+                        className="w-full border-0"
+                        style={{ height: '450px' }}
+                        title="Uploaded Document"
+                      />
+                    );
+                  } else if (isImage) {
+                    return (
+                      <div className="p-4 bg-slate-50 flex items-center justify-center">
+                        <img
+                          src={prevUploadedFile.file_url}
+                          alt={prevUploadedFile.file_name || "Uploaded image"}
+                          className="max-w-full max-h-96 rounded-lg object-contain shadow-sm"
+                        />
+                      </div>
+                    );
+                  } else if (isDocx) {
+                    return (
+                      <iframe
+                        src={`https://docs.google.com/gview?url=${encodeURIComponent(prevUploadedFile.file_url)}&embedded=true`}
+                        className="w-full border-0"
+                        style={{ height: '450px' }}
+                        title="Uploaded Document"
+                      />
+                    );
+                  } else {
+                    return (
+                      <div className="p-6 text-center bg-slate-50">
+                        <p className="text-sm text-slate-500 mb-3">This file type cannot be previewed in the browser.</p>
+                        <a href={prevUploadedFile.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium text-sm">
+                          <FileCheck className="w-4 h-4" />
+                          Download {prevUploadedFile.file_name || "Document"} to view
+                        </a>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+            )}
             <div>
               <Label className="text-sm font-medium text-slate-700">Street Address <span className="text-red-600">*</span></Label>
-              <Input
-                value={addressValues.street || ""}
-                onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))}
-                placeholder="123 Main Street"
-                className="mt-1.5"
-                autoComplete="new-password"
-                name={`crs-street-${currentNodeId}`}
-                data-lpignore="true"
-                data-1p-ignore
-              />
+              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="nope" name="x-crs-f1" data-lpignore="true" data-1p-ignore />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">City <span className="text-red-600">*</span></Label>
-                <Input
-                  value={addressValues.city || ""}
-                  onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))}
-                  className="mt-1.5"
-                  autoComplete="new-password"
-                  name={`crs-city-${currentNodeId}`}
-                  data-lpignore="true"
-                  data-1p-ignore
-                />
+                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="nope" name="x-crs-f2" data-lpignore="true" data-1p-ignore />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">State <span className="text-red-600">*</span></Label>
-                <Input
-                  value={addressValues.state || ""}
-                  onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))}
-                  className="mt-1.5"
-                  autoComplete="new-password"
-                  name={`crs-state-${currentNodeId}`}
-                  data-lpignore="true"
-                  data-1p-ignore
-                />
+                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="nope" name="x-crs-f3" data-lpignore="true" data-1p-ignore />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">Postal Code <span className="text-red-600">*</span></Label>
-                <Input
-                  value={addressValues.postal_code || ""}
-                  onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))}
-                  className="mt-1.5"
-                  autoComplete="new-password"
-                  name={`crs-postal-${currentNodeId}`}
-                  data-lpignore="true"
-                  data-1p-ignore
-                />
+                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="nope" name="x-crs-f4" data-lpignore="true" data-1p-ignore />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">Country <span className="text-red-600">*</span></Label>
                 <div className="mt-1.5">
                   <CountrySelect value={addressValues.country || ""} onValueChange={v => setAddressValues(p => ({ ...p, country: v }))} placeholder="Select country..." />
                 </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-200 pt-4 mt-2 grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Country of Tax Residence <span className="text-red-600">*</span></Label>
+                <div className="mt-1.5">
+                  <CountrySelect value={addressValues.tax_residence_country || ""} onValueChange={v => setAddressValues(p => ({ ...p, tax_residence_country: v }))} placeholder="Select country..." />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-slate-700">Tax Identification Number (TIN) <span className="text-red-600">*</span></Label>
+                <Input value={addressValues.tin || ""} onChange={e => setAddressValues(p => ({ ...p, tin: e.target.value }))} placeholder="Enter TIN..." className="mt-1.5" autoComplete="nope" name="x-crs-tin" data-lpignore="true" data-1p-ignore />
               </div>
             </div>
           </div>
