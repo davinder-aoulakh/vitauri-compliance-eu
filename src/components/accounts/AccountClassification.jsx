@@ -630,8 +630,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       case 'address_input': {
-        // Find the most recent file_upload answer from previous steps
-        // File upload answers are stored as { file_url, file_name, file_size, date_received }
         const prevUploadedFile = history.slice().reverse()
           .map(sid => answers[sid])
           .find(a => a && typeof a === 'object' && a.file_url && !Array.isArray(a));
@@ -643,13 +641,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
         return (
           <div className="space-y-4">
-            {/* Hidden honeypot form to absorb browser autofill/save prompts */}
-            <form aria-hidden="true" style={{ display: 'none' }} autoComplete="on">
-              <input type="text" name="address" autoComplete="street-address" />
-              <input type="text" name="city" autoComplete="address-level2" />
-              <input type="text" name="postal" autoComplete="postal-code" />
-              <input type="text" name="country" autoComplete="country" />
-            </form>
+            {/* Decoy fields: browser autofill scanner finds these first and considers
+                the address form already handled — suppresses the "Save address?" prompt.
+                Must be in the DOM (not display:none) so Edge/Chrome doesn't skip them.
+                readOnly prevents any values being written. */}
+            <div
+              aria-hidden="true"
+              style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, overflow: 'hidden', zIndex: -1 }}
+            >
+              <input type="text"     tabIndex={-1} autoComplete="street-address" readOnly />
+              <input type="text"     tabIndex={-1} autoComplete="address-level2" readOnly />
+              <input type="text"     tabIndex={-1} autoComplete="address-level1" readOnly />
+              <input type="text"     tabIndex={-1} autoComplete="postal-code"    readOnly />
+              <input type="text"     tabIndex={-1} autoComplete="country-name"   readOnly />
+              <input type="password" tabIndex={-1} autoComplete="new-password"   readOnly />
+            </div>
             {addrParts.length > 0 && (
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Current Address on File</p>
@@ -716,22 +722,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
             )}
             <div>
               <Label className="text-sm font-medium text-slate-700">Street Address <span className="text-red-600">*</span></Label>
-              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="nope" name="x-crs-f1" data-lpignore="true" data-1p-ignore />
+              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="new-password" name={`crs-street-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">City <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="nope" name="x-crs-f2" data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="new-password" name={`crs-city-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">State <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="nope" name="x-crs-f3" data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="new-password" name={`crs-state-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">Postal Code <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="nope" name="x-crs-f4" data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="new-password" name={`crs-postal-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">Country <span className="text-red-600">*</span></Label>
@@ -749,7 +755,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">Tax Identification Number (TIN) <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.tin || ""} onChange={e => setAddressValues(p => ({ ...p, tin: e.target.value }))} placeholder="Enter TIN..." className="mt-1.5" autoComplete="nope" name="x-crs-tin" data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.tin || ""} onChange={e => setAddressValues(p => ({ ...p, tin: e.target.value }))} placeholder="Enter TIN..." className="mt-1.5" autoComplete="new-password" name={`crs-tin-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
               </div>
             </div>
           </div>
