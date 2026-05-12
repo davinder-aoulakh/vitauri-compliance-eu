@@ -326,6 +326,22 @@ export default function AutoClassificationRulesPage() {
     { value: "entity.entity_type", label: "Entity: Type", type: "select", options: ["corporation", "trust", "partnership", "fund", "branch", "other"], isRelated: true },
     { value: "entity.country_of_incorporation", label: "Entity: Country of Incorporation", type: "text", isRelated: true },
     { value: "entity.rfi_status", label: "Entity: RFI Status", type: "select", options: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"], isRelated: true },
+    // CRS S3 gate check
+    { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type (S3-1)", type: "select", options: ["inheritance_estate","escrow_court_decree","qualifying_pension","overdraft_deposit","pre_existing_dormant_below_1k","publicly_traded","purely_domestic","international_organization","liquidation_dissolution","none"] },
+    // CRS S4-1 routing
+    { value: "potential_exception_type", label: "Potential Exception Type (S4-1 routing)", type: "select", options: ["None","DGA","Foundation","STAK","HoldCo","TreasuryCtr","RealEstateFund"] },
+    // CRS S4E Treasury Center
+    { value: "treasury_activities_operational", label: "Treasury: Activities Functional & Operational (S4E crit.1)", type: "select", options: ["true","false"] },
+    { value: "treasury_part_of_nonfinancial_group", label: "Treasury: Part of Non-Financial Group (S4E crit.2)", type: "select", options: ["true","false"] },
+    { value: "treasury_main_fn_finance_hedge_group", label: "Treasury: Main Function is Financing/Hedging Group (S4E crit.3)", type: "select", options: ["true","false"] },
+    { value: "treasury_50pct_passive_income_fails", label: "Treasury: <50% Passive Income — Passes 50% Test (S4E crit.4)", type: "select", options: ["true","false"] },
+    { value: "treasury_still_operational_despite_failing_50pct", label: "Treasury: Operational Despite Failing 50% Test [GAP 1 FIX]", type: "select", options: ["true","false"] },
+    // Previously missing Account fields
+    { value: "gross_income_50_passive", label: "Gross Income ≥50% Passive", type: "select", options: ["true","false"] },
+    { value: "account_dormant_at_reporting_date", label: "Account Dormant at Reporting Date", type: "select", options: ["true","false"] },
+    { value: "account_frozen_at_reporting_date", label: "Account Frozen at Reporting Date", type: "select", options: ["true","false"] },
+    { value: "self_certification_overdue", label: "Self Certification Overdue (90+ days)", type: "select", options: ["true","false"] },
+    { value: "self_certification_request_date", label: "Self Certification Request Date", type: "date" },
   ];
 
   const operators = [
