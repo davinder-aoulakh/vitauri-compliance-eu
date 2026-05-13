@@ -12,10 +12,20 @@ Deno.serve(async (req) => {
         }
 
         const userId = event?.entity_id;
-        const userEmail = data?.email;
+        let userEmail = data?.email;
 
-        if (!userEmail || !userId) {
-            return Response.json({ skipped: true, reason: 'No email or user id in payload' });
+        if (!userId) {
+            return Response.json({ skipped: true, reason: 'No user id in payload' });
+        }
+
+        // If payload was too large or email missing, fetch the user directly
+        if (!userEmail || body.payload_too_large) {
+            const fetchedUser = await base44.asServiceRole.entities.User.get(userId);
+            userEmail = fetchedUser?.email;
+        }
+
+        if (!userEmail) {
+            return Response.json({ skipped: true, reason: 'Could not determine user email' });
         }
 
         // Find a matching pending invite for this email
