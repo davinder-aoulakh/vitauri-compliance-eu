@@ -72,7 +72,22 @@ export const AuthProvider = ({ children }) => {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
-      setUser(currentUser);
+
+      // If user has no tenant_id, they may have just signed up via an invite link.
+      // Trigger applyPendingInvites immediately so their tenant/role is assigned now.
+      if (!currentUser.tenant_id && !currentUser.app_role) {
+        try {
+          await base44.functions.invoke('applyPendingInvites', {});
+          // Re-fetch the user so we get the updated tenant_id/app_role
+          const updatedUser = await base44.auth.me();
+          setUser(updatedUser);
+        } catch (e) {
+          // Non-fatal — don't block login
+        }
+      } else {
+        setUser(currentUser);
+      }
+
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
     } catch (error) {
