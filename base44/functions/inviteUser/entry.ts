@@ -58,19 +58,26 @@ Deno.serve(async (req) => {
         }
 
         // 8. Send the platform invitation
-        // Ignore 409 (user already exists) and 403 (user is already an admin on the platform)
-        // In both cases the PendingInvite record will assign them to this tenant on next login.
+        let alreadyHasPlatformAccount = false;
         try {
             await base44.users.inviteUser(email, 'user');
         } catch (inviteErr) {
-            if (inviteErr.status !== 409 && inviteErr.status !== 403) {
+            if (inviteErr.status === 409 || inviteErr.status === 403) {
+                // 409: user already exists on the platform
+                // 403: user is already a platform admin — can't re-invite
+                // In both cases the PendingInvite record will handle tenant assignment on next login.
+                alreadyHasPlatformAccount = true;
+            } else {
                 throw inviteErr;
             }
         }
 
         return Response.json({
             success: true,
-            message: 'Invitation sent successfully.',
+            already_has_account: alreadyHasPlatformAccount,
+            message: alreadyHasPlatformAccount
+                ? 'User already has a platform account. They have been granted access and can log in directly.'
+                : 'Invitation sent successfully.',
             user: {
                 email,
                 display_name: full_name,

@@ -24,6 +24,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [alreadyHasAccount, setAlreadyHasAccount] = useState(false);
 
   const handleRoleChange = (role) => {
     setFormData(prev => ({
@@ -52,6 +53,7 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
         throw new Error(response.data.error);
       }
       
+      setAlreadyHasAccount(response.data?.already_has_account === true);
       setSuccess(true);
     } catch (err) {
       console.error("Failed to invite user:", err);
@@ -69,10 +71,12 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
-            <strong>Invitation Sent!</strong>
+            <strong>{alreadyHasAccount ? "Access Granted!" : "Invitation Sent!"}</strong>
             <p className="mt-1">
-              An email invitation has been sent to <strong>{formData.email}</strong>. 
-              They will receive a link to join {tenant?.name || "your organization"}.
+              {alreadyHasAccount
+                ? <><strong>{formData.email}</strong> already has a platform account. They have been granted access and can log in directly.</>
+                : <>An email invitation has been sent to <strong>{formData.email}</strong>. They will receive a link to join {tenant?.name || "your organization"}.</>
+              }
             </p>
           </AlertDescription>
         </Alert>
@@ -87,16 +91,24 @@ export default function InviteUserForm({ tenant, onComplete, onCancel }) {
           </div>
         </div>
 
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className={`p-4 rounded-lg border ${alreadyHasAccount ? "bg-amber-50 border-amber-200" : "bg-blue-50 border-blue-200"}`}>
           <div className="flex items-start gap-3">
-            <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
+            <Mail className={`w-5 h-5 mt-0.5 ${alreadyHasAccount ? "text-amber-600" : "text-blue-600"}`} />
             <div>
-              <p className="text-sm font-medium text-blue-900">What happens next?</p>
-              <ul className="text-sm text-blue-800 mt-1 space-y-1">
-                <li>• The user will receive an email with a secure invitation link</li>
-                <li>• They click the link to set up their account</li>
-                <li>• Once they join, they'll appear in your team list</li>
-              </ul>
+              <p className={`text-sm font-medium ${alreadyHasAccount ? "text-amber-900" : "text-blue-900"}`}>What happens next?</p>
+              {alreadyHasAccount ? (
+                <ul className="text-sm text-amber-800 mt-1 space-y-1">
+                  <li>• This user already has a Base44 account</li>
+                  <li>• No invitation email was sent — please notify them directly</li>
+                  <li>• They can log in now and will be added to your organization</li>
+                </ul>
+              ) : (
+                <ul className="text-sm text-blue-800 mt-1 space-y-1">
+                  <li>• The user will receive an email with a secure invitation link</li>
+                  <li>• They click the link to set up their account</li>
+                  <li>• Once they join, they'll appear in your team list</li>
+                </ul>
+              )}
             </div>
           </div>
         </div>
