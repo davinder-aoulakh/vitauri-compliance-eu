@@ -37,19 +37,25 @@ Deno.serve(async (req) => {
 
         const existingInvites = await base44.asServiceRole.entities.PendingInvite.filter({ email, tenant_id });
         if (existingInvites && existingInvites.length > 0) {
-            return Response.json({ error: `An invitation for '${email}' is already pending.` }, { status: 409 });
+            // Update the existing invite record rather than rejecting — handles re-invite after user removal
+            await base44.asServiceRole.entities.PendingInvite.update(existingInvites[0].id, {
+                display_name: full_name,
+                app_role,
+                job_title: job_title || '',
+                department: department || '',
+                status: 'pending'
+            });
+        } else {
+            await base44.asServiceRole.entities.PendingInvite.create({
+                email,
+                display_name: full_name,
+                app_role,
+                job_title: job_title || '',
+                department: department || '',
+                tenant_id,
+                status: 'pending'
+            });
         }
-
-        // 7. Store invite details in PendingInvite so the onUserCreated automation can apply them
-        await base44.asServiceRole.entities.PendingInvite.create({
-            email,
-            display_name: full_name,
-            app_role,
-            job_title: job_title || '',
-            department: department || '',
-            tenant_id,
-            status: 'pending'
-        });
 
         // 8. Send the platform invitation (ignore 409 - user may already have a platform account)
         try {
