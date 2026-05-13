@@ -798,22 +798,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
             )}
             <div>
               <Label className="text-sm font-medium text-slate-700">Street Address <span className="text-red-600">*</span></Label>
-              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="new-password" name={`crs-street-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
+              <Input value={addressValues.street || ""} onChange={e => setAddressValues(p => ({ ...p, street: e.target.value }))} placeholder="123 Main Street" className="mt-1.5" autoComplete="off" name={`x-crs-street-${currentNodeId}`} data-lpignore="true" data-1p-ignore data-form-type="other" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">City <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="new-password" name={`crs-city-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.city || ""} onChange={e => setAddressValues(p => ({ ...p, city: e.target.value }))} className="mt-1.5" autoComplete="off" name={`x-crs-city-${currentNodeId}`} data-lpignore="true" data-1p-ignore data-form-type="other" />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">State <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="new-password" name={`crs-state-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.state || ""} onChange={e => setAddressValues(p => ({ ...p, state: e.target.value }))} className="mt-1.5" autoComplete="off" name={`x-crs-state-${currentNodeId}`} data-lpignore="true" data-1p-ignore data-form-type="other" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-700">Postal Code <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="new-password" name={`crs-postal-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.postal_code || ""} onChange={e => setAddressValues(p => ({ ...p, postal_code: e.target.value }))} className="mt-1.5" autoComplete="off" name={`x-crs-postal-${currentNodeId}`} data-lpignore="true" data-1p-ignore data-form-type="other" />
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">Country <span className="text-red-600">*</span></Label>
@@ -831,7 +831,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700">Tax Identification Number (TIN) <span className="text-red-600">*</span></Label>
-                <Input value={addressValues.tin || ""} onChange={e => setAddressValues(p => ({ ...p, tin: e.target.value }))} placeholder="Enter TIN..." className="mt-1.5" autoComplete="new-password" name={`crs-tin-${currentNodeId}`} data-lpignore="true" data-1p-ignore />
+                <Input value={addressValues.tin || ""} onChange={e => setAddressValues(p => ({ ...p, tin: e.target.value }))} placeholder="Enter TIN..." className="mt-1.5" autoComplete="off" name={`x-crs-tin-${currentNodeId}`} data-lpignore="true" data-1p-ignore data-form-type="other" />
               </div>
             </div>
           </div>
