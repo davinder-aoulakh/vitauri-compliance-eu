@@ -4,8 +4,9 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        // Fetch all pending invites
-        const pendingInvites = await base44.asServiceRole.entities.PendingInvite.filter({ status: 'pending' });
+        // Fetch all pending invites (including 'applied' ones in case the User update failed silently)
+        const allInvites = await base44.asServiceRole.entities.PendingInvite.filter({});
+        const pendingInvites = allInvites.filter(i => i.status === 'pending' || i.status === 'applied');
 
         if (!pendingInvites || pendingInvites.length === 0) {
             return Response.json({ success: true, message: 'No pending invites to process.' });
@@ -24,6 +25,11 @@ Deno.serve(async (req) => {
             }
 
             const user = users[0];
+
+            // Skip if user already has the correct tenant assigned
+            if (user.tenant_id === invite.tenant_id && user.app_role === invite.app_role) {
+                continue;
+            }
 
             // Apply the custom fields
             await base44.asServiceRole.entities.User.update(user.id, {
