@@ -51,8 +51,16 @@ Deno.serve(async (req) => {
             status: 'pending'
         });
 
-        // 8. Send the platform invitation
-        await base44.users.inviteUser(email, 'user');
+        // 8. Send the platform invitation (ignore 409 - user may already have a platform account)
+        try {
+            await base44.users.inviteUser(email, 'user');
+        } catch (inviteErr) {
+            // 409 means user already exists on the platform — that's fine,
+            // the PendingInvite record will assign them to this tenant on next login.
+            if (!inviteErr.status || inviteErr.status !== 409) {
+                throw inviteErr;
+            }
+        }
 
         return Response.json({
             success: true,
