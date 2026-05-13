@@ -33,7 +33,12 @@ export const getFieldValue = (fieldPath, account, linkedEntity, answers, answers
     const parts = fieldPath.split('.');
     const stepAnswer = answersToUse[parts[0]];
     if (stepAnswer && typeof stepAnswer === 'object') {
-      return stepAnswer[parts[1]];
+      // Direct match first
+      if (stepAnswer[parts[1]] !== undefined) return stepAnswer[parts[1]];
+      // Alias: workflow builder uses 'tax_residency_country' but address step stores 'tax_residence_country' (and vice versa)
+      if (parts[1] === 'tax_residency_country' && stepAnswer['tax_residence_country'] !== undefined) return stepAnswer['tax_residence_country'];
+      if (parts[1] === 'tax_residence_country' && stepAnswer['tax_residency_country'] !== undefined) return stepAnswer['tax_residency_country'];
+      return undefined;
     }
     if (parts[0] === 'account_holder_address' || parts[0] === 'current_address') {
       return account?.[parts[0]]?.[parts[1]];
