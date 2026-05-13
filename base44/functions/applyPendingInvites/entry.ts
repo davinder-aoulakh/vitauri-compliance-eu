@@ -1,12 +1,24 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        // Fetch all pending invites (including 'applied' ones in case the User update failed silently)
+        // Get optional target email from payload (for per-user triggering from AuthContext)
+        let targetEmail = null;
+        try {
+            const body = await req.json();
+            targetEmail = body?.email || null;
+        } catch (_) {}
+
+        // Fetch all pending/applied invites (always use service role)
         const allInvites = await base44.asServiceRole.entities.PendingInvite.filter({});
-        const pendingInvites = allInvites.filter(i => i.status === 'pending' || i.status === 'applied');
+        let pendingInvites = allInvites.filter(i => i.status === 'pending' || i.status === 'applied');
+
+        // If a specific email was provided, only process that user
+        if (targetEmail) {
+            pendingInvites = pendingInvites.filter(i => i.email === targetEmail);
+        }
 
         if (!pendingInvites || pendingInvites.length === 0) {
             return Response.json({ success: true, message: 'No pending invites to process.' });

@@ -75,14 +75,15 @@ export const AuthProvider = ({ children }) => {
 
       // If user has no tenant_id, they may have just signed up via an invite link.
       // Trigger applyPendingInvites immediately so their tenant/role is assigned now.
-      if (!currentUser.tenant_id && !currentUser.app_role) {
+      if (!currentUser.tenant_id) {
         try {
-          await base44.functions.invoke('applyPendingInvites', {});
+          await base44.functions.invoke('applyPendingInvites', { email: currentUser.email });
           // Re-fetch the user so we get the updated tenant_id/app_role
           const updatedUser = await base44.auth.me();
           setUser(updatedUser);
         } catch (e) {
-          // Non-fatal — don't block login
+          console.warn('applyPendingInvites failed silently:', e);
+          setUser(currentUser);
         }
       } else {
         setUser(currentUser);
