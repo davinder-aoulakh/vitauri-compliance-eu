@@ -941,6 +941,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tenantId and workflowId are required' }, { status: 400 });
     }
 
+    // Debug mode: return specific step data
+    const debugStepId = body._debug_step;
+    if (debugStepId) {
+      const wfs = await base44.asServiceRole.entities.Workflow.filter({ id: workflowId });
+      if (!wfs.length) return Response.json({ error: 'not found' }, { status: 404 });
+      const step = wfs[0].steps?.find(s => s.step_id === debugStepId);
+      return Response.json({ step });
+    }
+
 
     // Fetch the workflow
     const workflows = await base44.asServiceRole.entities.Workflow.filter({ id: workflowId });
