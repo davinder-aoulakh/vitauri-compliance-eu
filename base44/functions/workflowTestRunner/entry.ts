@@ -513,13 +513,18 @@ Deno.serve(async (req) => {
     const pdfArrayBuffer = doc.output('arraybuffer');
     const pdfBytes = new Uint8Array(pdfArrayBuffer);
 
-    // Convert to base64 for upload
-    let binary = '';
-    for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
-    const base64 = btoa(binary);
-    const dataUrl = `data:application/pdf;base64,${base64}`;
+    // Upload PDF via multipart/form-data
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, `workflow_test_${workflowId}_${Date.now()}.pdf`);
 
-    const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: dataUrl });
+    const appId = Deno.env.get('BASE44_APP_ID');
+    const uploadResp = await fetch(`https://api.base44.com/api/apps/${appId}/integrations/Core/UploadFile`, {
+      method: 'POST',
+      headers: { 'Authorization': req.headers.get('Authorization') || '' },
+      body: formData
+    });
+    const uploadResult = await uploadResp.json();
 
     return Response.json({
       success: true,
