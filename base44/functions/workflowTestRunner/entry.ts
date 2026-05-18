@@ -513,12 +513,13 @@ Deno.serve(async (req) => {
     const pdfArrayBuffer = doc.output('arraybuffer');
     const pdfBytes = new Uint8Array(pdfArrayBuffer);
 
-    // Upload PDF
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', blob, `workflow_test_${workflowId}_${Date.now()}.pdf`);
+    // Convert to base64 for upload
+    let binary = '';
+    for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
+    const base64 = btoa(binary);
+    const dataUrl = `data:application/pdf;base64,${base64}`;
 
-    const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
+    const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: dataUrl });
 
     return Response.json({
       success: true,
