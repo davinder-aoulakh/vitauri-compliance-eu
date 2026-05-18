@@ -362,6 +362,13 @@ const superAdminNav = filterMenuItems([
     featureKey: null
   },
   {
+    title: "Workflow Test Runner",
+    url: createPageUrl("WorkflowTestRunner"),
+    icon: GitBranch,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
     title: "Settings",
     url: createPageUrl("Settings"),
     icon: Settings,
