@@ -229,6 +229,13 @@ function resolveFieldValue(fieldPath, allAnswers) {
     const stepAns = allAnswers[parts[0]];
     if (stepAns && typeof stepAns === 'object') return stepAns[parts[1]];
   }
+  // Search inside multi_field_input answers (stored as objects keyed by step_id)
+  // e.g. field_1778482819636 may be nested inside allAnswers["step_1778482806746"]
+  for (const val of Object.values(allAnswers)) {
+    if (val && typeof val === 'object' && !Array.isArray(val) && val[fieldPath] !== undefined) {
+      return val[fieldPath];
+    }
+  }
   return undefined;
 }
 
@@ -278,8 +285,17 @@ function traverseAllPaths(workflow) {
 
     // Cycle detection: if this step was already visited in the current path
     if (visitedInPath.has(stepId)) {
+      // Annotate the last step in the current path with which step the loop returns to
+      const pathWithLoop = [...currentPath];
+      if (pathWithLoop.length > 0) {
+        pathWithLoop[pathWithLoop.length - 1] = {
+          ...pathWithLoop[pathWithLoop.length - 1],
+          loopsBackTo: stepId,
+          loopsBackToTitle: stepMap[stepId]?.step_title || stepId
+        };
+      }
       allPaths.push({
-        steps: [...currentPath],
+        steps: pathWithLoop,
         finalStatus: 'cycle_detected',
         answers: { ...currentAnswers }
       });
@@ -612,7 +628,7 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
       // Calculate height needed
       const titleLines = doc.splitTextToSize(step.stepTitle || step.stepId, contentW - 8);
       const answerLines = answerText ? doc.splitTextToSize(`Answer: ${answerText}`, contentW - 16) : [];
-      const blockH = 6 + titleLines.length * 5 + (answerLines.length > 0 ? answerLines.length * 4.5 + 3 : 0) + (isResultStep ? 8 : 0) + 4;
+      const blockH = 6 + titleLines.length * 5 + (answerLines.length > 0 ? answerLines.length * 4.5 + 3 : 0) + (isResultStep ? 8 : 0) + (step.loopsBackTo ? 8 : 0) + (step.missingNextStep ? 8 : 0) + 4;
       checkPage(blockH + 2);
 
       // Step block background
@@ -680,6 +696,16 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(124, 58, 237);
         doc.text(`⚠ Next step not found in workflow: "${step.missingNextStep}"`, margin + 6, lineY + 3);
+      }
+
+      // Loop annotation
+      if (step.loopsBackTo) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(234, 88, 12);
+        const loopText = `↩ This step loops back to: "${step.loopsBackToTitle || step.loopsBackTo}" — retry loop in workflow`;
+        const loopLines = doc.splitTextToSize(loopText, contentW - 14);
+        doc.text(loopLines, margin + 6, lineY + 3);
       }
 
       y += blockH + 2;
@@ -941,14 +967,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tenantId and workflowId are required' }, { status: 400 });
     }
 
-    // Debug mode: return specific step data
-    const debugStepId = body._debug_step;
-    if (debugStepId) {
-      const wfs = await base44.asServiceRole.entities.Workflow.filter({ id: workflowId });
-      if (!wfs.length) return Response.json({ error: 'not found' }, { status: 404 });
-      const step = wfs[0].steps?.find(s => s.step_id === debugStepId);
-      return Response.json({ step });
-    }
 
 
     // Fetch the workflow
