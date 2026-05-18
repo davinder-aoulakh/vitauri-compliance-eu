@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import MfaVerification from '@/pages/MfaVerification';
 import Support from '@/pages/Support';
+import WorkflowTestRunner from '@/pages/WorkflowTestRunner';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 
@@ -99,6 +100,11 @@ const AuthenticatedApp = () => {
       <Route path="/Support" element={
         <LayoutWrapper currentPageName="Support">
           <Support />
+        </LayoutWrapper>
+      } />
+      <Route path="/WorkflowTestRunner" element={
+        <LayoutWrapper currentPageName="WorkflowTestRunner">
+          <WorkflowTestRunner />
         </LayoutWrapper>
       } />
       <Route path="*" element={<PageNotFound />} />
