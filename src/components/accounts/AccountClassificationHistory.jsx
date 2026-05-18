@@ -33,39 +33,24 @@ export default function AccountClassificationHistory({ history, account }) {
   const formatAnswerValue = (step, answerValue) => {
     if (answerValue === null || answerValue === undefined) return '—';
 
-    // Array of selected values (multiple choice)
+    // Native array (multiple choice answers stored as real arrays)
     if (Array.isArray(answerValue)) {
-      return answerValue.map(v => resolveOptionLabel(step, v)).join(', ');
+      const labels = answerValue.map(v => resolveOptionLabel(step, v));
+      return labels.join(', ');
     }
 
-    // JSON string that is an array
-    if (typeof answerValue === 'string' && answerValue.trim().startsWith('[')) {
-      try {
-        const parsed = JSON.parse(answerValue);
-        if (Array.isArray(parsed)) {
-          return parsed.map(v => resolveOptionLabel(step, v)).join(', ');
-        }
-      } catch (_) {}
-    }
-
-    // JSON string that is an object (multi-field input)
-    if (typeof answerValue === 'string' && answerValue.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(answerValue);
-        if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-          // Try to map field_ids to display labels using step.multi_fields
-          return Object.entries(parsed).map(([key, val]) => {
-            const fieldDef = step?.multi_fields?.find(f => f.field_id === key);
-            const label = fieldDef?.display_label || key;
-            const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val ?? '');
-            return `${label}: ${displayVal}`;
-          }).join(' | ');
-        }
-      } catch (_) {}
-    }
-
-    // Object (multi-field input stored as object)
+    // Native object (multi-field input, address, file upload stored as real objects)
     if (typeof answerValue === 'object') {
+      // File upload object
+      if (answerValue.file_name) {
+        return answerValue.file_name + (answerValue.date_received ? ` (received: ${answerValue.date_received})` : '');
+      }
+      // Address object
+      if (answerValue.street || answerValue.city || answerValue.country) {
+        return [answerValue.street, answerValue.city, answerValue.state, answerValue.postal_code, answerValue.country]
+          .filter(Boolean).join(', ');
+      }
+      // Multi-field: map field_ids to display labels
       return Object.entries(answerValue).map(([key, val]) => {
         const fieldDef = step?.multi_fields?.find(f => f.field_id === key);
         const label = fieldDef?.display_label || key;
@@ -74,7 +59,7 @@ export default function AccountClassificationHistory({ history, account }) {
       }).join(' | ');
     }
 
-    // Single value — try option label lookup
+    // String — try option label lookup (handles YES/NO, FROZEN, etc.)
     return resolveOptionLabel(step, String(answerValue));
   };
 
