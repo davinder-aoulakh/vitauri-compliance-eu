@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
 import { FileText, Play, Download, Loader2, CheckCircle2, AlertCircle, GitBranch, ChevronRight } from "lucide-react";
 import WorkflowAISuggestions from "@/components/workflows/WorkflowAISuggestions";
+import WorkflowHealthMap from "@/components/workflows/WorkflowHealthMap";
 
 const STATUS_COLORS = {
   reportable: "bg-red-100 text-red-700 border-red-200",
@@ -248,6 +249,13 @@ export default function WorkflowTestRunnerPage() {
               })()}
             </CardContent>
           </Card>
+
+          {/* Workflow Health Map */}
+          <WorkflowHealthMap
+            pathsSummary={result.paths_summary}
+            workflowName={result.workflow_name}
+            workflowSteps={selectedWorkflow?.steps}
+          />
 
           {/* AI Suggestions */}
           <WorkflowAISuggestions
