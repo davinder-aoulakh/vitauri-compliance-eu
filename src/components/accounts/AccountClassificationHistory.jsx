@@ -24,25 +24,67 @@ export default function AccountClassificationHistory({ history, account }) {
     });
   });
 
+  const resolveOptionLabel = (step, value) => {
+    if (!step?.options) return value;
+    const match = step.options.find(opt => opt.value === value || opt.label === value);
+    return match ? (match.label || match.value) : value;
+  };
+
+  const formatAnswerValue = (step, answerValue) => {
+    if (answerValue === null || answerValue === undefined) return '—';
+
+    // Array of selected values (multiple choice)
+    if (Array.isArray(answerValue)) {
+      return answerValue.map(v => resolveOptionLabel(step, v)).join(', ');
+    }
+
+    // JSON string that is an array
+    if (typeof answerValue === 'string' && answerValue.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(answerValue);
+        if (Array.isArray(parsed)) {
+          return parsed.map(v => resolveOptionLabel(step, v)).join(', ');
+        }
+      } catch (_) {}
+    }
+
+    // JSON string that is an object (multi-field input)
+    if (typeof answerValue === 'string' && answerValue.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(answerValue);
+        if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+          // Try to map field_ids to display labels using step.multi_fields
+          return Object.entries(parsed).map(([key, val]) => {
+            const fieldDef = step?.multi_fields?.find(f => f.field_id === key);
+            const label = fieldDef?.display_label || key;
+            const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val ?? '');
+            return `${label}: ${displayVal}`;
+          }).join(' | ');
+        }
+      } catch (_) {}
+    }
+
+    // Object (multi-field input stored as object)
+    if (typeof answerValue === 'object') {
+      return Object.entries(answerValue).map(([key, val]) => {
+        const fieldDef = step?.multi_fields?.find(f => f.field_id === key);
+        const label = fieldDef?.display_label || key;
+        const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val ?? '');
+        return `${label}: ${displayVal}`;
+      }).join(' | ');
+    }
+
+    // Single value — try option label lookup
+    return resolveOptionLabel(step, String(answerValue));
+  };
+
   const getReadableAnswer = (stepId, answerValue) => {
     const step = stepMap[stepId];
     if (!step) {
-      return { question: stepId, answer: answerValue };
+      return { question: stepId, answer: String(answerValue ?? '') };
     }
-
     const question = step.step_title || step.question_text || stepId;
-    
-    // Try to find matching option label
-    let answer = answerValue;
-    if (step.options && Array.isArray(step.options)) {
-      const matchingOption = step.options.find(opt => 
-        opt.value === answerValue || opt.label === answerValue
-      );
-      if (matchingOption) {
-        answer = matchingOption.label || matchingOption.value;
-      }
-    }
-
+    const answer = formatAnswerValue(step, answerValue);
     return { question, answer };
   };
 
@@ -231,9 +273,7 @@ export default function AccountClassificationHistory({ history, account }) {
                               {question}
                             </p>
                             <p className="text-sm text-slate-900 font-semibold">
-                              {typeof answer === 'object' && answer !== null
-                                ? (answer.file_name || JSON.stringify(answer))
-                                : (Array.isArray(answer) ? answer.join(', ') : String(answer || ''))}
+                              {answer}
                             </p>
                           </div>
                         );
