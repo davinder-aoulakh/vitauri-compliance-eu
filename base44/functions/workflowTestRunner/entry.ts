@@ -343,7 +343,7 @@ function formatAnswer(answer, step) {
   return opt ? opt.label : String(answer);
 }
 
-function generatePDF(paths, workflowName, tenantId, accountId) {
+function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, accountData) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = 210;
   const pageH = 297;
@@ -416,6 +416,11 @@ function generatePDF(paths, workflowName, tenantId, accountId) {
   doc.setTextColor(71, 85, 105);
   doc.text(`Tenant: ${tenantId}   ·   Account: ${accountId || 'N/A'}   ·   Total Paths Found: ${paths.length}`, margin + 4, y + 13);
   y += 22;
+
+  // Account Replay Section (if available)
+  if (accountReplay) {
+    y = generateReplaySection(doc, accountReplay, pageW, pageH, margin, contentW, y, STATUS_COLORS, STATUS_BG);
+  }
 
   // Outcome summary counts
   const counts = {};
@@ -601,6 +606,193 @@ function generatePDF(paths, workflowName, tenantId, accountId) {
   return doc;
 }
 
+// ─── Account Replay ──────────────────────────────────────────────────────────
+
+function replayAccountPath(workflow, classificationAnswers) {
+  if (!classificationAnswers || Object.keys(classificationAnswers).length === 0) return null;
+
+  const stepMap = {};
+  for (const step of workflow.steps) stepMap[step.step_id] = step;
+
+  const replaySteps = [];
+  const firstStep = workflow.steps[0];
+  if (!firstStep) return null;
+
+  let currentStepId = firstStep.step_id;
+  const visited = new Set();
+  let finalStatus = 'terminal';
+  let finalResultStatus = null;
+  let finalResultDescription = null;
+
+  while (currentStepId && replaySteps.length < 50) {
+    if (visited.has(currentStepId)) {
+      finalStatus = 'cycle_detected';
+      break;
+    }
+    const step = stepMap[currentStepId];
+    if (!step) {
+      finalStatus = 'missing_step';
+      break;
+    }
+
+    visited.add(currentStepId);
+
+    if (step.question_type === 'result') {
+      finalStatus = step.result_status || 'unknown';
+      finalResultStatus = step.result_status;
+      finalResultDescription = step.result_description;
+      replaySteps.push({ stepId: currentStepId, stepTitle: step.step_title, questionType: step.question_type, answer: null, resultStatus: step.result_status, resultDescription: step.result_description });
+      break;
+    }
+
+    if (step.question_type === 'info') {
+      replaySteps.push({ stepId: currentStepId, stepTitle: step.step_title, questionType: step.question_type, answer: null });
+      currentStepId = step.default_next_step || step.options?.[0]?.next_step;
+      continue;
+    }
+
+    // Get saved answer for this step
+    const savedAnswer = classificationAnswers[currentStepId];
+    const pathEntry = {
+      stepId: currentStepId,
+      stepTitle: step.step_title,
+      questionText: step.question_text,
+      questionType: step.question_type,
+      answer: savedAnswer !== undefined ? savedAnswer : null,
+      options: step.options
+    };
+
+    if (savedAnswer === undefined) {
+      // No answer found for this step — path ends here
+      replaySteps.push({ ...pathEntry, noAnswer: true });
+      finalStatus = 'terminal';
+      break;
+    }
+
+    replaySteps.push(pathEntry);
+
+    const allAnswers = {};
+    replaySteps.forEach(s => { if (s.answer !== undefined && s.answer !== null) allAnswers[s.stepId] = s.answer; });
+
+    const nextStepId = resolveNextStep(step, savedAnswer, allAnswers);
+    if (!nextStepId) { finalStatus = 'terminal'; break; }
+    if (!stepMap[nextStepId]) { finalStatus = 'missing_step'; break; }
+    currentStepId = nextStepId;
+  }
+
+  return { steps: replaySteps, finalStatus, finalResultStatus, finalResultDescription };
+}
+
+function generateReplaySection(doc, replayPath, pageW, pageH, margin, contentW, y, statusColors, statusBg) {
+  const checkPage = (needed = 10) => {
+    if (y + needed > pageH - 20) { doc.addPage(); y = margin; }
+    return y;
+  };
+
+  // Section header
+  checkPage(30);
+  doc.setFillColor(15, 23, 42);
+  doc.rect(margin, y, contentW, 10, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ACCOUNT CLASSIFICATION REPLAY  ·  Path taken by this specific account', margin + 4, y + 7);
+  y += 12;
+
+  const status = replayPath.finalStatus || 'unknown';
+  const color = statusColors[status] || statusColors.unknown;
+  const bgColor = statusBg[status] || statusBg.unknown;
+
+  // Result banner
+  doc.setFillColor(...bgColor);
+  doc.roundedRect(margin, y, contentW, 14, 2, 2, 'F');
+  doc.setFillColor(...color);
+  doc.rect(margin, y, 4, 14, 'F');
+  doc.setTextColor(...color);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  const resultLabel = replayPath.finalResultStatus
+    ? `RESULT: ${replayPath.finalResultStatus.replace(/_/g, ' ').toUpperCase()}`
+    : `OUTCOME: ${status.replace(/_/g, ' ').toUpperCase()}`;
+  doc.text(resultLabel, margin + 8, y + 6);
+  if (replayPath.finalResultDescription) {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(replayPath.finalResultDescription, margin + 8, y + 11);
+  }
+  y += 18;
+
+  replayPath.steps.forEach((step, stepIdx) => {
+    const answerText = step.answer !== null && step.answer !== undefined ? formatAnswer(step.answer, step) : null;
+    const isResultStep = step.questionType === 'result' || step.resultStatus;
+
+    const titleLines = doc.splitTextToSize(step.stepTitle || step.stepId, contentW - 8);
+    const answerLines = answerText ? doc.splitTextToSize(`${answerText}`, contentW - 30) : [];
+    const blockH = 6 + titleLines.length * 5 + (answerLines.length > 0 ? answerLines.length * 4.5 + 3 : 0) + (isResultStep ? 8 : 0) + (step.noAnswer ? 7 : 0) + 4;
+
+    y = checkPage(blockH + 2);
+
+    if (isResultStep) { doc.setFillColor(...bgColor); } else { doc.setFillColor(248, 250, 252); }
+    doc.roundedRect(margin, y, contentW, blockH, 1.5, 1.5, 'F');
+    doc.setFillColor(...color);
+    doc.rect(margin, y, 3, blockH, 'F');
+
+    doc.setTextColor(...color);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`STEP ${stepIdx + 1}`, margin + 6, y + 5);
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.text(step.questionType?.replace(/_/g, ' ') || '', margin + contentW - 3, y + 5, { align: 'right' });
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    let lineY = y + 10;
+    doc.text(titleLines, margin + 6, lineY);
+    lineY += titleLines.length * 5 + 2;
+
+    if (answerLines.length > 0) {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Answer:', margin + 6, lineY);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text(answerLines, margin + 20, lineY);
+      lineY += answerLines.length * 4.5 + 2;
+    }
+
+    if (step.noAnswer) {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(148, 163, 184);
+      doc.text('⚠ No saved answer found for this step — path ends here', margin + 6, lineY + 3);
+    }
+
+    if (isResultStep && step.resultStatus) {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...color);
+      doc.text(`OUTCOME: ${step.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 6, lineY + 3);
+      if (step.resultDescription) {
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        const descLines = doc.splitTextToSize(step.resultDescription, contentW - 14);
+        doc.text(descLines.slice(0, 2), margin + 6, lineY + 8);
+      }
+    }
+
+    y += blockH + 2;
+  });
+
+  y += 10;
+  return y;
+}
+
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -625,11 +817,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Workflow has no steps' }, { status: 400 });
     }
 
+    // Fetch account classification answers if accountId provided
+    let accountReplay = null;
+    let accountData = null;
+    if (accountId) {
+      const accounts = await base44.asServiceRole.entities.Account.filter({ id: accountId });
+      if (accounts.length) {
+        accountData = accounts[0];
+        const classificationAnswers = accountData.classification_answers || {};
+        accountReplay = replayAccountPath(workflow, classificationAnswers);
+      }
+    }
+
     // Traverse all paths
     const paths = traverseAllPaths(workflow);
 
-    // Generate PDF
-    const doc = generatePDF(paths, workflow.workflow_name, tenantId, accountId || 'N/A');
+    // Generate PDF — inject account replay at top
+    const doc = generatePDF(paths, workflow.workflow_name, tenantId, accountId || 'N/A', accountReplay, accountData);
     const pdfArrayBuffer = doc.output('arraybuffer');
     const pdfBytes = new Uint8Array(pdfArrayBuffer);
 
