@@ -497,15 +497,46 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
     const color = STATUS_COLORS[status] || STATUS_COLORS.unknown;
     const bgColor = STATUS_BG[status] || STATUS_BG.unknown;
 
-    // Path header banner
-    doc.setFillColor(...color);
+    // Find the result step if any
+    const resultStep = path.steps.find(s => s.questionType === 'result' || s.resultStatus);
+
+    // Path header banner — use result status color if path ends at a result step
+    const headerOutcome = resultStep?.resultStatus
+      ? resultStep.resultStatus.replace(/_/g, ' ').toUpperCase()
+      : status.replace(/_/g, ' ').toUpperCase();
+    const headerColor = resultStep?.resultStatus
+      ? (STATUS_COLORS[resultStep.resultStatus] || color)
+      : color;
+    doc.setFillColor(...headerColor);
     doc.rect(margin, y, contentW, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    const outcomeLabel = status.replace(/_/g, ' ').toUpperCase();
-    doc.text(`PATH ${pathIdx + 1}  ·  OUTCOME: ${outcomeLabel}  ·  ${path.steps.length} STEPS`, margin + 4, y + 7);
+    doc.text(`PATH ${pathIdx + 1}  ·  OUTCOME: ${headerOutcome}  ·  ${path.steps.length} STEPS`, margin + 4, y + 7);
     y += 12;
+
+    // Show classification result card (like the workflow completion screen)
+    if (resultStep) {
+      const rColor = STATUS_COLORS[resultStep.resultStatus] || color;
+      const rBg = STATUS_BG[resultStep.resultStatus] || bgColor;
+      checkPage(20);
+      doc.setFillColor(...rBg);
+      doc.roundedRect(margin, y, contentW, 16, 2, 2, 'F');
+      doc.setFillColor(...rColor);
+      doc.rect(margin, y, 5, 16, 'F');
+      doc.setTextColor(...rColor);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`CLASSIFICATION RESULT: ${resultStep.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 10, y + 6);
+      if (resultStep.resultDescription) {
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        const descLines = doc.splitTextToSize(resultStep.resultDescription, contentW - 16);
+        doc.text(descLines.slice(0, 2), margin + 10, y + 12);
+      }
+      y += 20;
+    }
 
     // Step-by-step detail
     path.steps.forEach((step, stepIdx) => {
