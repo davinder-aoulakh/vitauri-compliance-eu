@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, AlertTriangle, CheckCircle2, GitMerge, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Sparkles, Loader2, AlertTriangle, CheckCircle2, GitMerge, ChevronDown, ChevronUp, RefreshCw, Wrench } from "lucide-react";
+import ApplyFixModal from "@/components/workflows/ApplyFixModal";
 
 const PRIORITY_STYLES = {
   high: "bg-red-100 text-red-700 border-red-200",
@@ -27,10 +28,13 @@ const TYPE_LABELS = {
   consolidation: "Consolidation",
 };
 
-function SuggestionCard({ suggestion, index }) {
+const FIXABLE_TYPES = ["missing_exit", "dead_end", "redundant_loop"];
+
+function SuggestionCard({ suggestion, index, onApplyFix }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = TYPE_ICONS[suggestion.type] || CheckCircle2;
   const priorityStyle = PRIORITY_STYLES[suggestion.priority] || PRIORITY_STYLES.low;
+  const isFixable = FIXABLE_TYPES.includes(suggestion.type);
 
   return (
     <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -83,17 +87,36 @@ function SuggestionCard({ suggestion, index }) {
               Affects <strong>{suggestion.paths_affected}</strong> path{suggestion.paths_affected > 1 ? 's' : ''} out of the total traversal.
             </p>
           )}
+          {isFixable && (
+            <div className="pt-1">
+              <Button
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 text-xs px-3"
+                onClick={e => { e.stopPropagation(); onApplyFix(suggestion); }}
+              >
+                <Wrench className="w-3 h-3 mr-1.5" />
+                Apply Fix
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export default function WorkflowAISuggestions({ pathsSummary, workflowName, workflowStepCount }) {
+export default function WorkflowAISuggestions({ pathsSummary, workflowName, workflowStepCount, workflow }) {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState(null);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
+  const [fixModalOpen, setFixModalOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(null);
+
+  const handleApplyFix = (suggestion) => {
+    setActiveSuggestion(suggestion);
+    setFixModalOpen(true);
+  };
 
   const analyze = async () => {
     setLoading(true);
@@ -289,15 +312,15 @@ For each suggestion, identify the specific step IDs involved where possible.`;
         )}
 
         {suggestions && suggestions.length > 0 && (
-          <div className="space-y-2">
-            {suggestions
-              .sort((a, b) => {
-                const order = { high: 0, medium: 1, low: 2 };
-                return (order[a.priority] ?? 3) - (order[b.priority] ?? 3);
-              })
-              .map((s, i) => (
-                <SuggestionCard key={i} suggestion={s} index={i} />
-              ))}
+        <div className="space-y-2">
+          {suggestions
+            .sort((a, b) => {
+              const order = { high: 0, medium: 1, low: 2 };
+              return (order[a.priority] ?? 3) - (order[b.priority] ?? 3);
+            })
+            .map((s, i) => (
+              <SuggestionCard key={i} suggestion={s} index={i} onApplyFix={handleApplyFix} />
+            ))}
           </div>
         )}
 
@@ -309,6 +332,16 @@ For each suggestion, identify the specific step IDs involved where possible.`;
           </div>
         )}
       </CardContent>
+
+      {workflow && (
+        <ApplyFixModal
+          open={fixModalOpen}
+          onClose={() => setFixModalOpen(false)}
+          suggestion={activeSuggestion}
+          workflow={workflow}
+          onFixApplied={() => {}}
+        />
+      )}
     </Card>
   );
 }

@@ -262,6 +262,7 @@ export default function WorkflowTestRunnerPage() {
             pathsSummary={result.paths_summary}
             workflowName={result.workflow_name}
             workflowStepCount={selectedWorkflow?.steps?.length || 0}
+            workflow={selectedWorkflow}
           />
 
           {/* Paths Table */}
