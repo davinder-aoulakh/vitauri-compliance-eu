@@ -25,18 +25,25 @@ const SYNTHETIC_ANSWERS = {
   result: [null],
 };
 
-function buildMultiFieldAnswer(step) {
-  const answer = {};
-  for (const field of (step.multi_fields || [])) {
-    switch (field.field_type) {
-      case 'boolean': answer[field.field_id] = true; break;
-      case 'number': answer[field.field_id] = 100; break;
-      case 'date': answer[field.field_id] = '2025-01-01'; break;
-      case 'select': answer[field.field_id] = field.options?.[0]?.value || 'option1'; break;
-      default: answer[field.field_id] = 'Test Value';
+function buildMultiFieldAnswers(step) {
+  // Generate both boolean variants (true/false) if any boolean fields exist
+  // to cover both branches of conditional logic
+  const hasBooleans = (step.multi_fields || []).some(f => f.field_type === 'boolean');
+  const buildAnswer = (boolVal) => {
+    const answer = {};
+    for (const field of (step.multi_fields || [])) {
+      switch (field.field_type) {
+        case 'boolean': answer[field.field_id] = boolVal; break;
+        case 'number': answer[field.field_id] = 100; break;
+        case 'date': answer[field.field_id] = '2025-01-01'; break;
+        case 'select': answer[field.field_id] = field.options?.[0]?.value || 'option1'; break;
+        default: answer[field.field_id] = 'Test Value';
+      }
     }
-  }
-  return answer;
+    return answer;
+  };
+  if (hasBooleans) return [buildAnswer(true), buildAnswer(false)];
+  return [buildAnswer(true)];
 }
 
 function getSyntheticAnswers(step) {
@@ -54,7 +61,7 @@ function getSyntheticAnswers(step) {
     return subsets.length > 0 ? subsets : [['OPT1']];
   }
   if (step.question_type === 'multi_field_input') {
-    return [buildMultiFieldAnswer(step)];
+    return buildMultiFieldAnswers(step);
   }
   return SYNTHETIC_ANSWERS[step.question_type] || ['Test Value'];
 }
@@ -66,8 +73,24 @@ function resolveNextStep(step, answer, allAnswers) {
   // --- result / info types: no next step ---
   if (step.question_type === 'result') return null;
 
-  // --- default_next_step for input types ---
-  if (['text_input','number_input','date_input','file_upload','multi_field_input','address_input','beneficiary_input','controlling_person_input'].includes(step.question_type)) {
+  // --- default_next_step for simple input types ---
+  if (['text_input','number_input','date_input','file_upload','address_input','beneficiary_input','controlling_person_input'].includes(step.question_type)) {
+    return step.default_next_step || null;
+  }
+
+  // --- multi_field_input: check conditions, fall back to default_next_step ---
+  if (step.question_type === 'multi_field_input') {
+    if (logic?.conditions?.length > 0) {
+      let met = true;
+      for (const cond of logic.conditions) {
+        const fv = resolveFieldValue(cond.field, allAnswers);
+        const condMet = evalStrOp(cond.operator, fv, cond.value);
+        if (cond.logic_operator === 'OR' && condMet) { met = true; break; }
+        if (cond.logic_operator === 'AND' && !condMet) { met = false; break; }
+        met = condMet;
+      }
+      return met ? (logic.next_step || step.default_next_step || null) : (logic.else_step || step.default_next_step || null);
+    }
     return step.default_next_step || null;
   }
 
@@ -78,6 +101,23 @@ function resolveNextStep(step, answer, allAnswers) {
       if (opt?.next_step) return opt.next_step;
     }
     return null;
+  }
+
+  // --- selection_count routing (top priority for multiple_choice) ---
+  if (logic.use_selection_count && logic.selection_count_value != null) {
+    const count = Array.isArray(answer) ? answer.length : 1;
+    // operator may be null — treat null as '='
+    const op = logic.selection_count_operator || '=';
+    const met = evalNumOp(op, count, logic.selection_count_value);
+    return met ? (logic.selection_count_next_step || null) : (logic.selection_count_else_step || null);
+  }
+
+  // --- option_values routing ---
+  if (logic.option_values?.length > 0) {
+    const selectedOptions = Array.isArray(answer) ? answer : [answer];
+    const hasMatch = logic.option_values.some(v => selectedOptions.includes(v));
+    if (hasMatch) return logic.option_values_next_step || null;
+    if (logic.option_values_else_step) return logic.option_values_else_step;
   }
 
   // --- multi_choice_routing_groups ---
@@ -103,20 +143,6 @@ function resolveNextStep(step, answer, allAnswers) {
       if (groupMet && group.next_step) return group.next_step;
     }
     return logic.multi_choice_default_step || null;
-  }
-
-  // --- option_values routing ---
-  if (logic.option_values?.length > 0) {
-    const selectedOptions = Array.isArray(answer) ? answer : [answer];
-    const hasMatch = logic.option_values.some(v => selectedOptions.includes(v));
-    return hasMatch ? (logic.option_values_next_step || null) : (logic.option_values_else_step || null);
-  }
-
-  // --- selection_count routing ---
-  if (logic.use_selection_count && logic.selection_count_operator) {
-    const count = Array.isArray(answer) ? answer.length : 1;
-    const met = evalNumOp(logic.selection_count_operator, count, logic.selection_count_value);
-    return met ? (logic.selection_count_next_step || null) : (logic.selection_count_else_step || null);
   }
 
   // --- trigger-based condition_groups / simple conditions ---
@@ -195,7 +221,8 @@ function evalNumOp(op, a, b) {
 }
 
 function evalStrOp(op, fieldValue, compValue) {
-  const fv = String(fieldValue || '').toLowerCase().trim();
+  // Normalize booleans so true matches 'true'
+  const fv = String(fieldValue === true ? 'true' : fieldValue === false ? 'false' : (fieldValue || '')).toLowerCase().trim();
   const cv = String(compValue || '').toLowerCase().trim();
   switch (op) {
     case '=': case '==': return fv === cv;
@@ -217,13 +244,23 @@ function traverseAllPaths(workflow) {
   const MAX_PATHS = 200;
   const MAX_DEPTH = 30;
 
-  function dfs(stepId, currentPath, currentAnswers) {
+  function dfs(stepId, currentPath, currentAnswers, visitedInPath = new Set()) {
     if (allPaths.length >= MAX_PATHS) return;
     if (currentPath.length > MAX_DEPTH) return;
     if (!stepId) return;
 
     const step = stepMap[stepId];
     if (!step) return;
+
+    // Cycle detection: if this step was already visited in the current path
+    if (visitedInPath.has(stepId)) {
+      allPaths.push({
+        steps: [...currentPath],
+        finalStatus: 'cycle_detected',
+        answers: { ...currentAnswers }
+      });
+      return;
+    }
 
     const possibleAnswers = getSyntheticAnswers(step);
 
@@ -237,10 +274,13 @@ function traverseAllPaths(workflow) {
       return;
     }
 
+    const newVisited = new Set(visitedInPath);
+    newVisited.add(stepId);
+
     if (step.question_type === 'info') {
       const nextStep = step.default_next_step || (step.options?.[0]?.next_step);
       const pathEntry = { stepId, stepTitle: step.step_title, answer: null, questionType: step.question_type };
-      dfs(nextStep, [...currentPath, pathEntry], { ...currentAnswers });
+      dfs(nextStep, [...currentPath, pathEntry], { ...currentAnswers }, newVisited);
       return;
     }
 
@@ -258,21 +298,20 @@ function traverseAllPaths(workflow) {
       };
 
       if (!nextStepId) {
-        // Terminal — record as complete path
         allPaths.push({
           steps: [...currentPath, pathEntry],
           finalStatus: 'terminal',
           answers: updatedAnswers
         });
-      } else if (nextStepId === stepId) {
-        // Cycle guard
+      } else if (!stepMap[nextStepId]) {
+        // Next step ID referenced but not found in workflow — missing step
         allPaths.push({
-          steps: [...currentPath, pathEntry],
-          finalStatus: 'cycle_detected',
+          steps: [...currentPath, { ...pathEntry, missingNextStep: nextStepId }],
+          finalStatus: 'missing_step',
           answers: updatedAnswers
         });
       } else {
-        dfs(nextStepId, [...currentPath, pathEntry], updatedAnswers);
+        dfs(nextStepId, [...currentPath, pathEntry], updatedAnswers, newVisited);
       }
     }
   }
@@ -291,7 +330,7 @@ function formatAnswer(answer, step) {
   if (Array.isArray(answer)) {
     return answer.map(v => {
       const opt = step?.options?.find(o => o.value === v);
-      return opt ? `${opt.label} (${v})` : String(v);
+      return opt ? opt.label : String(v);
     }).join(', ');
   }
   if (typeof answer === 'object') {
@@ -301,7 +340,7 @@ function formatAnswer(answer, step) {
   }
   // Resolve single option label
   const opt = step?.options?.find(o => o.value === String(answer));
-  return opt ? `${opt.label} (${answer})` : String(answer);
+  return opt ? opt.label : String(answer);
 }
 
 function generatePDF(paths, workflowName, tenantId, accountId) {
@@ -312,170 +351,251 @@ function generatePDF(paths, workflowName, tenantId, accountId) {
   const contentW = pageW - margin * 2;
 
   const STATUS_COLORS = {
-    reportable: [239, 68, 68],
-    non_reportable: [34, 197, 94],
-    pending_review: [234, 179, 8],
-    excluded: [156, 163, 175],
+    reportable: [220, 38, 38],
+    non_reportable: [22, 163, 74],
+    pending_review: [202, 138, 4],
+    excluded: [107, 114, 128],
     terminal: [100, 116, 139],
-    cycle_detected: [249, 115, 22],
+    cycle_detected: [234, 88, 12],
+    missing_step: [124, 58, 237],
     unknown: [100, 116, 139]
+  };
+
+  const STATUS_BG = {
+    reportable: [254, 226, 226],
+    non_reportable: [220, 252, 231],
+    pending_review: [254, 249, 195],
+    excluded: [243, 244, 246],
+    terminal: [241, 245, 249],
+    cycle_detected: [255, 237, 213],
+    missing_step: [237, 233, 254],
+    unknown: [241, 245, 249]
   };
 
   let y = margin;
 
   const checkPage = (needed = 10) => {
-    if (y + needed > pageH - margin) {
+    if (y + needed > pageH - 20) {
       doc.addPage();
       y = margin;
     }
   };
 
-  const drawHeader = () => {
-    doc.setFillColor(30, 41, 59);
-    doc.rect(0, 0, pageW, 22, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Workflow Test Report', margin, 14);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toISOString()}`, pageW - margin, 14, { align: 'right' });
-    y = 28;
+  const writeLine = (text, fontSize, bold, color, x, indent = 0) => {
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(text, contentW - indent);
+    checkPage(lines.length * (fontSize * 0.4 + 1) + 2);
+    doc.text(lines, x + indent, y);
+    y += lines.length * (fontSize * 0.4 + 1) + 1;
+    return lines.length;
   };
 
-  drawHeader();
-
-  // Workflow info block
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentW, 22, 'F');
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(10);
+  // Header
+  doc.setFillColor(30, 41, 59);
+  doc.rect(0, 0, pageW, 24, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Workflow: ${workflowName}`, margin + 3, y + 7);
-  doc.setFont('helvetica', 'normal');
+  doc.text('Workflow Test Report', margin, 15);
   doc.setFontSize(8);
-  doc.text(`Tenant ID: ${tenantId}   |   Account ID: ${accountId || 'N/A'}   |   Total Paths: ${paths.length}`, margin + 3, y + 14);
-  y += 26;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`, pageW - margin, 15, { align: 'right' });
+  y = 30;
+
+  // Info block
+  doc.setFillColor(241, 245, 249);
+  doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text(workflowName, margin + 4, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Tenant: ${tenantId}   ·   Account: ${accountId || 'N/A'}   ·   Total Paths Found: ${paths.length}`, margin + 4, y + 13);
+  y += 22;
+
+  // Outcome summary counts
+  const counts = {};
+  paths.forEach(p => { counts[p.finalStatus] = (counts[p.finalStatus] || 0) + 1; });
+  const summaryEntries = Object.entries(counts);
+  const colW = contentW / Math.min(summaryEntries.length, 4);
+  summaryEntries.forEach(([ status, count ], i) => {
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const bx = margin + col * colW;
+    const by = y + row * 16;
+    const bg = STATUS_BG[status] || STATUS_BG.unknown;
+    const fg = STATUS_COLORS[status] || STATUS_COLORS.unknown;
+    doc.setFillColor(...bg);
+    doc.roundedRect(bx, by, colW - 2, 13, 1.5, 1.5, 'F');
+    doc.setTextColor(...fg);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(count), bx + colW/2 - 1, by + 7, { align: 'center' });
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(status.replace(/_/g, ' ').toUpperCase(), bx + colW/2 - 1, by + 11, { align: 'center' });
+  });
+  const summaryRows = Math.ceil(summaryEntries.length / 4);
+  y += summaryRows * 16 + 6;
 
   // Summary table
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 41, 59);
-  doc.text('Summary of Test Paths', margin, y);
+  doc.text('All Test Paths', margin, y);
   y += 5;
 
-  doc.setDrawColor(226, 232, 240);
+  // Table header
   doc.setFillColor(51, 65, 85);
   doc.rect(margin, y, contentW, 7, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.text('#', margin + 2, y + 5);
-  doc.text('Path Summary (Steps)', margin + 10, y + 5);
-  doc.text('Steps', margin + contentW - 30, y + 5);
-  doc.text('Outcome', margin + contentW - 15, y + 5);
+  doc.text('#', margin + 3, y + 5);
+  doc.text('Steps Traversed', margin + 14, y + 5);
+  doc.text('Cnt', margin + contentW - 32, y + 5);
+  doc.text('Outcome', margin + contentW - 23, y + 5);
   y += 7;
 
   paths.forEach((path, idx) => {
-    checkPage(7);
-    const color = STATUS_COLORS[path.finalStatus] || [100, 116, 139];
+    checkPage(8);
+    const color = STATUS_COLORS[path.finalStatus] || STATUS_COLORS.unknown;
     doc.setFillColor(idx % 2 === 0 ? 248 : 255, idx % 2 === 0 ? 250 : 255, idx % 2 === 0 ? 252 : 255);
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(7.5);
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text(String(idx + 1), margin + 2, y + 5);
-    const summary = path.steps.filter(s => s.answer !== null).map(s => {
-      const ans = Array.isArray(s.answer) ? s.answer.join('+') : String(s.answer || '');
-      return `${s.stepTitle?.substring(0, 20) || s.stepId}: ${ans.substring(0, 15)}`;
-    }).join(' → ').substring(0, 80);
-    doc.text(summary, margin + 10, y + 5);
-    doc.text(String(path.steps.length), margin + contentW - 28, y + 5);
+    doc.text(String(idx + 1), margin + 3, y + 5);
+    // Use step titles (not IDs) for readability
+    const stepSummary = path.steps.map(s => s.stepTitle || s.stepId).join(' → ');
+    const truncated = stepSummary.length > 100 ? stepSummary.substring(0, 97) + '...' : stepSummary;
+    doc.text(truncated, margin + 14, y + 5);
+    doc.text(String(path.steps.length), margin + contentW - 30, y + 5);
     doc.setTextColor(...color);
     doc.setFont('helvetica', 'bold');
-    doc.text((path.finalStatus || 'unknown').replace('_', ' ').toUpperCase().substring(0, 14), margin + contentW - 13, y + 5);
+    const outcomeLabel = (path.finalStatus || 'unknown').replace(/_/g, ' ').toUpperCase();
+    doc.text(outcomeLabel.substring(0, 16), margin + contentW - 21, y + 5);
     y += 7;
   });
 
-  y += 8;
+  y += 10;
 
-  // ─── Detailed Path Pages ───────────────────────────────────────────────────
+  // ─── Detailed Path Sections ───────────────────────────────────────────────
   paths.forEach((path, pathIdx) => {
-    checkPage(20);
+    checkPage(25);
 
-    // Path header
-    const color = STATUS_COLORS[path.finalStatus] || [100, 116, 139];
+    const status = path.finalStatus || 'unknown';
+    const color = STATUS_COLORS[status] || STATUS_COLORS.unknown;
+    const bgColor = STATUS_BG[status] || STATUS_BG.unknown;
+
+    // Path header banner
     doc.setFillColor(...color);
-    doc.rect(margin, y, contentW, 9, 'F');
+    doc.rect(margin, y, contentW, 10, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Path ${pathIdx + 1} of ${paths.length}  —  Outcome: ${(path.finalStatus || 'unknown').replace(/_/g, ' ').toUpperCase()}`, margin + 3, y + 6);
-    y += 11;
+    const outcomeLabel = status.replace(/_/g, ' ').toUpperCase();
+    doc.text(`PATH ${pathIdx + 1}  ·  OUTCOME: ${outcomeLabel}  ·  ${path.steps.length} STEPS`, margin + 4, y + 7);
+    y += 12;
 
     // Step-by-step detail
     path.steps.forEach((step, stepIdx) => {
-      checkPage(22);
+      const answerText = step.answer !== null && step.answer !== undefined ? formatAnswer(step.answer, step) : null;
+      const isResultStep = step.questionType === 'result' || step.resultStatus;
 
-      // Step number chip
-      doc.setFillColor(226, 232, 240);
-      doc.rect(margin, y, contentW, 18, 'F');
+      // Calculate height needed
+      const titleLines = doc.splitTextToSize(step.stepTitle || step.stepId, contentW - 8);
+      const answerLines = answerText ? doc.splitTextToSize(`Answer: ${answerText}`, contentW - 16) : [];
+      const blockH = 6 + titleLines.length * 5 + (answerLines.length > 0 ? answerLines.length * 4.5 + 3 : 0) + (isResultStep ? 8 : 0) + 4;
+      checkPage(blockH + 2);
 
-      doc.setTextColor(71, 85, 105);
+      // Step block background
+      if (isResultStep) {
+        doc.setFillColor(...bgColor);
+      } else {
+        doc.setFillColor(248, 250, 252);
+      }
+      doc.roundedRect(margin, y, contentW, blockH, 1.5, 1.5, 'F');
+
+      // Left accent bar
+      doc.setFillColor(...color);
+      doc.rect(margin, y, 3, blockH, 'F');
+
+      // Step number
+      doc.setTextColor(...color);
       doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');
-      doc.text(`STEP ${stepIdx + 1}`, margin + 3, y + 4);
+      doc.text(`STEP ${stepIdx + 1}`, margin + 6, y + 5);
 
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      const titleLines = doc.splitTextToSize(step.stepTitle || step.stepId, contentW - 60);
-      doc.text(titleLines[0], margin + 3, y + 9);
-
+      // Question type badge
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(71, 85, 105);
-      doc.text(`Type: ${step.questionType}`, margin + 3, y + 14);
+      doc.text(step.questionType?.replace(/_/g, ' ') || '', margin + contentW - 3, y + 5, { align: 'right' });
 
-      if (step.answer !== null && step.answer !== undefined) {
-        const answerText = `Answer: ${formatAnswer(step.answer, step)}`;
-        const ansLines = doc.splitTextToSize(answerText, contentW - 6);
+      // Step title
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      let lineY = y + 10;
+      doc.text(titleLines, margin + 6, lineY);
+      lineY += titleLines.length * 5 + 2;
+
+      // Answer
+      if (answerLines.length > 0) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text('Answer:', margin + 6, lineY);
         doc.setTextColor(15, 23, 42);
-        doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
-        doc.text(ansLines[0].substring(0, 100), margin + contentW - 3 - doc.getTextWidth(ansLines[0].substring(0, 100)), y + 9);
+        doc.text(answerLines, margin + 20, lineY);
+        lineY += answerLines.length * 4.5 + 2;
       }
 
-      if (step.resultStatus) {
-        doc.setTextColor(...color);
-        doc.setFont('helvetica', 'bold');
+      // Result status (for result steps)
+      if (isResultStep && step.resultStatus) {
         doc.setFontSize(8);
-        doc.text(`Result: ${step.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 3, y + 14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...color);
+        doc.text(`OUTCOME: ${step.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 6, lineY + 3);
         if (step.resultDescription) {
-          doc.setFont('helvetica', 'normal');
           doc.setFontSize(7);
+          doc.setFont('helvetica', 'normal');
           doc.setTextColor(71, 85, 105);
-          const descLines = doc.splitTextToSize(step.resultDescription, contentW - 6);
-          checkPage(5 * descLines.length);
-          doc.text(descLines.slice(0, 2), margin + 3, y + 18);
-          y += 5 * Math.min(descLines.length, 2);
+          const descLines = doc.splitTextToSize(step.resultDescription, contentW - 14);
+          doc.text(descLines.slice(0, 2), margin + 6, lineY + 8);
         }
       }
 
-      y += 20;
+      // Missing step warning
+      if (step.missingNextStep) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(124, 58, 237);
+        doc.text(`⚠ Next step not found in workflow: "${step.missingNextStep}"`, margin + 6, lineY + 3);
+      }
+
+      y += blockH + 2;
     });
 
-    y += 6;
+    y += 8;
   });
 
   // Page numbers
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    doc.setFillColor(241, 245, 249);
+    doc.rect(0, pageH - 12, pageW, 12, 'F');
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Page ${i} of ${pageCount}`, pageW / 2, pageH - 6, { align: 'center' });
+    doc.text(`Workflow Test Report  ·  Page ${i} of ${pageCount}`, pageW / 2, pageH - 5, { align: 'center' });
   }
 
   return doc;
