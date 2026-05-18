@@ -497,16 +497,20 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
     const color = STATUS_COLORS[status] || STATUS_COLORS.unknown;
     const bgColor = STATUS_BG[status] || STATUS_BG.unknown;
 
-    // Find the result step if any
+    // Find the result step if any (explicit result-type step in workflow)
     const resultStep = path.steps.find(s => s.questionType === 'result' || s.resultStatus);
 
-    // Path header banner — use result status color if path ends at a result step
-    const headerOutcome = resultStep?.resultStatus
-      ? resultStep.resultStatus.replace(/_/g, ' ').toUpperCase()
-      : status.replace(/_/g, ' ').toUpperCase();
+    // Also look for post_completion_actions on the last step that set a result
+    // (some workflows don't use result steps but use post_completion_actions with from_workflow_outcome)
+    const lastStep = path.steps[path.steps.length - 1];
+
+    // Path header banner
     const headerColor = resultStep?.resultStatus
       ? (STATUS_COLORS[resultStep.resultStatus] || color)
       : color;
+    const headerOutcome = resultStep?.resultStatus
+      ? resultStep.resultStatus.replace(/_/g, ' ').toUpperCase()
+      : status.replace(/_/g, ' ').toUpperCase();
     doc.setFillColor(...headerColor);
     doc.rect(margin, y, contentW, 10, 'F');
     doc.setTextColor(255, 255, 255);
@@ -515,7 +519,7 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
     doc.text(`PATH ${pathIdx + 1}  ·  OUTCOME: ${headerOutcome}  ·  ${path.steps.length} STEPS`, margin + 4, y + 7);
     y += 12;
 
-    // Show classification result card (like the workflow completion screen)
+    // Show classification result card if this path has a result step
     if (resultStep) {
       const rColor = STATUS_COLORS[resultStep.resultStatus] || color;
       const rBg = STATUS_BG[resultStep.resultStatus] || bgColor;
@@ -536,6 +540,44 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
         doc.text(descLines.slice(0, 2), margin + 10, y + 12);
       }
       y += 20;
+    }
+
+    // When there's no result-type step but the account has a known reportability status,
+    // show it as a classification complete card on terminal paths.
+    if (!resultStep && status === 'terminal' && accountReplay?.accountReportabilityStatus && accountReplay.accountReportabilityStatus !== 'pending_review') {
+      const acctStatus = accountReplay.accountReportabilityStatus;
+      const acctColor = STATUS_COLORS[acctStatus] || [100, 116, 139];
+      const acctBg = STATUS_BG[acctStatus] || [241, 245, 249];
+      checkPage(22);
+      doc.setFillColor(...acctBg);
+      doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
+      doc.setFillColor(...acctColor);
+      doc.rect(margin, y, 5, 18, 'F');
+      doc.setTextColor(...acctColor);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`CLASSIFICATION COMPLETE: ${acctStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 10, y + 7);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      if (accountReplay.accountReportabilityReason) {
+        const rLines = doc.splitTextToSize(accountReplay.accountReportabilityReason, contentW - 16);
+        doc.text(rLines.slice(0, 1), margin + 10, y + 13);
+      } else {
+        doc.text('Account classification outcome (set via post-completion actions)', margin + 10, y + 13);
+      }
+      y += 22;
+    } else if (!resultStep && status === 'terminal') {
+      checkPage(12);
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(margin, y, contentW, 10, 1.5, 1.5, 'F');
+      doc.setFillColor(100, 116, 139);
+      doc.rect(margin, y, 3, 10, 'F');
+      doc.setTextColor(71, 85, 105);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Path ends here — no explicit result step. Classification determined by post-completion actions.', margin + 7, y + 7);
+      y += 13;
     }
 
     // Step-by-step detail
