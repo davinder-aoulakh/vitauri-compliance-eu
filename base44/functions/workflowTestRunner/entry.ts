@@ -75,7 +75,7 @@ function resolveNextStep(step, answer, allAnswers) {
 
   // --- default_next_step for simple input types ---
   if (['text_input','number_input','date_input','file_upload','address_input','beneficiary_input','controlling_person_input'].includes(step.question_type)) {
-    return step.default_next_step || null;
+    return (step.default_next_step && step.default_next_step.trim() !== '') ? step.default_next_step : null;
   }
 
   // --- multi_field_input: check conditions, fall back to default_next_step ---
@@ -98,7 +98,7 @@ function resolveNextStep(step, answer, allAnswers) {
     // Use option's next_step
     if (step.options) {
       const opt = step.options.find(o => o.value === answer || (Array.isArray(answer) && answer.includes(o.value)));
-      if (opt?.next_step) return opt.next_step;
+      if (opt?.next_step && opt.next_step.trim() !== '') return opt.next_step;
     }
     return null;
   }
@@ -146,9 +146,28 @@ function resolveNextStep(step, answer, allAnswers) {
   }
 
   // --- trigger-based condition_groups / simple conditions ---
+  // The trigger_field/trigger_value check gates whether the conditional_logic block fires.
+  // If the trigger doesn't match, skip the conditional_logic and fall through to option next_step.
+  let triggerMatches = true;
   if (logic.trigger_field && logic.trigger_value) {
     const triggerAnswer = allAnswers[logic.trigger_field];
-    if (String(triggerAnswer) !== String(logic.trigger_value)) return null;
+    if (String(triggerAnswer) !== String(logic.trigger_value)) {
+      triggerMatches = false;
+    }
+  }
+
+  if (!triggerMatches) {
+    // Trigger didn't fire — use option's next_step directly
+    if (step.options) {
+      const selectedOptions = Array.isArray(answer) ? answer : [answer];
+      for (const v of selectedOptions) {
+        const opt = step.options.find(o => o.value === v);
+        if (opt?.next_step && typeof opt.next_step === 'string' && opt.next_step.trim() !== '') {
+          return opt.next_step;
+        }
+      }
+    }
+    return null;
   }
 
   // condition_groups
@@ -191,10 +210,15 @@ function resolveNextStep(step, answer, allAnswers) {
     const selectedOptions = Array.isArray(answer) ? answer : [answer];
     for (const v of selectedOptions) {
       const opt = step.options.find(o => o.value === v);
-      if (opt?.next_step) return opt.next_step;
+      // Use next_step if it's a non-empty string
+      if (opt?.next_step && typeof opt.next_step === 'string' && opt.next_step.trim() !== '') {
+        return opt.next_step;
+      }
     }
   }
-  return logic.next_step || logic.else_step || null;
+  return (logic.next_step && logic.next_step.trim() !== '' ? logic.next_step : null)
+      || (logic.else_step && logic.else_step.trim() !== '' ? logic.else_step : null)
+      || null;
 }
 
 function resolveFieldValue(fieldPath, allAnswers) {
@@ -916,6 +940,7 @@ Deno.serve(async (req) => {
     if (!tenantId || !workflowId) {
       return Response.json({ error: 'tenantId and workflowId are required' }, { status: 400 });
     }
+
 
     // Fetch the workflow
     const workflows = await base44.asServiceRole.entities.Workflow.filter({ id: workflowId });
