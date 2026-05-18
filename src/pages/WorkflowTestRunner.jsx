@@ -198,13 +198,26 @@ export default function WorkflowTestRunnerPage() {
                     <p className="text-sm text-green-700">{result.total_paths} unique paths discovered</p>
                   </div>
                 </div>
-                {result.pdf_url && (
-                  <a href={result.pdf_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="border-green-400 text-green-700 hover:bg-green-100">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download PDF Report
-                    </Button>
-                  </a>
+                {result.pdf_base64 && (
+                  <Button
+                    variant="outline"
+                    className="border-green-400 text-green-700 hover:bg-green-100"
+                    onClick={() => {
+                      const byteChars = atob(result.pdf_base64);
+                      const byteArray = new Uint8Array(byteChars.length);
+                      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+                      const blob = new Blob([byteArray], { type: 'application/pdf' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `workflow_test_${result.workflow_name?.replace(/\s+/g, '_')}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF Report
+                  </Button>
                 )}
               </div>
             </CardContent>
