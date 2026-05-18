@@ -680,7 +680,7 @@ function replayAccountPath(workflow, classificationAnswers) {
     currentStepId = nextStepId;
   }
 
-  return { steps: replaySteps, finalStatus, finalResultStatus, finalResultDescription };
+  return { steps: replaySteps, finalStatus, finalResultStatus, finalResultDescription, accountReportabilityStatus: null, accountReportabilityReason: null };
 }
 
 function generateReplaySection(doc, replayPath, pageW, pageH, margin, contentW, y, statusColors, statusBg) {
@@ -699,29 +699,65 @@ function generateReplaySection(doc, replayPath, pageW, pageH, margin, contentW, 
   doc.text('ACCOUNT CLASSIFICATION REPLAY  ·  Path taken by this specific account', margin + 4, y + 7);
   y += 12;
 
+  // Show the actual account reportability status prominently (from Account entity directly)
+  const accountStatus = replayPath.accountReportabilityStatus;
+  const accountStatusColors = {
+    reportable: [220, 38, 38],
+    non_reportable: [22, 163, 74],
+    pending_review: [202, 138, 4],
+    excluded: [107, 114, 128]
+  };
+  const accountStatusBg = {
+    reportable: [254, 226, 226],
+    non_reportable: [220, 252, 231],
+    pending_review: [254, 249, 195],
+    excluded: [243, 244, 246]
+  };
+
+  if (accountStatus && accountStatus !== 'pending_review') {
+    const aColor = accountStatusColors[accountStatus] || [100, 116, 139];
+    const aBg = accountStatusBg[accountStatus] || [241, 245, 249];
+    doc.setFillColor(...aBg);
+    doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
+    doc.setFillColor(...aColor);
+    doc.rect(margin, y, 5, 18, 'F');
+    doc.setTextColor(...aColor);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`ACCOUNT STATUS: ${accountStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 10, y + 8);
+    if (replayPath.accountReportabilityReason) {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      const reasonLines = doc.splitTextToSize(replayPath.accountReportabilityReason, contentW - 16);
+      doc.text(reasonLines.slice(0, 2), margin + 10, y + 14);
+    }
+    y += 22;
+  }
+
   const status = replayPath.finalStatus || 'unknown';
   const color = statusColors[status] || statusColors.unknown;
   const bgColor = statusBg[status] || statusBg.unknown;
 
-  // Result banner
+  // Workflow path result banner
   doc.setFillColor(...bgColor);
-  doc.roundedRect(margin, y, contentW, 14, 2, 2, 'F');
+  doc.roundedRect(margin, y, contentW, 12, 2, 2, 'F');
   doc.setFillColor(...color);
-  doc.rect(margin, y, 4, 14, 'F');
+  doc.rect(margin, y, 4, 12, 'F');
   doc.setTextColor(...color);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   const resultLabel = replayPath.finalResultStatus
-    ? `RESULT: ${replayPath.finalResultStatus.replace(/_/g, ' ').toUpperCase()}`
-    : `OUTCOME: ${status.replace(/_/g, ' ').toUpperCase()}`;
-  doc.text(resultLabel, margin + 8, y + 6);
+    ? `WORKFLOW PATH RESULT: ${replayPath.finalResultStatus.replace(/_/g, ' ').toUpperCase()}`
+    : `WORKFLOW PATH: ${status.replace(/_/g, ' ').toUpperCase()} (workflow has no result step reached)`;
+  doc.text(resultLabel, margin + 8, y + 5);
   if (replayPath.finalResultDescription) {
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text(replayPath.finalResultDescription, margin + 8, y + 11);
+    doc.text(replayPath.finalResultDescription, margin + 8, y + 10);
   }
-  y += 18;
+  y += 16;
 
   replayPath.steps.forEach((step, stepIdx) => {
     const answerText = step.answer !== null && step.answer !== undefined ? formatAnswer(step.answer, step) : null;
@@ -826,6 +862,10 @@ Deno.serve(async (req) => {
         accountData = accounts[0];
         const classificationAnswers = accountData.classification_answers || {};
         accountReplay = replayAccountPath(workflow, classificationAnswers);
+        if (accountReplay) {
+          accountReplay.accountReportabilityStatus = accountData.reportability_status || null;
+          accountReplay.accountReportabilityReason = accountData.reportability_reason || null;
+        }
       }
     }
 
