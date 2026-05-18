@@ -21,6 +21,7 @@ const STATUS_COLORS = {
 
 export default function WorkflowTestRunnerPage() {
   const [user, setUser] = useState(null);
+  const [tenants, setTenants] = useState([]);
   const [workflows, setWorkflows] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [tenantId, setTenantId] = useState("");
@@ -36,11 +37,14 @@ export default function WorkflowTestRunnerPage() {
       setUser(u);
       if (u?.tenant_id) setTenantId(u.tenant_id);
     });
+    base44.entities.Tenant.list().then(setTenants).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!tenantId) return;
     setLoadingWorkflows(true);
+    setSelectedWorkflowId("");
+    setSelectedAccountId("");
     Promise.all([
       base44.entities.Workflow.filter({ status: "published" }),
       base44.entities.Account.filter({ tenant_id: tenantId }, "-updated_date", 100)
@@ -92,14 +96,19 @@ export default function WorkflowTestRunnerPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="tenantId">Tenant ID</Label>
-              <Input
-                id="tenantId"
-                value={tenantId}
-                onChange={e => setTenantId(e.target.value)}
-                placeholder="Enter tenant ID..."
-                className="font-mono text-sm"
-              />
+              <Label>Tenant</Label>
+              <Select value={tenantId} onValueChange={setTenantId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tenant..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name || t.short_name || t.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
