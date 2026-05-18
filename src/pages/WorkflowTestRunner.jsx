@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
 import { FileText, Play, Download, Loader2, CheckCircle2, AlertCircle, GitBranch, ChevronRight } from "lucide-react";
+import WorkflowAISuggestions from "@/components/workflows/WorkflowAISuggestions";
 
 const STATUS_COLORS = {
   reportable: "bg-red-100 text-red-700 border-red-200",
@@ -247,6 +248,13 @@ export default function WorkflowTestRunnerPage() {
               })()}
             </CardContent>
           </Card>
+
+          {/* AI Suggestions */}
+          <WorkflowAISuggestions
+            pathsSummary={result.paths_summary}
+            workflowName={result.workflow_name}
+            workflowStepCount={selectedWorkflow?.steps?.length || 0}
+          />
 
           {/* Paths Table */}
           <Card>
