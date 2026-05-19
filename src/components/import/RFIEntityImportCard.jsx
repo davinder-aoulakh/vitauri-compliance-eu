@@ -444,21 +444,76 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       cell.alignment = { vertical: "middle", horizontal: "left" };
     };
 
-    // ── Sheet 1: Accounts Data
-    const dataSheet = workbook.addWorksheet("Accounts Data", { properties: { tabColor: { argb: "FF10B981" } } });
+    // ── Sheet 1: Accounts Data  (with section bands, column groups, freeze panes)
+    const dataSheet = workbook.addWorksheet("Accounts Data", {
+      properties: { tabColor: { argb: "FF1E3A5F" } },
+    });
     dataSheet.columns = columns.map(c => ({ key: c.key, width: c.width || 20 }));
+
+    // ROW 1: Colour-coded column headers
     const headerRow = dataSheet.getRow(1);
+    headerRow.height = 36;
     columns.forEach((col, i) => {
       const cell = headerRow.getCell(i + 1);
       cell.value = col.required ? `${col.header} *` : col.header;
-      styleHeader(cell, col.required);
       if (col.note) cell.note = { texts: [{ text: col.note }] };
+
+      // Use section colour instead of the generic styleHeader colours
+      const section = getSectionForKey(col.key);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Calibri" };
+      cell.alignment = { vertical: "bottom", horizontal: "center", wrapText: true };
+      cell.border = {
+        right: { style: "thin", color: { argb: "33FFFFFF" } },
+        bottom: { style: "thin", color: { argb: "33FFFFFF" } },
+      };
     });
-    headerRow.height = 28;
-    dataSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    // ROW 2: Section guide band
+    const guideRow = dataSheet.getRow(2);
+    guideRow.height = 20;
+    const seenSections = new Set();
+    columns.forEach((col, i) => {
+      const cell = guideRow.getCell(i + 1);
+      const section = getSectionForKey(col.key);
+      const isFirst = !seenSections.has(section.id);
+      if (isFirst) {
+        cell.value = section.label;
+        seenSections.add(section.id);
+      } else if (!seenSections.has(section.id + "_sub_written")) {
+        cell.value = section.sublabel;
+        seenSections.add(section.id + "_sub_written");
+      }
+      styleGuideCell(cell, section, isFirst);
+    });
+
+    // COLUMN GROUPS: set outline level 1 on all non-required columns
+    // Collapsed sections start hidden so the user only sees ~79 columns
+    columns.forEach((col, i) => {
+      const section = getSectionForKey(col.key);
+      if (section.id !== "required") {
+        const excelCol = dataSheet.getColumn(i + 1);
+        excelCol.outlineLevel = 1;
+        if (section.collapsed) {
+          excelCol.hidden = true;
+        }
+      }
+    });
+
+    // Show outline summary above columns (so +/− buttons appear at top)
+    dataSheet.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
+
+    // FREEZE PANES: freeze first 5 cols (mandatory) + first 2 rows (header + guide)
+    dataSheet.views = [{
+      state: "frozen",
+      xSplit: 5,
+      ySplit: 2,
+      topLeftCell: "F3",
+      activeCell: "F3",
+    }];
 
     // Apply dropdowns, country dropdowns from ref sheet, and VLOOKUP formulas
-    for (let row = 2; row <= 502; row++) {
+    for (let row = 3; row <= 503; row++) {
       columns.forEach((col, colIdx) => {
         const cell = dataSheet.getCell(row, colIdx + 1);
         if (CODE_TO_NAME_KEY[col.key]) {
@@ -535,16 +590,16 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
 
       columns.forEach((col, colIdx) => {
         const excelColLetter = colLetter(colIdx + 1);
-        const sqRef = `${excelColLetter}2:${excelColLetter}502`;
+        const sqRef = `${excelColLetter}3:${excelColLetter}503`;
 
         if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
           // Black fill + block input when type = "entity"
           // Formula references first row of range with absolute col, relative row (ExcelJS requirement)
           dataSheet.addConditionalFormatting({
             ref: sqRef,
-            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="entity"`], style: { fill: greyFill, font: greyFont } }],
+            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}3="entity"`], style: { fill: greyFill, font: greyFont } }],
           });
-          for (let r = 2; r <= 502; r++) {
+          for (let r = 3; r <= 503; r++) {
             dataSheet.getCell(r, colIdx + 1).dataValidation = {
               type: "custom", allowBlank: true,
               formulae: [`$${ahtLetter}${r}<>"entity"`],
@@ -557,9 +612,9 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           // Black fill + block input when type = "individual"
           dataSheet.addConditionalFormatting({
             ref: sqRef,
-            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}2="individual"`], style: { fill: greyFill, font: greyFont } }],
+            rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}3="individual"`], style: { fill: greyFill, font: greyFont } }],
           });
-          for (let r = 2; r <= 502; r++) {
+          for (let r = 3; r <= 503; r++) {
             dataSheet.getCell(r, colIdx + 1).dataValidation = {
               type: "custom", allowBlank: true,
               formulae: [`$${ahtLetter}${r}<>"individual"`],
@@ -572,24 +627,42 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     }
 
-    // ── Sheet 2: Example
-    const exampleSheet = workbook.addWorksheet("Example", { properties: { tabColor: { argb: "FF6366F1" } } });
-    exampleSheet.columns = columns.map(c => ({ key: c.key, width: c.width || 20 }));
-    const exHeaderRow = exampleSheet.getRow(1);
-    columns.forEach((col, i) => {
-      const cell = exHeaderRow.getCell(i + 1);
-      cell.value = col.required ? `${col.header} *` : col.header;
-      styleHeader(cell, col.required);
-    });
-    exHeaderRow.height = 28;
+    // ── Sheet 2: Instructions
+    const exampleSheet = workbook.addWorksheet("Instructions", { properties: { tabColor: { argb: "FF6366F1" } } });
+    exampleSheet.columns = [{ key: "section", width: 28 }, { key: "instruction", width: 80 }];
+    const instrHeader = exampleSheet.getRow(1);
+    instrHeader.getCell(1).value = "Section / Field";
+    instrHeader.getCell(2).value = "Guidance";
+    styleHeader(instrHeader.getCell(1), false);
+    styleHeader(instrHeader.getCell(2), false);
+    instrHeader.height = 28;
 
-    const exampleRowData = dbTemplate?.example_row || {};
-    if (!dbTemplate?.example_row) {
-      columns.forEach(col => { exampleRowData[col.key] = col.example_value || ""; });
-    }
-    const exRow = exampleSheet.addRow(exampleRowData);
-    exRow.eachCell(cell => {
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+    const instrRows = [
+      ["GENERAL", "Fill in the 'Accounts Data' tab. Each row = one account. Start from row 3."],
+      ["GENERAL", "Columns are colour-coded by section. Row 1 = field name, Row 2 = section band."],
+      ["GENERAL", "Some column groups are hidden by default (collapsed). Click the + button at the top to expand them."],
+      ["🔴 ALWAYS REQUIRED", "entity_id, account_number, account_number_type, account_opening_date, account_type, account_holder_type — must be filled for every row."],
+      ["👤 INDIVIDUAL ONLY", "first_name, last_name, date_of_birth, place_of_birth etc. Leave blank when Account Holder Type = entity."],
+      ["🏢 ENTITY ONLY", "account_holder_name, date_of_incorporation, country_of_incorporation etc. Leave blank when Account Holder Type = individual."],
+      ["⚰️ DECEASED ONLY", "Expand this hidden section only if the account holder is deceased. Otherwise leave collapsed."],
+      ["🏦 TREASURY CENTER ONLY", "Expand only when Potential Exception Type = TreasuryCtr."],
+      ["👥 CONTROLLING PERSONS", "CP 2–4 sections are hidden by default. Expand if the account has multiple controlling persons."],
+      ["📍 ADDRESS", "ah_original_* = account_holder_address (registered). ah_current_* = current_address. Country name columns auto-fill the country code via VLOOKUP."],
+      ["🌍 TAX RESIDENCY", "Up to 2 tax residencies. Country code columns are auto-filled — do not edit them manually."],
+      ["📄 SELF CERTIFICATION", "self_cert_requested = true/false. self_cert_request_date = ISO date (YYYY-MM-DD)."],
+      ["💰 FINANCIAL DATA", "year_end_cash_value and gross_payments accept numbers. Currency columns use the dropdown on the Referenced Data tab."],
+      ["DROPDOWNS", "Use the dropdown lists where available. Values must match exactly (case-insensitive on import)."],
+      ["IMPORT", "Upload this file using the Import button. The AI mapper will auto-match columns to fields."],
+    ];
+    instrRows.forEach(([section, instruction], i) => {
+      const row = exampleSheet.addRow({ section, instruction });
+      row.getCell(1).font = { bold: true, size: 9 };
+      row.getCell(2).font = { size: 9 };
+      row.getCell(2).alignment = { wrapText: true };
+      row.height = 28;
+      row.eachCell(cell => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF" } };
+      });
     });
 
     // ── Sheet 3: Entity Info
@@ -841,13 +914,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         });
         rows.push(values);
       });
-      if (rows.length < 2) { setErrors(["No data rows found in the Excel file"]); return; }
+      if (rows.length < 3) { setErrors(["No data rows found in the Excel file"]); return; }
       headers = rows[0];
+      // Row index 1 is the section guide band — skip it, data starts at index 2
       // Filter out rows where the key identifier columns (account number, account holder type) are all empty
       // This avoids including the 500 empty template rows that still have formula cells
       const accountNumberIdx = headers.findIndex(h => h.replace(" *", "").trim().toLowerCase() === "account number");
       const holderTypeIdx = headers.findIndex(h => h.replace(" *", "").trim().toLowerCase() === "account holder type");
-      data = rows.slice(1).filter(r => {
+      data = rows.slice(2).filter(r => {
         const hasAccountNum = accountNumberIdx >= 0 && r[accountNumberIdx] && r[accountNumberIdx].trim() !== "";
         const hasHolderType = holderTypeIdx >= 0 && r[holderTypeIdx] && r[holderTypeIdx].trim() !== "";
         // Row is valid if it has at least one of these key fields
