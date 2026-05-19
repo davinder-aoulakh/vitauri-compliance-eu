@@ -326,7 +326,7 @@ export default function AutoClassificationRulesPage() {
     { value: "entity.entity_type", label: "Entity: Type", type: "select", options: ["corporation", "trust", "partnership", "fund", "branch", "other"], isRelated: true },
     { value: "entity.country_of_incorporation", label: "Entity: Country of Incorporation", type: "text", isRelated: true },
     { value: "entity.rfi_status", label: "Entity: RFI Status", type: "select", options: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"], isRelated: true },
-    { value: "entity.fi_type", label: "Entity: FI Type", type: "select", options: ["custodial_institution", "depository_institution", "investment_entity_type_a", "investment_entity_type_b", "investment_entity", "specified_insurance_company", "not_applicable"], optionLabels: { custodial_institution: "Custodial Institution", depository_institution: "Depository Institution", investment_entity_type_a: "Investment Entity - Type A", investment_entity_type_b: "Investment Entity - Type B", investment_entity: "Investment Entity (Legacy)", specified_insurance_company: "Specified Insurance Company", not_applicable: "Not Applicable" }, isRelated: true },
+    { value: "entity.fi_type", label: "Entity: FI Type", type: "select", options: ["custodial_institution", "depository_institution", "investment_entity", "specified_insurance_company", "not_applicable"], isRelated: true },
     // CRS S3 gate check
     { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type (S3-1)", type: "select", options: ["inheritance_estate","escrow_court_decree","qualifying_pension","overdraft_deposit","pre_existing_dormant_below_1k","publicly_traded","purely_domestic","international_organization","liquidation_dissolution","none"] },
     // CRS S4-1 routing
@@ -835,7 +835,7 @@ export default function AutoClassificationRulesPage() {
                                   <SelectContent className="max-h-[300px]">
                                     {selectedField.options.map((option) => (
                                       <SelectItem key={option} value={option}>
-                                        {selectedField.optionLabels?.[option] || option}
+                                        {option}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
