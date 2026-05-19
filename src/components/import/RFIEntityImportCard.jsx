@@ -274,6 +274,176 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       ])),
     };
 
+    // ── Section definitions: label, header colour, light fill, whether to collapse by default
+    const SECTION_GROUPS = [
+      {
+        id: "required",
+        label: "🔴 ALWAYS REQUIRED",
+        sublabel: "Fill for every account row",
+        hdrArgb: "FF1E3A5F",
+        lightArgb: "FFE8EDF4",
+        collapsed: false,
+        keyMatch: (key) => ["entity_id","account_number","account_number_type","account_opening_date","account_type","account_holder_type"].includes(key),
+      },
+      {
+        id: "individual",
+        label: "👤 INDIVIDUAL ONLY",
+        sublabel: "Skip if Account Holder Type = entity",
+        hdrArgb: "FF1565C0",
+        lightArgb: "FFE3F0FC",
+        collapsed: false,
+        keyMatch: (key) => ["first_name","middle_name","last_name","name_prefix","title","date_of_birth","place_of_birth"].includes(key),
+      },
+      {
+        id: "entity",
+        label: "🏢 ENTITY ONLY",
+        sublabel: "Skip if Account Holder Type = individual",
+        hdrArgb: "FF0A7373",
+        lightArgb: "FFE0F5F5",
+        collapsed: false,
+        keyMatch: (key) => ["type_of_financial_institution","account_holder_entity_type","account_holder_name",
+          "date_of_incorporation","country_of_incorporation","country_of_incorporation_code"].includes(key),
+      },
+      {
+        id: "status",
+        label: "📋 ACCOUNT STATUS",
+        sublabel: "Fill as applicable",
+        hdrArgb: "FF37474F",
+        lightArgb: "FFECEFF1",
+        collapsed: false,
+        keyMatch: (key) => ["is_pre_existing","is_recalcitrant","account_holder_is_alive",
+          "account_holder_deceased_during_period","account_closed_during_period",
+          "account_frozen_at_reporting_date","account_dormant_at_reporting_date","status"].includes(key),
+      },
+      {
+        id: "deceased",
+        label: "⚰️ DECEASED ONLY",
+        sublabel: "Skip unless account holder is deceased — expand if needed",
+        hdrArgb: "FF6A1B9A",
+        lightArgb: "FFF3E5F5",
+        collapsed: true,
+        keyMatch: (key) => ["death_certificate_requested","death_certificate_received",
+          "will_or_inheritance_requested","will_or_inheritance_received","legacy_of_deceased_settled"].includes(key),
+      },
+      {
+        id: "address",
+        label: "📍 ADDRESS & CONTACT",
+        sublabel: "Original and current address fields",
+        hdrArgb: "FF2E7D32",
+        lightArgb: "FFE8F5E9",
+        collapsed: false,
+        keyMatch: (key) => key.startsWith("ah_original") || key.startsWith("ah_current")
+          || key.startsWith("ah_country_of_res") || ["acct_holder_address_unchanged",
+            "current_email","current_phone"].includes(key),
+      },
+      {
+        id: "classif",
+        label: "🏷️ ENTITY CLASSIFICATION",
+        sublabel: "CRS classification — entities only",
+        hdrArgb: "FFE65100",
+        lightArgb: "FFFFF3E0",
+        collapsed: false,
+        keyMatch: (key) => ["entity_classification","entity_managed_by_fiduciary_trust",
+          "entity_managed_by_asset_manager","gross_income_from_financial_assets",
+          "gross_income_50_passive","non_reportable_exception_type","potential_exception_type"].includes(key),
+      },
+      {
+        id: "treasury",
+        label: "🏦 TREASURY CENTER ONLY",
+        sublabel: "Fill only when Potential Exception Type = TreasuryCtr — expand if needed",
+        hdrArgb: "FFBF360C",
+        lightArgb: "FFFBE9E7",
+        collapsed: true,
+        keyMatch: (key) => key.startsWith("treasury_"),
+      },
+      {
+        id: "financial",
+        label: "💰 FINANCIAL DATA",
+        sublabel: "Year-end balances and reporting year",
+        hdrArgb: "FF1B5E20",
+        lightArgb: "FFF1F8E9",
+        collapsed: false,
+        keyMatch: (key) => ["year_end_cash_value","year_end_cash_value_currency","gross_payments",
+          "gross_payments_currency","reporting_year","us_person_indic"].includes(key),
+      },
+      {
+        id: "scert",
+        label: "📄 SELF CERTIFICATION",
+        sublabel: "SC request and receipt tracking",
+        hdrArgb: "FF4A148C",
+        lightArgb: "FFEDE7F6",
+        collapsed: false,
+        keyMatch: (key) => ["self_certification_overdue","self_cert_requested","self_cert_request_date",
+          "self_certification_obtained","self_cert_receipt_date"].includes(key),
+      },
+      {
+        id: "taxres",
+        label: "🌍 TAX RESIDENCY",
+        sublabel: "Account holder tax residency — up to 2 countries",
+        hdrArgb: "FF004D40",
+        lightArgb: "FFE0F2F1",
+        collapsed: false,
+        keyMatch: (key) => ["tax1_country","tax1_country_code","tax1_tin",
+          "tax2_country","tax2_country_code","tax2_tin"].includes(key),
+      },
+      {
+        id: "cp1",
+        label: "👥 CONTROLLING PERSON 1",
+        sublabel: "Required for P-NFE / FI entity accounts",
+        hdrArgb: "FFB71C1C",
+        lightArgb: "FFFFEBEE",
+        collapsed: false,
+        keyMatch: (key) => key.startsWith("cp1_"),
+      },
+      {
+        id: "cp2",
+        label: "👥 CONTROLLING PERSON 2",
+        sublabel: "Add if more than 1 controlling person — expand if needed",
+        hdrArgb: "FF880E4F",
+        lightArgb: "FFFCE4EC",
+        collapsed: true,
+        keyMatch: (key) => key.startsWith("cp2_"),
+      },
+      {
+        id: "cp3",
+        label: "👥 CONTROLLING PERSON 3",
+        sublabel: "Add if more than 2 controlling persons — expand if needed",
+        hdrArgb: "FF4A148C",
+        lightArgb: "FFF3E5F5",
+        collapsed: true,
+        keyMatch: (key) => key.startsWith("cp3_"),
+      },
+      {
+        id: "cp4",
+        label: "👥 CONTROLLING PERSON 4",
+        sublabel: "Add if more than 3 controlling persons — expand if needed",
+        hdrArgb: "FF1A237E",
+        lightArgb: "FFE8EAF6",
+        collapsed: true,
+        keyMatch: (key) => key.startsWith("cp4_"),
+      },
+    ];
+
+    // Helper: find section for a given column key
+    const getSectionForKey = (key) => {
+      return SECTION_GROUPS.find(sg => sg.keyMatch(key)) || SECTION_GROUPS[0];
+    };
+
+    // Helper: style a section guide cell (row 2)
+    const styleGuideCell = (cell, section, isFirstInSection) => {
+      cell.fill = {
+        type: "pattern", pattern: "solid",
+        fgColor: { argb: isFirstInSection ? section.hdrArgb : section.lightArgb },
+      };
+      cell.font = {
+        bold: isFirstInSection,
+        color: { argb: isFirstInSection ? "FFFFFFFF" : "FF222222" },
+        size: isFirstInSection ? 9 : 8,
+        italic: !isFirstInSection,
+      };
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+    };
+
     // ── Sheet 1: Accounts Data
     const dataSheet = workbook.addWorksheet("Accounts Data", { properties: { tabColor: { argb: "FF10B981" } } });
     dataSheet.columns = columns.map(c => ({ key: c.key, width: c.width || 20 }));
