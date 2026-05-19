@@ -42,14 +42,23 @@ Deno.serve(async (req) => {
   let skipped = 0;
   const results = [];
 
+  // Pre-load the entity so entity.* fields (e.g. entity.fi_type) can be resolved
+  let entityRecord = null;
+  try {
+    const entityRecords = await base44.asServiceRole.entities.Entity.filter({ id: entityId });
+    entityRecord = entityRecords[0] || null;
+  } catch (_e) { /* ignore */ }
+
   for (const account of accounts) {
+    // Attach entity data so conditions like entity.fi_type resolve correctly
+    const accountWithEntity = { ...account, entity: entityRecord || {} };
+
     let matchedRule = null;
 
     if (ruleId) {
-      // For single rule run: apply it regardless (still evaluate conditions)
-      matchedRule = evaluateRule(rules[0], account) ? rules[0] : null;
+      matchedRule = evaluateRule(rules[0], accountWithEntity) ? rules[0] : null;
     } else {
-      matchedRule = rules.find(rule => evaluateRule(rule, account));
+      matchedRule = rules.find(rule => evaluateRule(rule, accountWithEntity));
     }
 
     if (matchedRule) {
