@@ -378,17 +378,26 @@ function formatAnswer(answer, step) {
     if (answer.street) return `${answer.street}, ${answer.city}, ${answer.country}`;
     return Object.entries(answer).map(([k, v]) => `${k}: ${v}`).join(' | ');
   }
-  // Resolve single option label
   const opt = step?.options?.find(o => o.value === String(answer));
   return opt ? opt.label : String(answer);
 }
 
+function formatAccountField(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'object') {
+    if (value.street) return [value.street, value.city, value.state, value.country].filter(Boolean).join(', ');
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, accountData) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageW = 210;
+  // Landscape A3 for wide horizontal test script layout
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+  const pageW = 420;
   const pageH = 297;
-  const margin = 15;
-  const contentW = pageW - margin * 2;
+  const margin = 10;
 
   const STATUS_COLORS = {
     reportable: [220, 38, 38],
@@ -412,318 +421,360 @@ function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, ac
     unknown: [241, 245, 249]
   };
 
+  // ── Page 1: Account Info + Summary ──────────────────────────────────────────
   let y = margin;
 
-  const checkPage = (needed = 10) => {
-    if (y + needed > pageH - 20) {
-      doc.addPage();
-      y = margin;
-    }
-  };
-
-  const writeLine = (text, fontSize, bold, color, x, indent = 0) => {
-    doc.setFontSize(fontSize);
-    doc.setFont('helvetica', bold ? 'bold' : 'normal');
-    doc.setTextColor(...color);
-    const lines = doc.splitTextToSize(text, contentW - indent);
-    checkPage(lines.length * (fontSize * 0.4 + 1) + 2);
-    doc.text(lines, x + indent, y);
-    y += lines.length * (fontSize * 0.4 + 1) + 1;
-    return lines.length;
-  };
-
-  // Header
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, pageW, 24, 'F');
+  // Header banner
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pageW, 18, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(15);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('Workflow Test Report', margin, 15);
+  doc.text('Workflow Test Script Execution Report', margin, 12);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Generated: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`, pageW - margin, 15, { align: 'right' });
-  y = 30;
+  doc.text(`Generated: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`, pageW - margin, 12, { align: 'right' });
+  y = 22;
 
-  // Info block
-  doc.setFillColor(241, 245, 249);
-  doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(workflowName, margin + 4, y + 6);
+  // Workflow info row
+  doc.setFillColor(30, 41, 59);
+  doc.rect(margin, y, pageW - margin * 2, 10, 'F');
+  doc.setTextColor(148, 163, 184);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`Tenant: ${tenantId}   ·   Account: ${accountId || 'N/A'}   ·   Total Paths Found: ${paths.length}`, margin + 4, y + 13);
-  y += 22;
+  doc.text('WORKFLOW', margin + 3, y + 4);
+  doc.text('TENANT', margin + 120, y + 4);
+  doc.text('TOTAL PATHS', margin + 240, y + 4);
+  doc.text('ACCOUNT', margin + 320, y + 4);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  const wfNameTrunc = workflowName.length > 60 ? workflowName.substring(0, 57) + '...' : workflowName;
+  doc.text(wfNameTrunc, margin + 3, y + 9);
+  doc.text(tenantId, margin + 120, y + 9);
+  doc.text(String(paths.length), margin + 240, y + 9);
+  doc.text(accountId || 'N/A', margin + 320, y + 9);
+  y += 14;
 
-  // Account Replay Section (if available)
-  if (accountReplay) {
-    y = generateReplaySection(doc, accountReplay, pageW, pageH, margin, contentW, y, STATUS_COLORS, STATUS_BG);
+  // ── Account Data Header Card ─────────────────────────────────────────────
+  if (accountData) {
+    const cardX = margin;
+    const cardY = y;
+    const cardW = pageW - margin * 2;
+
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(cardX, cardY, cardW, 6, 1, 1, 'F');
+    doc.setFillColor(70, 79, 235);
+    doc.rect(cardX, cardY, cardW, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ACCOUNT DETAILS', cardX + 4, cardY + 4.5);
+    y += 7;
+
+    // Two rows of account fields
+    const addrCurrent = accountData.current_address || accountData.account_holder_address;
+    const addrOriginal = accountData.account_holder_address || accountData.current_address;
+    const isPreExisting = accountData.is_pre_existing === true ? 'Pre-Existing' : accountData.is_pre_existing === false ? 'New' : '—';
+    const balance = accountData.year_end_cash_value;
+    const valueThreshold = balance !== undefined && balance !== null
+      ? (Number(balance) >= 1000000 ? 'High Value (≥1M)' : 'Low Value (<1M)')
+      : '—';
+
+    const accountFields = [
+      { label: 'Account Holder', value: accountData.account_holder_name || [accountData.first_name, accountData.last_name].filter(Boolean).join(' ') || '—' },
+      { label: 'Account Number', value: accountData.account_number || '—' },
+      { label: 'Account Type', value: accountData.account_type ? accountData.account_type.replace(/_/g, ' ') : '—' },
+      { label: 'Pre-Existing / New', value: isPreExisting },
+      { label: 'Value Category', value: valueThreshold },
+      { label: 'Year End Balance', value: balance !== undefined && balance !== null ? `${accountData.year_end_cash_value_currency || ''} ${Number(balance).toLocaleString()}`.trim() : '—' },
+      { label: 'Holder Type', value: accountData.account_holder_type || '—' },
+      { label: 'Reportability Status', value: accountData.reportability_status ? accountData.reportability_status.replace(/_/g, ' ') : '—' },
+      { label: 'Current Address', value: formatAccountField(addrCurrent) },
+      { label: 'Original/Holder Address', value: formatAccountField(addrOriginal) },
+    ];
+
+    const fieldsPerRow = 5;
+    const rows = [accountFields.slice(0, fieldsPerRow), accountFields.slice(fieldsPerRow)];
+    const colW2 = cardW / fieldsPerRow;
+
+    rows.forEach((rowFields, rowIdx) => {
+      const rowY = y + rowIdx * 14;
+      rowFields.forEach((field, colIdx) => {
+        const fx = cardX + colIdx * colW2;
+        const fy = rowY;
+        doc.setFillColor(rowIdx % 2 === 0 ? 241 : 248, rowIdx % 2 === 0 ? 245 : 250, rowIdx % 2 === 0 ? 249 : 252);
+        doc.rect(fx, fy, colW2 - 1, 13, 'F');
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        doc.text(field.label.toUpperCase(), fx + 2, fy + 4);
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        const valTrunc = field.value.length > 38 ? field.value.substring(0, 35) + '...' : field.value;
+        doc.text(valTrunc, fx + 2, fy + 10);
+      });
+    });
+
+    y += rows.length * 14 + 5;
   }
 
-  // Outcome summary counts
+  // ── Outcome summary pills ────────────────────────────────────────────────
   const counts = {};
   paths.forEach(p => { counts[p.finalStatus] = (counts[p.finalStatus] || 0) + 1; });
   const summaryEntries = Object.entries(counts);
-  const colW = contentW / Math.min(summaryEntries.length, 4);
-  summaryEntries.forEach(([ status, count ], i) => {
-    const col = i % 4;
-    const row = Math.floor(i / 4);
-    const bx = margin + col * colW;
-    const by = y + row * 16;
+  const pillW = 50;
+  summaryEntries.forEach(([status, count], i) => {
+    const px = margin + i * (pillW + 3);
     const bg = STATUS_BG[status] || STATUS_BG.unknown;
     const fg = STATUS_COLORS[status] || STATUS_COLORS.unknown;
     doc.setFillColor(...bg);
-    doc.roundedRect(bx, by, colW - 2, 13, 1.5, 1.5, 'F');
+    doc.roundedRect(px, y, pillW, 10, 1.5, 1.5, 'F');
     doc.setTextColor(...fg);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(String(count), bx + colW/2 - 1, by + 7, { align: 'center' });
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(status.replace(/_/g, ' ').toUpperCase(), bx + colW/2 - 1, by + 11, { align: 'center' });
-  });
-  const summaryRows = Math.ceil(summaryEntries.length / 4);
-  y += summaryRows * 16 + 6;
-
-  // Summary table
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 41, 59);
-  doc.text('All Test Paths', margin, y);
-  y += 5;
-
-  // Table header
-  doc.setFillColor(51, 65, 85);
-  doc.rect(margin, y, contentW, 7, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text('#', margin + 3, y + 5);
-  doc.text('Steps Traversed', margin + 14, y + 5);
-  doc.text('Cnt', margin + contentW - 32, y + 5);
-  doc.text('Outcome', margin + contentW - 23, y + 5);
-  y += 7;
-
-  paths.forEach((path, idx) => {
-    checkPage(8);
-    const color = STATUS_COLORS[path.finalStatus] || STATUS_COLORS.unknown;
-    doc.setFillColor(idx % 2 === 0 ? 248 : 255, idx % 2 === 0 ? 250 : 255, idx % 2 === 0 ? 252 : 255);
-    doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.text(String(idx + 1), margin + 3, y + 5);
-    // Use step titles (not IDs) for readability
-    const stepSummary = path.steps.map(s => s.stepTitle || s.stepId).join(' → ');
-    const truncated = stepSummary.length > 100 ? stepSummary.substring(0, 97) + '...' : stepSummary;
-    doc.text(truncated, margin + 14, y + 5);
-    doc.text(String(path.steps.length), margin + contentW - 30, y + 5);
-    doc.setTextColor(...color);
-    doc.setFont('helvetica', 'bold');
-    const outcomeLabel = (path.finalStatus || 'unknown').replace(/_/g, ' ').toUpperCase();
-    doc.text(outcomeLabel.substring(0, 16), margin + contentW - 21, y + 5);
-    y += 7;
-  });
-
-  y += 10;
-
-  // ─── Detailed Path Sections ───────────────────────────────────────────────
-  paths.forEach((path, pathIdx) => {
-    checkPage(25);
-
-    const status = path.finalStatus || 'unknown';
-    const color = STATUS_COLORS[status] || STATUS_COLORS.unknown;
-    const bgColor = STATUS_BG[status] || STATUS_BG.unknown;
-
-    // Find the result step if any (explicit result-type step in workflow)
-    const resultStep = path.steps.find(s => s.questionType === 'result' || s.resultStatus);
-
-    // Also look for post_completion_actions on the last step that set a result
-    // (some workflows don't use result steps but use post_completion_actions with from_workflow_outcome)
-    const lastStep = path.steps[path.steps.length - 1];
-
-    // Path header banner
-    const headerColor = resultStep?.resultStatus
-      ? (STATUS_COLORS[resultStep.resultStatus] || color)
-      : color;
-    const headerOutcome = resultStep?.resultStatus
-      ? resultStep.resultStatus.replace(/_/g, ' ').toUpperCase()
-      : status.replace(/_/g, ' ').toUpperCase();
-    doc.setFillColor(...headerColor);
-    doc.rect(margin, y, contentW, 10, 'F');
-    doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(`PATH ${pathIdx + 1}  ·  OUTCOME: ${headerOutcome}  ·  ${path.steps.length} STEPS`, margin + 4, y + 7);
-    y += 12;
+    doc.text(String(count), px + pillW / 2, y + 5.5, { align: 'center' });
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(status.replace(/_/g, ' ').toUpperCase(), px + pillW / 2, y + 9.5, { align: 'center' });
+  });
+  y += 14;
 
-    // Show classification result card if this path has a result step
-    if (resultStep) {
-      const rColor = STATUS_COLORS[resultStep.resultStatus] || color;
-      const rBg = STATUS_BG[resultStep.resultStatus] || bgColor;
-      checkPage(20);
-      doc.setFillColor(...rBg);
-      doc.roundedRect(margin, y, contentW, 16, 2, 2, 'F');
-      doc.setFillColor(...rColor);
-      doc.rect(margin, y, 5, 16, 'F');
-      doc.setTextColor(...rColor);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`CLASSIFICATION RESULT: ${resultStep.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 10, y + 6);
-      if (resultStep.resultDescription) {
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(71, 85, 105);
-        const descLines = doc.splitTextToSize(resultStep.resultDescription, contentW - 16);
-        doc.text(descLines.slice(0, 2), margin + 10, y + 12);
+  // ── Page 2+: Horizontal Test Script Matrix ─────────────────────────────────
+  // Collect all unique step IDs in order they appear across paths
+  const stepOrder = [];
+  const stepTitleMap = {};
+  for (const path of paths) {
+    for (const s of path.steps) {
+      if (!stepOrder.includes(s.stepId)) {
+        stepOrder.push(s.stepId);
+        stepTitleMap[s.stepId] = s.stepTitle || s.stepId;
       }
-      y += 20;
     }
+  }
 
-    // When there's no result-type step but the account has a known reportability status,
-    // show it as a classification complete card on terminal paths.
-    if (!resultStep && status === 'terminal' && accountReplay?.accountReportabilityStatus && accountReplay.accountReportabilityStatus !== 'pending_review') {
-      const acctStatus = accountReplay.accountReportabilityStatus;
-      const acctColor = STATUS_COLORS[acctStatus] || [100, 116, 139];
-      const acctBg = STATUS_BG[acctStatus] || [241, 245, 249];
-      checkPage(22);
-      doc.setFillColor(...acctBg);
-      doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
-      doc.setFillColor(...acctColor);
-      doc.rect(margin, y, 5, 18, 'F');
-      doc.setTextColor(...acctColor);
-      doc.setFontSize(9);
+  // Fixed columns: Test Case# | Outcome | Steps Count | then one per step
+  const fixedCols = [
+    { key: 'tc', label: 'Test\nCase', width: 14 },
+    { key: 'outcome', label: 'Outcome', width: 28 },
+    { key: 'steps', label: 'Steps\nCount', width: 14 },
+  ];
+
+  // Dynamic step columns — truncate title for header
+  const stepCols = stepOrder.map(stepId => ({
+    key: stepId,
+    label: stepTitleMap[stepId],
+    width: 28
+  }));
+
+  const allCols = [...fixedCols, ...stepCols];
+  const totalTableW = allCols.reduce((sum, c) => sum + c.width, 0);
+
+  // How many step-columns fit per page
+  const pageContentW = pageW - margin * 2;
+  const fixedW = fixedCols.reduce((sum, c) => sum + c.width, 0);
+  const stepColsPerPage = Math.floor((pageContentW - fixedW) / 28);
+
+  const rowH = 10; // height per data row
+  const headerH = 16; // header row height (two lines for step title)
+
+  // Chunk step columns into pages
+  const stepChunks = [];
+  for (let i = 0; i < stepCols.length; i += stepColsPerPage) {
+    stepChunks.push(stepCols.slice(i, i + stepColsPerPage));
+  }
+  if (stepChunks.length === 0) stepChunks.push([]);
+
+  stepChunks.forEach((chunkCols, chunkIdx) => {
+    doc.addPage();
+    let py = margin;
+
+    // Mini header on each page
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageW, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${workflowName}  —  Test Script Matrix`, margin, 7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Page ${chunkIdx + 2}  ·  Steps ${chunkIdx * stepColsPerPage + 1}–${Math.min((chunkIdx + 1) * stepColsPerPage, stepCols.length)} of ${stepCols.length}`, pageW - margin, 7, { align: 'right' });
+    py = 14;
+
+    const pageCols = [...fixedCols, ...chunkCols];
+    let cx = margin;
+
+    // Column headers
+    doc.setFillColor(30, 41, 59);
+    doc.rect(margin, py, pageCols.reduce((s, c) => s + c.width, 0), headerH, 'F');
+    cx = margin;
+    pageCols.forEach((col, ci) => {
+      // Separator
+      if (ci > 0) {
+        doc.setDrawColor(71, 85, 105);
+        doc.setLineWidth(0.3);
+        doc.line(cx, py, cx, py + headerH);
+      }
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(6);
       doc.setFont('helvetica', 'bold');
-      doc.text(`CLASSIFICATION COMPLETE: ${acctStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 10, y + 7);
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      if (accountReplay.accountReportabilityReason) {
-        const rLines = doc.splitTextToSize(accountReplay.accountReportabilityReason, contentW - 16);
-        doc.text(rLines.slice(0, 1), margin + 10, y + 13);
+
+      // Column number (step index)
+      if (col.key !== 'tc' && col.key !== 'outcome' && col.key !== 'steps') {
+        const stepIdx = stepOrder.indexOf(col.key);
+        doc.setTextColor(148, 163, 184);
+        doc.setFontSize(5.5);
+        doc.text(`STEP ${stepIdx + 1}`, cx + col.width / 2, py + 4.5, { align: 'center' });
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(6);
       } else {
-        doc.text('Account classification outcome (set via post-completion actions)', margin + 10, y + 13);
-      }
-      y += 22;
-    } else if (!resultStep && status === 'terminal') {
-      checkPage(12);
-      doc.setFillColor(241, 245, 249);
-      doc.roundedRect(margin, y, contentW, 10, 1.5, 1.5, 'F');
-      doc.setFillColor(100, 116, 139);
-      doc.rect(margin, y, 3, 10, 'F');
-      doc.setTextColor(71, 85, 105);
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'italic');
-      doc.text('Path ends here — no explicit result step. Classification determined by post-completion actions.', margin + 7, y + 7);
-      y += 13;
-    }
-
-    // Step-by-step detail
-    path.steps.forEach((step, stepIdx) => {
-      const answerText = step.answer !== null && step.answer !== undefined ? formatAnswer(step.answer, step) : null;
-      const isResultStep = step.questionType === 'result' || step.resultStatus;
-
-      // Calculate height needed
-      const titleLines = doc.splitTextToSize(step.stepTitle || step.stepId, contentW - 8);
-      const answerLines = answerText ? doc.splitTextToSize(`Answer: ${answerText}`, contentW - 16) : [];
-      const blockH = 6 + titleLines.length * 5 + (answerLines.length > 0 ? answerLines.length * 4.5 + 3 : 0) + (isResultStep ? 8 : 0) + (step.loopsBackTo ? 8 : 0) + (step.missingNextStep ? 8 : 0) + 4;
-      checkPage(blockH + 2);
-
-      // Step block background
-      if (isResultStep) {
-        doc.setFillColor(...bgColor);
-      } else {
-        doc.setFillColor(248, 250, 252);
-      }
-      doc.roundedRect(margin, y, contentW, blockH, 1.5, 1.5, 'F');
-
-      // Left accent bar
-      doc.setFillColor(...color);
-      doc.rect(margin, y, 3, blockH, 'F');
-
-      // Step number
-      doc.setTextColor(...color);
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`STEP ${stepIdx + 1}`, margin + 6, y + 5);
-
-      // Question type badge
-      doc.setFontSize(6.5);
-      doc.setTextColor(100, 116, 139);
-      doc.setFont('helvetica', 'normal');
-      doc.text(step.questionType?.replace(/_/g, ' ') || '', margin + contentW - 3, y + 5, { align: 'right' });
-
-      // Step title
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'bold');
-      let lineY = y + 10;
-      doc.text(titleLines, margin + 6, lineY);
-      lineY += titleLines.length * 5 + 2;
-
-      // Answer
-      if (answerLines.length > 0) {
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(71, 85, 105);
-        doc.text('Answer:', margin + 6, lineY);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text(answerLines, margin + 20, lineY);
-        lineY += answerLines.length * 4.5 + 2;
+        doc.setTextColor(148, 163, 184);
+        doc.setFontSize(5.5);
+        doc.text(' ', cx + col.width / 2, py + 4.5, { align: 'center' });
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(6);
       }
 
-      // Result status (for result steps)
-      if (isResultStep && step.resultStatus) {
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...color);
-        doc.text(`OUTCOME: ${step.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 6, lineY + 3);
-        if (step.resultDescription) {
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(71, 85, 105);
-          const descLines = doc.splitTextToSize(step.resultDescription, contentW - 14);
-          doc.text(descLines.slice(0, 2), margin + 6, lineY + 8);
-        }
-      }
-
-      // Missing step warning
-      if (step.missingNextStep) {
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(124, 58, 237);
-        doc.text(`⚠ Next step not found in workflow: "${step.missingNextStep}"`, margin + 6, lineY + 3);
-      }
-
-      // Loop annotation
-      if (step.loopsBackTo) {
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(234, 88, 12);
-        const loopText = `↩ This step loops back to: "${step.loopsBackToTitle || step.loopsBackTo}" — retry loop in workflow`;
-        const loopLines = doc.splitTextToSize(loopText, contentW - 14);
-        doc.text(loopLines, margin + 6, lineY + 3);
-      }
-
-      y += blockH + 2;
+      // Title lines (wrap at column width)
+      const titleLines = doc.splitTextToSize(col.label, col.width - 3);
+      const maxLines = 2;
+      titleLines.slice(0, maxLines).forEach((line, li) => {
+        doc.text(line, cx + col.width / 2, py + 8 + li * 4, { align: 'center' });
+      });
+      cx += col.width;
     });
+    py += headerH;
 
-    y += 8;
+    // Draw each path as a row
+    paths.forEach((path, pathIdx) => {
+      const rowY = py;
+
+      // Check if we need a new page
+      if (rowY + rowH > pageH - 10) {
+        doc.addPage();
+        py = margin + 4;
+        // Reprint headers
+        doc.setFillColor(30, 41, 59);
+        doc.rect(margin, py, pageCols.reduce((s, c) => s + c.width, 0), headerH, 'F');
+        cx = margin;
+        pageCols.forEach((col, ci) => {
+          if (ci > 0) { doc.setDrawColor(71, 85, 105); doc.setLineWidth(0.3); doc.line(cx, py, cx, py + headerH); }
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'bold');
+          const titleLines = doc.splitTextToSize(col.label, col.width - 3);
+          titleLines.slice(0, 2).forEach((line, li) => {
+            doc.text(line, cx + col.width / 2, py + 8 + li * 4, { align: 'center' });
+          });
+          cx += col.width;
+        });
+        py += headerH;
+      }
+
+      const status = path.finalStatus || 'unknown';
+      const resultStep = path.steps.find(s => s.questionType === 'result' || s.resultStatus);
+      const outcomeStatus = resultStep?.resultStatus || status;
+      const rowColor = STATUS_COLORS[outcomeStatus] || STATUS_COLORS.unknown;
+      const rowBg = STATUS_BG[outcomeStatus] || STATUS_BG.unknown;
+
+      // Alternate row background
+      const baseRowBg = pathIdx % 2 === 0 ? [255, 255, 255] : [248, 250, 252];
+
+      cx = margin;
+      pageCols.forEach((col, ci) => {
+        // Cell background
+        if (col.key === 'outcome') {
+          doc.setFillColor(...rowBg);
+        } else {
+          doc.setFillColor(...baseRowBg);
+        }
+        doc.rect(cx, rowY, col.width, rowH, 'F');
+
+        // Cell border
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.rect(cx, rowY, col.width, rowH, 'S');
+
+        // Cell content
+        if (col.key === 'tc') {
+          doc.setTextColor(100, 116, 139);
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`TC${String(pathIdx + 1).padStart(3, '0')}`, cx + col.width / 2, rowY + 6.5, { align: 'center' });
+        } else if (col.key === 'outcome') {
+          doc.setTextColor(...rowColor);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'bold');
+          const outcomeLabel = outcomeStatus.replace(/_/g, ' ').toUpperCase();
+          const outLines = doc.splitTextToSize(outcomeLabel, col.width - 3);
+          outLines.slice(0, 2).forEach((line, li) => {
+            doc.text(line, cx + col.width / 2, rowY + 4 + li * 4, { align: 'center' });
+          });
+        } else if (col.key === 'steps') {
+          doc.setTextColor(71, 85, 105);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.text(String(path.steps.length), cx + col.width / 2, rowY + 6.5, { align: 'center' });
+        } else {
+          // Step answer cell
+          const pathStep = path.steps.find(s => s.stepId === col.key);
+          if (!pathStep) {
+            // Step not visited in this path — grey N/A
+            doc.setFillColor(245, 245, 245);
+            doc.rect(cx + 0.5, rowY + 0.5, col.width - 1, rowH - 1, 'F');
+            doc.setTextColor(200, 200, 200);
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'italic');
+            doc.text('—', cx + col.width / 2, rowY + 6.5, { align: 'center' });
+          } else if (pathStep.questionType === 'result' || pathStep.resultStatus) {
+            // Result step
+            doc.setFillColor(...rowBg);
+            doc.rect(cx + 0.5, rowY + 0.5, col.width - 1, rowH - 1, 'F');
+            doc.setTextColor(...rowColor);
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'bold');
+            const rsLabel = (pathStep.resultStatus || 'RESULT').replace(/_/g, ' ').toUpperCase();
+            const rsLines = doc.splitTextToSize(rsLabel, col.width - 3);
+            rsLines.slice(0, 2).forEach((line, li) => {
+              doc.text(line, cx + col.width / 2, rowY + 4 + li * 3.5, { align: 'center' });
+            });
+          } else if (pathStep.loopsBackTo) {
+            doc.setTextColor(234, 88, 12);
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'italic');
+            doc.text('↩ LOOP', cx + col.width / 2, rowY + 6.5, { align: 'center' });
+          } else if (pathStep.missingNextStep) {
+            doc.setTextColor(124, 58, 237);
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'bold');
+            doc.text('⚠ MISSING', cx + col.width / 2, rowY + 6.5, { align: 'center' });
+          } else {
+            const answerText = formatAnswer(pathStep.answer, pathStep);
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'normal');
+            const truncAns = answerText.length > 18 ? answerText.substring(0, 16) + '…' : answerText;
+            doc.text(truncAns, cx + col.width / 2, rowY + 6.5, { align: 'center' });
+          }
+        }
+
+        cx += col.width;
+      });
+
+      py += rowH;
+    });
   });
 
-  // Page numbers
+  // ── Page footers ──────────────────────────────────────────────────────────
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFillColor(241, 245, 249);
-    doc.rect(0, pageH - 12, pageW, 12, 'F');
-    doc.setFontSize(7);
+    doc.rect(0, pageH - 8, pageW, 8, 'F');
+    doc.setFontSize(6);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Workflow Test Report  ·  Page ${i} of ${pageCount}`, pageW / 2, pageH - 5, { align: 'center' });
+    doc.text(`Workflow Test Script Execution Report  ·  ${workflowName}  ·  Page ${i} of ${pageCount}`, pageW / 2, pageH - 3, { align: 'center' });
   }
 
   return doc;
