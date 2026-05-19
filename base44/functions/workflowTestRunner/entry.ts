@@ -1,10 +1,9 @@
 /**
  * Automated Workflow Test Runner
- * Traverses all possible paths through a workflow and generates a PDF test report.
- * Does NOT touch runAutoClassification.js.
+ * Traverses all possible paths and generates an Excel (.xlsx) test script report.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { jsPDF } from 'npm:jspdf@4.0.0';
+import ExcelJS from 'npm:exceljs@4.4.0';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -18,7 +17,7 @@ const SYNTHETIC_ANSWERS = {
     postal_code: '12345', country: 'Netherlands'
   }],
   file_upload: [{ file_url: 'https://example.com/test.pdf', file_name: 'test.pdf', file_size: 1024, date_received: '2025-01-01' }],
-  multi_field_input: null, // built dynamically
+  multi_field_input: null,
   beneficiary_input: [{ savedBeneficiaries: [{ first_name: 'Test', last_name: 'Beneficiary' }] }],
   controlling_person_input: [{ savedPersons: [{ first_name: 'Test', last_name: 'Person' }] }],
   info: [null],
@@ -26,8 +25,6 @@ const SYNTHETIC_ANSWERS = {
 };
 
 function buildMultiFieldAnswers(step) {
-  // Generate both boolean variants (true/false) if any boolean fields exist
-  // to cover both branches of conditional logic
   const hasBooleans = (step.multi_fields || []).some(f => f.field_type === 'boolean');
   const buildAnswer = (boolVal) => {
     const answer = {};
@@ -51,7 +48,6 @@ function getSyntheticAnswers(step) {
     return step.options?.length > 0 ? step.options.map(o => o.value) : ['YES', 'NO'];
   }
   if (step.question_type === 'multiple_choice') {
-    // Generate all non-empty subsets (max 8 options to prevent explosion)
     const opts = (step.options || []).slice(0, 4).map(o => o.value);
     const subsets = [];
     for (let i = 1; i < (1 << opts.length); i++) {
@@ -66,19 +62,15 @@ function getSyntheticAnswers(step) {
   return SYNTHETIC_ANSWERS[step.question_type] || ['Test Value'];
 }
 
-// Resolve next step based on the current step definition and answer given
 function resolveNextStep(step, answer, allAnswers) {
   const logic = step.conditional_logic;
 
-  // --- result / info types: no next step ---
   if (step.question_type === 'result') return null;
 
-  // --- default_next_step for simple input types ---
   if (['text_input','number_input','date_input','file_upload','address_input','beneficiary_input','controlling_person_input'].includes(step.question_type)) {
     return (step.default_next_step && step.default_next_step.trim() !== '') ? step.default_next_step : null;
   }
 
-  // --- multi_field_input: check conditions, fall back to default_next_step ---
   if (step.question_type === 'multi_field_input') {
     if (logic?.conditions?.length > 0) {
       let met = true;
@@ -95,7 +87,6 @@ function resolveNextStep(step, answer, allAnswers) {
   }
 
   if (!logic) {
-    // Use option's next_step
     if (step.options) {
       const opt = step.options.find(o => o.value === answer || (Array.isArray(answer) && answer.includes(o.value)));
       if (opt?.next_step && opt.next_step.trim() !== '') return opt.next_step;
@@ -103,16 +94,13 @@ function resolveNextStep(step, answer, allAnswers) {
     return null;
   }
 
-  // --- selection_count routing (top priority for multiple_choice) ---
   if (logic.use_selection_count && logic.selection_count_value != null) {
     const count = Array.isArray(answer) ? answer.length : 1;
-    // operator may be null — treat null as '='
     const op = logic.selection_count_operator || '=';
     const met = evalNumOp(op, count, logic.selection_count_value);
     return met ? (logic.selection_count_next_step || null) : (logic.selection_count_else_step || null);
   }
 
-  // --- option_values routing ---
   if (logic.option_values?.length > 0) {
     const selectedOptions = Array.isArray(answer) ? answer : [answer];
     const hasMatch = logic.option_values.some(v => selectedOptions.includes(v));
@@ -120,7 +108,6 @@ function resolveNextStep(step, answer, allAnswers) {
     if (logic.option_values_else_step) return logic.option_values_else_step;
   }
 
-  // --- multi_choice_routing_groups ---
   if (logic.multi_choice_routing_groups?.length > 0) {
     const selectedOptions = Array.isArray(answer) ? answer : [answer];
     for (const group of logic.multi_choice_routing_groups) {
@@ -128,11 +115,9 @@ function resolveNextStep(step, answer, allAnswers) {
       for (const cond of (group.conditions || [])) {
         let condMet = false;
         if (cond.condition_type === 'selected_options') {
-          const hasAny = (cond.option_values || []).some(v => selectedOptions.includes(v));
-          condMet = hasAny;
+          condMet = (cond.option_values || []).some(v => selectedOptions.includes(v));
         } else if (cond.condition_type === 'selection_count') {
-          const count = selectedOptions.length;
-          condMet = evalNumOp(cond.count_operator, count, cond.count_value);
+          condMet = evalNumOp(cond.count_operator, selectedOptions.length, cond.count_value);
         } else if (cond.condition_type === 'field_comparison') {
           const fv = allAnswers[cond.field];
           condMet = evalStrOp(cond.operator, fv, cond.value);
@@ -145,9 +130,6 @@ function resolveNextStep(step, answer, allAnswers) {
     return logic.multi_choice_default_step || null;
   }
 
-  // --- trigger-based condition_groups / simple conditions ---
-  // The trigger_field/trigger_value check gates whether the conditional_logic block fires.
-  // If the trigger doesn't match, skip the conditional_logic and fall through to option next_step.
   let triggerMatches = true;
   if (logic.trigger_field && logic.trigger_value) {
     const triggerAnswer = allAnswers[logic.trigger_field];
@@ -157,7 +139,6 @@ function resolveNextStep(step, answer, allAnswers) {
   }
 
   if (!triggerMatches) {
-    // Trigger didn't fire — use option's next_step directly
     if (step.options) {
       const selectedOptions = Array.isArray(answer) ? answer : [answer];
       for (const v of selectedOptions) {
@@ -170,7 +151,6 @@ function resolveNextStep(step, answer, allAnswers) {
     return null;
   }
 
-  // condition_groups
   if (logic.condition_groups?.length > 0) {
     const groupResults = logic.condition_groups.map(group => {
       let result = group.group_operator === 'AND';
@@ -192,7 +172,6 @@ function resolveNextStep(step, answer, allAnswers) {
     }
   }
 
-  // simple conditions
   if (logic.conditions?.length > 0) {
     let met = true;
     for (const cond of logic.conditions) {
@@ -205,12 +184,10 @@ function resolveNextStep(step, answer, allAnswers) {
     return met ? (logic.next_step || null) : (logic.else_step || null);
   }
 
-  // fall back to option's next_step
   if (step.options) {
     const selectedOptions = Array.isArray(answer) ? answer : [answer];
     for (const v of selectedOptions) {
       const opt = step.options.find(o => o.value === v);
-      // Use next_step if it's a non-empty string
       if (opt?.next_step && typeof opt.next_step === 'string' && opt.next_step.trim() !== '') {
         return opt.next_step;
       }
@@ -229,8 +206,6 @@ function resolveFieldValue(fieldPath, allAnswers) {
     const stepAns = allAnswers[parts[0]];
     if (stepAns && typeof stepAns === 'object') return stepAns[parts[1]];
   }
-  // Search inside multi_field_input answers (stored as objects keyed by step_id)
-  // e.g. field_1778482819636 may be nested inside allAnswers["step_1778482806746"]
   for (const val of Object.values(allAnswers)) {
     if (val && typeof val === 'object' && !Array.isArray(val) && val[fieldPath] !== undefined) {
       return val[fieldPath];
@@ -252,7 +227,6 @@ function evalNumOp(op, a, b) {
 }
 
 function evalStrOp(op, fieldValue, compValue) {
-  // Normalize booleans so true matches 'true'
   const fv = String(fieldValue === true ? 'true' : fieldValue === false ? 'false' : (fieldValue || '')).toLowerCase().trim();
   const cv = String(compValue || '').toLowerCase().trim();
   switch (op) {
@@ -283,9 +257,7 @@ function traverseAllPaths(workflow) {
     const step = stepMap[stepId];
     if (!step) return;
 
-    // Cycle detection: if this step was already visited in the current path
     if (visitedInPath.has(stepId)) {
-      // Annotate the last step in the current path with which step the loop returns to
       const pathWithLoop = [...currentPath];
       if (pathWithLoop.length > 0) {
         pathWithLoop[pathWithLoop.length - 1] = {
@@ -294,17 +266,12 @@ function traverseAllPaths(workflow) {
           loopsBackToTitle: stepMap[stepId]?.step_title || stepId
         };
       }
-      allPaths.push({
-        steps: pathWithLoop,
-        finalStatus: 'cycle_detected',
-        answers: { ...currentAnswers }
-      });
+      allPaths.push({ steps: pathWithLoop, finalStatus: 'cycle_detected', answers: { ...currentAnswers } });
       return;
     }
 
     const possibleAnswers = getSyntheticAnswers(step);
 
-    // For result / info steps → record the path as complete
     if (step.question_type === 'result') {
       allPaths.push({
         steps: [...currentPath, { stepId, stepTitle: step.step_title, answer: null, questionType: step.question_type, resultStatus: step.result_status, resultDescription: step.result_description }],
@@ -328,45 +295,30 @@ function traverseAllPaths(workflow) {
       const updatedAnswers = { ...currentAnswers, [stepId]: answer };
       const nextStepId = resolveNextStep(step, answer, updatedAnswers);
       const pathEntry = {
-        stepId,
-        stepTitle: step.step_title,
-        questionText: step.question_text,
-        questionType: step.question_type,
-        answer,
-        options: step.options,
-        nextStepId
+        stepId, stepTitle: step.step_title, questionText: step.question_text,
+        questionType: step.question_type, answer, options: step.options, nextStepId
       };
 
       if (!nextStepId) {
-        allPaths.push({
-          steps: [...currentPath, pathEntry],
-          finalStatus: 'terminal',
-          answers: updatedAnswers
-        });
+        allPaths.push({ steps: [...currentPath, pathEntry], finalStatus: 'terminal', answers: updatedAnswers });
       } else if (!stepMap[nextStepId]) {
-        // Next step ID referenced but not found in workflow — missing step
-        allPaths.push({
-          steps: [...currentPath, { ...pathEntry, missingNextStep: nextStepId }],
-          finalStatus: 'missing_step',
-          answers: updatedAnswers
-        });
+        allPaths.push({ steps: [...currentPath, { ...pathEntry, missingNextStep: nextStepId }], finalStatus: 'missing_step', answers: updatedAnswers });
       } else {
         dfs(nextStepId, [...currentPath, pathEntry], updatedAnswers, newVisited);
       }
     }
   }
 
-  // Start from first step
   const firstStep = workflow.steps[0];
   if (firstStep) dfs(firstStep.step_id, [], {});
 
   return allPaths;
 }
 
-// ─── PDF Generation ──────────────────────────────────────────────────────────
+// ─── Format Helpers ───────────────────────────────────────────────────────────
 
 function formatAnswer(answer, step) {
-  if (answer === null || answer === undefined) return '—';
+  if (answer === null || answer === undefined) return '';
   if (Array.isArray(answer)) {
     return answer.map(v => {
       const opt = step?.options?.find(o => o.value === v);
@@ -375,7 +327,8 @@ function formatAnswer(answer, step) {
   }
   if (typeof answer === 'object') {
     if (answer.file_name) return `File: ${answer.file_name}`;
-    if (answer.street) return `${answer.street}, ${answer.city}, ${answer.country}`;
+    if (answer.street) return [answer.street, answer.city, answer.state, answer.postal_code, answer.country].filter(Boolean).join(', ');
+    // For multi-field: show key-value pairs skipping raw field IDs if option labels available
     return Object.entries(answer).map(([k, v]) => `${k}: ${v}`).join(' | ');
   }
   const opt = step?.options?.find(o => o.value === String(answer));
@@ -386,398 +339,10 @@ function formatAccountField(value) {
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'object') {
-    if (value.street) return [value.street, value.city, value.state, value.country].filter(Boolean).join(', ');
+    if (value.street) return [value.street, value.city, value.state, value.postal_code, value.country].filter(Boolean).join(', ');
     return JSON.stringify(value);
   }
   return String(value);
-}
-
-function generatePDF(paths, workflowName, tenantId, accountId, accountReplay, accountData) {
-  // Landscape A3 for wide horizontal test script layout
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
-  const pageW = 420;
-  const pageH = 297;
-  const margin = 10;
-
-  const STATUS_COLORS = {
-    reportable: [220, 38, 38],
-    non_reportable: [22, 163, 74],
-    pending_review: [202, 138, 4],
-    excluded: [107, 114, 128],
-    terminal: [100, 116, 139],
-    cycle_detected: [234, 88, 12],
-    missing_step: [124, 58, 237],
-    unknown: [100, 116, 139]
-  };
-
-  const STATUS_BG = {
-    reportable: [254, 226, 226],
-    non_reportable: [220, 252, 231],
-    pending_review: [254, 249, 195],
-    excluded: [243, 244, 246],
-    terminal: [241, 245, 249],
-    cycle_detected: [255, 237, 213],
-    missing_step: [237, 233, 254],
-    unknown: [241, 245, 249]
-  };
-
-  // ── Page 1: Account Info + Summary ──────────────────────────────────────────
-  let y = margin;
-
-  // Header banner
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageW, 18, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Workflow Test Script Execution Report', margin, 12);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Generated: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`, pageW - margin, 12, { align: 'right' });
-  y = 22;
-
-  // Workflow info row
-  doc.setFillColor(30, 41, 59);
-  doc.rect(margin, y, pageW - margin * 2, 10, 'F');
-  doc.setTextColor(148, 163, 184);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('WORKFLOW', margin + 3, y + 4);
-  doc.text('TENANT', margin + 120, y + 4);
-  doc.text('TOTAL PATHS', margin + 240, y + 4);
-  doc.text('ACCOUNT', margin + 320, y + 4);
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  const wfNameTrunc = workflowName.length > 60 ? workflowName.substring(0, 57) + '...' : workflowName;
-  doc.text(wfNameTrunc, margin + 3, y + 9);
-  doc.text(tenantId, margin + 120, y + 9);
-  doc.text(String(paths.length), margin + 240, y + 9);
-  doc.text(accountId || 'N/A', margin + 320, y + 9);
-  y += 14;
-
-  // ── Account Data Header Card ─────────────────────────────────────────────
-  if (accountData) {
-    const cardX = margin;
-    const cardY = y;
-    const cardW = pageW - margin * 2;
-
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(cardX, cardY, cardW, 6, 1, 1, 'F');
-    doc.setFillColor(70, 79, 235);
-    doc.rect(cardX, cardY, cardW, 6, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ACCOUNT DETAILS', cardX + 4, cardY + 4.5);
-    y += 7;
-
-    // Two rows of account fields
-    const addrCurrent = accountData.current_address || accountData.account_holder_address;
-    const addrOriginal = accountData.account_holder_address || accountData.current_address;
-    const isPreExisting = accountData.is_pre_existing === true ? 'Pre-Existing' : accountData.is_pre_existing === false ? 'New' : '—';
-    const balance = accountData.year_end_cash_value;
-    const valueThreshold = balance !== undefined && balance !== null
-      ? (Number(balance) >= 1000000 ? 'High Value (≥1M)' : 'Low Value (<1M)')
-      : '—';
-
-    const accountFields = [
-      { label: 'Account Holder', value: accountData.account_holder_name || [accountData.first_name, accountData.last_name].filter(Boolean).join(' ') || '—' },
-      { label: 'Account Number', value: accountData.account_number || '—' },
-      { label: 'Account Type', value: accountData.account_type ? accountData.account_type.replace(/_/g, ' ') : '—' },
-      { label: 'Pre-Existing / New', value: isPreExisting },
-      { label: 'Value Category', value: valueThreshold },
-      { label: 'Year End Balance', value: balance !== undefined && balance !== null ? `${accountData.year_end_cash_value_currency || ''} ${Number(balance).toLocaleString()}`.trim() : '—' },
-      { label: 'Holder Type', value: accountData.account_holder_type || '—' },
-      { label: 'Reportability Status', value: accountData.reportability_status ? accountData.reportability_status.replace(/_/g, ' ') : '—' },
-      { label: 'Current Address', value: formatAccountField(addrCurrent) },
-      { label: 'Original/Holder Address', value: formatAccountField(addrOriginal) },
-    ];
-
-    const fieldsPerRow = 5;
-    const rows = [accountFields.slice(0, fieldsPerRow), accountFields.slice(fieldsPerRow)];
-    const colW2 = cardW / fieldsPerRow;
-
-    rows.forEach((rowFields, rowIdx) => {
-      const rowY = y + rowIdx * 14;
-      rowFields.forEach((field, colIdx) => {
-        const fx = cardX + colIdx * colW2;
-        const fy = rowY;
-        doc.setFillColor(rowIdx % 2 === 0 ? 241 : 248, rowIdx % 2 === 0 ? 245 : 250, rowIdx % 2 === 0 ? 249 : 252);
-        doc.rect(fx, fy, colW2 - 1, 13, 'F');
-        doc.setTextColor(100, 116, 139);
-        doc.setFontSize(6);
-        doc.setFont('helvetica', 'normal');
-        doc.text(field.label.toUpperCase(), fx + 2, fy + 4);
-        doc.setTextColor(15, 23, 42);
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'bold');
-        const valTrunc = field.value.length > 38 ? field.value.substring(0, 35) + '...' : field.value;
-        doc.text(valTrunc, fx + 2, fy + 10);
-      });
-    });
-
-    y += rows.length * 14 + 5;
-  }
-
-  // ── Outcome summary pills ────────────────────────────────────────────────
-  const counts = {};
-  paths.forEach(p => { counts[p.finalStatus] = (counts[p.finalStatus] || 0) + 1; });
-  const summaryEntries = Object.entries(counts);
-  const pillW = 50;
-  summaryEntries.forEach(([status, count], i) => {
-    const px = margin + i * (pillW + 3);
-    const bg = STATUS_BG[status] || STATUS_BG.unknown;
-    const fg = STATUS_COLORS[status] || STATUS_COLORS.unknown;
-    doc.setFillColor(...bg);
-    doc.roundedRect(px, y, pillW, 10, 1.5, 1.5, 'F');
-    doc.setTextColor(...fg);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text(String(count), px + pillW / 2, y + 5.5, { align: 'center' });
-    doc.setFontSize(5.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(status.replace(/_/g, ' ').toUpperCase(), px + pillW / 2, y + 9.5, { align: 'center' });
-  });
-  y += 14;
-
-  // ── Page 2+: Horizontal Test Script Matrix ─────────────────────────────────
-  // Collect all unique step IDs in order they appear across paths
-  const stepOrder = [];
-  const stepTitleMap = {};
-  for (const path of paths) {
-    for (const s of path.steps) {
-      if (!stepOrder.includes(s.stepId)) {
-        stepOrder.push(s.stepId);
-        stepTitleMap[s.stepId] = s.stepTitle || s.stepId;
-      }
-    }
-  }
-
-  // Fixed columns: Test Case# | Outcome | Steps Count | then one per step
-  const fixedCols = [
-    { key: 'tc', label: 'Test\nCase', width: 14 },
-    { key: 'outcome', label: 'Outcome', width: 28 },
-    { key: 'steps', label: 'Steps\nCount', width: 14 },
-  ];
-
-  // Dynamic step columns — truncate title for header
-  const stepCols = stepOrder.map(stepId => ({
-    key: stepId,
-    label: stepTitleMap[stepId],
-    width: 28
-  }));
-
-  const allCols = [...fixedCols, ...stepCols];
-  const totalTableW = allCols.reduce((sum, c) => sum + c.width, 0);
-
-  // How many step-columns fit per page
-  const pageContentW = pageW - margin * 2;
-  const fixedW = fixedCols.reduce((sum, c) => sum + c.width, 0);
-  const stepColsPerPage = Math.floor((pageContentW - fixedW) / 28);
-
-  const rowH = 10; // height per data row
-  const headerH = 16; // header row height (two lines for step title)
-
-  // Chunk step columns into pages
-  const stepChunks = [];
-  for (let i = 0; i < stepCols.length; i += stepColsPerPage) {
-    stepChunks.push(stepCols.slice(i, i + stepColsPerPage));
-  }
-  if (stepChunks.length === 0) stepChunks.push([]);
-
-  stepChunks.forEach((chunkCols, chunkIdx) => {
-    doc.addPage();
-    let py = margin;
-
-    // Mini header on each page
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageW, 10, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${workflowName}  —  Test Script Matrix`, margin, 7);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Page ${chunkIdx + 2}  ·  Steps ${chunkIdx * stepColsPerPage + 1}–${Math.min((chunkIdx + 1) * stepColsPerPage, stepCols.length)} of ${stepCols.length}`, pageW - margin, 7, { align: 'right' });
-    py = 14;
-
-    const pageCols = [...fixedCols, ...chunkCols];
-    let cx = margin;
-
-    // Column headers
-    doc.setFillColor(30, 41, 59);
-    doc.rect(margin, py, pageCols.reduce((s, c) => s + c.width, 0), headerH, 'F');
-    cx = margin;
-    pageCols.forEach((col, ci) => {
-      // Separator
-      if (ci > 0) {
-        doc.setDrawColor(71, 85, 105);
-        doc.setLineWidth(0.3);
-        doc.line(cx, py, cx, py + headerH);
-      }
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(6);
-      doc.setFont('helvetica', 'bold');
-
-      // Column number (step index)
-      if (col.key !== 'tc' && col.key !== 'outcome' && col.key !== 'steps') {
-        const stepIdx = stepOrder.indexOf(col.key);
-        doc.setTextColor(148, 163, 184);
-        doc.setFontSize(5.5);
-        doc.text(`STEP ${stepIdx + 1}`, cx + col.width / 2, py + 4.5, { align: 'center' });
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(6);
-      } else {
-        doc.setTextColor(148, 163, 184);
-        doc.setFontSize(5.5);
-        doc.text(' ', cx + col.width / 2, py + 4.5, { align: 'center' });
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(6);
-      }
-
-      // Title lines (wrap at column width)
-      const titleLines = doc.splitTextToSize(col.label, col.width - 3);
-      const maxLines = 2;
-      titleLines.slice(0, maxLines).forEach((line, li) => {
-        doc.text(line, cx + col.width / 2, py + 8 + li * 4, { align: 'center' });
-      });
-      cx += col.width;
-    });
-    py += headerH;
-
-    // Draw each path as a row
-    paths.forEach((path, pathIdx) => {
-      const rowY = py;
-
-      // Check if we need a new page
-      if (rowY + rowH > pageH - 10) {
-        doc.addPage();
-        py = margin + 4;
-        // Reprint headers
-        doc.setFillColor(30, 41, 59);
-        doc.rect(margin, py, pageCols.reduce((s, c) => s + c.width, 0), headerH, 'F');
-        cx = margin;
-        pageCols.forEach((col, ci) => {
-          if (ci > 0) { doc.setDrawColor(71, 85, 105); doc.setLineWidth(0.3); doc.line(cx, py, cx, py + headerH); }
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(6);
-          doc.setFont('helvetica', 'bold');
-          const titleLines = doc.splitTextToSize(col.label, col.width - 3);
-          titleLines.slice(0, 2).forEach((line, li) => {
-            doc.text(line, cx + col.width / 2, py + 8 + li * 4, { align: 'center' });
-          });
-          cx += col.width;
-        });
-        py += headerH;
-      }
-
-      const status = path.finalStatus || 'unknown';
-      const resultStep = path.steps.find(s => s.questionType === 'result' || s.resultStatus);
-      const outcomeStatus = resultStep?.resultStatus || status;
-      const rowColor = STATUS_COLORS[outcomeStatus] || STATUS_COLORS.unknown;
-      const rowBg = STATUS_BG[outcomeStatus] || STATUS_BG.unknown;
-
-      // Alternate row background
-      const baseRowBg = pathIdx % 2 === 0 ? [255, 255, 255] : [248, 250, 252];
-
-      cx = margin;
-      pageCols.forEach((col, ci) => {
-        // Cell background
-        if (col.key === 'outcome') {
-          doc.setFillColor(...rowBg);
-        } else {
-          doc.setFillColor(...baseRowBg);
-        }
-        doc.rect(cx, rowY, col.width, rowH, 'F');
-
-        // Cell border
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.2);
-        doc.rect(cx, rowY, col.width, rowH, 'S');
-
-        // Cell content
-        if (col.key === 'tc') {
-          doc.setTextColor(100, 116, 139);
-          doc.setFontSize(7.5);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`TC${String(pathIdx + 1).padStart(3, '0')}`, cx + col.width / 2, rowY + 6.5, { align: 'center' });
-        } else if (col.key === 'outcome') {
-          doc.setTextColor(...rowColor);
-          doc.setFontSize(6);
-          doc.setFont('helvetica', 'bold');
-          const outcomeLabel = outcomeStatus.replace(/_/g, ' ').toUpperCase();
-          const outLines = doc.splitTextToSize(outcomeLabel, col.width - 3);
-          outLines.slice(0, 2).forEach((line, li) => {
-            doc.text(line, cx + col.width / 2, rowY + 4 + li * 4, { align: 'center' });
-          });
-        } else if (col.key === 'steps') {
-          doc.setTextColor(71, 85, 105);
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'normal');
-          doc.text(String(path.steps.length), cx + col.width / 2, rowY + 6.5, { align: 'center' });
-        } else {
-          // Step answer cell
-          const pathStep = path.steps.find(s => s.stepId === col.key);
-          if (!pathStep) {
-            // Step not visited in this path — grey N/A
-            doc.setFillColor(245, 245, 245);
-            doc.rect(cx + 0.5, rowY + 0.5, col.width - 1, rowH - 1, 'F');
-            doc.setTextColor(200, 200, 200);
-            doc.setFontSize(6.5);
-            doc.setFont('helvetica', 'italic');
-            doc.text('—', cx + col.width / 2, rowY + 6.5, { align: 'center' });
-          } else if (pathStep.questionType === 'result' || pathStep.resultStatus) {
-            // Result step
-            doc.setFillColor(...rowBg);
-            doc.rect(cx + 0.5, rowY + 0.5, col.width - 1, rowH - 1, 'F');
-            doc.setTextColor(...rowColor);
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'bold');
-            const rsLabel = (pathStep.resultStatus || 'RESULT').replace(/_/g, ' ').toUpperCase();
-            const rsLines = doc.splitTextToSize(rsLabel, col.width - 3);
-            rsLines.slice(0, 2).forEach((line, li) => {
-              doc.text(line, cx + col.width / 2, rowY + 4 + li * 3.5, { align: 'center' });
-            });
-          } else if (pathStep.loopsBackTo) {
-            doc.setTextColor(234, 88, 12);
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'italic');
-            doc.text('↩ LOOP', cx + col.width / 2, rowY + 6.5, { align: 'center' });
-          } else if (pathStep.missingNextStep) {
-            doc.setTextColor(124, 58, 237);
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'bold');
-            doc.text('⚠ MISSING', cx + col.width / 2, rowY + 6.5, { align: 'center' });
-          } else {
-            const answerText = formatAnswer(pathStep.answer, pathStep);
-            doc.setTextColor(15, 23, 42);
-            doc.setFontSize(6.5);
-            doc.setFont('helvetica', 'normal');
-            const truncAns = answerText.length > 18 ? answerText.substring(0, 16) + '…' : answerText;
-            doc.text(truncAns, cx + col.width / 2, rowY + 6.5, { align: 'center' });
-          }
-        }
-
-        cx += col.width;
-      });
-
-      py += rowH;
-    });
-  });
-
-  // ── Page footers ──────────────────────────────────────────────────────────
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFillColor(241, 245, 249);
-    doc.rect(0, pageH - 8, pageW, 8, 'F');
-    doc.setFontSize(6);
-    doc.setTextColor(148, 163, 184);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Workflow Test Script Execution Report  ·  ${workflowName}  ·  Page ${i} of ${pageCount}`, pageW / 2, pageH - 3, { align: 'center' });
-  }
-
-  return doc;
 }
 
 // ─── Account Replay ──────────────────────────────────────────────────────────
@@ -799,15 +364,9 @@ function replayAccountPath(workflow, classificationAnswers) {
   let finalResultDescription = null;
 
   while (currentStepId && replaySteps.length < 50) {
-    if (visited.has(currentStepId)) {
-      finalStatus = 'cycle_detected';
-      break;
-    }
+    if (visited.has(currentStepId)) { finalStatus = 'cycle_detected'; break; }
     const step = stepMap[currentStepId];
-    if (!step) {
-      finalStatus = 'missing_step';
-      break;
-    }
+    if (!step) { finalStatus = 'missing_step'; break; }
 
     visited.add(currentStepId);
 
@@ -825,19 +384,13 @@ function replayAccountPath(workflow, classificationAnswers) {
       continue;
     }
 
-    // Get saved answer for this step
     const savedAnswer = classificationAnswers[currentStepId];
     const pathEntry = {
-      stepId: currentStepId,
-      stepTitle: step.step_title,
-      questionText: step.question_text,
-      questionType: step.question_type,
-      answer: savedAnswer !== undefined ? savedAnswer : null,
-      options: step.options
+      stepId: currentStepId, stepTitle: step.step_title, questionText: step.question_text,
+      questionType: step.question_type, answer: savedAnswer !== undefined ? savedAnswer : null, options: step.options
     };
 
     if (savedAnswer === undefined) {
-      // No answer found for this step — path ends here
       replaySteps.push({ ...pathEntry, noAnswer: true });
       finalStatus = 'terminal';
       break;
@@ -857,150 +410,396 @@ function replayAccountPath(workflow, classificationAnswers) {
   return { steps: replaySteps, finalStatus, finalResultStatus, finalResultDescription, accountReportabilityStatus: null, accountReportabilityReason: null };
 }
 
-function generateReplaySection(doc, replayPath, pageW, pageH, margin, contentW, y, statusColors, statusBg) {
-  const checkPage = (needed = 10) => {
-    if (y + needed > pageH - 20) { doc.addPage(); y = margin; }
-    return y;
+// ─── Excel Generation ────────────────────────────────────────────────────────
+
+async function generateExcel(paths, workflowName, tenantId, accountId, accountReplay, accountData) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Vitauri Compliance';
+  wb.created = new Date();
+
+  // ── Colour helpers ──────────────────────────────────────────────────────
+  const STATUS_FILL = {
+    reportable:     { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFEE2E2' } },
+    non_reportable: { type:'pattern', pattern:'solid', fgColor:{ argb:'FFD1FAE5' } },
+    pending_review: { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFEF9C3' } },
+    excluded:       { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF3F4F6' } },
+    terminal:       { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF1F5F9' } },
+    cycle_detected: { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFED7AA' } },
+    missing_step:   { type:'pattern', pattern:'solid', fgColor:{ argb:'FFEDE9FE' } },
+    unknown:        { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF1F5F9' } },
+  };
+  const STATUS_FONT_COLOR = {
+    reportable:     'FFDC2626',
+    non_reportable: 'FF16A34A',
+    pending_review: 'FFCA8A04',
+    excluded:       'FF6B7280',
+    terminal:       'FF64748B',
+    cycle_detected: 'FFEA580C',
+    missing_step:   'FF7C3AED',
+    unknown:        'FF64748B',
+  };
+  const HEADER_DARK  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF0F172A' } };
+  const HEADER_MID   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1E293B' } };
+  const HEADER_STEP  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF334155' } };
+  const ACCENT_BLUE  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF464FEB' } };
+  const ROW_ODD      = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFFFF' } };
+  const ROW_EVEN     = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF8FAFC' } };
+  const CELL_SKIP    = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF5F5F5' } };
+  const WHITE_FONT   = { color:{ argb:'FFFFFFFF' }, bold:true };
+  const GREY_FONT    = { color:{ argb:'FF94A3B8' } };
+  const THIN_BORDER  = {
+    top:    { style:'thin', color:{ argb:'FFE2E8F0' } },
+    left:   { style:'thin', color:{ argb:'FFE2E8F0' } },
+    bottom: { style:'thin', color:{ argb:'FFE2E8F0' } },
+    right:  { style:'thin', color:{ argb:'FFE2E8F0' } },
   };
 
-  // Section header
-  checkPage(30);
-  doc.setFillColor(15, 23, 42);
-  doc.rect(margin, y, contentW, 10, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ACCOUNT CLASSIFICATION REPLAY  ·  Path taken by this specific account', margin + 4, y + 7);
-  y += 12;
+  // ── Sheet 1: Summary ────────────────────────────────────────────────────
+  const infoSheet = wb.addWorksheet('Summary');
+  infoSheet.properties.defaultRowHeight = 18;
 
-  // Show the actual account reportability status prominently (from Account entity directly)
-  const accountStatus = replayPath.accountReportabilityStatus;
-  const accountStatusColors = {
-    reportable: [220, 38, 38],
-    non_reportable: [22, 163, 74],
-    pending_review: [202, 138, 4],
-    excluded: [107, 114, 128]
-  };
-  const accountStatusBg = {
-    reportable: [254, 226, 226],
-    non_reportable: [220, 252, 231],
-    pending_review: [254, 249, 195],
-    excluded: [243, 244, 246]
-  };
+  // Title
+  infoSheet.mergeCells('A1:H1');
+  const titleCell = infoSheet.getCell('A1');
+  titleCell.value = 'Workflow Test Script Execution Report';
+  titleCell.font = { ...WHITE_FONT, size: 14 };
+  titleCell.fill = HEADER_DARK;
+  titleCell.alignment = { vertical:'middle', horizontal:'left', indent:1 };
+  infoSheet.getRow(1).height = 28;
 
-  if (accountStatus && accountStatus !== 'pending_review') {
-    const aColor = accountStatusColors[accountStatus] || [100, 116, 139];
-    const aBg = accountStatusBg[accountStatus] || [241, 245, 249];
-    doc.setFillColor(...aBg);
-    doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
-    doc.setFillColor(...aColor);
-    doc.rect(margin, y, 5, 18, 'F');
-    doc.setTextColor(...aColor);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`ACCOUNT STATUS: ${accountStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 10, y + 8);
-    if (replayPath.accountReportabilityReason) {
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      const reasonLines = doc.splitTextToSize(replayPath.accountReportabilityReason, contentW - 16);
-      doc.text(reasonLines.slice(0, 2), margin + 10, y + 14);
+  // Generated date
+  infoSheet.mergeCells('A2:H2');
+  const genCell = infoSheet.getCell('A2');
+  genCell.value = `Generated: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+  genCell.font = GREY_FONT;
+  genCell.fill = HEADER_MID;
+  genCell.alignment = { vertical:'middle', horizontal:'left', indent:1 };
+  infoSheet.getRow(2).height = 16;
+
+  infoSheet.addRow([]).height = 6;
+
+  // Workflow / Tenant / Paths meta
+  const metaHeaders = infoSheet.addRow(['WORKFLOW', '', '', 'TENANT', '', 'TOTAL PATHS', 'ACCOUNT ID']);
+  metaHeaders.eachCell(cell => { cell.font = { ...GREY_FONT, size:8 }; cell.fill = HEADER_MID; cell.alignment = { vertical:'middle', horizontal:'left', indent:1 }; });
+  infoSheet.getRow(metaHeaders.number).height = 14;
+
+  const metaVals = infoSheet.addRow([workflowName, '', '', tenantId, '', paths.length, accountId || 'N/A']);
+  metaVals.eachCell(cell => { cell.font = { ...WHITE_FONT, size:10 }; cell.fill = HEADER_MID; cell.alignment = { vertical:'middle', horizontal:'left', indent:1, wrapText:true }; });
+  infoSheet.getRow(metaVals.number).height = 22;
+  infoSheet.mergeCells(`A${metaVals.number}:C${metaVals.number}`);
+  infoSheet.mergeCells(`D${metaVals.number}:E${metaVals.number}`);
+
+  infoSheet.addRow([]).height = 8;
+
+  // Account Details section
+  if (accountData) {
+    const accHdrRow = infoSheet.addRow(['ACCOUNT DETAILS']);
+    infoSheet.mergeCells(`A${accHdrRow.number}:H${accHdrRow.number}`);
+    accHdrRow.getCell('A').fill = ACCENT_BLUE;
+    accHdrRow.getCell('A').font = { ...WHITE_FONT, size:10 };
+    accHdrRow.getCell('A').alignment = { vertical:'middle', horizontal:'left', indent:1 };
+    infoSheet.getRow(accHdrRow.number).height = 22;
+
+    const addrCurrent  = accountData.current_address || accountData.account_holder_address;
+    const addrOriginal = accountData.account_holder_address || accountData.current_address;
+    const isPreExisting = accountData.is_pre_existing === true ? 'Pre-Existing'
+                        : accountData.is_pre_existing === false ? 'New' : '—';
+    const balance = accountData.year_end_cash_value;
+    const valueThreshold = balance !== undefined && balance !== null
+      ? (Number(balance) >= 1000000 ? 'High Value (>=1M)' : 'Low Value (<1M)') : '—';
+
+    const accountFields = [
+      ['Account Holder',          accountData.account_holder_name || [accountData.first_name, accountData.last_name].filter(Boolean).join(' ') || '—'],
+      ['Account Number',          accountData.account_number || '—'],
+      ['Account Type',            accountData.account_type ? accountData.account_type.replace(/_/g,' ') : '—'],
+      ['Pre-Existing / New',      isPreExisting],
+      ['Value Category',          valueThreshold],
+      ['Year End Balance',        balance !== undefined && balance !== null ? `${accountData.year_end_cash_value_currency || ''} ${Number(balance).toLocaleString()}`.trim() : '—'],
+      ['Holder Type',             accountData.account_holder_type || '—'],
+      ['Reportability Status',    accountData.reportability_status ? accountData.reportability_status.replace(/_/g,' ') : '—'],
+      ['Current Address',         formatAccountField(addrCurrent)],
+      ['Original/Holder Address', formatAccountField(addrOriginal)],
+    ];
+
+    const labelFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF1F5F9' } };
+    const valFill   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFFFF' } };
+
+    for (let i = 0; i < 5; i++) {
+      const row = infoSheet.addRow([
+        accountFields[i][0], accountFields[i][1], '',
+        accountFields[i + 5][0], accountFields[i + 5][1]
+      ]);
+      infoSheet.getRow(row.number).height = 24;
+      row.getCell(1).font = { color:{ argb:'FF64748B' }, size:8 };
+      row.getCell(1).fill = labelFill;
+      row.getCell(1).alignment = { vertical:'middle', indent:1 };
+      row.getCell(2).font = { bold:true, size:9 };
+      row.getCell(2).fill = valFill;
+      row.getCell(2).alignment = { vertical:'middle', wrapText:true, indent:1 };
+      row.getCell(4).font = { color:{ argb:'FF64748B' }, size:8 };
+      row.getCell(4).fill = labelFill;
+      row.getCell(4).alignment = { vertical:'middle', indent:1 };
+      row.getCell(5).font = { bold:true, size:9 };
+      row.getCell(5).fill = valFill;
+      row.getCell(5).alignment = { vertical:'middle', wrapText:true, indent:1 };
+      infoSheet.mergeCells(`B${row.number}:C${row.number}`);
+      infoSheet.mergeCells(`E${row.number}:H${row.number}`);
+      [1,2,4,5].forEach(c => { row.getCell(c).border = THIN_BORDER; });
     }
-    y += 22;
   }
 
-  const status = replayPath.finalStatus || 'unknown';
-  const color = statusColors[status] || statusColors.unknown;
-  const bgColor = statusBg[status] || statusBg.unknown;
+  infoSheet.addRow([]).height = 8;
 
-  // Workflow path result banner
-  doc.setFillColor(...bgColor);
-  doc.roundedRect(margin, y, contentW, 12, 2, 2, 'F');
-  doc.setFillColor(...color);
-  doc.rect(margin, y, 4, 12, 'F');
-  doc.setTextColor(...color);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  const resultLabel = replayPath.finalResultStatus
-    ? `WORKFLOW PATH RESULT: ${replayPath.finalResultStatus.replace(/_/g, ' ').toUpperCase()}`
-    : `WORKFLOW PATH: ${status.replace(/_/g, ' ').toUpperCase()} (workflow has no result step reached)`;
-  doc.text(resultLabel, margin + 8, y + 5);
-  if (replayPath.finalResultDescription) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text(replayPath.finalResultDescription, margin + 8, y + 10);
-  }
-  y += 16;
+  // Outcome summary
+  const sumHdr = infoSheet.addRow(['OUTCOME SUMMARY']);
+  infoSheet.mergeCells(`A${sumHdr.number}:H${sumHdr.number}`);
+  sumHdr.getCell('A').fill = HEADER_MID;
+  sumHdr.getCell('A').font = { ...WHITE_FONT, size:10 };
+  sumHdr.getCell('A').alignment = { vertical:'middle', horizontal:'left', indent:1 };
+  infoSheet.getRow(sumHdr.number).height = 20;
 
-  replayPath.steps.forEach((step, stepIdx) => {
-    const answerText = step.answer !== null && step.answer !== undefined ? formatAnswer(step.answer, step) : null;
-    const isResultStep = step.questionType === 'result' || step.resultStatus;
+  const counts = {};
+  paths.forEach(p => { counts[p.finalStatus] = (counts[p.finalStatus] || 0) + 1; });
+  const countLabelRow = infoSheet.addRow(Object.keys(counts).map(s => s.replace(/_/g,' ').toUpperCase()));
+  const countValRow   = infoSheet.addRow(Object.values(counts));
+  infoSheet.getRow(countLabelRow.number).height = 16;
+  infoSheet.getRow(countValRow.number).height = 26;
 
-    const titleLines = doc.splitTextToSize(step.stepTitle || step.stepId, contentW - 8);
-    const answerLines = answerText ? doc.splitTextToSize(`${answerText}`, contentW - 30) : [];
-    const blockH = 6 + titleLines.length * 5 + (answerLines.length > 0 ? answerLines.length * 4.5 + 3 : 0) + (isResultStep ? 8 : 0) + (step.noAnswer ? 7 : 0) + 4;
-
-    y = checkPage(blockH + 2);
-
-    if (isResultStep) { doc.setFillColor(...bgColor); } else { doc.setFillColor(248, 250, 252); }
-    doc.roundedRect(margin, y, contentW, blockH, 1.5, 1.5, 'F');
-    doc.setFillColor(...color);
-    doc.rect(margin, y, 3, blockH, 'F');
-
-    doc.setTextColor(...color);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`STEP ${stepIdx + 1}`, margin + 6, y + 5);
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    doc.setFont('helvetica', 'normal');
-    doc.text(step.questionType?.replace(/_/g, ' ') || '', margin + contentW - 3, y + 5, { align: 'right' });
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    let lineY = y + 10;
-    doc.text(titleLines, margin + 6, lineY);
-    lineY += titleLines.length * 5 + 2;
-
-    if (answerLines.length > 0) {
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      doc.text('Answer:', margin + 6, lineY);
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('helvetica', 'bold');
-      doc.text(answerLines, margin + 20, lineY);
-      lineY += answerLines.length * 4.5 + 2;
-    }
-
-    if (step.noAnswer) {
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(148, 163, 184);
-      doc.text('⚠ No saved answer found for this step — path ends here', margin + 6, lineY + 3);
-    }
-
-    if (isResultStep && step.resultStatus) {
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...color);
-      doc.text(`OUTCOME: ${step.resultStatus.replace(/_/g, ' ').toUpperCase()}`, margin + 6, lineY + 3);
-      if (step.resultDescription) {
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(71, 85, 105);
-        const descLines = doc.splitTextToSize(step.resultDescription, contentW - 14);
-        doc.text(descLines.slice(0, 2), margin + 6, lineY + 8);
-      }
-    }
-
-    y += blockH + 2;
+  Object.keys(counts).forEach((status, i) => {
+    const col = i + 1;
+    const fill = STATUS_FILL[status] || STATUS_FILL.unknown;
+    const fc   = STATUS_FONT_COLOR[status] || 'FF64748B';
+    countLabelRow.getCell(col).fill = fill;
+    countLabelRow.getCell(col).font = { color:{ argb:fc }, size:8, bold:true };
+    countLabelRow.getCell(col).alignment = { horizontal:'center', vertical:'middle' };
+    countLabelRow.getCell(col).border = THIN_BORDER;
+    countValRow.getCell(col).fill = fill;
+    countValRow.getCell(col).font = { color:{ argb:fc }, size:16, bold:true };
+    countValRow.getCell(col).alignment = { horizontal:'center', vertical:'middle' };
+    countValRow.getCell(col).border = THIN_BORDER;
   });
 
-  y += 10;
-  return y;
+  infoSheet.getColumn(1).width = 30;
+  infoSheet.getColumn(2).width = 38;
+  infoSheet.getColumn(3).width = 4;
+  infoSheet.getColumn(4).width = 30;
+  infoSheet.getColumn(5).width = 38;
+  infoSheet.getColumn(6).width = 16;
+  infoSheet.getColumn(7).width = 30;
+  infoSheet.getColumn(8).width = 16;
+
+  // ── Sheet 2: Test Script Matrix ─────────────────────────────────────────
+  const ws = wb.addWorksheet('Test Script Matrix', {
+    views: [{ state:'frozen', xSplit:3, ySplit:3 }]
+  });
+  ws.properties.defaultRowHeight = 40;
+
+  // Collect all unique steps in order
+  const stepOrder = [];
+  const stepTitleMap = {};
+  for (const path of paths) {
+    for (const s of path.steps) {
+      if (!stepOrder.includes(s.stepId)) {
+        stepOrder.push(s.stepId);
+        stepTitleMap[s.stepId] = s.stepTitle || s.stepId;
+      }
+    }
+  }
+
+  const totalCols = 3 + stepOrder.length;
+
+  // Row 1: Title spanning all columns
+  ws.mergeCells(1, 1, 1, totalCols);
+  const r1cell = ws.getRow(1).getCell(1);
+  r1cell.value = `Test Script Matrix — ${workflowName}`;
+  r1cell.font = { ...WHITE_FONT, size:13 };
+  r1cell.fill = HEADER_DARK;
+  r1cell.alignment = { vertical:'middle', horizontal:'left', indent:1 };
+  ws.getRow(1).height = 26;
+
+  // Row 2: Step number labels
+  const r2 = ws.getRow(2);
+  r2.height = 16;
+  r2.getCell(1).fill = HEADER_STEP;
+  r2.getCell(2).fill = HEADER_STEP;
+  r2.getCell(3).fill = HEADER_STEP;
+  stepOrder.forEach((stepId, i) => {
+    const cell = r2.getCell(4 + i);
+    cell.value = `Step ${i + 1}`;
+    cell.font = { ...GREY_FONT, size:8, italic:true };
+    cell.fill = HEADER_STEP;
+    cell.alignment = { horizontal:'center', vertical:'middle' };
+  });
+
+  // Row 3: Column header titles
+  const r3 = ws.getRow(3);
+  r3.height = 52;
+  [
+    { col:1, label:'Test Case' },
+    { col:2, label:'Outcome' },
+    { col:3, label:'Steps' },
+  ].forEach(({col, label}) => {
+    const cell = r3.getCell(col);
+    cell.value = label;
+    cell.font = WHITE_FONT;
+    cell.fill = HEADER_STEP;
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    cell.border = THIN_BORDER;
+  });
+  stepOrder.forEach((stepId, i) => {
+    const cell = r3.getCell(4 + i);
+    cell.value = stepTitleMap[stepId];
+    cell.font = WHITE_FONT;
+    cell.fill = HEADER_STEP;
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    cell.border = THIN_BORDER;
+  });
+
+  // Data rows
+  paths.forEach((path, pathIdx) => {
+    const status = path.finalStatus || 'unknown';
+    const resultStep = path.steps.find(s => s.questionType === 'result' || s.resultStatus);
+    const outcomeStatus = resultStep?.resultStatus || status;
+    const outcomeFill = STATUS_FILL[outcomeStatus] || STATUS_FILL.unknown;
+    const outcomeFontColor = STATUS_FONT_COLOR[outcomeStatus] || 'FF64748B';
+    const rowFill = pathIdx % 2 === 0 ? ROW_ODD : ROW_EVEN;
+
+    const dataRow = ws.addRow([]);
+    dataRow.height = 40;
+
+    // TC#
+    const tcCell = dataRow.getCell(1);
+    tcCell.value = `TC${String(pathIdx + 1).padStart(3, '0')}`;
+    tcCell.font = { bold:true, color:{ argb:'FF64748B' }, size:9 };
+    tcCell.fill = rowFill;
+    tcCell.alignment = { horizontal:'center', vertical:'middle' };
+    tcCell.border = THIN_BORDER;
+
+    // Outcome
+    const outCell = dataRow.getCell(2);
+    outCell.value = outcomeStatus.replace(/_/g,' ').toUpperCase();
+    outCell.font = { bold:true, color:{ argb:outcomeFontColor }, size:9 };
+    outCell.fill = outcomeFill;
+    outCell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    outCell.border = THIN_BORDER;
+
+    // Steps count
+    const cntCell = dataRow.getCell(3);
+    cntCell.value = path.steps.length;
+    cntCell.font = { color:{ argb:'FF64748B' }, size:9 };
+    cntCell.fill = rowFill;
+    cntCell.alignment = { horizontal:'center', vertical:'middle' };
+    cntCell.border = THIN_BORDER;
+
+    // Step answer cells
+    stepOrder.forEach((stepId, i) => {
+      const cell = dataRow.getCell(4 + i);
+      const pathStep = path.steps.find(s => s.stepId === stepId);
+
+      if (!pathStep) {
+        cell.value = '';
+        cell.fill = CELL_SKIP;
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+      } else if (pathStep.questionType === 'result' || pathStep.resultStatus) {
+        cell.value = (pathStep.resultStatus || 'RESULT').replace(/_/g,' ').toUpperCase();
+        cell.font = { bold:true, color:{ argb:outcomeFontColor }, size:9 };
+        cell.fill = outcomeFill;
+        cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+      } else if (pathStep.loopsBackTo) {
+        cell.value = `LOOP -> ${pathStep.loopsBackToTitle || pathStep.loopsBackTo}`;
+        cell.font = { italic:true, color:{ argb:'FFEA580C' }, size:8 };
+        cell.fill = STATUS_FILL.cycle_detected;
+        cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+      } else if (pathStep.missingNextStep) {
+        cell.value = `MISSING: ${pathStep.missingNextStep}`;
+        cell.font = { bold:true, color:{ argb:'FF7C3AED' }, size:8 };
+        cell.fill = STATUS_FILL.missing_step;
+        cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+      } else {
+        const answerText = formatAnswer(pathStep.answer, pathStep);
+        cell.value = answerText || '';
+        cell.fill = rowFill;
+        cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+        cell.font = { size:9 };
+      }
+      cell.border = THIN_BORDER;
+    });
+  });
+
+  // Column widths
+  ws.getColumn(1).width = 12;
+  ws.getColumn(2).width = 22;
+  ws.getColumn(3).width = 9;
+  stepOrder.forEach((_, i) => { ws.getColumn(4 + i).width = 30; });
+
+  // ── Sheet 3: Account Replay (if available) ──────────────────────────────
+  if (accountReplay) {
+    const rs = wb.addWorksheet('Account Replay');
+    rs.properties.defaultRowHeight = 20;
+
+    rs.mergeCells('A1:E1');
+    const rsTitleCell = rs.getCell('A1');
+    rsTitleCell.value = 'Account Classification Replay — Actual Path Taken';
+    rsTitleCell.font = { ...WHITE_FONT, size:12 };
+    rsTitleCell.fill = HEADER_DARK;
+    rsTitleCell.alignment = { vertical:'middle', horizontal:'left', indent:1 };
+    rs.getRow(1).height = 26;
+
+    // Status banner
+    const rsStatus = accountReplay.accountReportabilityStatus || accountReplay.finalResultStatus || accountReplay.finalStatus;
+    if (rsStatus) {
+      rs.mergeCells('A2:E2');
+      const rsStatusCell = rs.getCell('A2');
+      rsStatusCell.value = `Account Status: ${rsStatus.replace(/_/g,' ').toUpperCase()}`;
+      rsStatusCell.font = { bold:true, color:{ argb: STATUS_FONT_COLOR[rsStatus] || 'FF64748B' }, size:11 };
+      rsStatusCell.fill = STATUS_FILL[rsStatus] || STATUS_FILL.unknown;
+      rsStatusCell.alignment = { vertical:'middle', horizontal:'left', indent:2 };
+      rs.getRow(2).height = 24;
+    }
+
+    rs.addRow([]).height = 6;
+
+    // Header row
+    const rsHdr = rs.addRow(['Step #', 'Step Title', 'Question Type', 'Answer Given', 'Notes']);
+    rsHdr.height = 20;
+    rsHdr.eachCell(cell => {
+      cell.font = WHITE_FONT;
+      cell.fill = HEADER_STEP;
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+      cell.border = THIN_BORDER;
+    });
+
+    accountReplay.steps.forEach((step, idx) => {
+      const answerText = formatAnswer(step.answer, step);
+      const notes = step.noAnswer ? 'No saved answer — path ends here'
+                  : step.loopsBackTo ? `LOOP -> ${step.loopsBackToTitle || step.loopsBackTo}`
+                  : step.resultStatus ? `Result: ${step.resultStatus.replace(/_/g,' ').toUpperCase()}`
+                  : '';
+      const isResult = step.questionType === 'result' || step.resultStatus;
+      const rowFill2 = isResult ? (STATUS_FILL[step.resultStatus] || STATUS_FILL.unknown) : (idx % 2 === 0 ? ROW_ODD : ROW_EVEN);
+
+      const dataRow = rs.addRow([`Step ${idx + 1}`, step.stepTitle || step.stepId, step.questionType || '', answerText, notes]);
+      dataRow.height = 36;
+      dataRow.eachCell(cell => {
+        cell.fill = rowFill2;
+        cell.alignment = { vertical:'middle', wrapText:true, indent:1 };
+        cell.border = THIN_BORDER;
+        cell.font = { size:9 };
+      });
+      if (isResult) {
+        dataRow.eachCell(cell => { cell.font = { bold:true, color:{ argb: STATUS_FONT_COLOR[step.resultStatus] || 'FF64748B' }, size:9 }; });
+      }
+    });
+
+    rs.getColumn(1).width = 10;
+    rs.getColumn(2).width = 45;
+    rs.getColumn(3).width = 20;
+    rs.getColumn(4).width = 40;
+    rs.getColumn(5).width = 40;
+  }
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return buffer;
 }
 
 // ─── Main Handler ────────────────────────────────────────────────────────────
@@ -1018,9 +817,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tenantId and workflowId are required' }, { status: 400 });
     }
 
-
-
-    // Fetch the workflow
     const workflows = await base44.asServiceRole.entities.Workflow.filter({ id: workflowId });
     if (!workflows.length) return Response.json({ error: 'Workflow not found' }, { status: 404 });
     const workflow = workflows[0];
@@ -1029,7 +825,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Workflow has no steps' }, { status: 400 });
     }
 
-    // Fetch account classification answers if accountId provided
     let accountReplay = null;
     let accountData = null;
     if (accountId) {
@@ -1045,18 +840,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Traverse all paths
     const paths = traverseAllPaths(workflow);
 
-    // Generate PDF — inject account replay at top
-    const doc = generatePDF(paths, workflow.workflow_name, tenantId, accountId || 'N/A', accountReplay, accountData);
-    const pdfArrayBuffer = doc.output('arraybuffer');
-    const pdfBytes = new Uint8Array(pdfArrayBuffer);
+    const xlsxBuffer = await generateExcel(paths, workflow.workflow_name, tenantId, accountId || 'N/A', accountReplay, accountData);
 
-    // Convert PDF to base64 to return inline (no upload needed)
+    // Convert to base64
     let binary = '';
-    for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
-    const pdfBase64 = btoa(binary);
+    const bytes = new Uint8Array(xlsxBuffer);
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const xlsxBase64 = btoa(binary);
 
     return Response.json({
       success: true,
@@ -1068,7 +860,7 @@ Deno.serve(async (req) => {
         final_status: p.finalStatus,
         step_ids: p.steps.map(s => s.stepId)
       })),
-      pdf_base64: pdfBase64
+      xlsx_base64: xlsxBase64
     });
 
   } catch (error) {

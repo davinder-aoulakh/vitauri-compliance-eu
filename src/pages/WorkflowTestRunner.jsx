@@ -87,7 +87,7 @@ export default function WorkflowTestRunnerPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Workflow Test Runner</h1>
-          <p className="text-sm text-slate-500">Automatically traverse all workflow paths and generate a PDF test report</p>
+          <p className="text-sm text-slate-500">Automatically traverse all workflow paths and generate an Excel test script report</p>
         </div>
       </div>
 
@@ -201,25 +201,25 @@ export default function WorkflowTestRunnerPage() {
                     <p className="text-sm text-green-700">{result.total_paths} unique paths discovered</p>
                   </div>
                 </div>
-                {result.pdf_base64 && (
+                {result.xlsx_base64 && (
                   <Button
                     variant="outline"
                     className="border-green-400 text-green-700 hover:bg-green-100"
                     onClick={() => {
-                      const byteChars = atob(result.pdf_base64);
+                      const byteChars = atob(result.xlsx_base64);
                       const byteArray = new Uint8Array(byteChars.length);
                       for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
-                      const blob = new Blob([byteArray], { type: 'application/pdf' });
+                      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `workflow_test_${result.workflow_name?.replace(/\s+/g, '_')}.pdf`;
+                      a.download = `workflow_test_${result.workflow_name?.replace(/\s+/g, '_')}.xlsx`;
                       a.click();
                       URL.revokeObjectURL(url);
                     }}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download PDF Report
+                    Download Excel Report
                   </Button>
                 )}
               </div>
