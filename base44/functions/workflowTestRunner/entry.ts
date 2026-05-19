@@ -328,7 +328,16 @@ function formatAnswer(answer, step) {
   if (typeof answer === 'object') {
     if (answer.file_name) return `File: ${answer.file_name}`;
     if (answer.street) return [answer.street, answer.city, answer.state, answer.postal_code, answer.country].filter(Boolean).join(', ');
-    // For multi-field: show key-value pairs skipping raw field IDs if option labels available
+    // For multi-field: use display_label from step.multi_fields config
+    if (step?.multi_fields?.length > 0) {
+      return Object.entries(answer).map(([k, v]) => {
+        const fieldDef = step.multi_fields.find(f => f.field_id === k);
+        const label = fieldDef?.display_label || k;
+        // Format boolean values nicely
+        const displayVal = v === true ? 'Yes' : v === false ? 'No' : (v ?? '');
+        return `${label}: ${displayVal}`;
+      }).join(' | ');
+    }
     return Object.entries(answer).map(([k, v]) => `${k}: ${v}`).join(' | ');
   }
   const opt = step?.options?.find(o => o.value === String(answer));
@@ -374,12 +383,12 @@ function replayAccountPath(workflow, classificationAnswers) {
       finalStatus = step.result_status || 'unknown';
       finalResultStatus = step.result_status;
       finalResultDescription = step.result_description;
-      replaySteps.push({ stepId: currentStepId, stepTitle: step.step_title, questionType: step.question_type, answer: null, resultStatus: step.result_status, resultDescription: step.result_description });
+      replaySteps.push({ stepId: currentStepId, stepTitle: step.step_title, questionType: step.question_type, answer: null, resultStatus: step.result_status, resultDescription: step.result_description, stepObj: step });
       break;
     }
 
     if (step.question_type === 'info') {
-      replaySteps.push({ stepId: currentStepId, stepTitle: step.step_title, questionType: step.question_type, answer: null });
+      replaySteps.push({ stepId: currentStepId, stepTitle: step.step_title, questionType: step.question_type, answer: null, stepObj: step });
       currentStepId = step.default_next_step || step.options?.[0]?.next_step;
       continue;
     }
@@ -387,7 +396,8 @@ function replayAccountPath(workflow, classificationAnswers) {
     const savedAnswer = classificationAnswers[currentStepId];
     const pathEntry = {
       stepId: currentStepId, stepTitle: step.step_title, questionText: step.question_text,
-      questionType: step.question_type, answer: savedAnswer !== undefined ? savedAnswer : null, options: step.options
+      questionType: step.question_type, answer: savedAnswer !== undefined ? savedAnswer : null, options: step.options,
+      stepObj: step
     };
 
     if (savedAnswer === undefined) {
@@ -770,7 +780,7 @@ async function generateExcel(paths, workflowName, tenantId, accountId, accountRe
     });
 
     accountReplay.steps.forEach((step, idx) => {
-      const answerText = formatAnswer(step.answer, step);
+      const answerText = formatAnswer(step.answer, step.stepObj || step);
       const notes = step.noAnswer ? 'No saved answer — path ends here'
                   : step.loopsBackTo ? `LOOP -> ${step.loopsBackToTitle || step.loopsBackTo}`
                   : step.resultStatus ? `Result: ${step.resultStatus.replace(/_/g,' ').toUpperCase()}`
@@ -790,6 +800,25 @@ async function generateExcel(paths, workflowName, tenantId, accountId, accountRe
         dataRow.eachCell(cell => { cell.font = { bold:true, color:{ argb: STATUS_FONT_COLOR[step.resultStatus] || 'FF64748B' }, size:9 }; });
       }
     });
+
+    // Final outcome row
+    const finalOutcomeStatus = accountReplay.accountReportabilityStatus || accountReplay.finalResultStatus || accountReplay.finalStatus;
+    if (finalOutcomeStatus) {
+      rs.addRow([]).height = 8;
+      const outcomeRow = rs.addRow(['FINAL OUTCOME', finalOutcomeStatus.replace(/_/g,' ').toUpperCase(), accountReplay.accountReportabilityReason || accountReplay.finalResultDescription || '', '', '']);
+      rs.mergeCells(`C${outcomeRow.number}:E${outcomeRow.number}`);
+      outcomeRow.height = 28;
+      const outFill = STATUS_FILL[finalOutcomeStatus] || STATUS_FILL.unknown;
+      const outFc   = STATUS_FONT_COLOR[finalOutcomeStatus] || 'FF64748B';
+      outcomeRow.eachCell(cell => {
+        cell.fill = outFill;
+        cell.border = THIN_BORDER;
+        cell.alignment = { vertical:'middle', indent:1, wrapText:true };
+      });
+      outcomeRow.getCell(1).font = { bold:true, color:{ argb:'FF64748B' }, size:9 };
+      outcomeRow.getCell(2).font = { bold:true, color:{ argb:outFc }, size:12 };
+      outcomeRow.getCell(3).font = { color:{ argb:outFc }, size:9, italic:true };
+    }
 
     rs.getColumn(1).width = 10;
     rs.getColumn(2).width = 45;
