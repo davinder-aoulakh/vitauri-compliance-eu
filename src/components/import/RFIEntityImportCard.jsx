@@ -627,42 +627,119 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     }
 
-    // ── Sheet 2: Instructions
-    const exampleSheet = workbook.addWorksheet("Instructions", { properties: { tabColor: { argb: "FF6366F1" } } });
-    exampleSheet.columns = [{ key: "section", width: 28 }, { key: "instruction", width: 80 }];
-    const instrHeader = exampleSheet.getRow(1);
-    instrHeader.getCell(1).value = "Section / Field";
-    instrHeader.getCell(2).value = "Guidance";
-    styleHeader(instrHeader.getCell(1), false);
-    styleHeader(instrHeader.getCell(2), false);
-    instrHeader.height = 28;
-
-    const instrRows = [
-      ["GENERAL", "Fill in the 'Accounts Data' tab. Each row = one account. Start from row 3."],
-      ["GENERAL", "Columns are colour-coded by section. Row 1 = field name, Row 2 = section band."],
-      ["GENERAL", "Some column groups are hidden by default (collapsed). Click the + button at the top to expand them."],
-      ["🔴 ALWAYS REQUIRED", "entity_id, account_number, account_number_type, account_opening_date, account_type, account_holder_type — must be filled for every row."],
-      ["👤 INDIVIDUAL ONLY", "first_name, last_name, date_of_birth, place_of_birth etc. Leave blank when Account Holder Type = entity."],
-      ["🏢 ENTITY ONLY", "account_holder_name, date_of_incorporation, country_of_incorporation etc. Leave blank when Account Holder Type = individual."],
-      ["⚰️ DECEASED ONLY", "Expand this hidden section only if the account holder is deceased. Otherwise leave collapsed."],
-      ["🏦 TREASURY CENTER ONLY", "Expand only when Potential Exception Type = TreasuryCtr."],
-      ["👥 CONTROLLING PERSONS", "CP 2–4 sections are hidden by default. Expand if the account has multiple controlling persons."],
-      ["📍 ADDRESS", "ah_original_* = account_holder_address (registered). ah_current_* = current_address. Country name columns auto-fill the country code via VLOOKUP."],
-      ["🌍 TAX RESIDENCY", "Up to 2 tax residencies. Country code columns are auto-filled — do not edit them manually."],
-      ["📄 SELF CERTIFICATION", "self_cert_requested = true/false. self_cert_request_date = ISO date (YYYY-MM-DD)."],
-      ["💰 FINANCIAL DATA", "year_end_cash_value and gross_payments accept numbers. Currency columns use the dropdown on the Referenced Data tab."],
-      ["DROPDOWNS", "Use the dropdown lists where available. Values must match exactly (case-insensitive on import)."],
-      ["IMPORT", "Upload this file using the Import button. The AI mapper will auto-match columns to fields."],
+    // ── Sheet 2: Instructions (rich guide tab)
+    const instrSheet = workbook.addWorksheet("📋 Instructions", {
+      properties: { tabColor: { argb: "FF0A7373" } },
+    });
+    instrSheet.columns = [
+      { key: "num",   width: 5  },
+      { key: "label", width: 30 },
+      { key: "cols",  width: 22 },
+      { key: "when",  width: 28 },
+      { key: "note",  width: 54 },
     ];
-    instrRows.forEach(([section, instruction], i) => {
-      const row = exampleSheet.addRow({ section, instruction });
-      row.getCell(1).font = { bold: true, size: 9 };
-      row.getCell(2).font = { size: 9 };
-      row.getCell(2).alignment = { wrapText: true };
-      row.height = 28;
-      row.eachCell(cell => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0F4FF" : "FFFFFFFF" } };
+
+    // Title row
+    instrSheet.mergeCells("B1:E1");
+    const instrTitle = instrSheet.getCell("B1");
+    instrTitle.value = "Vitauri Compliance EU — Bulk Import Template Guide";
+    instrTitle.font  = { bold: true, size: 15, color: { argb: "FF1E3A5F" }, name: "Calibri" };
+    instrTitle.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8EDF4" } };
+    instrTitle.alignment = { vertical: "middle", horizontal: "left" };
+    instrSheet.getRow(1).height = 34;
+
+    // Subtitle row
+    instrSheet.mergeCells("B2:E2");
+    const instrSub = instrSheet.getCell("B2");
+    instrSub.value = "Use the +/− buttons above the column headers to collapse sections you don't need. Sections collapsed by default are rarely used — expand only if applicable.";
+    instrSub.font  = { italic: true, size: 10, color: { argb: "FF444444" }, name: "Calibri" };
+    instrSub.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF9F0" } };
+    instrSub.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+    instrSheet.getRow(2).height = 30;
+
+    // Column header row
+    const instrHdrRow = instrSheet.getRow(4);
+    instrHdrRow.height = 20;
+    [null, "Section", "Columns", "When to fill", "Notes"].forEach((v, i) => {
+      if (!v) return;
+      const c = instrHdrRow.getCell(i + 1);
+      c.value = v;
+      c.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+      c.font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri" };
+      c.alignment = { vertical: "middle", horizontal: "left" };
+    });
+
+    // Section rows
+    const INSTR_ROWS = [
+      { label: "🔴 ALWAYS REQUIRED",     cols: "First 6 columns",              when: "Every row",                             note: "Mandatory for the import to process. These columns never collapse." },
+      { label: "👤 INDIVIDUAL ONLY",      cols: "First Name … Place of Birth",   when: "Account Holder Type = individual",     note: "Leave blank for entity accounts. These cells block input for entity rows." },
+      { label: "🏢 ENTITY ONLY",          cols: "FI Type … Incorporation Code",  when: "Account Holder Type = entity",         note: "Leave blank for individual accounts. These cells block input for individual rows." },
+      { label: "📋 ACCOUNT STATUS",       cols: "Pre-existing … Dormant",        when: "All accounts as applicable",           note: "Boolean dropdowns — select true or false from the dropdown list." },
+      { label: "⚰️ DECEASED ONLY",        cols: "Death Cert … Legacy",           when: "Account Holder Is Alive = false",      note: "COLLAPSED by default. Click the + button to expand only if account holder is deceased." },
+      { label: "📍 ADDRESS & CONTACT",    cols: "Original Addr … Phone",         when: "All accounts",                         note: "Country Code columns auto-fill from VLOOKUP — type the country name and the code appears." },
+      { label: "🏷️ ENTITY CLASSIFICATION", cols: "Entity Class … Potential Exception", when: "Entity accounts only",          note: "Used for CRS Section 3 and 4 routing. Set Non-Reportable Exception Type to none if no exception applies." },
+      { label: "🏦 TREASURY CENTER ONLY", cols: "Treasury: Activities … 50% Test", when: "Potential Exception Type = TreasuryCtr", note: "COLLAPSED by default. Expand only when the entity is a Treasury Center." },
+      { label: "💰 FINANCIAL DATA",       cols: "Year-end Balance … Reporting Year", when: "All accounts",                    note: "Year-end balance in the account currency. Reporting Year is the 4-digit calendar year." },
+      { label: "📄 SELF CERTIFICATION",   cols: "SC Overdue … Receipt Date",     when: "All accounts",                         note: "Track SC request and receipt dates. SC Overdue is system-derived — leave blank on import." },
+      { label: "🌍 TAX RESIDENCY",        cols: "Tax Res 1 Country … Tax Res 2 TIN", when: "All accounts (min 1)",            note: "At least one tax residency country and TIN is required for reportable accounts." },
+      { label: "👥 CONTROLLING PERSON 1", cols: "CP1 First Name … CP1 Tax2 TIN", when: "P-NFE and FI entities",              note: "Required when entity classification = passive_nfe or financial_institution." },
+      { label: "👥 CONTROLLING PERSON 2", cols: "CP2 First Name … CP2 Tax2 TIN", when: "2+ controlling persons",             note: "COLLAPSED by default. Expand and fill if the entity has a second controlling person." },
+      { label: "👥 CONTROLLING PERSON 3", cols: "CP3 First Name … CP3 Tax2 TIN", when: "3+ controlling persons",             note: "COLLAPSED by default. Expand and fill if the entity has a third controlling person." },
+      { label: "👥 CONTROLLING PERSON 4", cols: "CP4 First Name … CP4 Tax2 TIN", when: "4+ controlling persons",             note: "COLLAPSED by default. Expand and fill if the entity has a fourth controlling person." },
+    ];
+
+    INSTR_ROWS.forEach((row, i) => {
+      const r = instrSheet.getRow(5 + i);
+      r.height = 28;
+      const section = SECTION_GROUPS.find(sg => sg.label === row.label) || SECTION_GROUPS[0];
+      r.getCell(1).value = "";
+      r.getCell(2).value = row.label;
+      r.getCell(2).fill  = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
+      r.getCell(2).font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri" };
+      r.getCell(2).alignment = { vertical: "middle", horizontal: "left" };
+      [3, 4, 5].forEach(ci => {
+        const c = r.getCell(ci);
+        c.value = [row.cols, row.when, row.note][ci - 3];
+        c.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? section.lightArgb : "FFFFFFFF" } };
+        c.font  = { size: ci === 5 ? 9 : 10, color: { argb: "FF222222" }, name: "Calibri", italic: ci === 4 };
+        c.alignment = { vertical: "middle", horizontal: "left", wrapText: ci === 5 };
+        c.border = { bottom: { style: "thin", color: { argb: "FFDDDDDD" } } };
       });
+    });
+
+    // Quick Tips section
+    const tipsStartRow = 5 + INSTR_ROWS.length + 2;
+    instrSheet.mergeCells(`B${tipsStartRow}:E${tipsStartRow}`);
+    const tipHdr = instrSheet.getCell(`B${tipsStartRow}`);
+    tipHdr.value = "💡 Quick Tips";
+    tipHdr.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A7373" } };
+    tipHdr.font  = { bold: true, size: 12, color: { argb: "FFFFFFFF" }, name: "Calibri" };
+    tipHdr.alignment = { vertical: "middle", horizontal: "left" };
+    instrSheet.getRow(tipsStartRow).height = 26;
+
+    const TIPS = [
+      "Use the +/− buttons above the column header row to expand or collapse section groups.",
+      "Country Code columns (e.g. Country of Incorporation Code) auto-fill via VLOOKUP — type the country name and the code fills automatically. Do not type the code manually.",
+      "Dropdown columns have a pick-list. Click the cell and choose from the dropdown — do not type freehand text in dropdown columns or the import will reject the row.",
+      "The * symbol in a column header means the field is mandatory. The import will fail if these are blank.",
+      "Delete unused rows before uploading. Do not leave blank rows between data rows — they stop the parser.",
+      "Do not rename column headers or change their order — the import parser matches by exact header text.",
+      "For Controlling Persons: expand CP2/CP3/CP4 sections only if the entity has more than 1/2/3 controlling persons.",
+      "For Treasury Center entities: set Potential Exception Type = TreasuryCtr then expand the Treasury Center section to fill the 5 criteria fields.",
+    ];
+    TIPS.forEach((tip, i) => {
+      const r = instrSheet.getRow(tipsStartRow + 1 + i);
+      r.height = 28;
+      instrSheet.mergeCells(`C${tipsStartRow + 1 + i}:E${tipsStartRow + 1 + i}`);
+      r.getCell(2).value = String(i + 1);
+      r.getCell(2).font  = { bold: true, size: 10, color: { argb: "FF0A7373" }, name: "Calibri" };
+      r.getCell(2).fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0F5F5" } };
+      r.getCell(2).alignment = { vertical: "middle", horizontal: "center" };
+      r.getCell(3).value = tip;
+      r.getCell(3).font  = { size: 10, color: { argb: "FF1A1A1A" }, name: "Calibri" };
+      r.getCell(3).fill  = { type: "pattern", pattern: "solid", fgColor: { argb: i % 2 === 0 ? "FFF0FAFA" : "FFE0F5F5" } };
+      r.getCell(3).alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+      r.getCell(3).border = { bottom: { style: "thin", color: { argb: "FFB2DFDB" } } };
     });
 
     // ── Sheet 3: Entity Info
