@@ -773,9 +773,14 @@ function getDefaultColumns(config) {
     { header: "Date of Incorporation", key: "date_of_incorporation", width: 24, required: false, note: "YYYY-MM-DD. For entity account holders", validation_values: null, example_value: "" },
     { header: "Country of Incorporation", key: "country_of_incorporation", width: 26, required: false, note: "For entity account holders", validation_values: null, example_value: "" },
     { header: "Country of Incorporation Code", key: "country_of_incorporation_code", width: 28, required: false, note: "Auto-filled from country name", validation_values: null, example_value: "" },
+    // ── Individual-only demographic fields
+    { header: "Date of Birth", key: "date_of_birth", width: 20, required: false, note: "YYYY-MM-DD. For individual account holders", validation_values: null, example_value: "1980-01-15" },
+    { header: "Place of Birth", key: "place_of_birth", width: 22, required: false, note: "Country of birth — for individual account holders", validation_values: null, example_value: "United States" },
     // ── Account flags
     { header: "Pre-existing Account", key: "is_pre_existing", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Is Recalcitrant", key: "is_recalcitrant", width: 22, required: false, note: "true | false — individual holders only", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Account Holder Is Alive", key: "account_holder_is_alive", width: 26, required: false, note: "true | false — individual account holders only", validation_values: ["true", "false"], example_value: "true" },
+    { header: "Account Holder Deceased During Period", key: "account_holder_deceased_during_period", width: 36, required: false, note: "true | false — whether holder deceased during reporting period", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Status", key: "status", width: 18, required: false, note: "active | closed | dormant", validation_values: ["active", "closed", "dormant"], example_value: "active" },
     { header: "Account Closed During Period", key: "account_closed_during_period", width: 28, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Frozen at Reporting Date", key: "account_frozen_at_reporting_date", width: 30, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
@@ -804,6 +809,7 @@ function getDefaultColumns(config) {
     { header: "Entity Classification", key: "entity_classification", width: 26, required: false, note: "financial_institution | active_nfe | passive_nfe | not_applicable", validation_values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"], example_value: "not_applicable" },
     { header: "Entity Managed by Fiduciary Trust", key: "entity_managed_by_fiduciary_trust", width: 32, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Entity Managed by Asset Manager", key: "entity_managed_by_asset_manager", width: 30, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Gross Income from Financial Assets", key: "gross_income_from_financial_assets", width: 32, required: false, note: "true | false — whether entity derives gross income from financial assets", validation_values: ["true", "false"], example_value: "false" },
     // ── CRS Section 3 gate check ─────────────────────────────────────────────────
     { header: "Non-Reportable Exception Type",
       key: "non_reportable_exception_type", width: 36, required: false,

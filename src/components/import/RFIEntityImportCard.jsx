@@ -331,6 +331,9 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         "first_name", "middle_name", "last_name", "name_prefix", "title",
         "date_of_birth", "place_of_birth", "is_recalcitrant",
         "account_holder_is_alive", "account_holder_deceased_during_period",
+        "death_certificate_requested", "death_certificate_received",
+        "will_or_inheritance_requested", "will_or_inheritance_received",
+        "legacy_of_deceased_settled",
       ]);
       // Fields only relevant for entity holders → grey out when type = "individual"
       const ENTITY_ONLY_KEYS = new Set([
@@ -338,7 +341,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         "date_of_incorporation", "country_of_incorporation", "country_of_incorporation_code",
         "type_of_financial_institution",
         "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
-        "gross_income_from_financial_assets", "entity_classification",
+        "gross_income_from_financial_assets", "gross_income_50_passive", "entity_classification",
         "non_reportable_exception_type",
         "potential_exception_type",
         "treasury_activities_operational",
@@ -711,7 +714,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     "account_closed_during_period", "us_person_indic", "self_certification_obtained",
     "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
     "self_cert_requested", "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
-    "gross_income_50_passive",
+    "gross_income_50_passive", "gross_income_from_financial_assets",
     "treasury_activities_operational",
     "treasury_part_of_nonfinancial_group",
     "treasury_main_fn_finance_hedge_group",
@@ -787,8 +790,19 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         return;
       }
 
+      // Self certification field key normalization
+      if (targetField === "self_cert_requested") {
+        account["self_certification_request_date"] = parseBool(value) ? (account["self_certification_request_date"] || new Date().toISOString().split("T")[0]) : null;
+        return;
+      }
+      if (targetField === "self_cert_request_date") { account["self_certification_request_date"] = value; return; }
+      if (targetField === "self_cert_obtained") { account["self_certification_obtained"] = parseBool(value); return; }
+      if (targetField === "self_cert_date") { account["self_certification_date"] = value; return; }
+
       if (["year_end_cash_value", "gross_payments"].includes(targetField)) {
         account[targetField] = parseFloat(String(value).replace(/[,$]/g, "")) || null;
+      } else if (targetField === "year_end_currency") {
+        account["year_end_cash_value_currency"] = value;
       } else if (EXTRA_BOOL_FIELDS.has(targetField)) {
         account[targetField] = parseBool(value);
       } else if (targetField === "entity_id" || targetField === "entity_name_ref" || targetField === "skip") {
