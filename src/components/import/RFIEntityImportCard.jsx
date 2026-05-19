@@ -253,6 +253,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       entity_managed_by_fiduciary_trust: "boolean",
       entity_managed_by_asset_manager: "boolean",
       gross_income_50_passive: "boolean",
+      gross_income_from_financial_assets: "boolean",
+      self_certification_overdue: "boolean",
       non_reportable_exception_type:                    "non_reportable_exception_types",
       potential_exception_type:                         "potential_exception_types",
       treasury_activities_operational:                  "boolean",
@@ -715,6 +717,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     "account_frozen_at_reporting_date", "account_dormant_at_reporting_date", "acct_holder_address_unchanged",
     "self_cert_requested", "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
     "gross_income_50_passive", "gross_income_from_financial_assets",
+    "self_certification_overdue",
     "treasury_activities_operational",
     "treasury_part_of_nonfinancial_group",
     "treasury_main_fn_finance_hedge_group",
@@ -789,6 +792,10 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         // Skip auto-fill code columns
         return;
       }
+
+      // Dot-notation fields used by auto-classification rules
+      if (targetField === "account_holder_address.country") { account.account_holder_address = { ...(account.account_holder_address || {}), country: value }; return; }
+      if (targetField === "current_address.country") { account.current_address = { ...(account.current_address || {}), country: value }; return; }
 
       // Self certification field key normalization
       if (targetField === "self_cert_requested") {

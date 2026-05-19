@@ -851,6 +851,7 @@ function getDefaultColumns(config) {
     { header: "Reporting Year", key: "reporting_year", width: 18, required: false, note: "YYYY e.g. 2024", validation_values: null, example_value: "2024" },
     // ── Compliance
     { header: "US Person Indicator", key: "us_person_indic", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Self Certification Overdue (90+ days)", key: "self_certification_overdue", width: 34, required: false, note: "true | false — set true if 90 days have passed since self-cert request with no response", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Holder Self Certification Requested", key: "self_cert_requested", width: 36, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Holder Self Certification Request Date", key: "self_cert_request_date", width: 38, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: "" },
     { header: "Account Holder Self Certification Obtained", key: "self_cert_obtained", width: 34, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
