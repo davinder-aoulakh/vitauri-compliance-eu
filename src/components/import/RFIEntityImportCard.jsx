@@ -980,12 +980,15 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         else rowData[k] = acc[k] != null ? String(acc[k]) : "";
       });
 
-      const expRowIdx = exportSheet.rowCount; // 1-based, rows 1+2 are headers
       const row = exportSheet.addRow(rowData);
-      const bandArgb = expRowIdx % 2 === 0 ? "FFF0F9FF" : "FFFFFFFF";
-      row.eachCell(cell => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bandArgb } };
-        cell.font = { size: 9 };
+      row.eachCell((cell) => {
+        const isEven = (row.number - 2) % 2 === 0;
+        cell.fill = {
+          type: "pattern", pattern: "solid",
+          fgColor: { argb: isEven ? "FFF0FDF4" : "FFFFFFFF" },
+        };
+        cell.font      = { size: 9 };
+        cell.alignment = { vertical: "top" };
       });
     });
 
