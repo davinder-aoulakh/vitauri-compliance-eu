@@ -807,28 +807,99 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       dRow++; // blank separator
     });
 
-    // ── Sheet 5: Export (existing accounts for this entity)
-    const exportSheet = workbook.addWorksheet("Export", { properties: { tabColor: { argb: "FF10B981" } } });
+    // ── Sheet 5: Export (existing accounts — read-only reference)
+    const exportSheet = workbook.addWorksheet("Export", {
+      properties: { tabColor: { argb: "FF0A7373" } },
+    });
     const exportColumns = columns.filter(c => !c.key.startsWith("entity_"));
     exportSheet.columns = [
-      { key: "entity_id", width: 28 },
+      { key: "entity_id",   width: 28 },
       { key: "entity_name", width: 28 },
       ...exportColumns.map(c => ({ key: c.key, width: c.width || 20 })),
     ];
 
-    // Write header row
+    // ROW 1: Colour-coded column headers — same section colours as Accounts Data
     const expHeaderRow = exportSheet.getRow(1);
-    expHeaderRow.getCell(1).value = "Entity ID";
-    expHeaderRow.getCell(2).value = "Entity Name";
-    styleHeader(expHeaderRow.getCell(1), false);
-    styleHeader(expHeaderRow.getCell(2), false);
-    exportColumns.forEach((col, i) => {
-      const cell = expHeaderRow.getCell(i + 3);
-      cell.value = col.header;
-      styleHeader(cell, col.required);
+    expHeaderRow.height = 36;
+
+    [
+      { cell: expHeaderRow.getCell(1), value: "Entity ID" },
+      { cell: expHeaderRow.getCell(2), value: "Entity Name" },
+    ].forEach(({ cell, value }) => {
+      cell.value = value;
+      cell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+      cell.font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Calibri" };
+      cell.alignment = { vertical: "bottom", horizontal: "center", wrapText: true };
+      cell.border = {
+        right:  { style: "thin", color: { argb: "33FFFFFF" } },
+        bottom: { style: "thin", color: { argb: "33FFFFFF" } },
+      };
     });
-    expHeaderRow.height = 28;
-    exportSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    exportColumns.forEach((col, i) => {
+      const cell    = expHeaderRow.getCell(i + 3);
+      cell.value    = col.header;
+      const section = getSectionForKey(col.key);
+      cell.fill     = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
+      cell.font     = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Calibri" };
+      cell.alignment = { vertical: "bottom", horizontal: "center", wrapText: true };
+      cell.border   = {
+        right:  { style: "thin", color: { argb: "33FFFFFF" } },
+        bottom: { style: "thin", color: { argb: "33FFFFFF" } },
+      };
+    });
+
+    // ROW 2: Section guide band
+    const expGuideRow = exportSheet.getRow(2);
+    expGuideRow.height = 20;
+
+    const expGuideEnt1 = expGuideRow.getCell(1);
+    expGuideEnt1.value = "🔴 ENTITY & ACCOUNT ID";
+    expGuideEnt1.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    expGuideEnt1.font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Calibri" };
+    expGuideEnt1.alignment = { vertical: "center", horizontal: "left" };
+
+    const expGuideEnt2 = expGuideRow.getCell(2);
+    expGuideEnt2.value = "Read-only export — do not edit";
+    expGuideEnt2.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8EDF4" } };
+    expGuideEnt2.font  = { italic: true, size: 8, color: { argb: "FF444444" }, name: "Calibri" };
+    expGuideEnt2.alignment = { vertical: "center", horizontal: "left" };
+
+    const expSeenSections = new Set();
+    exportColumns.forEach((col, i) => {
+      const cell    = expGuideRow.getCell(i + 3);
+      const section = getSectionForKey(col.key);
+      const isFirst = !expSeenSections.has(section.id);
+      if (isFirst) {
+        cell.value = section.label;
+        expSeenSections.add(section.id);
+      } else if (!expSeenSections.has(section.id + "_sub")) {
+        cell.value = section.sublabel;
+        expSeenSections.add(section.id + "_sub");
+      }
+      styleGuideCell(cell, section, isFirst);
+    });
+
+    // COLUMN GROUPS: same collapsed sections as Accounts Data (offset by 2)
+    exportColumns.forEach((col, i) => {
+      const section = getSectionForKey(col.key);
+      if (section.id !== "required") {
+        const excelCol = exportSheet.getColumn(i + 3);
+        excelCol.outlineLevel = 1;
+        if (section.collapsed) excelCol.hidden = true;
+      }
+    });
+
+    exportSheet.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
+
+    // FREEZE PANES: lock Entity ID + Entity Name (cols 1–2) and both header rows
+    exportSheet.views = [{
+      state:       "frozen",
+      xSplit:      2,
+      ySplit:      2,
+      topLeftCell: "C3",
+      activeCell:  "C3",
+    }];
 
     // Fetch existing accounts for this entity
     const existingAccounts = await base44.entities.Account.filter({ entity_id: entity.id });
@@ -909,9 +980,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         else rowData[k] = acc[k] != null ? String(acc[k]) : "";
       });
 
+      const expRowIdx = exportSheet.rowCount; // 1-based, rows 1+2 are headers
       const row = exportSheet.addRow(rowData);
+      const bandArgb = expRowIdx % 2 === 0 ? "FFF0F9FF" : "FFFFFFFF";
       row.eachCell(cell => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bandArgb } };
         cell.font = { size: 9 };
       });
     });
