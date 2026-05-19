@@ -811,7 +811,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     const exportSheet = workbook.addWorksheet("Export", {
       properties: { tabColor: { argb: "FF0A7373" } },
     });
-    const exportColumns = columns.filter(c => !c.key.startsWith("entity_"));
+    const exportColumns = columns.filter(c => c.key !== "entity_id" && c.key !== "entity_name_ref");
     exportSheet.columns = [
       { key: "entity_id",   width: 28 },
       { key: "entity_name", width: 28 },
