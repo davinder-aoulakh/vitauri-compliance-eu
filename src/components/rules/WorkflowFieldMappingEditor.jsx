@@ -9,31 +9,63 @@ import { GitBranch, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 const ACCOUNT_FIELDS = [
+  // Account basics
   { value: "account_holder_type", label: "Account Holder Type" },
   { value: "account_type", label: "Account Type" },
   { value: "account_holder_is_alive", label: "Account Holder Alive" },
   { value: "account_holder_deceased_during_period", label: "Deceased During Period" },
   { value: "is_pre_existing", label: "Pre-existing Account" },
   { value: "account_closed_during_period", label: "Account Closed" },
+  { value: "account_dormant_at_reporting_date", label: "Account Dormant at Reporting Date" },
+  { value: "account_frozen_at_reporting_date", label: "Account Frozen at Reporting Date" },
+  { value: "status", label: "Account Status" },
+  // Financial values
   { value: "year_end_cash_value", label: "Year-end Cash Value" },
   { value: "gross_payments", label: "Gross Payments" },
-  { value: "country_of_residence", label: "Country of Residence" },
-  { value: "place_of_birth", label: "Place of Birth" },
+  // Entity-related
   { value: "entity_classification", label: "Entity Classification" },
+  { value: "entity_managed_by_fiduciary_trust", label: "Managed by Fiduciary Trust" },
+  { value: "entity_managed_by_asset_manager", label: "Managed by Asset Manager" },
+  { value: "gross_income_from_financial_assets", label: "Gross Income from Financial Assets" },
+  { value: "gross_income_50_passive", label: "Gross Income ≥50% Passive" },
+  // CRS S3 gate
+  { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type (S3-1)" },
+  // CRS S4-1 routing
+  { value: "potential_exception_type", label: "Potential Exception Type (S4-1)" },
+  // Treasury Center fields
+  { value: "treasury_activities_operational", label: "Treasury: Activities Functional & Operational" },
+  { value: "treasury_part_of_nonfinancial_group", label: "Treasury: Part of Non-Financial Group" },
+  { value: "treasury_main_fn_finance_hedge_group", label: "Treasury: Main Function Financing/Hedging" },
+  { value: "treasury_50pct_passive_income_fails", label: "Treasury: <50% Passive Income (Passes 50% Test)" },
+  { value: "treasury_still_operational_despite_failing_50pct", label: "Treasury: Operational Despite Failing 50% Test" },
+  // Reportability
   { value: "reportability_status", label: "Reportability Status" },
   { value: "us_person_indic", label: "US Person Indicator" },
+  // Self certification
   { value: "self_certification_obtained", label: "Self Certification Obtained" },
-  { value: "status", label: "Account Status" },
+  { value: "self_certification_overdue", label: "Self Certification Overdue (90+ days)" },
+  { value: "self_certification_request_date", label: "Self Certification Request Date" },
+  // Address
   { value: "current_address.country", label: "Current Address: Country" },
   { value: "account_holder_address.country", label: "Account Holder Address: Country" },
+  { value: "country_of_residence", label: "Country of Residence" },
+  { value: "place_of_birth", label: "Place of Birth" },
+  // Deceased / estate
   { value: "death_certificate_requested", label: "Death Certificate Requested" },
   { value: "death_certificate_received", label: "Death Certificate Received" },
   { value: "will_or_inheritance_requested", label: "Will/Inheritance Requested" },
   { value: "will_or_inheritance_received", label: "Will/Inheritance Received" },
   { value: "legacy_of_deceased_settled", label: "Legacy Settled" },
-  { value: "entity_managed_by_fiduciary_trust", label: "Managed by Fiduciary Trust" },
-  { value: "entity_managed_by_asset_manager", label: "Managed by Asset Manager" },
-  { value: "gross_income_from_financial_assets", label: "Gross Income from Financial Assets" },
+  // Dates
+  { value: "account_creation_date", label: "Account Creation Date" },
+  { value: "created_date", label: "Record Created Date" },
+  { value: "updated_date", label: "Record Updated Date" },
+  // Entity (related)
+  { value: "entity.entity_name", label: "Entity: Name" },
+  { value: "entity.entity_type", label: "Entity: Type" },
+  { value: "entity.country_of_incorporation", label: "Entity: Country of Incorporation" },
+  { value: "entity.rfi_status", label: "Entity: RFI Status" },
+  { value: "entity.fi_type", label: "Entity: FI Type" },
 ];
 
 export default function WorkflowFieldMappingEditor({ linkedWorkflowId, workflowFieldMappings, onWorkflowChange, onMappingsChange }) {
