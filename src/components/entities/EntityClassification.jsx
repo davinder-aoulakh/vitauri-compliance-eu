@@ -928,16 +928,16 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
         const fiTypeMap = {
           "1": "custodial_institution",
           "2": "depository_institution",
-          "3a": "investment_entity",
-          "3b": "investment_entity",
+          "3a": "investment_entity_type_a",
+          "3b": "investment_entity_type_b",
           "4": "specified_insurance_company"
         };
         
         const fiTypeLabelMap = {
           "Custodial Institution": "custodial_institution",
           "Depository Institution": "depository_institution",
-          "Investment Entity (3a)": "investment_entity",
-          "Investment Entity (3b)": "investment_entity",
+          "Investment Entity (3a)": "investment_entity_type_a",
+          "Investment Entity (3b)": "investment_entity_type_b",
           "Specified Insurance Company": "specified_insurance_company"
         };
         

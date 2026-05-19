@@ -192,7 +192,7 @@ export default function ConditionGroupBuilder({ group, onChange, accountFields, 
                             <SelectContent className="max-h-[300px]">
                               {selectedField.options.map((option) => (
                                 <SelectItem key={option} value={option}>
-                                  {option}
+                                  {selectedField.optionLabels?.[option] || option}
                                 </SelectItem>
                               ))}
                             </SelectContent>

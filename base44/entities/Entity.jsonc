@@ -73,11 +73,13 @@
       "enum": [
         "custodial_institution",
         "depository_institution",
+        "investment_entity_type_a",
+        "investment_entity_type_b",
         "investment_entity",
         "specified_insurance_company",
         "not_applicable"
       ],
-      "description": "Type of Financial Institution if RFI"
+      "description": "Type of Financial Institution if RFI. investment_entity_type_a = managed by another FI (Type A). investment_entity_type_b = gross income/managed-by test (Type B). investment_entity is legacy/unspecified."
     },
     "non_reporting_reason": {
       "type": "string",
