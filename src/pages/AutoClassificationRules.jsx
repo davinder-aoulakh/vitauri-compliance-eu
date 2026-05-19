@@ -326,7 +326,7 @@ export default function AutoClassificationRulesPage() {
     { value: "entity.entity_type", label: "Entity: Type", type: "select", options: ["corporation", "trust", "partnership", "fund", "branch", "other"], isRelated: true },
     { value: "entity.country_of_incorporation", label: "Entity: Country of Incorporation", type: "text", isRelated: true },
     { value: "entity.rfi_status", label: "Entity: RFI Status", type: "select", options: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"], isRelated: true },
-    { value: "entity.fi_type", label: "Entity: FI Type", type: "select", options: ["custodial_institution", "depository_institution", "investment_entity", "specified_insurance_company", "not_applicable"], isRelated: true },
+    { value: "entity.fi_type", label: "Entity: FI Type", type: "select", options: ["custodial_institution", "depository_institution", "type_a", "type_b", "specified_insurance_company", "not_applicable"], isRelated: true },
     // CRS S3 gate check
     { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type (S3-1)", type: "select", options: ["inheritance_estate","escrow_court_decree","qualifying_pension","overdraft_deposit","pre_existing_dormant_below_1k","publicly_traded","purely_domestic","international_organization","liquidation_dissolution","none"] },
     // CRS S4-1 routing
