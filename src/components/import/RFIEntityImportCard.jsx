@@ -529,17 +529,17 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       const section = SECTION_GROUPS.find(sg => sg.id === sectionId) || SECTION_GROUPS[0];
       r.getCell(1).value = "";
 
-      // Make the section label a clickable hyperlink to the first column of that section in Accounts Data
-      // Target row 3 (first actual data row, below header + guide band)
+      // Make the section label a clickable hyperlink to the first column of that section in Accounts Data.
+      // ExcelJS v4 internal hyperlinks: value must be { text, hyperlink } where hyperlink uses
+      // the exact format Excel stores internally: no leading '#', just SheetName!CellRef.
+      // The sheet name does NOT need quoting in the ExcelJS value.hyperlink property — ExcelJS handles escaping.
       const firstColIdx = sectionFirstColIndex[sectionId];
-      const targetCell = firstColIdx ? `${colLetter(firstColIdx)}3` : "A3";
-      r.getCell(2).value = {
-        text: row.label,
-        hyperlink: `#'Accounts Data'!${targetCell}`,
-      };
-      r.getCell(2).fill  = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
-      r.getCell(2).font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri", underline: true };
-      r.getCell(2).alignment = { vertical: "middle", horizontal: "left" };
+      const targetAddr = firstColIdx ? `${colLetter(firstColIdx)}1` : "A1";
+      const linkCell = r.getCell(2);
+      linkCell.value = { text: row.label, hyperlink: `Accounts Data!${targetAddr}` };
+      linkCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
+      linkCell.font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri", underline: true };
+      linkCell.alignment = { vertical: "middle", horizontal: "left" };
       [3, 4, 5].forEach(ci => {
         const c = r.getCell(ci);
         c.value = [row.cols, row.when, row.note][ci - 3];
