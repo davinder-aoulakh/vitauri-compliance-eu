@@ -514,15 +514,25 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       }
     });
 
+    // Build a direct map from INSTR_ROW label -> section id using index position
+    // (avoids emoji/unicode mismatch between INSTR_ROWS labels and SECTION_GROUPS labels)
+    const SECTION_IDS_IN_ORDER = [
+      "required", "individual", "entity", "status", "deceased",
+      "address", "classif", "treasury", "financial", "scert",
+      "taxres", "cp1", "cp2", "cp3", "cp4",
+    ];
+
     INSTR_ROWS.forEach((row, i) => {
       const r = instrSheet.getRow(5 + i);
       r.height = 28;
-      const section = SECTION_GROUPS.find(sg => sg.label === row.label) || SECTION_GROUPS[0];
+      const sectionId = SECTION_IDS_IN_ORDER[i] || "required";
+      const section = SECTION_GROUPS.find(sg => sg.id === sectionId) || SECTION_GROUPS[0];
       r.getCell(1).value = "";
 
       // Make the section label a clickable hyperlink to the first column of that section in Accounts Data
-      const firstColIdx = sectionFirstColIndex[section.id];
-      const targetCell = firstColIdx ? colLetter(firstColIdx) + "1" : "A1";
+      // Target row 3 (first actual data row, below header + guide band)
+      const firstColIdx = sectionFirstColIndex[sectionId];
+      const targetCell = firstColIdx ? `${colLetter(firstColIdx)}3` : "A3";
       r.getCell(2).value = {
         text: row.label,
         hyperlink: `#'Accounts Data'!${targetCell}`,
