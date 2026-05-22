@@ -16,7 +16,9 @@ import {
   MapPin,
   Activity,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  LogIn,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,7 @@ export default function TenantManagement() {
   const [showForm, setShowForm] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [impersonating, setImpersonating] = useState(null); // tenant id being impersonated
 
   const queryClient = useQueryClient();
 
@@ -105,6 +108,29 @@ export default function TenantManagement() {
   const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this tenant? This action cannot be undone.")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleImpersonate = async (tenant) => {
+    if (!confirm(`Switch to tenant "${tenant.name}" as Tenant Admin? You can return to Super Admin at any time.`)) return;
+    setImpersonating(tenant.id);
+    try {
+      // Store original role in sessionStorage so the banner can show a revert button
+      sessionStorage.setItem("super_admin_impersonating", JSON.stringify({
+        original_role: "super_admin",
+        tenant_name: tenant.name,
+        tenant_id: tenant.id
+      }));
+      await base44.functions.invoke("switchRole", {
+        role: "tenant_admin",
+        tenant_id: tenant.id,
+        job_title: "Super Admin (Impersonating)"
+      });
+      window.location.href = createPageUrl("Dashboard");
+    } catch (err) {
+      sessionStorage.removeItem("super_admin_impersonating");
+      alert("Failed to impersonate tenant: " + err.message);
+      setImpersonating(null);
     }
   };
 
@@ -303,6 +329,12 @@ export default function TenantManagement() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleImpersonate(tenant)} disabled={!!impersonating}>
+                                {impersonating === tenant.id
+                                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  : <LogIn className="w-4 h-4 mr-2" />}
+                                Access as Tenant Admin
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(tenant)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Tenant
