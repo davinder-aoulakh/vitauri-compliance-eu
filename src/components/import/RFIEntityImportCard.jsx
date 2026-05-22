@@ -536,7 +536,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       const firstColIdx = sectionFirstColIndex[sectionId];
       const targetAddr = firstColIdx ? `${colLetter(firstColIdx)}1` : "A1";
       const linkCell = r.getCell(2);
-      linkCell.value = { text: row.label, hyperlink: `Accounts Data!${targetAddr}` };
+      linkCell.value = { text: row.label, hyperlink: `#'Accounts Data'!${targetAddr}` };
       linkCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
       linkCell.font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri", underline: true };
       linkCell.alignment = { vertical: "middle", horizontal: "left" };
