@@ -827,7 +827,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       c.alignment = { vertical: "middle", horizontal: "left" };
       c.border = { bottom: { style: "medium", color: { argb: "FF0EA5E9" } } };
     });
-    fieldGuideSheet.views = [{ state: "frozen", ySplit: 4 }];
+    fieldGuideSheet.views = [{ state: "frozen", xSplit: 1, ySplit: 4, topLeftCell: "B5" }];
 
     const CODE_TO_NAME_KEY_GUIDE = {
       country_of_incorporation_code: true,
@@ -949,12 +949,30 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       dRow++; // blank separator
     });
 
-    // Protect the referenced data sheet so users cannot unhide or modify it
+    // Protect the referenced data sheet so users cannot modify or unhide it
     await refSheet.protect("CRS_Template_Protected", {
-      sheet: true, formatCells: false, formatColumns: false, formatRows: false,
-      insertRows: false, insertColumns: false, deleteRows: false, deleteColumns: false,
-      sort: false, autoFilter: false, pivotTables: false,
+      sheet: true,
+      selectLockedCells: true,
+      selectUnlockedCells: true,
+      formatCells: false,
+      formatColumns: false,
+      formatRows: false,
+      insertRows: false,
+      insertColumns: false,
+      deleteRows: false,
+      deleteColumns: false,
+      sort: false,
+      autoFilter: false,
+      pivotTables: false,
     });
+
+    // Workbook-level protection prevents users from unhiding veryHidden sheets via the UI
+    workbook.protection = {
+      workbook: true,
+      password: "CRS_Template_Protected",
+      lockStructure: true,
+      lockWindows: false,
+    };
 
     // ── Sheet 6: Export (existing accounts — read-only reference)
     const exportSheet = workbook.addWorksheet("Export", {
