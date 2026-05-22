@@ -505,14 +505,30 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       { label: "👥 CONTROLLING PERSON 4", cols: "CP4 First Name … CP4 Tax2 TIN", when: "4+ controlling persons",             note: "COLLAPSED by default. Expand and fill if the entity has a fourth controlling person." },
     ];
 
+    // Build a map of section id -> first column index in Accounts Data (1-based)
+    const sectionFirstColIndex = {};
+    columns.forEach((col, i) => {
+      const section = getSectionForKey(col.key);
+      if (!(section.id in sectionFirstColIndex)) {
+        sectionFirstColIndex[section.id] = i + 1;
+      }
+    });
+
     INSTR_ROWS.forEach((row, i) => {
       const r = instrSheet.getRow(5 + i);
       r.height = 28;
       const section = SECTION_GROUPS.find(sg => sg.label === row.label) || SECTION_GROUPS[0];
       r.getCell(1).value = "";
-      r.getCell(2).value = row.label;
+
+      // Make the section label a clickable hyperlink to the first column of that section in Accounts Data
+      const firstColIdx = sectionFirstColIndex[section.id];
+      const targetCell = firstColIdx ? colLetter(firstColIdx) + "1" : "A1";
+      r.getCell(2).value = {
+        text: row.label,
+        hyperlink: `#'Accounts Data'!${targetCell}`,
+      };
       r.getCell(2).fill  = { type: "pattern", pattern: "solid", fgColor: { argb: section.hdrArgb } };
-      r.getCell(2).font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri" };
+      r.getCell(2).font  = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri", underline: true };
       r.getCell(2).alignment = { vertical: "middle", horizontal: "left" };
       [3, 4, 5].forEach(ci => {
         const c = r.getCell(ci);
@@ -763,8 +779,124 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     });
 
-    // ── Sheet 4: Referenced Data (country lookup + dropdown legends + currencies)
-    const refSheet = workbook.addWorksheet("Referenced Data", { properties: { tabColor: { argb: "FFCBD5E1" } } });
+    // ── Sheet 4: Field Guide
+    const fieldGuideSheet = workbook.addWorksheet("Field Guide", { properties: { tabColor: { argb: "FF0EA5E9" } } });
+    fieldGuideSheet.columns = [
+      { key: "col_a", width: 36 },
+      { key: "col_b", width: 14 },
+      { key: "col_c", width: 14 },
+      { key: "col_d", width: 52 },
+      { key: "col_e", width: 32 },
+      { key: "col_f", width: 22 },
+    ];
+    const fgTitleRow = fieldGuideSheet.getRow(1);
+    fgTitleRow.height = 34;
+    const fgTitleCell = fgTitleRow.getCell(1);
+    fgTitleCell.value = "📖  Field Guide — Data Entry Reference";
+    fgTitleCell.font = { bold: true, size: 14, color: { argb: "FF0C4A6E" }, name: "Calibri" };
+    fgTitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0F2FE" } };
+    fieldGuideSheet.mergeCells("A1:F1");
+    fgTitleCell.alignment = { vertical: "middle", horizontal: "left" };
+
+    const fgSubRow = fieldGuideSheet.getRow(2);
+    fgSubRow.height = 18;
+    const fgSubCell = fgSubRow.getCell(1);
+    fgSubCell.value = "Complete reference for every column in the Accounts Data sheet. Required fields are highlighted in amber.";
+    fgSubCell.font = { italic: true, size: 10, color: { argb: "FF475569" }, name: "Calibri" };
+    fieldGuideSheet.mergeCells("A2:F2");
+
+    fieldGuideSheet.getRow(3).height = 6;
+
+    const fgHeaderRow = fieldGuideSheet.getRow(4);
+    fgHeaderRow.height = 22;
+    ["Column Name", "Required", "Data Type", "Description / Instructions", "Allowed Values", "Example"].forEach((h, i) => {
+      const c = fgHeaderRow.getCell(i + 1);
+      c.value = h;
+      c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Calibri" };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0C4A6E" } };
+      c.alignment = { vertical: "middle", horizontal: "left" };
+      c.border = { bottom: { style: "medium", color: { argb: "FF0EA5E9" } } };
+    });
+    fieldGuideSheet.views = [{ state: "frozen", ySplit: 4 }];
+
+    const CODE_TO_NAME_KEY_GUIDE = {
+      country_of_incorporation_code: true,
+      ah_original_country_code: true, ah_current_country_code: true,
+      ah_country_of_residence_code: true,
+      tax1_country_code: true, tax2_country_code: true,
+    };
+    for (let n = 1; n <= 4; n++) {
+      CODE_TO_NAME_KEY_GUIDE[`cp${n}_place_of_birth_code`] = true;
+      CODE_TO_NAME_KEY_GUIDE[`cp${n}_country_of_residence_code`] = true;
+      CODE_TO_NAME_KEY_GUIDE[`cp${n}_address_country_code`] = true;
+      CODE_TO_NAME_KEY_GUIDE[`cp${n}_tax1_country_code`] = true;
+      CODE_TO_NAME_KEY_GUIDE[`cp${n}_tax2_country_code`] = true;
+    }
+    const inferDataType = (col) => {
+      if (col.note?.includes("YYYY-MM-DD") || col.key?.includes("date")) return "Date";
+      if (col.validation_values?.includes("true") && col.validation_values?.includes("false")) return "Boolean";
+      if (col.note?.includes("Number") || col.key?.includes("value") || col.key?.includes("payment")) return "Number";
+      if (col.note?.includes("email") || col.key?.includes("email")) return "Email";
+      if (col.validation_values?.length) return "Dropdown";
+      if (col.note?.includes("Auto-filled") || col.note?.includes("auto")) return "Auto";
+      return "Text";
+    };
+
+    columns.forEach((col, i) => {
+      const r = fieldGuideSheet.getRow(5 + i);
+      r.height = 20;
+      const bg = col.required ? "FFFFF7ED" : (i % 2 === 0 ? "FFFFFFFF" : "FFF0F9FF");
+
+      const nameCell = r.getCell(1);
+      nameCell.value = col.header;
+      nameCell.font = { bold: col.required, size: 10, color: { argb: col.required ? "FF92400E" : "FF1E3A5F" }, name: "Calibri" };
+      nameCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+      nameCell.alignment = { vertical: "middle" };
+
+      const reqCell = r.getCell(2);
+      reqCell.value = col.required ? "✔ Required" : "Optional";
+      reqCell.font = { size: 10, bold: col.required, color: { argb: col.required ? "FFB45309" : "FF64748B" }, name: "Calibri" };
+      reqCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+      reqCell.alignment = { vertical: "middle", horizontal: "center" };
+
+      const typeCell = r.getCell(3);
+      typeCell.value = inferDataType(col);
+      typeCell.font = { size: 10, color: { argb: "FF0369A1" }, name: "Calibri" };
+      typeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+      typeCell.alignment = { vertical: "middle", horizontal: "center" };
+
+      const descCell = r.getCell(4);
+      descCell.value = col.note || col.header;
+      descCell.font = { size: 10, color: { argb: "FF374151" }, name: "Calibri" };
+      descCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+      descCell.alignment = { vertical: "middle", wrapText: true };
+
+      const valCell = r.getCell(5);
+      valCell.value = col.validation_values?.length
+        ? col.validation_values.join(", ")
+        : CODE_TO_NAME_KEY_GUIDE[col.key]
+          ? "Auto-filled by formula"
+          : COUNTRY_NAME_KEYS.has(col.key)
+            ? "Select from country dropdown"
+            : CURRENCY_KEYS.has(col.key)
+              ? "Select from currency dropdown"
+              : "Free text";
+      valCell.font = { size: 9, color: { argb: "FF475569" }, name: "Calibri" };
+      valCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+      valCell.alignment = { vertical: "middle", wrapText: true };
+
+      const exCell = r.getCell(6);
+      exCell.value = col.example_value || "";
+      exCell.font = { size: 10, color: { argb: "FF059669" }, italic: true, name: "Calibri" };
+      exCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+      exCell.alignment = { vertical: "middle" };
+    });
+
+    // ── Sheet 5: Referenced Data (country lookup + dropdown legends + currencies) — veryHidden + protected
+    const refSheet = workbook.addWorksheet("Referenced Data", {
+      state: "veryHidden",
+      properties: { tabColor: { argb: "FFCBD5E1" } },
+    });
     refSheet.columns = [
       { key: "col_a", width: 40 },
       { key: "col_b", width: 14 },
@@ -807,7 +939,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       dRow++; // blank separator
     });
 
-    // ── Sheet 5: Export (existing accounts — read-only reference)
+    // Protect the referenced data sheet so users cannot unhide or modify it
+    await refSheet.protect("CRS_Template_Protected", {
+      sheet: true, formatCells: false, formatColumns: false, formatRows: false,
+      insertRows: false, insertColumns: false, deleteRows: false, deleteColumns: false,
+      sort: false, autoFilter: false, pivotTables: false,
+    });
+
+    // ── Sheet 6: Export (existing accounts — read-only reference)
     const exportSheet = workbook.addWorksheet("Export", {
       properties: { tabColor: { argb: "FF0A7373" } },
     });
