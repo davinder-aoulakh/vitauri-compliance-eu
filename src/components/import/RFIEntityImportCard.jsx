@@ -628,13 +628,23 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       styleGuideCell(cell, section, isFirst);
     });
 
-    // COLUMN GROUPS: set outline level 1 on all non-required columns
-    // Collapsed sections start hidden so the user only sees ~79 columns
+    // COLUMN GROUPS: assign each section its own unique outline level so each section
+    // gets its own independent +/− collapse/expand button in Excel.
+    // Level 0 = required (always visible, never grouped).
+    // Levels 1–N = one per non-required section, in the order they appear.
+    const sectionOutlineLevel = {};
+    let nextLevel = 1;
+    SECTION_GROUPS.forEach(sg => {
+      if (sg.id !== "required") {
+        sectionOutlineLevel[sg.id] = nextLevel++;
+      }
+    });
+
     columns.forEach((col, i) => {
       const section = getSectionForKey(col.key);
       if (section.id !== "required") {
         const excelCol = dataSheet.getColumn(i + 1);
-        excelCol.outlineLevel = 1;
+        excelCol.outlineLevel = sectionOutlineLevel[section.id] ?? 1;
         if (section.collapsed) {
           excelCol.hidden = true;
         }
@@ -734,35 +744,40 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         const sqRef = `${excelColLetter}3:${excelColLetter}503`;
 
         if (INDIVIDUAL_ONLY_KEYS.has(col.key)) {
-          // Black fill + block input when type = "entity"
-          // Formula references first row of range with absolute col, relative row (ExcelJS requirement)
+          // Grey fill when type = "entity" — keep any existing dropdown validation, don't overwrite with custom
           dataSheet.addConditionalFormatting({
             ref: sqRef,
             rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}3="entity"`], style: { fill: greyFill, font: greyFont } }],
           });
-          for (let r = 3; r <= 503; r++) {
-            dataSheet.getCell(r, colIdx + 1).dataValidation = {
-              type: "custom", allowBlank: true,
-              formulae: [`$${ahtLetter}${r}<>"entity"`],
-              showErrorMessage: true, errorStyle: "stop",
-              errorTitle: "Not applicable",
-              error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
-            };
+          // Only apply blocking custom validation if no dropdown already assigned
+          if (!COL_DROPDOWN_SECTION[col.key] && !COUNTRY_NAME_KEYS.has(col.key)) {
+            for (let r = 3; r <= 503; r++) {
+              dataSheet.getCell(r, colIdx + 1).dataValidation = {
+                type: "custom", allowBlank: true,
+                formulae: [`$${ahtLetter}${r}<>"entity"`],
+                showErrorMessage: true, errorStyle: "stop",
+                errorTitle: "Not applicable",
+                error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
+              };
+            }
           }
         } else if (ENTITY_ONLY_KEYS.has(col.key) || CP_KEY_PREFIX_RE.test(col.key)) {
-          // Black fill + block input when type = "individual"
+          // Grey fill when type = "individual" — keep any existing dropdown validation
           dataSheet.addConditionalFormatting({
             ref: sqRef,
             rules: [{ type: "expression", priority: 1, formulae: [`$${ahtLetter}3="individual"`], style: { fill: greyFill, font: greyFont } }],
           });
-          for (let r = 3; r <= 503; r++) {
-            dataSheet.getCell(r, colIdx + 1).dataValidation = {
-              type: "custom", allowBlank: true,
-              formulae: [`$${ahtLetter}${r}<>"individual"`],
-              showErrorMessage: true, errorStyle: "stop",
-              errorTitle: "Not applicable",
-              error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
-            };
+          // Only apply blocking custom validation if no dropdown already assigned
+          if (!COL_DROPDOWN_SECTION[col.key] && !COUNTRY_NAME_KEYS.has(col.key)) {
+            for (let r = 3; r <= 503; r++) {
+              dataSheet.getCell(r, colIdx + 1).dataValidation = {
+                type: "custom", allowBlank: true,
+                formulae: [`$${ahtLetter}${r}<>"individual"`],
+                showErrorMessage: true, errorStyle: "stop",
+                errorTitle: "Not applicable",
+                error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
+              };
+            }
           }
         }
       });
@@ -1047,12 +1062,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       styleGuideCell(cell, section, isFirst);
     });
 
-    // COLUMN GROUPS: same collapsed sections as Accounts Data (offset by 2)
+    // COLUMN GROUPS: same independent per-section outline levels as Accounts Data (offset by 2)
     exportColumns.forEach((col, i) => {
       const section = getSectionForKey(col.key);
       if (section.id !== "required") {
         const excelCol = exportSheet.getColumn(i + 3);
-        excelCol.outlineLevel = 1;
+        excelCol.outlineLevel = sectionOutlineLevel[section.id] ?? 1;
         if (section.collapsed) excelCol.hidden = true;
       }
     });
