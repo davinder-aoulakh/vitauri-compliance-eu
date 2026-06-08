@@ -83,6 +83,11 @@
       ],
       "default": "professional"
     },
+    "default_mfa_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether 2FA is enabled by default for all newly invited users in this tenant"
+    },
     "navigation_settings": {
       "type": "object",
       "description": "Navigation menu configuration",
@@ -118,18 +123,15 @@
         },
         "crs_default_collapsed": {
           "type": "boolean",
-          "default": false,
-          "description": "Whether CRS section is collapsed by default"
+          "default": false
         },
         "fatca_default_collapsed": {
           "type": "boolean",
-          "default": false,
-          "description": "Whether FATCA section is collapsed by default"
+          "default": false
         },
         "administration_default_collapsed": {
           "type": "boolean",
-          "default": false,
-          "description": "Whether Administration section is collapsed by default"
+          "default": false
         }
       }
     },
@@ -187,8 +189,7 @@
         },
         "compliance_support": {
           "type": "boolean",
-          "default": false,
-          "description": "Compliance Support ticket management for tenant admins"
+          "default": false
         },
         "advanced_reporting": {
           "type": "boolean",

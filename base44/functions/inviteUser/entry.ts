@@ -29,7 +29,16 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Inviting admin is not assigned to a tenant' }, { status: 400 });
         }
 
-        // 6. Check for duplicate — either already in this tenant, or a pending invite exists
+        // 6. Look up tenant to get default_mfa_enabled setting
+        let defaultMfaEnabled = true; // safe default
+        try {
+            const tenants = await base44.asServiceRole.entities.Tenant.filter({ id: tenant_id });
+            if (tenants?.[0]) {
+                defaultMfaEnabled = tenants[0].default_mfa_enabled !== false; // treat undefined as true
+            }
+        } catch (_) {}
+
+        // 7. Check for duplicate — either already in this tenant, or a pending invite exists
         const existingUsers = await base44.asServiceRole.entities.User.filter({ email, tenant_id });
         if (existingUsers && existingUsers.length > 0) {
             return Response.json({ error: `A user with email '${email}' already exists in this organization.` }, { status: 409 });
@@ -43,6 +52,7 @@ Deno.serve(async (req) => {
                 app_role,
                 job_title: job_title || '',
                 department: department || '',
+                mfa_enabled: defaultMfaEnabled,
                 status: 'pending'
             });
         } else {
@@ -53,6 +63,7 @@ Deno.serve(async (req) => {
                 job_title: job_title || '',
                 department: department || '',
                 tenant_id,
+                mfa_enabled: defaultMfaEnabled,
                 status: 'pending'
             });
         }

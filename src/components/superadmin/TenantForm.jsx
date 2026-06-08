@@ -15,6 +15,10 @@ import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDas
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
+  const defaultSecuritySettings = {
+    default_mfa_enabled: true,
+  };
+
   const defaultEnabledFeatures = {
     crs_enabled: true,
     fatca_enabled: false,
@@ -39,6 +43,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
 
   const [formData, setFormData] = useState(tenant ? {
     ...tenant,
+    default_mfa_enabled: tenant.default_mfa_enabled !== false, // default true if unset
     enabled_features: {
       ...defaultEnabledFeatures,
       ...(tenant.enabled_features || {})
@@ -73,6 +78,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     },
     subscription_status: "active",
     subscription_tier: "professional",
+    default_mfa_enabled: true,
     enabled_features: defaultEnabledFeatures,
     navigation_settings: {
       crs_menu_order: ["Dashboard", "Activity Log", "RFI Entities", "Accounts", "CRS Reports", "AI Assistant"],
@@ -599,6 +605,28 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="p-4 border rounded-lg bg-amber-50 border-amber-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-amber-900 flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Security — Two-Factor Authentication (2FA)
+                </h4>
+                <p className="text-sm text-amber-800 mt-1">
+                  When enabled, all newly invited users will have 2FA turned on by default. Tenant admins can disable it per user.
+                </p>
+              </div>
+              <Checkbox
+                id="default_mfa_enabled"
+                checked={formData.default_mfa_enabled ?? true}
+                onCheckedChange={(checked) => handleChange("default_mfa_enabled", !!checked)}
+              />
+            </div>
+            <Label htmlFor="default_mfa_enabled" className="text-sm text-amber-700 mt-2 block cursor-pointer">
+              {formData.default_mfa_enabled ? "✅ 2FA enabled by default for new users" : "⬜ 2FA disabled by default for new users"}
+            </Label>
           </div>
 
           <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">

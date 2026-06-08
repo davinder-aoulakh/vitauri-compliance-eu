@@ -43,15 +43,19 @@ Deno.serve(async (req) => {
                 continue;
             }
 
-            // Apply the custom fields
-            await base44.asServiceRole.entities.User.update(user.id, {
+            // Apply the custom fields — include mfa_enabled from the invite if set
+            const updatePayload = {
                 display_name: invite.display_name,
                 app_role: invite.app_role,
                 job_title: invite.job_title || '',
                 department: invite.department || '',
                 tenant_id: invite.tenant_id,
                 invite_status: 'accepted'
-            });
+            };
+            if (invite.mfa_enabled !== undefined && invite.mfa_enabled !== null) {
+                updatePayload.mfa_enabled = invite.mfa_enabled;
+            }
+            await base44.asServiceRole.entities.User.update(user.id, updatePayload);
 
             // Mark invite as applied
             await base44.asServiceRole.entities.PendingInvite.update(invite.id, {

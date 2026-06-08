@@ -32,6 +32,11 @@
       "type": "string",
       "description": "Tenant the user belongs to"
     },
+    "mfa_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether 2FA should be enabled for this user when they first log in, based on the tenant's default_mfa_enabled setting at time of invite"
+    },
     "status": {
       "type": "string",
       "enum": [
