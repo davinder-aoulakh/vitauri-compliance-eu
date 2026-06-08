@@ -153,21 +153,36 @@ export default function AccountClassification({ account, onComplete, onCancel })
         : (individualWorkflows.length ? individualWorkflows : allCandidates);
 
       const mergedData = { ...latestAccount, ...(entityRecord || {}) };
-      // For existing accounts, try both 'account_updated' and 'account_created' events
-      // so workflows configured with either event type can match
-      let matched = [];
-      if (latestAccount.id) {
-        matched = await evaluateWorkflowTriggers(mergedData, 'account_updated', candidateWorkflows);
-        if (!matched.length) {
-          matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
-        }
-      } else {
-        matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
-      }
+      // Evaluate against ALL event types and collect all matches with their priorities.
+      // This ensures that a high-priority 'account_updated' workflow (e.g. Dormant)
+      // beats a lower-priority 'account_created' workflow (e.g. Individual - Low Value).
+      const eventsToEvaluate = latestAccount.id
+        ? ['account_updated', 'account_created']
+        : ['account_created'];
 
-      // Smart fallback: if no trigger conditions matched, pick a workflow that suits the account_holder_type.
-      // Use workflow_type field first, then fall back to name-based matching.
+      const allMatchedWithPriority = [];
+      for (const evt of eventsToEvaluate) {
+        const evtMatches = await evaluateWorkflowTriggers(mergedData, evt, candidateWorkflows);
+        evtMatches.forEach((wf, idx) => {
+          // Use the evaluator's sort order (index 0 = highest priority within that event)
+          // Give account_updated a tie-breaking bonus so it wins over account_created at same priority
+          const bonus = evt === 'account_updated' ? 1000 : 0;
+          const priority = (wf.trigger_conditions?.priority || 0) + bonus - idx;
+          allMatchedWithPriority.push({ wf, priority });
+        });
+      }
+      allMatchedWithPriority.sort((a, b) => b.priority - a.priority);
+      const matched = allMatchedWithPriority.map(x => x.wf);
+
+      // If the account is dormant, prefer the Dormant workflow regardless of trigger evaluation
+      // (it may not be caught by trigger conditions if the status field name differs)
       let chosenWorkflow = matched[0];
+      if (latestAccount.status === 'dormant' || latestAccount.account_dormant_at_reporting_date === true) {
+        const dormantWorkflow = candidateWorkflows.find(w =>
+          w.workflow_name?.toLowerCase().includes('dormant')
+        );
+        if (dormantWorkflow) chosenWorkflow = dormantWorkflow;
+      }
       if (!chosenWorkflow) {
         const holderType = latestAccount.account_holder_type; // 'individual' or 'entity'
         if (holderType === 'entity') {
