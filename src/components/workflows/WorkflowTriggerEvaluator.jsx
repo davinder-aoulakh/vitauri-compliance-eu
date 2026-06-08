@@ -102,11 +102,23 @@ const evaluateSingleCondition = async (entityData, condition) => {
   if (condition.value_type === 'field_reference') {
     compareValue = getNestedValue(entityData, condition.value);
   }
-  
+
+  // Detailed debug logging
+  console.log(
+    `[CONDITION EVAL] field="${condition.field}" | ` +
+    `DB value="${fieldValue}" (type: ${typeof fieldValue}) | ` +
+    `compare value="${compareValue}" (type: ${typeof compareValue}) | ` +
+    `operator="${condition.operator}" | ` +
+    `toLowerCase comparison: "${String(fieldValue).toLowerCase()}" === "${String(compareValue).toLowerCase()}"`
+  );
+
   switch (condition.operator) {
     case 'equals':
-    case '=':
-      return String(fieldValue).toLowerCase() === String(compareValue).toLowerCase();
+    case '=': {
+      const eqResult = String(fieldValue).toLowerCase() === String(compareValue).toLowerCase();
+      console.log(`[CONDITION EVAL] Result: ${eqResult}`);
+      return eqResult;
+    }
     case 'not_equals':
     case '!=':
       return String(fieldValue).toLowerCase() !== String(compareValue).toLowerCase();

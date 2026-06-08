@@ -70,8 +70,15 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
     { value: 'status', label: 'Status', type: 'enum', options: getReferencedOptions('Entity', 'status') }
   ];
 
-  // Always show both account and entity fields - account triggers need both
-  const availableFields = config.trigger_event?.includes('account') ? [...accountFields, ...entityFields] : [...entityFields, ...accountFields];
+  // Always show account fields for account triggers, entity fields for entity triggers
+  // De-duplicate by field value to avoid "StatusStatus" duplicate label issue
+  const rawFields = config.trigger_event?.includes('account') ? [...accountFields, ...entityFields] : [...entityFields, ...accountFields];
+  const seenValues = new Set();
+  const availableFields = rawFields.filter(f => {
+    if (seenValues.has(f.value)) return false;
+    seenValues.add(f.value);
+    return true;
+  });
 
   const handleAddCondition = () => {
     setConfig({
@@ -277,7 +284,7 @@ export default function WorkflowTriggerConfig({ triggerConditions, onUpdate }) {
                                       </SelectTrigger>
                                       <SelectContent>
                                         {fieldOptions.map((option) => (
-                                          <SelectItem key={option.value || option} value={option.label || option}>
+                                          <SelectItem key={option.value || option} value={option.value || option}>
                                             {option.label || option}
                                           </SelectItem>
                                         ))}
