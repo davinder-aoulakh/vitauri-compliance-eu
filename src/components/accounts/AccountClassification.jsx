@@ -153,9 +153,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
         : (individualWorkflows.length ? individualWorkflows : allCandidates);
 
       const mergedData = { ...latestAccount, ...(entityRecord || {}) };
-      // Use 'account_updated' for existing accounts so triggers configured for updates (e.g. dormant) are evaluated
-      const triggerEvent = latestAccount.id ? 'account_updated' : 'account_created';
-      const matched = await evaluateWorkflowTriggers(mergedData, triggerEvent, candidateWorkflows);
+      // For existing accounts, try both 'account_updated' and 'account_created' events
+      // so workflows configured with either event type can match
+      let matched = [];
+      if (latestAccount.id) {
+        matched = await evaluateWorkflowTriggers(mergedData, 'account_updated', candidateWorkflows);
+        if (!matched.length) {
+          matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
+        }
+      } else {
+        matched = await evaluateWorkflowTriggers(mergedData, 'account_created', candidateWorkflows);
+      }
 
       // Smart fallback: if no trigger conditions matched, pick a workflow that suits the account_holder_type.
       // Use workflow_type field first, then fall back to name-based matching.
