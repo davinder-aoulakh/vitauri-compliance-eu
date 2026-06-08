@@ -103,43 +103,57 @@ const evaluateSingleCondition = async (entityData, condition) => {
     compareValue = getNestedValue(entityData, condition.value);
   }
 
+  // Normalize fi_type: map human-readable Entity fi_type labels to short codes used in trigger conditions
+  const FI_TYPE_NORMALIZATION = {
+    'type a investment entity': 'type_a',
+    'type b investment entity': 'type_b',
+    'custodial institution': 'custodial_institution',
+    'depository institution': 'depository_institution',
+    'specified insurance company': 'specified_insurance_company',
+    'investment entity': 'type_a',
+  };
+  let normalizedFieldValue = fieldValue;
+  if (condition.field === 'fi_type' && typeof fieldValue === 'string') {
+    const key = fieldValue.toLowerCase().trim();
+    normalizedFieldValue = FI_TYPE_NORMALIZATION[key] || fieldValue;
+  }
+
   // Detailed debug logging
   console.log(
     `[CONDITION EVAL] field="${condition.field}" | ` +
-    `DB value="${fieldValue}" (type: ${typeof fieldValue}) | ` +
-    `compare value="${compareValue}" (type: ${typeof compareValue}) | ` +
-    `operator="${condition.operator}" | ` +
-    `toLowerCase comparison: "${String(fieldValue).toLowerCase()}" === "${String(compareValue).toLowerCase()}"`
+    `DB value="${fieldValue}" (normalized: "${normalizedFieldValue}") | ` +
+    `compare value="${compareValue}" | ` +
+    `operator="${condition.operator}"`
   );
 
   switch (condition.operator) {
     case 'equals':
     case '=': {
-      const eqResult = String(fieldValue).toLowerCase() === String(compareValue).toLowerCase();
+      const eqResult = String(normalizedFieldValue).toLowerCase() === String(compareValue).toLowerCase();
       console.log(`[CONDITION EVAL] Result: ${eqResult}`);
       return eqResult;
     }
     case 'not_equals':
     case '!=':
-      return String(fieldValue).toLowerCase() !== String(compareValue).toLowerCase();
+      return String(normalizedFieldValue).toLowerCase() !== String(compareValue).toLowerCase();
     case 'greater_than':
     case '>':
-      return parseFloat(fieldValue) > parseFloat(compareValue);
+      return parseFloat(normalizedFieldValue) > parseFloat(compareValue);
     case 'less_than':
     case '<':
-      return parseFloat(fieldValue) < parseFloat(compareValue);
+      return parseFloat(normalizedFieldValue) < parseFloat(compareValue);
     case 'greater_than_or_equal':
     case '>=':
-      return parseFloat(fieldValue) >= parseFloat(compareValue);
+      return parseFloat(normalizedFieldValue) >= parseFloat(compareValue);
     case 'less_than_or_equal':
     case '<=':
-      return parseFloat(fieldValue) <= parseFloat(compareValue);
+      return parseFloat(normalizedFieldValue) <= parseFloat(compareValue);
     case 'contains':
-      return String(fieldValue).toLowerCase().includes(String(compareValue).toLowerCase());
+      return String(normalizedFieldValue).toLowerCase().includes(String(compareValue).toLowerCase());
     case 'in':
-      return compareValue.split(',').map(v => v.trim()).includes(String(fieldValue));
+      return compareValue.split(',').map(v => v.trim()).includes(String(normalizedFieldValue));
     case 'not_in':
-      return !compareValue.split(',').map(v => v.trim()).includes(String(fieldValue));
+      return !compareValue.split(',').map(v => v.trim()).includes(String(normalizedFieldValue));
     case 'is_crs':
       return await checkIsCrsCountry(fieldValue);
     case 'is_not_crs':
