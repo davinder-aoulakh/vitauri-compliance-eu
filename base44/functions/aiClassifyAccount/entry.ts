@@ -239,7 +239,8 @@ Example:
 
             visitedPath.push(currentStep.step_id);
 
-            if (currentStep.question_type === 'result') break;
+            // Stop at any terminal step: explicit 'result' type OR any step with a result_status
+            if (currentStep.question_type === 'result' || currentStep.result_status) break;
 
             const answer = stepAnswers[currentStep.step_id];
             let nextStepId = null;
