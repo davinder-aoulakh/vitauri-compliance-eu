@@ -192,14 +192,26 @@ Example:
   "reasoning": "Account holder has tax residency in France (CRS participating country), making this account reportable."
 }`;
 
+        // Build schema that explicitly requires each step_id as a property
+        // so the LLM is forced to return an answer for every question step
+        const stepProperties = { reasoning: { type: "string" } };
+        questionSteps.forEach(s => {
+            if (s.question_type === 'yes_no') {
+                stepProperties[s.step_id] = { type: "string", enum: ["YES", "NO"] };
+            } else if ((s.question_type === 'single_choice') && s.options?.length) {
+                stepProperties[s.step_id] = { type: "string", enum: s.options.map(o => o.value) };
+            } else {
+                stepProperties[s.step_id] = { type: "string" };
+            }
+        });
+
         const llmResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
             prompt: llmPrompt,
             response_json_schema: {
                 type: "object",
-                properties: {
-                    reasoning: { type: "string" },
-                },
-                additionalProperties: true
+                properties: stepProperties,
+                required: ["reasoning", ...questionSteps.map(s => s.step_id)],
+                additionalProperties: false
             }
         });
 
