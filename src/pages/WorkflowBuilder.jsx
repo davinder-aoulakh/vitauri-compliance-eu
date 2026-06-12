@@ -54,7 +54,8 @@ import JurisdictionOverrides from "../components/workflows/JurisdictionOverrides
 import FormulaBuilder from "../components/workflows/FormulaBuilder"; // New import
 import IntegrationManager from "../components/workflows/IntegrationManager"; // New import
 import WorkflowTriggerConfig from "../components/workflows/WorkflowTriggerConfig";
-import { Zap } from "lucide-react";
+import WorkflowTestScriptGenerator from "../components/workflows/WorkflowTestScriptGenerator";
+import { Zap, ScrollText } from "lucide-react";
 
 export default function WorkflowBuilder() {
   const [user, setUser] = useState(null);
@@ -72,6 +73,7 @@ export default function WorkflowBuilder() {
   const [selectedWorkflowForVersions, setSelectedWorkflowForVersions] = useState(null);
   const [activeTab, setActiveTab] = useState("workflows"); // New state
   const [showTriggerConfig, setShowTriggerConfig] = useState(false);
+  const [showTestScriptGenerator, setShowTestScriptGenerator] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -552,8 +554,15 @@ export default function WorkflowBuilder() {
                                     View Diagram
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleTestWorkflow(workflow)}>
-                                    <PlayCircle className="w-4 h-4 mr-2" />
-                                    Test Workflow
+                                   <PlayCircle className="w-4 h-4 mr-2" />
+                                   Test Workflow
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                   setSelectedWorkflow(workflow);
+                                   setShowTestScriptGenerator(true);
+                                  }}>
+                                   <ScrollText className="w-4 h-4 mr-2" />
+                                   Generate Test Script
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleViewAnalytics(workflow)}> {/* New item */}
                                     <BarChart3 className="w-4 h-4 mr-2" />
@@ -761,6 +770,19 @@ export default function WorkflowBuilder() {
             console.log("Formula saved:", formula);
             setShowFormulaBuilder(false);
           }} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Script Generator Dialog */}
+      <Dialog open={showTestScriptGenerator} onOpenChange={setShowTestScriptGenerator}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Generate QA Test Script: {selectedWorkflow?.workflow_name}</DialogTitle>
+          </DialogHeader>
+          <WorkflowTestScriptGenerator
+            workflow={selectedWorkflow}
+            onClose={() => setShowTestScriptGenerator(false)}
+          />
         </DialogContent>
       </Dialog>
 
