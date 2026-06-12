@@ -548,11 +548,21 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const resolvedStatus = (currentAccountStatus && currentAccountStatus !== 'pending_review')
       ? currentAccountStatus
       : deriveStatusForComplete(finalStep);
+
+    // Only include answers for steps the user actually visited (allSteps = completedPath)
+    // This prevents prefilled-but-never-visited answers from appearing in classification history
+    const visitedAnswers = {};
+    for (const stepId of allSteps) {
+      if (answers[stepId] !== undefined) {
+        visitedAnswers[stepId] = answers[stepId];
+      }
+    }
+
     const classificationData = {
       reportability_status: resolvedStatus,
       reportability_reason: (latestAccountData || account)?.reportability_reason
         || finalStep?.result_description || finalStep?.question_text || '',
-      classification_answers: answers,
+      classification_answers: visitedAnswers,
     };
 
     // Check if we need to redirect to controlling persons
