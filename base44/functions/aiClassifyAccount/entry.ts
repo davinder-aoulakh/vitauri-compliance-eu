@@ -43,9 +43,13 @@ Deno.serve(async (req) => {
             // Entity accounts: route based on entity's fi_type, matching the actual workflow trigger conditions:
             // - "Insurance & Depository" triggers when fi_type = specified_insurance_company OR depository_institution
             // - "Investment" triggers when fi_type = type_a OR type_b (investment entities)
-            const entityFiType = entity?.fi_type || '';
-            const isInsuranceOrDepository = ['specified_insurance_company', 'depository_institution'].includes(entityFiType);
-            const isInvestment = ['type_a', 'type_b', 'investment_entity'].includes(entityFiType);
+            const entityFiType = (entity?.fi_type || '').toLowerCase();
+            const isInsuranceOrDepository = 
+                ['specified_insurance_company', 'depository_institution'].includes(entityFiType) ||
+                entityFiType.includes('insurance') || entityFiType.includes('depository');
+            const isInvestment = 
+                ['type_a', 'type_b', 'investment_entity'].includes(entityFiType) ||
+                entityFiType.includes('investment') || entityFiType.includes('type a') || entityFiType.includes('type b');
 
             if (isInsuranceOrDepository) {
                 chosenWorkflow = candidates.find(w => w.workflow_name === 'Entity Account - Insurance & Depository');
