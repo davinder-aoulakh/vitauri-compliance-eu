@@ -40,15 +40,20 @@ Deno.serve(async (req) => {
 
         let chosenWorkflow;
         if (holderType === 'entity') {
-            // Entity accounts: match based on account type / entity fi_type
-            const accountType = account.account_type || '';
-            const isInsuranceOrDepository = ['cash_value_insurance', 'annuity', 'depository'].some(t => accountType.includes(t));
+            // Entity accounts: route based on entity's fi_type, matching the actual workflow trigger conditions:
+            // - "Insurance & Depository" triggers when fi_type = specified_insurance_company OR depository_institution
+            // - "Investment" triggers when fi_type = type_a OR type_b (investment entities)
+            const entityFiType = entity?.fi_type || '';
+            const isInsuranceOrDepository = ['specified_insurance_company', 'depository_institution'].includes(entityFiType);
+            const isInvestment = ['type_a', 'type_b', 'investment_entity'].includes(entityFiType);
+
             if (isInsuranceOrDepository) {
-                chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('insurance') || w.workflow_name?.toLowerCase().includes('depository'));
+                chosenWorkflow = candidates.find(w => w.workflow_name === 'Entity Account - Insurance & Depository');
+            } else if (isInvestment) {
+                chosenWorkflow = candidates.find(w => w.workflow_name === 'Entity Account - Investment');
             }
-            if (!chosenWorkflow) {
-                chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('investment') && w.workflow_name?.toLowerCase().includes('entity'));
-            }
+
+            // Fallback: try any entity workflow
             if (!chosenWorkflow) {
                 chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('entity')) || candidates[0];
             }
