@@ -107,6 +107,8 @@ export default function AccountsPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [aiClassifyingId, setAiClassifyingId] = useState(null);
+  const [showAiProgress, setShowAiProgress] = useState(false);
+  const [aiClassifyProgress, setAiClassifyProgress] = useState({ stage: 0, account: null, result: null, error: null });
 
   const tourConfig = getTourByPage("Accounts");
   const queryClient = useQueryClient();
@@ -456,14 +458,35 @@ export default function AccountsPage() {
 
   const handleAIClassify = async (account) => {
     setAiClassifyingId(account.id);
+    setAiClassifyProgress({ stage: 0, account, result: null, error: null });
+    setShowAiProgress(true);
+
+    const stages = [
+      { label: "Loading account & workflow data", duration: 800 },
+      { label: "Analysing account with AI", duration: 2500 },
+      { label: "Evaluating workflow steps", duration: 1500 },
+      { label: "Saving classification result", duration: 800 },
+    ];
+
+    // Advance through fake progress stages while the API runs
+    let stageIndex = 0;
+    const advanceStage = () => {
+      stageIndex++;
+      if (stageIndex < stages.length) {
+        setAiClassifyProgress(p => ({ ...p, stage: stageIndex }));
+        setTimeout(advanceStage, stages[stageIndex].duration);
+      }
+    };
+    setTimeout(advanceStage, stages[0].duration);
+
     try {
       const result = await base44.functions.invoke('aiClassifyAccount', { accountId: account.id });
       queryClient.invalidateQueries(['accounts']);
       queryClient.invalidateQueries(['account-classification-history', account.id]);
-      alert(`AI Classification complete!\nStatus: ${result.data.reportability_status}\nReason: ${result.data.reportability_reason}`);
+      setAiClassifyProgress(p => ({ ...p, stage: stages.length, result: result.data, error: null }));
     } catch (error) {
       console.error('AI classification error:', error);
-      alert('AI classification failed: ' + error.message);
+      setAiClassifyProgress(p => ({ ...p, error: error.message }));
     } finally {
       setAiClassifyingId(null);
     }
@@ -1317,6 +1340,110 @@ export default function AccountsPage() {
           onSkip={() => setShowTour(false)}
         />
       )}
+
+      {/* AI Classify Progress Modal */}
+      <Dialog open={showAiProgress} onOpenChange={(open) => { if (!open && (aiClassifyProgress.result || aiClassifyProgress.error)) setShowAiProgress(false); }}>
+        <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-600" />
+              AI Classification
+            </DialogTitle>
+          </DialogHeader>
+
+          {(() => {
+            const stages = [
+              { label: "Loading account & workflow data", icon: "📂" },
+              { label: "Analysing account with AI", icon: "🤖" },
+              { label: "Evaluating workflow steps", icon: "🔍" },
+              { label: "Saving classification result", icon: "💾" },
+            ];
+            const { stage, account, result, error } = aiClassifyProgress;
+            const isDone = !!result || !!error;
+            const progressPct = isDone ? 100 : Math.round((stage / stages.length) * 100);
+
+            const statusColors = {
+              reportable: "text-green-700 bg-green-50 border-green-200",
+              non_reportable: "text-slate-700 bg-slate-50 border-slate-200",
+              pending_review: "text-amber-700 bg-amber-50 border-amber-200",
+              excluded: "text-red-700 bg-red-50 border-red-200",
+            };
+
+            return (
+              <div className="space-y-5 py-2">
+                <div className="text-sm text-slate-600">
+                  Classifying <span className="font-semibold text-slate-900">{account?.account_holder_name}</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>{isDone ? (error ? "Failed" : "Complete") : `Step ${Math.min(stage + 1, stages.length)} of ${stages.length}`}</span>
+                    <span>{progressPct}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-700 ${error ? "bg-red-500" : "bg-indigo-500"}`}
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stage list */}
+                <div className="space-y-2">
+                  {stages.map((s, i) => {
+                    const isActive = !isDone && i === stage;
+                    const isComplete = isDone ? !error : i < stage;
+                    const isPending = !isDone && i > stage;
+                    return (
+                      <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? "bg-indigo-50 text-indigo-800" : isComplete ? "text-slate-500" : "text-slate-400"}`}>
+                        <span className="w-5 text-center">
+                          {isComplete ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-500 inline" />
+                          ) : isActive ? (
+                            <Loader2 className="w-4 h-4 text-indigo-500 animate-spin inline" />
+                          ) : (
+                            <span className="w-4 h-4 inline-block rounded-full border border-slate-300" />
+                          )}
+                        </span>
+                        <span className={isActive ? "font-medium" : ""}>{s.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Result */}
+                {result && (
+                  <div className={`border rounded-lg p-4 space-y-2 ${statusColors[result.reportability_status] || statusColors.pending_review}`}>
+                    <div className="flex items-center gap-2 font-semibold capitalize">
+                      <CheckCircle2 className="w-4 h-4" />
+                      {result.reportability_status?.replace(/_/g, " ")}
+                    </div>
+                    <p className="text-xs leading-relaxed">{result.reportability_reason}</p>
+                    {result.workflow_used && (
+                      <p className="text-xs opacity-70">Workflow: {result.workflow_used}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                  <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700">
+                    <div className="font-semibold mb-1">Classification failed</div>
+                    <p className="text-xs">{error}</p>
+                  </div>
+                )}
+
+                {isDone && (
+                  <div className="flex justify-end">
+                    <Button onClick={() => setShowAiProgress(false)}>Close</Button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
