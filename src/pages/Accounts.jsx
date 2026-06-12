@@ -106,6 +106,7 @@ export default function AccountsPage() {
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [aiClassifyingId, setAiClassifyingId] = useState(null);
 
   const tourConfig = getTourByPage("Accounts");
   const queryClient = useQueryClient();
@@ -450,6 +451,21 @@ export default function AccountsPage() {
       setSelectedAccountIds([]);
     } else {
       setSelectedAccountIds(filteredAccounts.map(a => a.id));
+    }
+  };
+
+  const handleAIClassify = async (account) => {
+    setAiClassifyingId(account.id);
+    try {
+      const result = await base44.functions.invoke('aiClassifyAccount', { accountId: account.id });
+      queryClient.invalidateQueries(['accounts']);
+      queryClient.invalidateQueries(['account-classification-history', account.id]);
+      alert(`AI Classification complete!\nStatus: ${result.data.reportability_status}\nReason: ${result.data.reportability_reason}`);
+    } catch (error) {
+      console.error('AI classification error:', error);
+      alert('AI classification failed: ' + error.message);
+    } finally {
+      setAiClassifyingId(null);
     }
   };
 
@@ -950,7 +966,7 @@ export default function AccountsPage() {
                                     </DropdownMenuItem>
                                     
                                     {(isAdmin || entityAccessMap[account.entity_id] === 'edit') && (
-                                      <>
+                                     <>
                                         {account.reportability_status === "pending_review" && (
                                           <DropdownMenuItem onClick={() => handleClassify(account)}>
                                             <Eye className="w-4 h-4 mr-2" />
@@ -963,6 +979,18 @@ export default function AccountsPage() {
                                             Re-classify Account
                                           </DropdownMenuItem>
                                         )}
+                                        <DropdownMenuItem
+                                          onClick={() => handleAIClassify(account)}
+                                          disabled={aiClassifyingId === account.id}
+                                          className="text-indigo-600 focus:text-indigo-700"
+                                        >
+                                          {aiClassifyingId === account.id ? (
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                          ) : (
+                                            <Sparkles className="w-4 h-4 mr-2" />
+                                          )}
+                                          AI Classify
+                                        </DropdownMenuItem>
                                         
                                         {account.account_holder_type === "entity" && (
                                           <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>
