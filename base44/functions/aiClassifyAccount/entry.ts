@@ -268,11 +268,19 @@ Example:
             }
         }
 
+        // Build answers only for steps actually visited (for clean audit trail)
+        const visitedAnswers = {};
+        visitedPath.forEach(stepId => {
+            if (stepAnswers[stepId] !== undefined) {
+                visitedAnswers[stepId] = stepAnswers[stepId];
+            }
+        });
+
         // Update account
         await base44.asServiceRole.entities.Account.update(accountId, {
             reportability_status: reportabilityStatus,
             reportability_reason: reportabilityReason,
-            classification_answers: stepAnswers,
+            classification_answers: visitedAnswers,
         });
 
         // Create classification history
@@ -284,7 +292,7 @@ Example:
             classification_reason: reportabilityReason,
             classification_source: 'workflow',
             workflow_id: chosenWorkflow.id,
-            workflow_answers: stepAnswers,
+            workflow_answers: visitedAnswers,
             workflow_path_taken: visitedPath,
             performed_by: `AI (triggered by ${user.email})`,
             account_holder_name: account.account_holder_name,
