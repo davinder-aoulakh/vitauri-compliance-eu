@@ -7,13 +7,35 @@ import { History, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-rea
 import { format } from "date-fns";
 
 export default function AccountClassificationHistory({ history, account }) {
-  // Fetch published account classification workflows to map answers
-  const { data: workflows = [] } = useQuery({
-    queryKey: ['account-workflows-for-history'],
-    queryFn: () => base44.entities.Workflow.filter({ 
-      workflow_type: 'account_reportability',
-      status: 'published'
-    })
+  // Collect all unique workflow IDs referenced by history records
+  const referencedWorkflowIds = [...new Set(
+    (history || []).map(r => r.workflow_id).filter(Boolean)
+  )];
+
+  // Fetch ALL published workflows (any type) so entity/beneficiary/etc. steps resolve too
+  const { data: allWorkflows = [] } = useQuery({
+    queryKey: ['all-workflows-for-history'],
+    queryFn: () => base44.entities.Workflow.filter({ status: 'published' })
+  });
+
+  // Also fetch any archived workflows that were specifically referenced
+  const { data: archivedWorkflows = [] } = useQuery({
+    queryKey: ['archived-workflows-for-history', referencedWorkflowIds.join(',')],
+    queryFn: async () => {
+      if (!referencedWorkflowIds.length) return [];
+      // Fetch each referenced workflow individually (may be archived)
+      const results = await Promise.all(
+        referencedWorkflowIds.map(id => base44.entities.Workflow.filter({ id }))
+      );
+      return results.flat();
+    },
+    enabled: referencedWorkflowIds.length > 0
+  });
+
+  // Merge: published + any archived referenced workflows, deduped by id
+  const workflows = [...allWorkflows];
+  archivedWorkflows.forEach(w => {
+    if (!workflows.find(existing => existing.id === w.id)) workflows.push(w);
   });
 
   // Build a step map from all workflows for lookup
