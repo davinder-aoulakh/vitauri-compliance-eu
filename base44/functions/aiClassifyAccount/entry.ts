@@ -33,18 +33,80 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'No published workflows found' }, { status: 404 });
         }
 
-        // Select relevant workflow (entity vs individual)
+        // Select relevant workflow using smart matching on account data
         const holderType = account.account_holder_type;
         const accountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
         const candidates = accountReportabilityWorkflows.length ? accountReportabilityWorkflows : workflows;
 
         let chosenWorkflow;
         if (holderType === 'entity') {
-            chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('entity')) || candidates[0];
+            // Entity accounts: match based on account type / entity fi_type
+            const accountType = account.account_type || '';
+            const isInsuranceOrDepository = ['cash_value_insurance', 'annuity', 'depository'].some(t => accountType.includes(t));
+            if (isInsuranceOrDepository) {
+                chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('insurance') || w.workflow_name?.toLowerCase().includes('depository'));
+            }
+            if (!chosenWorkflow) {
+                chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('investment') && w.workflow_name?.toLowerCase().includes('entity'));
+            }
+            if (!chosenWorkflow) {
+                chosenWorkflow = candidates.find(w => w.workflow_name?.toLowerCase().includes('entity')) || candidates[0];
+            }
         } else {
-            chosenWorkflow = candidates.find(w =>
-                w.workflow_type === 'account_reportability' && !w.workflow_name?.toLowerCase().includes('entity')
-            ) || candidates.find(w => !w.workflow_name?.toLowerCase().includes('entity')) || candidates[0];
+            // Individual accounts: filter out entity, beneficiary, controlling person, dormant workflows first
+            const individualCandidates = candidates.filter(w =>
+                !w.workflow_name?.toLowerCase().includes('entity') &&
+                !w.workflow_name?.toLowerCase().includes('beneficiary') &&
+                !w.workflow_name?.toLowerCase().includes('controlling') &&
+                !w.workflow_name?.toLowerCase().includes('dormant')
+            );
+
+            const isAlive = account.account_holder_is_alive !== false; // default true if not set
+            const isPreExisting = account.is_pre_existing === true;
+            const balance = account.year_end_cash_value || 0;
+            const HIGH_VALUE_THRESHOLD = 1000000;
+
+            if (!isAlive) {
+                // Deceased account
+                chosenWorkflow = individualCandidates.find(w => w.workflow_name?.toLowerCase().includes('deceased'));
+            } else if (isPreExisting) {
+                // Pre-existing alive account — high vs low value
+                if (balance >= HIGH_VALUE_THRESHOLD) {
+                    chosenWorkflow = individualCandidates.find(w =>
+                        w.workflow_name?.toLowerCase().includes('alive') &&
+                        w.workflow_name?.toLowerCase().includes('high') &&
+                        w.workflow_name?.toLowerCase().includes('pre')
+                    );
+                } else {
+                    chosenWorkflow = individualCandidates.find(w =>
+                        w.workflow_name?.toLowerCase().includes('alive') &&
+                        w.workflow_name?.toLowerCase().includes('low') &&
+                        w.workflow_name?.toLowerCase().includes('pre')
+                    );
+                }
+                // Fallback to any pre-existing alive workflow
+                if (!chosenWorkflow) {
+                    chosenWorkflow = individualCandidates.find(w =>
+                        w.workflow_name?.toLowerCase().includes('alive') &&
+                        w.workflow_name?.toLowerCase().includes('pre')
+                    );
+                }
+            } else {
+                // New alive account
+                chosenWorkflow = individualCandidates.find(w =>
+                    w.workflow_name?.toLowerCase().includes('alive') &&
+                    w.workflow_name?.toLowerCase().includes('new') &&
+                    !w.workflow_name?.toLowerCase().includes('deceased')
+                );
+            }
+
+            // Final fallback: any alive individual workflow
+            if (!chosenWorkflow) {
+                chosenWorkflow = individualCandidates.find(w => w.workflow_name?.toLowerCase().includes('alive'));
+            }
+            if (!chosenWorkflow) {
+                chosenWorkflow = individualCandidates[0] || candidates[0];
+            }
         }
 
         if (!chosenWorkflow) {
@@ -97,30 +159,32 @@ Deno.serve(async (req) => {
         }));
 
         // Ask LLM to answer each workflow step based on account data
-        const llmPrompt = `You are a CRS/FATCA compliance classification expert. Based on the account data provided, answer each workflow question to determine the account's reportability status.
+        const llmPrompt = `You are a CRS/FATCA compliance classification expert. Your task is to answer each step of a compliance workflow using ONLY the provided account data.
 
 ACCOUNT DATA:
 ${JSON.stringify(accountSummary, null, 2)}
 
 WORKFLOW: "${chosenWorkflow.workflow_name}"
-WORKFLOW TYPE: ${chosenWorkflow.workflow_type}
 
-For each workflow step below, provide the most appropriate answer based on the account data. 
-- For yes_no questions: answer must be "YES" or "NO"
-- For single_choice/multiple_choice questions: answer must be one of the provided option values exactly as listed
-- For text/number/date questions: provide an appropriate value
-- For steps where data is missing, make the most conservative compliance decision (prefer reporting/flagging for review over non-reporting)
+INSTRUCTIONS:
+- Answer ONLY using the account data above. Do not make assumptions beyond what is provided.
+- For yes_no questions: answer must be exactly "YES" or "NO"
+- For single_choice/multiple_choice: answer must be exactly one of the listed option VALUES (not labels)
+- For text/number/date questions: provide the value from the account data
+- If data is missing for a question, default to the most conservative CRS compliance answer (prefer flagging for review over excluding from reporting)
+- Focus on tax residency, CRS country status, account values, and holder status to determine reportability
+- DO NOT base answers on workflow name or irrelevant account fields
 
-WORKFLOW STEPS:
+WORKFLOW STEPS TO ANSWER:
 ${JSON.stringify(stepsForLLM, null, 2)}
 
-Return a JSON object with step_id as keys and your answers as values. Also include a "reasoning" key with a brief explanation of the overall classification decision.
+Return a JSON object where keys are step_ids and values are your answers. Include a "reasoning" key summarizing why the account is or is not reportable based purely on the data.
 
-Example format:
+Example:
 {
-  "step_123": "YES",
-  "step_456": "NO",
-  "reasoning": "Account has foreign tax residency in France (CRS country), therefore reportable."
+  "step_abc": "YES",
+  "step_def": "NO",
+  "reasoning": "Account holder has tax residency in France (CRS participating country), making this account reportable."
 }`;
 
         const llmResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
