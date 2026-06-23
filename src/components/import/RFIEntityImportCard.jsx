@@ -352,7 +352,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       {
         id: "treasury",
         label: "🏦 TREASURY CENTER ONLY",
-        sublabel: "Fill only when Potential Exception Type = TreasuryCtr — expand if needed",
+        sublabel: "Fill only for Treasury Center entities — expand if needed",
         hdrArgb: "FFBF360C",
         lightArgb: "FFFBE9E7",
         collapsed: true,
@@ -570,7 +570,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       "Delete unused rows before uploading. Do not leave blank rows between data rows — they stop the parser.",
       "Do not rename column headers or change their order — the import parser matches by exact header text.",
       "For Controlling Persons: expand CP2/CP3/CP4 sections only if the entity has more than 1/2/3 controlling persons.",
-      "For Treasury Center entities: set Potential Exception Type = TreasuryCtr then expand the Treasury Center section to fill the 5 criteria fields.",
+      "For Treasury Center entities: set Entity Classification = financial_institution and expand the Treasury Center section to fill the 5 criteria fields.",
     ];
     TIPS.forEach((tip, i) => {
       const r = instrSheet.getRow(tipsStartRow + 1 + i);
