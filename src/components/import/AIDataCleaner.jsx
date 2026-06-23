@@ -586,10 +586,9 @@ Return JSON:
             <Button
               onClick={applyFixes}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              disabled={errorCount > 0 && selectedFixes.size === 0}
             >
               <Check className="w-4 h-4 mr-2" />
-              Apply {selectedFixes.size} Fixes & Continue
+              {selectedFixes.size > 0 ? `Apply ${selectedFixes.size} Fixes & Continue` : "Continue to Import"}
             </Button>
           </div>
         </>

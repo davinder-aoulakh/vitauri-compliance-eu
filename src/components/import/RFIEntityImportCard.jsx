@@ -1393,10 +1393,16 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       if (targetField === "self_cert_request_date") { account["self_certification_request_date"] = value; return; }
       if (targetField === "self_cert_obtained") { account["self_certification_obtained"] = parseBool(value); return; }
       if (targetField === "self_cert_date") { account["self_certification_date"] = value; return; }
+      if (targetField === "self_certification_overdue") { account["self_certification_overdue"] = parseBool(value); return; }
+      if (targetField === "account_number_type") { account["account_number_type"] = value; return; }
+      if (targetField === "middle_name") { account["middle_name"] = value; return; }
+      if (targetField === "name_prefix") { account["name_prefix"] = value; return; }
+      if (targetField === "is_recalcitrant") { account["is_recalcitrant"] = parseBool(value); return; }
+      if (targetField === "gross_income_50_passive") { account["gross_income_50_passive"] = parseBool(value); return; }
 
       if (["year_end_cash_value", "gross_payments"].includes(targetField)) {
         account[targetField] = parseFloat(String(value).replace(/[,$]/g, "")) || null;
-      } else if (targetField === "year_end_currency") {
+      } else if (targetField === "year_end_currency" || targetField === "year_end_cash_value_currency") {
         account["year_end_cash_value_currency"] = value;
       } else if (EXTRA_BOOL_FIELDS.has(targetField)) {
         account[targetField] = parseBool(value);
