@@ -74,10 +74,11 @@ export default function AccountDetails({ account, entity }) {
   const showBeneficiaries = account.account_holder_type === 'individual' && !account.account_holder_is_alive;
   const showControllingPersons = account.account_holder_type === 'entity';
 
-  const formatCurrency = (amount, currency = "USD") => {
+  const formatCurrency = (amount, currency) => {
+    const safeCurrency = currency && currency.trim().length === 3 ? currency.trim() : "USD";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency
+      currency: safeCurrency
     }).format(amount || 0);
   };
 
