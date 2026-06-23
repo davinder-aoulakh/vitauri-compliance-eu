@@ -205,12 +205,15 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       ]},
     { key: "non_reportable_exception_types",
       label: "Non-Reportable Exception Types",
-      values: ["inheritance_estate","escrow_court_decree","qualifying_pension",
-        "overdraft_deposit","pre_existing_dormant_below_1k","publicly_traded",
-        "purely_domestic","international_organization","liquidation_dissolution","none"] },
-    { key: "potential_exception_types",
-      label: "Potential Exception Types",
-      values: ["None","DGA","Foundation","STAK","HoldCo","TreasuryCtr","RealEstateFund"] },
+      values: [
+        "Publicly Traded NFEs and NFEs affiliates thereof",
+        "Entity in liquidation/bankruptcy",
+        "Governmental entities",
+        "International Organizations",
+        "Central Banks",
+        "Holding NFE's of Nonfinancial Groups",
+        "None of the above",
+      ] },
     ];
 
     // Pre-compute row ranges for each section in column D of the Referenced Data sheet
@@ -261,7 +264,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       will_or_inheritance_received: "boolean",
       legacy_of_deceased_settled: "boolean",
       non_reportable_exception_type:                    "non_reportable_exception_types",
-      potential_exception_type:                         "potential_exception_types",
       treasury_activities_operational:                  "boolean",
       treasury_part_of_nonfinancial_group:              "boolean",
       treasury_main_fn_finance_hedge_group:             "boolean",
@@ -345,7 +347,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         collapsed: false,
         keyMatch: (key) => ["entity_classification","entity_managed_by_fiduciary_trust",
           "entity_managed_by_asset_manager","gross_income_from_financial_assets",
-          "gross_income_50_passive","non_reportable_exception_type","potential_exception_type"].includes(key),
+          "gross_income_50_passive","non_reportable_exception_type"].includes(key),
       },
       {
         id: "treasury",
@@ -494,8 +496,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       { label: "📋 ACCOUNT STATUS",       cols: "Pre-existing … Dormant",        when: "All accounts as applicable",           note: "Boolean dropdowns — select true or false from the dropdown list." },
       { label: "⚰️ DECEASED ONLY",        cols: "Death Cert … Legacy",           when: "Account Holder Is Alive = false",      note: "COLLAPSED by default. Click the + button to expand only if account holder is deceased." },
       { label: "📍 ADDRESS & CONTACT",    cols: "Original Addr … Phone",         when: "All accounts",                         note: "Country Code columns auto-fill from VLOOKUP — type the country name and the code appears." },
-      { label: "🏷️ ENTITY CLASSIFICATION", cols: "Entity Class … Potential Exception", when: "Entity accounts only",          note: "Used for CRS Section 3 and 4 routing. Set Non-Reportable Exception Type to none if no exception applies." },
-      { label: "🏦 TREASURY CENTER ONLY", cols: "Treasury: Activities … 50% Test", when: "Potential Exception Type = TreasuryCtr", note: "COLLAPSED by default. Expand only when the entity is a Treasury Center." },
+      { label: "🏷️ ENTITY CLASSIFICATION", cols: "Entity Class … Non-Reportable Exception", when: "Entity accounts only",       note: "Used for CRS Section 3 routing. Set Non-Reportable Exception Type to 'None of the above' if no exception applies." },
+      { label: "🏦 TREASURY CENTER ONLY", cols: "Treasury: Activities … 50% Test", when: "Entity with treasury function",       note: "COLLAPSED by default. Expand only when the entity is a Treasury Center." },
       { label: "💰 FINANCIAL DATA",       cols: "Year-end Balance … Reporting Year", when: "All accounts",                    note: "Year-end balance in the account currency. Reporting Year is the 4-digit calendar year." },
       { label: "📄 SELF CERTIFICATION",   cols: "SC Overdue … Receipt Date",     when: "All accounts",                         note: "Track SC request and receipt dates. SC Overdue is system-derived — leave blank on import." },
       { label: "🌍 TAX RESIDENCY",        cols: "Tax Res 1 Country … Tax Res 2 TIN", when: "All accounts (min 1)",            note: "At least one tax residency country and TIN is required for reportable accounts." },
@@ -726,7 +728,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         "entity_managed_by_fiduciary_trust", "entity_managed_by_asset_manager",
         "gross_income_from_financial_assets", "gross_income_50_passive", "entity_classification",
         "non_reportable_exception_type",
-        "potential_exception_type",
         "treasury_activities_operational",
         "treasury_part_of_nonfinancial_group",
         "treasury_main_fn_finance_hedge_group",
@@ -1404,6 +1405,31 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       } else if (targetField === "status") {
         // Normalize status to lowercase
         account[targetField] = String(value).toLowerCase().trim();
+      } else if (targetField === "non_reportable_exception_type") {
+        // Map human-readable labels to enum values
+        const nretMap = {
+          "publicly traded nfes and nfes affiliates thereof": "publicly_traded",
+          "entity in liquidation/bankruptcy": "liquidation_dissolution",
+          "governmental entities": "purely_domestic",
+          "international organizations": "international_organization",
+          "central banks": "international_organization",
+          "holding nfe's of nonfinancial groups": "pre_existing_dormant_below_1k",
+          "none of the above": "none",
+          // also pass-through existing enum values
+          "inheritance_estate": "inheritance_estate",
+          "escrow_court_decree": "escrow_court_decree",
+          "qualifying_pension": "qualifying_pension",
+          "overdraft_deposit": "overdraft_deposit",
+          "pre_existing_dormant_below_1k": "pre_existing_dormant_below_1k",
+          "publicly_traded": "publicly_traded",
+          "purely_domestic": "purely_domestic",
+          "international_organization": "international_organization",
+          "liquidation_dissolution": "liquidation_dissolution",
+          "none": "none",
+        };
+        account[targetField] = nretMap[String(value).toLowerCase().trim()] || "none";
+      } else if (targetField === "potential_exception_type") {
+        // Column removed — skip silently
       } else if (targetField === "account_type") {
         // Normalize account_type labels to enum values
         const typeMap = {
