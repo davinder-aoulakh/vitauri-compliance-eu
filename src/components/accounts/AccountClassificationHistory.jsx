@@ -3,10 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { History, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
+import { History, CheckCircle2, XCircle, Clock, AlertTriangle, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AccountClassificationHistory({ history, account }) {
+  // Fetch controlling persons for this account
+  const { data: controllingPersons = [] } = useQuery({
+    queryKey: ['controlling-persons-history', account?.id],
+    queryFn: () => base44.entities.ControllingPerson.filter({ account_id: account.id }),
+    enabled: !!account?.id
+  });
+
   // Collect all unique workflow IDs referenced by history records
   const referencedWorkflowIds = [...new Set(
     (history || []).map(r => r.workflow_id).filter(Boolean)
@@ -292,6 +299,66 @@ export default function AccountClassificationHistory({ history, account }) {
                             <p className="text-sm text-slate-900 font-semibold">
                               {answer}
                             </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
+
+                {/* Controlling Persons — shown on the most recent record only, fetched live */}
+                {index === 0 && controllingPersons.length > 0 && (
+                  <details className="mt-3 pt-3 border-t border-slate-200" open>
+                    <summary className="text-xs font-medium text-slate-600 cursor-pointer hover:text-slate-900 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" />
+                      Controlling Persons ({controllingPersons.length})
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {controllingPersons.map((cp) => {
+                        const name = [cp.first_name, cp.last_name].filter(Boolean).join(' ') || cp.full_name || 'Unknown';
+                        const address = cp.address
+                          ? [cp.address.street, cp.address.city, cp.address.state, cp.address.postal_code, cp.address.country].filter(Boolean).join(', ')
+                          : null;
+                        const taxResidencies = (cp.tax_residencies || []).filter(r => r.country);
+                        return (
+                          <div key={cp.id} className="bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-slate-900">{name}</span>
+                              <div className="flex gap-1.5 flex-wrap">
+                                {cp.control_type && (
+                                  <Badge variant="outline" className="text-xs bg-white border-blue-200 text-blue-800">
+                                    {cp.control_type.replace(/_/g, ' ')}
+                                  </Badge>
+                                )}
+                                {cp.is_reportable === true && (
+                                  <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-800">
+                                    Reportable
+                                  </Badge>
+                                )}
+                                {cp.is_reportable === false && (
+                                  <Badge variant="outline" className="text-xs bg-slate-100 border-slate-200 text-slate-700">
+                                    Non-Reportable
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {cp.date_of_birth && (
+                              <p className="text-xs text-slate-600">DOB: {cp.date_of_birth}</p>
+                            )}
+                            {address && (
+                              <p className="text-xs text-slate-600">Address: {address}</p>
+                            )}
+                            {taxResidencies.length > 0 && (
+                              <p className="text-xs text-slate-600">
+                                Tax Residencies: {taxResidencies.map(r => `${r.country}${r.tin ? ` (TIN: ${r.tin})` : ''}`).join(', ')}
+                              </p>
+                            )}
+                            {cp.ownership_percentage != null && (
+                              <p className="text-xs text-slate-600">Ownership: {cp.ownership_percentage}%</p>
+                            )}
+                            {cp.self_certification_obtained && (
+                              <p className="text-xs text-green-700 font-medium">✓ Self-certification obtained</p>
+                            )}
                           </div>
                         );
                       })}
