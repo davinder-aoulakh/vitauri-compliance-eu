@@ -67,6 +67,16 @@ export default function AccountClassificationHistory({ history, account }) {
       if (answerValue.file_name) {
         return answerValue.file_name + (answerValue.date_received ? ` (received: ${answerValue.date_received})` : '');
       }
+      // Controlling persons / beneficiaries input
+      if (answerValue.savedPersons || answerValue.draftPersons || answerValue.savedBeneficiaries || answerValue.draftBeneficiaries) {
+        const persons = answerValue.savedPersons || answerValue.draftPersons || answerValue.savedBeneficiaries || answerValue.draftBeneficiaries || [];
+        if (persons.length === 0) return 'No persons added';
+        return persons.map(p => {
+          const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.full_name || 'Unknown';
+          const control = p.control_type ? ` (${p.control_type.replace(/_/g, ' ')})` : '';
+          return name + control;
+        }).join(', ');
+      }
       // Address object
       if (answerValue.street || answerValue.city || answerValue.country) {
         return [answerValue.street, answerValue.city, answerValue.state, answerValue.postal_code, answerValue.country]

@@ -28,6 +28,17 @@ export default function PreviousAnswers({ history, stepMap, answers, getStepOpti
         } else if (step.question_type === 'address_input') {
           // For address steps, show a neutral summary to avoid browser autofill detection
           displayAnswer = ans.country ? `Address provided (${ans.country})` : 'Address provided';
+        } else if (step.question_type === 'controlling_person_input' || step.question_type === 'beneficiary_input') {
+          // Controlling persons / beneficiaries: list names from savedPersons or draftPersons
+          const persons = ans.savedPersons || ans.draftPersons || ans.savedBeneficiaries || ans.draftBeneficiaries || [];
+          if (persons.length > 0) {
+            displayAnswer = persons.map(p => {
+              const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.full_name || 'Unknown';
+              return name;
+            }).join(', ');
+          } else {
+            displayAnswer = 'No persons added';
+          }
         } else {
           // multi_field_input: render as "Label: value" pairs from multi_fields config
           const fields = step.multi_fields || [];
