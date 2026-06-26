@@ -7,7 +7,7 @@ import { History, CheckCircle2, XCircle, Clock, Globe } from "lucide-react";
 import { format } from "date-fns";
 
 export default function ControllingPersonClassificationHistory({ controllingPerson }) {
-  const { data: history = [] } = useQuery({
+  const { data: history = [], isLoading } = useQuery({
     queryKey: ['controlling-person-classification-history', controllingPerson?.id],
     queryFn: () => base44.entities.ControllingPersonClassificationHistory.filter({ 
       controlling_person_id: controllingPerson?.id 
@@ -97,7 +97,10 @@ export default function ControllingPersonClassificationHistory({ controllingPers
     return { question, answer };
   };
 
-  if (!history || history.length === 0) {
+  // Already classified (via account workflow) but no dedicated history records stored
+  const hasCurrentStatus = controllingPerson?.is_reportable !== null && controllingPerson?.is_reportable !== undefined;
+
+  if (!isLoading && (!history || history.length === 0)) {
     return (
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
@@ -106,12 +109,46 @@ export default function ControllingPersonClassificationHistory({ controllingPers
             Classification History
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-12 text-center">
-          <History className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">No Classification History</h3>
-          <p className="text-slate-600">
-            This controlling person has not been classified yet. Click "Classify" to start the reportability assessment.
-          </p>
+        <CardContent className="p-8 text-center space-y-4">
+          <History className="w-14 h-14 mx-auto text-slate-300" />
+          <h3 className="text-lg font-semibold text-slate-900">No Detailed History Available</h3>
+          {hasCurrentStatus ? (
+            <div className="space-y-3">
+              <p className="text-slate-600 text-sm">
+                This controlling person was classified as part of the account classification workflow. 
+                Current status is shown below.
+              </p>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border font-semibold text-sm ${
+                controllingPerson.is_reportable
+                  ? 'bg-amber-50 border-amber-200 text-amber-800'
+                  : 'bg-slate-100 border-slate-200 text-slate-700'
+              }`}>
+                {controllingPerson.is_reportable
+                  ? <><CheckCircle2 className="w-4 h-4" /> Reportable</>
+                  : <><XCircle className="w-4 h-4" /> Non-Reportable</>
+                }
+              </div>
+              {controllingPerson.tax_residencies?.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 pt-1">
+                  {controllingPerson.tax_residencies.map((r, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded text-xs">
+                      <Globe className="w-3 h-3" />{r.country}{r.tin ? ` (TIN: ${r.tin})` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {controllingPerson.classification_date && (
+                <p className="text-xs text-slate-500">
+                  Classified on {format(new Date(controllingPerson.classification_date), 'MMMM d, yyyy')}
+                  {controllingPerson.classified_by ? ` by ${controllingPerson.classified_by}` : ''}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-slate-600 text-sm">
+              This controlling person has not been classified yet. Click "Classify" to start the reportability assessment.
+            </p>
+          )}
         </CardContent>
       </Card>
     );
