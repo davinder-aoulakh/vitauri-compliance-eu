@@ -9,12 +9,19 @@ export default function ImpersonationBanner() {
   const [reverting, setReverting] = useState(false);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("super_admin_impersonating");
+    // Check sessionStorage first, fall back to localStorage (survives refresh)
+    const stored = sessionStorage.getItem("super_admin_impersonating") 
+      || localStorage.getItem("super_admin_impersonating");
     if (stored) {
       try {
-        setImpersonation(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setImpersonation(parsed);
+        // Ensure both storages are in sync
+        sessionStorage.setItem("super_admin_impersonating", stored);
+        localStorage.setItem("super_admin_impersonating", stored);
       } catch {
         sessionStorage.removeItem("super_admin_impersonating");
+        localStorage.removeItem("super_admin_impersonating");
       }
     }
   }, []);
@@ -30,6 +37,7 @@ export default function ImpersonationBanner() {
         job_title: null
       });
       sessionStorage.removeItem("super_admin_impersonating");
+      localStorage.removeItem("super_admin_impersonating");
       window.location.href = createPageUrl("TenantManagement");
     } catch (err) {
       alert("Failed to revert: " + err.message);
