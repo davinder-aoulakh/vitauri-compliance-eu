@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
 
     // Only super admin can deploy templates
-    if (user?.user_role !== 'super_admin') {
+    if (user?.app_role !== 'super_admin') {
       return Response.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
     }
 
