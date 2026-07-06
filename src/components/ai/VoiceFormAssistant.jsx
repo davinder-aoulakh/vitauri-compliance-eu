@@ -24,6 +24,7 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
   const [pendingChanges, setPendingChanges] = useState([]);
   const [error, setError] = useState("");
   const recognitionRef = useRef(null);
+  const statusRef = useRef("idle");
 
   // Check browser support
   const isSupported = typeof window !== "undefined" &&
@@ -53,22 +54,27 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
     recognition.interimResults = false;
     recognitionRef.current = recognition;
 
-    recognition.onstart = () => setStatus("listening");
+    recognition.onstart = () => { statusRef.current = "listening"; setStatus("listening"); };
 
     recognition.onresult = (event) => {
       const text = event.results[0][0].transcript;
       setTranscript(text);
+      statusRef.current = "processing";
       setStatus("processing");
       processTranscript(text);
     };
 
     recognition.onerror = (event) => {
       setError("Microphone error: " + event.error);
+      statusRef.current = "idle";
       setStatus("idle");
     };
 
     recognition.onend = () => {
-      if (status === "listening") setStatus("idle");
+      if (statusRef.current === "listening") {
+        statusRef.current = "idle";
+        setStatus("idle");
+      }
     };
 
     recognition.start();
@@ -78,6 +84,7 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
+    statusRef.current = "idle";
     setStatus("idle");
   };
 
