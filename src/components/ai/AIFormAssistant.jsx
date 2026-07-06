@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
+import VoiceFormAssistant from "./VoiceFormAssistant";
 
 
 export default function AIFormAssistant({ 
@@ -22,6 +23,13 @@ export default function AIFormAssistant({
   onSuggestionApply,
   tenant
 }) {
+  // Voice handler: receives { field: value, ... } object and fans out to onSuggestionApply
+  const handleVoiceChanges = (changesObj) => {
+    if (!onSuggestionApply) return;
+    Object.entries(changesObj).forEach(([field, value]) => {
+      onSuggestionApply(field, value);
+    });
+  };
   const [suggestions, setSuggestions] = useState([]);
   const [validationIssues, setValidationIssues] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -162,15 +170,22 @@ Be specific and actionable.`;
   // Show button if not analyzed yet, show results if analyzed
   if (!hasAnalyzed && !loading) {
     return (
-      <Button
-        type="button"
-        variant="outline"
-        onClick={analyzeData}
-        className="w-full bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border-purple-200"
-      >
-        <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
-        Get AI Help with Form
-      </Button>
+      <div className="space-y-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={analyzeData}
+          className="w-full bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border-purple-200"
+        >
+          <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
+          Get AI Help with Form
+        </Button>
+        <VoiceFormAssistant
+          formData={formData}
+          formType={formType}
+          onApplyChanges={handleVoiceChanges}
+        />
+      </div>
     );
   }
 
@@ -251,6 +266,12 @@ Be specific and actionable.`;
 
       {isExpanded && (
         <CardContent className="pt-0 pb-4 space-y-3">
+          {/* Voice input available while results are shown */}
+          <VoiceFormAssistant
+            formData={formData}
+            formType={formType}
+            onApplyChanges={handleVoiceChanges}
+          />
           {/* Validation Issues */}
           {validationIssues.map((issue, idx) => (
             <Alert key={`issue-${idx}`} className={getSeverityColor(issue.severity)}>

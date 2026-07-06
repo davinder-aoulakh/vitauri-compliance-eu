@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaxResidencyManager from "../accounts/TaxResidencyManager";
 import DocumentUpload from "../accounts/DocumentUpload";
+import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 
 export default function DynamicFormRenderer({ 
   entityType, 
@@ -667,6 +668,12 @@ export default function DynamicFormRenderer({
     </div>
   );
 
+  const handleVoiceChanges = (changesObj) => {
+    Object.entries(changesObj).forEach(([field, value]) => {
+      handleChange(field, value);
+    });
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Alert className="bg-blue-50 border-blue-200">
@@ -674,6 +681,12 @@ export default function DynamicFormRenderer({
           Form: <strong>{config.form_name}</strong> (v{config.version})
         </AlertDescription>
       </Alert>
+
+      <VoiceFormAssistant
+        formData={formData}
+        formType={entityType === "Entity" ? "entity" : "account"}
+        onApplyChanges={handleVoiceChanges}
+      />
 
       {hasSections ? (
         <Tabs defaultValue={sections[0]?.section_name} className="space-y-4">
