@@ -24,6 +24,17 @@ import {
 } from "lucide-react";
 import AccountAuditLog from "./AccountAuditLog";
 
+// Format date/datetime in AST (UTC-4) for accurate auditing
+const formatAST = (value, includeTime = true) => {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  const opts = includeTime
+    ? { timeZone: 'America/Puerto_Rico', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }
+    : { timeZone: 'America/Puerto_Rico', year: 'numeric', month: 'long', day: 'numeric' };
+  return new Intl.DateTimeFormat('en-US', opts).format(d) + (includeTime ? ' AST' : '');
+};
+
 const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
   <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
     <Icon className={`w-4 h-4 mt-1 ${color || 'text-slate-400'}`} />
@@ -166,7 +177,7 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Account Opening Date"
-              value={account.account_creation_date ? new Date(account.account_creation_date).toLocaleDateString() : "—"}
+              value={formatAST(account.account_creation_date)}
             />
             <InfoRow
               icon={CreditCard}
@@ -187,7 +198,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={account.date_of_birth ? new Date(account.date_of_birth.replace(/-/g, '/')).toLocaleDateString() : "—"}
+                value={formatAST(account.date_of_birth)}
               />
             )}
             {entity && (
@@ -341,7 +352,7 @@ export default function AccountDetails({ account, entity }) {
                     </p>
                     {uploadDate && (
                       <p className="text-xs text-green-700">
-                        Uploaded: {new Date(uploadDate).toLocaleString()}
+                        Uploaded: {formatAST(uploadDate, true)}
                       </p>
                     )}
                     {uploadedBy && (
@@ -351,7 +362,7 @@ export default function AccountDetails({ account, entity }) {
                     )}
                     {account.self_certification_date && (
                       <p className="text-xs text-green-700">
-                        Certified: {new Date(account.self_certification_date).toLocaleDateString()}
+                        Certified: {formatAST(account.self_certification_date)}
                       </p>
                     )}
                   </div>
@@ -466,7 +477,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of birth of the account holder"
-                value={account.date_of_birth ? new Date(account.date_of_birth.replace(/-/g, '/')).toLocaleDateString() : "—"}
+                value={formatAST(account.date_of_birth)}
               />
               <InfoRow
                 icon={Globe}
@@ -499,7 +510,7 @@ export default function AccountDetails({ account, entity }) {
                 <InfoRow
                   icon={Calendar}
                   label="Date of Account Closing"
-                  value={account.updated_date ? new Date(account.updated_date).toLocaleDateString() : "—"}
+                  value={formatAST(account.updated_date)}
                 />
               )}
             </div>
@@ -508,7 +519,7 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Certification Date"
-              value={account.self_certification_date ? new Date(account.self_certification_date).toLocaleDateString() : "—"}
+              value={formatAST(account.self_certification_date)}
             />
           )}
           {account.indicia_found && account.indicia_found.length > 0 && (
@@ -553,7 +564,7 @@ export default function AccountDetails({ account, entity }) {
                       <p className="font-semibold text-slate-900">{beneficiary.full_name}</p>
                       {beneficiary.date_of_birth && (
                         <p className="text-xs text-slate-600">
-                          DOB: {new Date(beneficiary.date_of_birth.replace(/-/g, '/')).toLocaleDateString()}
+                          DOB: {formatAST(beneficiary.date_of_birth)}
                         </p>
                       )}
                       {beneficiary.address?.country && (
@@ -656,14 +667,14 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Created"
-              value={account.created_date ? new Date(account.created_date).toLocaleString() : "—"}
+              value={formatAST(account.created_date, true)}
             />
           )}
           {account.updated_date && (
             <InfoRow
               icon={Calendar}
               label="Last Updated"
-              value={account.updated_date ? new Date(account.updated_date).toLocaleString() : "—"}
+              value={formatAST(account.updated_date, true)}
             />
           )}
           {account.created_by && (
