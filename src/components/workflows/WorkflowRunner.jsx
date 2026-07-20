@@ -105,13 +105,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             }
           });
           
-          // Update tax residencies if TIN provided
-          if (answer.tin && answer.country) {
+          // Update tax residencies if tax_residence_country provided
+          const taxResCountry = answer.tax_residence_country || answer.country;
+          if (taxResCountry) {
             const persons = await base44.entities.ControllingPerson.filter({ id: controllingPersonId });
             const existingTaxResidencies = persons[0]?.tax_residencies || [];
             
             const existingIndex = existingTaxResidencies.findIndex(
-              tr => tr.country?.toLowerCase() === answer.country.toLowerCase()
+              tr => tr.country?.toLowerCase() === taxResCountry.toLowerCase()
             );
             
             let updatedTaxResidencies;
@@ -119,15 +120,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               updatedTaxResidencies = [...existingTaxResidencies];
               updatedTaxResidencies[existingIndex] = {
                 ...updatedTaxResidencies[existingIndex],
-                country: answer.country,
-                tin: answer.tin
+                country: taxResCountry,
+                tin: answer.tin || updatedTaxResidencies[existingIndex].tin
               };
             } else {
               updatedTaxResidencies = [
                 ...existingTaxResidencies,
                 {
-                  country: answer.country,
-                  tin: answer.tin,
+                  country: taxResCountry,
+                  tin: answer.tin || "",
                   tin_unavailable_reason: null
                 }
               ];
@@ -1249,6 +1250,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           state: "",
           postal_code: "",
           country: "",
+          tax_residence_country: "",
           tin: ""
         };
 
@@ -1388,16 +1390,30 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               </div>
             </div>
 
-            <div>
-              <Label className="text-sm font-medium text-slate-700">
-                Tax Identification Number (TIN)
-              </Label>
-              <Input
-                value={addressData.tin || ""}
-                onChange={(e) => handleAddressChange("tin", e.target.value)}
-                placeholder="Enter TIN"
-                className="mt-1.5"
-              />
+            <div className="border-t border-slate-200 pt-4 mt-2 grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  Country of Tax Residence <span className="text-red-600">*</span>
+                </Label>
+                <div className="mt-1.5">
+                  <CountrySelect
+                    value={addressData.tax_residence_country || ""}
+                    onValueChange={(value) => handleAddressChange("tax_residence_country", value)}
+                    placeholder="Select country..."
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  Tax Identification Number (TIN)
+                </Label>
+                <Input
+                  value={addressData.tin || ""}
+                  onChange={(e) => handleAddressChange("tin", e.target.value)}
+                  placeholder="Enter TIN"
+                  className="mt-1.5"
+                />
+              </div>
             </div>
           </div>
         );
@@ -1517,7 +1533,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     if (!currentStep.required) return true;
     if (currentStep.question_type === 'address_input') {
       if (!answer || typeof answer !== 'object') return false;
-      return !!(answer.street && answer.city && answer.state && answer.postal_code && answer.country);
+      return !!(answer.street && answer.city && answer.state && answer.postal_code && answer.country && answer.tax_residence_country);
     }
     if (currentStep.question_type === 'file_upload') {
       const fileConfig = currentStep.file_upload_config || {};
