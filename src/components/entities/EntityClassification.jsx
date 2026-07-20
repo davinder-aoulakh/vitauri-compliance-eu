@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -31,6 +31,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [completedPath, setCompletedPath] = useState([]);
   const [entityStatus, setEntityStatus] = useState(null);
   const [showFlowChart, setShowFlowChart] = useState(false);
+  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
 
   // Fetch published entity classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -113,6 +114,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     
     if (Object.keys(preFillAnswers).length > 0) {
       setAnswers(prev => ({ ...prev, ...preFillAnswers }));
+      setPrefilledSteps(new Set(Object.keys(preFillAnswers)));
     }
   }, [workflow, entity, crsCountries]);
 
@@ -990,6 +992,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   };
 
   const renderNode = () => {
+    const isLocked = prefilledSteps.has(currentNodeId);
+
     if (currentNode.question_type === "yes_no") {
       const options = currentNode.options || [
         { value: "YES", label: "Yes" },
@@ -998,23 +1002,36 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       
       return (
         <div className="space-y-3">
-
-          <RadioGroup value={selectedValue} onValueChange={setSelectedValue}>
+          {isLocked && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>This answer was automatically determined from your entity data and cannot be changed.</span>
+            </div>
+          )}
+          <RadioGroup value={selectedValue} onValueChange={isLocked ? undefined : setSelectedValue}>
             {options.map((option) => (
               <div 
                 key={option.value}
-                className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-                onClick={() => setSelectedValue(option.value)}
+                className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
+                  isLocked
+                    ? option.value === selectedValue
+                      ? 'border-indigo-300 bg-indigo-50/70 cursor-not-allowed opacity-90'
+                      : 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-40'
+                    : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
+                }`}
+                onClick={isLocked ? undefined : () => setSelectedValue(option.value)}
               >
-                <RadioGroupItem value={option.value} id={option.value} />
+                <RadioGroupItem value={option.value} id={option.value} disabled={isLocked} />
                 <Label 
                   htmlFor={option.value}
-                  className="flex-1 cursor-pointer font-medium text-slate-900"
+                  className={`flex-1 font-medium text-slate-900 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {option.label}
                 </Label>
                 {option.value === selectedValue && (
-                  <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                  isLocked
+                    ? <Lock className="w-4 h-4 text-indigo-400" />
+                    : <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                 )}
               </div>
             ))}
@@ -1026,8 +1043,14 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
     if (currentNode.question_type === "single_choice") {
       return (
         <div className="space-y-4">
-          <Select value={selectedValue} onValueChange={setSelectedValue}>
-            <SelectTrigger className="w-full h-12">
+          {isLocked && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>This answer was automatically determined from your entity data and cannot be changed.</span>
+            </div>
+          )}
+          <Select disabled={isLocked} value={selectedValue} onValueChange={isLocked ? undefined : setSelectedValue}>
+            <SelectTrigger className={`w-full h-12 ${isLocked ? 'cursor-not-allowed opacity-70 bg-slate-50' : ''}`}>
               <SelectValue placeholder="Select an option..." />
             </SelectTrigger>
             <SelectContent>

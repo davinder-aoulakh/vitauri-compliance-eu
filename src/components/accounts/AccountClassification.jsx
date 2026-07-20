@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Sparkles, Calendar } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Sparkles, Calendar, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -109,6 +109,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [addressValues, setAddressValues] = useState({ street: "", city: "", state: "", postal_code: "", country: "", tax_residence_country: "", tin: "" });
   const [selectedValue, setSelectedValue] = useState(null);
   const [dateReceivedValue, setDateReceivedValue] = useState("");
+  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
@@ -210,7 +211,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const entityPrefilled = entityRecord
           ? await computePrefillAnswers(chosenWorkflow, entityRecord, "Entity")
           : {};
-        setAnswers(prev => ({ ...prev, ...accountPrefilled, ...entityPrefilled }));
+        const mergedPrefill = { ...accountPrefilled, ...entityPrefilled };
+        setAnswers(prev => ({ ...prev, ...mergedPrefill }));
+        setPrefilledSteps(new Set(Object.keys(mergedPrefill)));
       }
     };
 
@@ -582,6 +585,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const renderNode = () => {
     const answer = answers[currentNodeId];
+    const isLocked = prefilledSteps.has(currentNodeId);
 
     switch (currentNode.question_type) {
       case 'yes_no': {
@@ -589,16 +593,32 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const yesNoVal = answers[currentNodeId] || null;
         return (
           <div className="space-y-3">
-            <RadioGroup value={yesNoVal} onValueChange={v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
+            {isLocked && (
+              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>This answer was automatically determined from your account data and cannot be changed.</span>
+              </div>
+            )}
+            <RadioGroup value={yesNoVal} onValueChange={isLocked ? undefined : v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
               {opts.map(opt => (
                 <div
                   key={opt.value}
-                  className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-                  onClick={() => { setSelectedValue(opt.value); setAnswers(p => ({ ...p, [currentNodeId]: opt.value })); }}
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
+                    isLocked
+                      ? opt.value === yesNoVal
+                        ? 'border-indigo-300 bg-indigo-50/70 cursor-not-allowed opacity-90'
+                        : 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-40'
+                      : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
+                  }`}
+                  onClick={isLocked ? undefined : () => { setSelectedValue(opt.value); setAnswers(p => ({ ...p, [currentNodeId]: opt.value })); }}
                 >
-                  <RadioGroupItem value={opt.value} id={opt.value} />
-                  <Label htmlFor={opt.value} className="flex-1 cursor-pointer font-medium text-slate-900">{opt.label}</Label>
-                  {opt.value === yesNoVal && <CheckCircle2 className="w-5 h-5 text-indigo-600" />}
+                  <RadioGroupItem value={opt.value} id={opt.value} disabled={isLocked} />
+                  <Label htmlFor={opt.value} className={`flex-1 font-medium text-slate-900 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>{opt.label}</Label>
+                  {opt.value === yesNoVal && (
+                    isLocked
+                      ? <Lock className="w-4 h-4 text-indigo-400" />
+                      : <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                  )}
                 </div>
               ))}
             </RadioGroup>
@@ -609,16 +629,24 @@ export default function AccountClassification({ account, onComplete, onCancel })
       case 'single_choice': {
         const singleOpts = getStepOptions(currentNode);
         return (
-          <Select value={answers[currentNodeId] || ""} onValueChange={v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
-            <SelectTrigger className="w-full h-12">
-              <SelectValue placeholder="Select an option..." />
-            </SelectTrigger>
-            <SelectContent>
-              {singleOpts.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-3">
+            {isLocked && (
+              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>This answer was automatically determined from your account data and cannot be changed.</span>
+              </div>
+            )}
+            <Select disabled={isLocked} value={answers[currentNodeId] || ""} onValueChange={isLocked ? undefined : v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
+              <SelectTrigger className={`w-full h-12 ${isLocked ? 'cursor-not-allowed opacity-70 bg-slate-50' : ''}`}>
+                <SelectValue placeholder="Select an option..." />
+              </SelectTrigger>
+              <SelectContent>
+                {singleOpts.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         );
       }
 
