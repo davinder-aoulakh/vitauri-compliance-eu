@@ -536,6 +536,49 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
+    // Persist self-certification file upload from workflow steps
+    const fileUploadSteps = allSteps
+      .map(stepId => ({ stepId, step: stepMap[stepId] }))
+      .filter(({ step }) => step?.question_type === 'file_upload');
+
+    for (const { stepId } of fileUploadSteps) {
+      const fileAnswer = answers[stepId];
+      if (fileAnswer?.file_url && account?.id) {
+        let uploaderEmail = '';
+        let uploaderName = '';
+        try {
+          const me = await base44.auth.me();
+          uploaderEmail = me?.email || '';
+          uploaderName = me?.display_name || me?.full_name || '';
+        } catch (_) {}
+
+        const today = new Date().toISOString().split('T')[0];
+        const newDoc = {
+          id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          document_url: fileAnswer.file_url,
+          document_name: fileAnswer.file_name || 'Self-Certification Document',
+          document_type: 'self_certification',
+          upload_date: new Date().toISOString(),
+          uploaded_by_email: uploaderEmail,
+          uploaded_by_name: uploaderName,
+          notes: 'Uploaded via account classification workflow',
+        };
+
+        const currentDocs = (latestAccountData || account)?.documents || [];
+        const alreadyExists = currentDocs.some(d => d.document_url === fileAnswer.file_url);
+        const updatedDocs = alreadyExists ? currentDocs : [...currentDocs, newDoc];
+
+        await base44.entities.Account.update(account.id, {
+          self_certification_obtained: true,
+          self_certification_date: fileAnswer.date_received || today,
+          documents: updatedDocs,
+        });
+
+        const refreshed = await base44.entities.Account.filter({ id: account.id });
+        if (refreshed[0]) setLatestAccountData(refreshed[0]);
+      }
+    }
+
     // Build result data
     const finalStep = steps.find(s => s.step_id === allSteps[allSteps.length - 1]);
     const deriveStatusForComplete = (step) => {
