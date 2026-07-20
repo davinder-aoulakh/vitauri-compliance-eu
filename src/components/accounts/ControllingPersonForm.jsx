@@ -29,7 +29,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
     tax_residencies: [{ country: "", tin: "", tin_unavailable_reason: "" }],
     control_type: "legal_person_ownership",
     ownership_percentage: 0,
-    is_reportable: false
+    is_reportable: null
   });
 
   const handleSubmit = (e) => {

@@ -925,7 +925,7 @@ export default function AccountsPage() {
                                           Cert Overdue
                                         </Badge>
                                       )}
-                                      {account.has_unclassified_controlling_persons && (
+                                      {account.has_unclassified_controlling_persons && account.entity_classification !== 'active_nfe' && (
                                         <Badge className="bg-orange-100 text-orange-800 border-orange-300 text-xs">
                                           <Users className="w-3 h-3 mr-1" />
                                           Classify CPs

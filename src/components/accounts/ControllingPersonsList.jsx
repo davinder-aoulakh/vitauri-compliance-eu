@@ -75,25 +75,36 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     }
   }, [account?.entity_id]);
 
+  const syncControllingPersons = async () => {
+    try {
+      await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
+      queryClient.invalidateQueries(['accounts']);
+    } catch (error) {
+      console.error('Failed to sync controlling persons count:', error);
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ControllingPerson.create({
       ...data,
       tenant_id: account.tenant_id,
       account_id: account.id
     }),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries(['controlling-persons']);
       setShowForm(false);
       setSelectedPerson(null);
+      await syncControllingPersons();
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ControllingPerson.update(id, data),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries(['controlling-persons']);
       setShowForm(false);
       setSelectedPerson(null);
+      await syncControllingPersons();
     }
   });
 
