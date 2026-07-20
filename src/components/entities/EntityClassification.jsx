@@ -1153,7 +1153,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-700">Status:</span>
-                <Badge className="text-sm bg-green-600 text-white">
+                <Badge className={`text-sm ${isReportingFI ? 'bg-green-600 text-white' : 'bg-slate-500 text-white'}`}>
                   {isReportingFI ? 'Reporting FI' : 'Non-Reporting FI'}
                 </Badge>
               </div>

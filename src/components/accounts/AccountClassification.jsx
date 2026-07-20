@@ -1050,7 +1050,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           <CardContent className="p-6 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">Status:</span>
-              <Badge className={`text-sm ${isReportable ? 'bg-amber-600 text-white' : isPending ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>
+              <Badge className={`text-sm ${isReportable ? 'bg-amber-600 text-white' : isPending ? 'bg-blue-600 text-white' : 'bg-slate-500 text-white'}`}>
                 {isReportable ? 'Reportable' : isPending ? 'Pending Review' : 'Non-Reportable'}
               </Badge>
             </div>
