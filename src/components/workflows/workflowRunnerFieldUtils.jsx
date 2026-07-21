@@ -57,7 +57,22 @@ export const getFieldValue = (fieldPath, allAnswers, initialData, workflow) => {
     console.log(`    [getFieldValue] Step answer for "${actualStepId}":`, JSON.stringify(stepAnswer));
     
     if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
-      const value = stepAnswer[subField];
+      // Try direct subField first, then known aliases for tax residency field name variants
+      const fieldAliases = {
+        'tax_residency_country': ['tax_residency_country', 'tax_residence_country'],
+        'tax_residence_country': ['tax_residence_country', 'tax_residency_country'],
+      };
+      const aliasesToTry = fieldAliases[subField] || [subField];
+      let value;
+      for (const alias of aliasesToTry) {
+        if (stepAnswer[alias] !== undefined) {
+          value = stepAnswer[alias];
+          if (alias !== subField) {
+            console.log(`    [getFieldValue] ℹ️ Field alias resolved: "${subField}" → "${alias}"`);
+          }
+          break;
+        }
+      }
       console.log(`    [getFieldValue] ✅ Found "${actualStepId}${dashIndex !== -1 ? '—' : '.'}${subField}":`, value, `(type: ${typeof value})`);
       return value;
     } else {
