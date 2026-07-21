@@ -26,39 +26,58 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
   
   let met = false;
 
-  const isArrayAnswer = Array.isArray(fieldAnswer);
-  
+  // Normalize tax_residencies (array of objects) to a flat array of country strings
+  // so all operators work consistently, matching account classification behaviour
+  let resolvedAnswer = fieldAnswer;
+  if (
+    Array.isArray(fieldAnswer) &&
+    fieldAnswer.length > 0 &&
+    typeof fieldAnswer[0] === 'object' &&
+    fieldAnswer[0] !== null &&
+    ('country' in fieldAnswer[0] || 'Country' in fieldAnswer[0])
+  ) {
+    resolvedAnswer = fieldAnswer
+      .map(item => item.country || item.Country)
+      .filter(Boolean);
+    console.log(`    [NORMALIZE] Detected array-of-objects (tax_residencies). Flattened to countries:`, resolvedAnswer);
+  }
+
+  const isArrayAnswer = Array.isArray(resolvedAnswer);
+
   switch (condition.operator) {
     case '=':
       if (isArrayAnswer) {
-        met = fieldAnswer.includes(comparisonValue);
+        // For array of countries: true if ANY country in the array equals the comparison value
+        met = await (async () => {
+          for (const countryItem of resolvedAnswer) {
+            let normalizedField = String(countryItem || '').trim().toLowerCase();
+            let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
+            if (countryItem && comparisonValue) {
+              try {
+                const [fc, cc] = await Promise.all([
+                  base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: String(countryItem).trim() }, { country_code: String(countryItem).trim() }] }).then(r => r.length > 0 ? r[0].country_code : countryItem),
+                  base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: String(comparisonValue).trim() }, { country_code: String(comparisonValue).trim() }] }).then(r => r.length > 0 ? r[0].country_code : comparisonValue)
+                ]);
+                normalizedField = fc.trim().toLowerCase();
+                normalizedComparison = cc.trim().toLowerCase();
+              } catch (e) { /* use raw values */ }
+            }
+            if (normalizedField === normalizedComparison) return true;
+          }
+          return false;
+        })();
       } else {
-        if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
-          met = fieldAnswer === (comparisonValue === 'true');
+        if (typeof resolvedAnswer === 'boolean' && typeof comparisonValue === 'string') {
+          met = resolvedAnswer === (comparisonValue === 'true');
         } else {
-          // Special handling for country comparisons - normalize to country codes
-          let normalizedField = String(fieldAnswer || '').trim().toLowerCase();
+          let normalizedField = String(resolvedAnswer || '').trim().toLowerCase();
           let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
-          
-          // Check if we're comparing countries (both are strings)
-          if (fieldAnswer && comparisonValue && (typeof fieldAnswer === 'string' && typeof comparisonValue === 'string')) {
+          if (resolvedAnswer && comparisonValue && typeof resolvedAnswer === 'string' && typeof comparisonValue === 'string') {
             try {
-              // Try to resolve both to country codes
               const [fieldCountry, comparisonCountry] = await Promise.all([
-                base44.entities.CrsCountryInfo.filter({
-                  $or: [
-                    { country_name: fieldAnswer.trim() },
-                    { country_code: fieldAnswer.trim() }
-                  ]
-                }).then(countries => countries.length > 0 ? countries[0].country_code : fieldAnswer),
-                base44.entities.CrsCountryInfo.filter({
-                  $or: [
-                    { country_name: comparisonValue.trim() },
-                    { country_code: comparisonValue.trim() }
-                  ]
-                }).then(countries => countries.length > 0 ? countries[0].country_code : comparisonValue)
+                base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: resolvedAnswer.trim() }, { country_code: resolvedAnswer.trim() }] }).then(r => r.length > 0 ? r[0].country_code : resolvedAnswer),
+                base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: comparisonValue.trim() }, { country_code: comparisonValue.trim() }] }).then(r => r.length > 0 ? r[0].country_code : comparisonValue)
               ]);
-              
               normalizedField = fieldCountry.trim().toLowerCase();
               normalizedComparison = comparisonCountry.trim().toLowerCase();
               console.log(`    [= OPERATOR] COUNTRY CODES - Field: "${fieldCountry}", Comparison: "${comparisonCountry}"`);
@@ -66,7 +85,6 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
               console.log(`    [= OPERATOR] Error resolving country codes, using raw values:`, error);
             }
           }
-          
           met = normalizedField === normalizedComparison;
           console.log(`    [= OPERATOR] Normalized comparison: "${normalizedField}" === "${normalizedComparison}" = ${met}`);
         }
@@ -74,36 +92,39 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
       break;
     case '!=':
       if (isArrayAnswer) {
-        met = !fieldAnswer.includes(comparisonValue);
+        // For array of countries: true if ANY country in the array differs from the comparison value
+        met = await (async () => {
+          for (const countryItem of resolvedAnswer) {
+            let normalizedField = String(countryItem || '').trim().toLowerCase();
+            let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
+            if (countryItem && comparisonValue) {
+              try {
+                const [fc, cc] = await Promise.all([
+                  base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: String(countryItem).trim() }, { country_code: String(countryItem).trim() }] }).then(r => r.length > 0 ? r[0].country_code : countryItem),
+                  base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: String(comparisonValue).trim() }, { country_code: String(comparisonValue).trim() }] }).then(r => r.length > 0 ? r[0].country_code : comparisonValue)
+                ]);
+                normalizedField = fc.trim().toLowerCase();
+                normalizedComparison = cc.trim().toLowerCase();
+              } catch (e) { /* use raw values */ }
+            }
+            console.log(`    [!= ARRAY] "${normalizedField}" !== "${normalizedComparison}" = ${normalizedField !== normalizedComparison}`);
+            if (normalizedField !== normalizedComparison) return true;
+          }
+          return false;
+        })();
       } else {
-        if (typeof fieldAnswer === 'boolean' && typeof comparisonValue === 'string') {
-          met = fieldAnswer !== (comparisonValue === 'true');
+        if (typeof resolvedAnswer === 'boolean' && typeof comparisonValue === 'string') {
+          met = resolvedAnswer !== (comparisonValue === 'true');
         } else {
-          // Special handling for country comparisons - normalize to country codes
-          let normalizedField = String(fieldAnswer || '').trim().toLowerCase();
+          let normalizedField = String(resolvedAnswer || '').trim().toLowerCase();
           let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
-          
-          console.log(`    [!= OPERATOR] RAW VALUES - Field: "${fieldAnswer}", Comparison: "${comparisonValue}"`);
-          
-          // Check if we're comparing countries (either value looks like a country name or code)
-          if (fieldAnswer && comparisonValue && (typeof fieldAnswer === 'string' && typeof comparisonValue === 'string')) {
+          console.log(`    [!= OPERATOR] RAW VALUES - Field: "${resolvedAnswer}", Comparison: "${comparisonValue}"`);
+          if (resolvedAnswer && comparisonValue && typeof resolvedAnswer === 'string' && typeof comparisonValue === 'string') {
             try {
-              // Try to resolve both to country codes
               const [fieldCountry, comparisonCountry] = await Promise.all([
-                base44.entities.CrsCountryInfo.filter({
-                  $or: [
-                    { country_name: fieldAnswer.trim() },
-                    { country_code: fieldAnswer.trim() }
-                  ]
-                }).then(countries => countries.length > 0 ? countries[0].country_code : fieldAnswer),
-                base44.entities.CrsCountryInfo.filter({
-                  $or: [
-                    { country_name: comparisonValue.trim() },
-                    { country_code: comparisonValue.trim() }
-                  ]
-                }).then(countries => countries.length > 0 ? countries[0].country_code : comparisonValue)
+                base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: resolvedAnswer.trim() }, { country_code: resolvedAnswer.trim() }] }).then(r => r.length > 0 ? r[0].country_code : resolvedAnswer),
+                base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: comparisonValue.trim() }, { country_code: comparisonValue.trim() }] }).then(r => r.length > 0 ? r[0].country_code : comparisonValue)
               ]);
-              
               normalizedField = fieldCountry.trim().toLowerCase();
               normalizedComparison = comparisonCountry.trim().toLowerCase();
               console.log(`    [!= OPERATOR] COUNTRY CODES - Field: "${fieldCountry}", Comparison: "${comparisonCountry}"`);
@@ -111,7 +132,6 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
               console.log(`    [!= OPERATOR] Error resolving country codes, using raw values:`, error);
             }
           }
-          
           met = normalizedField !== normalizedComparison;
           console.log(`    [!= OPERATOR] NORMALIZED - Field: "${normalizedField}", Comparison: "${normalizedComparison}"`);
           console.log(`    [!= OPERATOR] RESULT: "${normalizedField}" !== "${normalizedComparison}" = ${met}`);
@@ -119,95 +139,113 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
       }
       break;
     case '>':
-      met = Number(fieldAnswer) > Number(comparisonValue);
+      met = Number(resolvedAnswer) > Number(comparisonValue);
       break;
     case '<':
-      met = Number(fieldAnswer) < Number(comparisonValue);
+      met = Number(resolvedAnswer) < Number(comparisonValue);
       break;
     case '>=':
-      met = Number(fieldAnswer) >= Number(comparisonValue);
+      met = Number(resolvedAnswer) >= Number(comparisonValue);
       break;
     case '<=':
-      met = Number(fieldAnswer) <= Number(comparisonValue);
+      met = Number(resolvedAnswer) <= Number(comparisonValue);
       break;
     case 'contains':
       if (isArrayAnswer) {
-        met = fieldAnswer.some(opt => String(opt).includes(String(comparisonValue)));
+        met = resolvedAnswer.some(opt => String(opt).includes(String(comparisonValue)));
       } else {
-        met = String(fieldAnswer || '').includes(String(comparisonValue));
+        met = String(resolvedAnswer || '').includes(String(comparisonValue));
       }
       break;
     case 'in':
       if (isArrayAnswer) {
-        const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
-        met = fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+        const comparisonListIn = String(comparisonValue).split(',').map(v => v.trim());
+        met = resolvedAnswer.some(opt => comparisonListIn.includes(String(opt)));
       } else {
-        met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+        met = String(comparisonValue).split(',').map(v => v.trim()).includes(String(resolvedAnswer));
       }
       break;
     case 'not_in':
       if (isArrayAnswer) {
-        const comparisonList = String(comparisonValue).split(',').map(v => v.trim());
-        met = !fieldAnswer.some(opt => comparisonList.includes(String(opt)));
+        const comparisonListNotIn = String(comparisonValue).split(',').map(v => v.trim());
+        met = !resolvedAnswer.some(opt => comparisonListNotIn.includes(String(opt)));
       } else {
-        met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(fieldAnswer));
+        met = !String(comparisonValue).split(',').map(v => v.trim()).includes(String(resolvedAnswer));
       }
       break;
     case 'is_crs':
-      console.log('    [IS_CRS OPERATOR] - RAW fieldAnswer:', fieldAnswer);
-      console.log('    [IS_CRS OPERATOR] - fieldAnswer type:', typeof fieldAnswer);
-      console.log('    [IS_CRS OPERATOR] - fieldAnswer stringified:', JSON.stringify(fieldAnswer));
-      
-      // If fieldAnswer is an object (like address), try to extract country
-      let countryValue = fieldAnswer;
-      if (typeof fieldAnswer === 'object' && fieldAnswer !== null && !Array.isArray(fieldAnswer)) {
-        countryValue = fieldAnswer.country || fieldAnswer.Country || fieldAnswer;
-        console.log('    [IS_CRS] Extracted country from object:', countryValue);
-      }
-      
-      if (countryValue && typeof countryValue === 'string') {
-        try {
-          // Normalize for CRS lookup
-          const normalizedCountry = countryValue.trim();
-          console.log('    [IS_CRS] Looking up country:', normalizedCountry);
-          
-          const crsCountries = await base44.entities.CrsCountryInfo.filter({
-            $or: [
-              { country_name: normalizedCountry },
-              { country_code: normalizedCountry }
-            ]
-          });
-          console.log('    [IS_CRS] CRS Countries found:', crsCountries.length);
-          if (crsCountries.length > 0) {
-            console.log('    [IS_CRS] First match:', crsCountries[0]);
+      console.log('    [IS_CRS OPERATOR] - resolvedAnswer:', resolvedAnswer);
+
+      if (isArrayAnswer) {
+        // Array of countries (from tax_residencies): true if ANY country is a CRS country
+        met = await (async () => {
+          for (const countryItem of resolvedAnswer) {
+            if (!countryItem) continue;
+            try {
+              const crsCountries = await base44.entities.CrsCountryInfo.filter({
+                $or: [{ country_name: String(countryItem).trim() }, { country_code: String(countryItem).trim() }]
+              });
+              console.log(`    [IS_CRS ARRAY] "${countryItem}" → is_crs=${crsCountries[0]?.is_crs_country}`);
+              if (crsCountries.length > 0 && crsCountries[0].is_crs_country === true) return true;
+            } catch (e) { /* skip */ }
           }
-          met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
-          console.log('    [IS_CRS] Result - met:', met);
-        } catch (error) {
-          console.error("    [IS_CRS] Error checking CRS country status:", error);
+          return false;
+        })();
+      } else {
+        // Single value (object with .country, or plain string)
+        let countryValue = resolvedAnswer;
+        if (typeof resolvedAnswer === 'object' && resolvedAnswer !== null) {
+          countryValue = resolvedAnswer.country || resolvedAnswer.Country;
+          console.log('    [IS_CRS] Extracted country from object:', countryValue);
+        }
+        if (countryValue && typeof countryValue === 'string') {
+          try {
+            const normalizedCountry = countryValue.trim();
+            console.log('    [IS_CRS] Looking up country:', normalizedCountry);
+            const crsCountries = await base44.entities.CrsCountryInfo.filter({
+              $or: [{ country_name: normalizedCountry }, { country_code: normalizedCountry }]
+            });
+            met = crsCountries.length > 0 && crsCountries[0].is_crs_country === true;
+            console.log(`    [IS_CRS] Country "${normalizedCountry}" → is_crs=${met}`);
+          } catch (error) {
+            console.error("    [IS_CRS] Error checking CRS country status:", error);
+            met = false;
+          }
+        } else {
+          console.log('    [IS_CRS] No valid country value found, met = false');
           met = false;
         }
-      } else {
-        console.log('    [IS_CRS] No valid country value found, met = false');
-        met = false;
       }
       break;
     case 'is_not_crs':
-      if (fieldAnswer) {
-        try {
-          const crsCountries = await base44.entities.CrsCountryInfo.filter({
-            $or: [
-              { country_name: fieldAnswer },
-              { country_code: fieldAnswer }
-            ]
-          });
-          met = crsCountries.length === 0 || crsCountries[0].is_crs_country === false;
-        } catch (error) {
-          console.error("Error checking CRS country status:", error);
+      if (isArrayAnswer) {
+        // Array of countries: true if ALL countries are non-CRS (none are CRS)
+        met = await (async () => {
+          for (const countryItem of resolvedAnswer) {
+            if (!countryItem) continue;
+            try {
+              const crsCountries = await base44.entities.CrsCountryInfo.filter({
+                $or: [{ country_name: String(countryItem).trim() }, { country_code: String(countryItem).trim() }]
+              });
+              if (crsCountries.length > 0 && crsCountries[0].is_crs_country === true) return false;
+            } catch (e) { /* skip */ }
+          }
+          return true;
+        })();
+      } else {
+        if (resolvedAnswer) {
+          try {
+            const crsCountries = await base44.entities.CrsCountryInfo.filter({
+              $or: [{ country_name: resolvedAnswer }, { country_code: resolvedAnswer }]
+            });
+            met = crsCountries.length === 0 || crsCountries[0].is_crs_country === false;
+          } catch (error) {
+            console.error("Error checking CRS country status:", error);
+            met = true;
+          }
+        } else {
           met = true;
         }
-      } else {
-        met = true;
       }
       break;
     default:
