@@ -1,10 +1,9 @@
-const SUPPORT_HUB_API_URL = Deno.env.get("SUPPORT_HUB_API_URL");
-const SUPPORT_HUB_API_KEY = Deno.env.get("SUPPORT_HUB_API_KEY");
-
 // Fields that are purely internal/status fields - changes to ONLY these should not trigger a sync
 const INTERNAL_ONLY_FIELDS = ["support_hub_sync_status", "updated_date", "created_date"];
 
 Deno.serve(async (req) => {
+  const SUPPORT_HUB_API_URL = Deno.env.get("SUPPORT_HUB_API_URL");
+  const SUPPORT_HUB_API_KEY = Deno.env.get("SUPPORT_HUB_API_KEY");
   try {
     const body = await req.json();
 

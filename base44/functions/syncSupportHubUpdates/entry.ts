@@ -1,13 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
-
 // Helper: only include field in update if the incoming value is explicitly provided (not undefined/null)
 function ifProvided(value) {
   return value !== undefined && value !== null;
 }
 
 Deno.serve(async (req) => {
+  const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
   try {
     // Validate shared secret FIRST
     const incomingSecret = req.headers.get("x-shared-secret") || req.headers.get("x-webhook-secret");

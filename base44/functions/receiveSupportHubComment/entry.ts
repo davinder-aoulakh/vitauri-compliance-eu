@@ -1,8 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
-
 Deno.serve(async (req) => {
+  const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
   try {
     // Validate shared secret
     const incomingSecret = req.headers.get("x-shared-secret") || req.headers.get("x-webhook-secret");
