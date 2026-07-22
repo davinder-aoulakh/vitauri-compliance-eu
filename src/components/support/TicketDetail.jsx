@@ -56,12 +56,29 @@ export default function TicketDetail({ ticket: initialTicket, user, onBack }) {
 
   useEffect(() => {
     loadComments();
-    const unsubscribe = base44.entities.Ticket.subscribe((event) => {
-      if (event.id === ticket.id) {
-        setTicket(event.data || ticket);
+
+    // Watch for ticket field updates (status, priority, etc.) from Support Hub
+    const unsubscribeTicket = base44.entities.Ticket.subscribe((event) => {
+      if (event.data?.id === ticket.id || event.id === ticket.id) {
+        setTicket(prev => ({ ...prev, ...(event.data || {}) }));
       }
     });
-    return () => unsubscribe();
+
+    // Watch for new comments pushed by Support Hub via receiveSupportHubComment
+    const unsubscribeComments = base44.entities.TicketComment.subscribe((event) => {
+      if (event.type === "create" && event.data?.ticket_id === ticket.id && !event.data?.is_internal) {
+        setComments(prev => {
+          const exists = prev.some(c => c.id === event.data.id);
+          if (exists) return prev;
+          return [...prev, event.data].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeTicket();
+      unsubscribeComments();
+    };
   }, [ticket.id]);
 
   const loadComments = async () => {
