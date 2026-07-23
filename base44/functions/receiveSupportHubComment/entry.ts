@@ -95,11 +95,54 @@ Deno.serve(async (req) => {
           unread_update_summary:   [...(ticket.unread_update_summary || []), "New comment added"],
           first_unread_comment_id: ticket.first_unread_comment_id || newComment.id
         });
+
+        // ── Send email notification to ticket creator for new comment ──────────
+        if (ticket.creator_email) {
+          const commentedAt = new Date().toLocaleString("en-GB", { timeZone: "UTC" });
+          const agentLine = author_name
+            ? `From: ${author_name}${author_email ? ` (${author_email})` : ""}`
+            : "From: Vitauri Support Team";
+
+          const subject = `💬 New Comment on Ticket ${ticket.ticket_id}: ${ticket.ticket_title}`;
+          const emailBody = `Dear ${ticket.creator_name || "User"},
+
+A new comment has been added to your support ticket by the Vitauri Support Team.
+
+─────────────────────────────────────────
+NEW COMMENT
+─────────────────────────────────────────
+${agentLine}
+Posted at: ${commentedAt} UTC
+
+"${comment_text}"
+─────────────────────────────────────────
+TICKET SNAPSHOT
+─────────────────────────────────────────
+Ticket ID:  ${ticket.ticket_id}
+Title:      ${ticket.ticket_title}
+Status:     ${ticket.status}
+Priority:   ${ticket.priority}
+Type:       ${ticket.ticket_type}
+Assigned:   ${ticket.assigned_agent_name || "Unassigned"}
+─────────────────────────────────────────
+
+Please log in to the Vitauri CRS Compliance platform to view and respond to this comment.
+
+Thank you,
+Vitauri Compliance Support`;
+
+          try {
+            await base44.integrations.Core.SendEmail({ to: ticket.creator_email, subject, body: emailBody });
+            console.log(`[receiveSupportHubComment] New comment notification sent to ${ticket.creator_email} for ticket ${ticket.ticket_id}`);
+          } catch (emailErr) {
+            console.warn("[receiveSupportHubComment] Email send failed:", emailErr.message);
+          }
+        }
       } else {
         console.warn(`[receiveSupportHubComment] Could not find ticket ${crs_internal_id} to update unread badge.`);
       }
     } else {
-      console.log(`[receiveSupportHubComment] CRS-originated comment — skipping unread notification.`);
+      console.log(`[receiveSupportHubComment] CRS-originated comment — skipping unread notification and email.`);
     }
 
     console.log(`[receiveSupportHubComment] Comment created for ticket ${crs_internal_id}. source_app: ${source_app}`);

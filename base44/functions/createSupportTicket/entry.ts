@@ -3,8 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 Deno.serve(async (req) => {
   const SUPPORT_HUB_API_URL = Deno.env.get("SUPPORT_HUB_API_URL");
   const SUPPORT_HUB_API_KEY = Deno.env.get("SUPPORT_HUB_API_KEY");
-  // DIAG: always log secret presence for debugging
   console.log("[createSupportTicket] Secret check - URL set:", !!SUPPORT_HUB_API_URL, "| KEY set:", !!SUPPORT_HUB_API_KEY);
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -39,15 +39,21 @@ Deno.serve(async (req) => {
       console.warn("[createSupportTicket] Could not fetch tenant name:", e.message);
     }
 
-    // Create Ticket record in CRS DB
+    const createdAt = new Date().toISOString();
+    const ticketPriority = priority || "Medium";
+    const ticketType = ticket_type || "Support Request";
+
+    // Create Ticket record in CRS DB — store creator_email and creator_name
     const newTicket = await base44.asServiceRole.entities.Ticket.create({
       ticket_id,
       tenant_id: user.tenant_id,
       tenant_user_id: user.id,
+      creator_email: user.email,
+      creator_name: user.full_name || user.email,
       ticket_title,
       description,
-      priority: priority || "Medium",
-      ticket_type: ticket_type || "Support Request",
+      priority: ticketPriority,
+      ticket_type: ticketType,
       status: "Open",
       attachment_urls: attachment_urls || [],
       support_hub_sync_status: "pending",
@@ -55,6 +61,44 @@ Deno.serve(async (req) => {
       unread_updates_count: 0,
       unread_update_summary: []
     });
+
+    // Helper to send the creation confirmation email
+    const sendCreationEmail = async (supportHubTicketId?: string) => {
+      if (!user.email) return;
+      const supportHubLink = supportHubTicketId
+        ? `\n\nView your ticket in Support Hub: reference ID ${supportHubTicketId}`
+        : "";
+      const subject = `✅ Support Ticket Created: ${ticket_id} — ${ticket_title}`;
+      const body = `Dear ${user.full_name || "User"},
+
+Your support ticket has been successfully created and is now being tracked in the Vitauri Support Hub.
+
+─────────────────────────────────────────
+TICKET DETAILS
+─────────────────────────────────────────
+Ticket ID:    ${ticket_id}
+Title:        ${ticket_title}
+Type:         ${ticketType}
+Priority:     ${ticketPriority}
+Status:       Open
+Created:      ${new Date(createdAt).toLocaleString("en-GB", { timeZone: "UTC" })} UTC
+
+Description:
+${description}
+─────────────────────────────────────────
+
+Your ticket is now being reviewed by the Vitauri support team. You will receive an email notification whenever there is an update.${supportHubLink}
+
+Thank you,
+Vitauri Compliance Support`;
+
+      try {
+        await base44.integrations.Core.SendEmail({ to: user.email, subject, body });
+        console.log(`[createSupportTicket] Confirmation email sent to ${user.email}`);
+      } catch (emailErr) {
+        console.warn("[createSupportTicket] Email send failed:", emailErr.message);
+      }
+    };
 
     // Sync to Support Hub
     if (SUPPORT_HUB_API_URL && SUPPORT_HUB_API_KEY) {
@@ -72,8 +116,8 @@ Deno.serve(async (req) => {
             tenant_name: tenantName,
             ticket_title,
             description,
-            priority: priority || "Medium",
-            ticket_type: ticket_type || "Support Request",
+            priority: ticketPriority,
+            ticket_type: ticketType,
             attachment_urls: attachment_urls || [],
             requester_email: user.email,
             requester_name: user.full_name,
@@ -89,19 +133,25 @@ Deno.serve(async (req) => {
             support_hub_sync_status: "synced"
           });
           console.log(`[createSupportTicket] Ticket ${ticket_id} synced to Support Hub: ${data.support_hub_ticket_id}`);
+          // Send confirmation email with Support Hub ticket ID
+          await sendCreationEmail(data.support_hub_ticket_id);
           return Response.json({ success: true, ticket_id, ticket_db_id: newTicket.id, support_hub_ticket_id: data.support_hub_ticket_id });
         } else {
           await base44.asServiceRole.entities.Ticket.update(newTicket.id, { support_hub_sync_status: "failed" });
           console.error("[createSupportTicket] Sync failed:", data);
+          // Still send confirmation email — ticket exists in CRS even if sync failed
+          await sendCreationEmail();
           return Response.json({ success: true, ticket_id, ticket_db_id: newTicket.id, sync_warning: "Ticket created locally but failed to sync to Support Hub" });
         }
       } catch (syncError) {
         await base44.asServiceRole.entities.Ticket.update(newTicket.id, { support_hub_sync_status: "failed" });
         console.error("[createSupportTicket] Network error during sync:", syncError.message);
+        await sendCreationEmail();
         return Response.json({ success: true, ticket_id, ticket_db_id: newTicket.id, sync_warning: "Ticket created locally but failed to sync to Support Hub" });
       }
     } else {
       console.warn("[createSupportTicket] Support Hub credentials not configured.");
+      await sendCreationEmail();
       return Response.json({ success: true, ticket_id, ticket_db_id: newTicket.id, sync_warning: "Support Hub not configured" });
     }
 

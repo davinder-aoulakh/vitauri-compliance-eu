@@ -14,6 +14,15 @@
       "type": "string",
       "description": "Which user created it"
     },
+    "creator_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email of the CRS user who created the ticket \u2014 used for notifications"
+    },
+    "creator_name": {
+      "type": "string",
+      "description": "Full name of the CRS user who created the ticket"
+    },
     "ticket_title": {
       "type": "string",
       "description": "Title/subject of the ticket"
@@ -124,6 +133,23 @@
       "type": "string",
       "format": "date-time",
       "description": "When the ticket was closed"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the ticket was resolved"
+    },
+    "resolution_summary": {
+      "type": "string",
+      "description": "Summary of resolution from Support Hub"
+    },
+    "root_cause": {
+      "type": "string",
+      "description": "Root cause analysis from Support Hub"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category assigned by Support Hub"
     }
   },
   "required": [
