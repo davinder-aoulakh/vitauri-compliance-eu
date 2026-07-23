@@ -150,46 +150,112 @@ Deno.serve(async (req) => {
     // ── Send email notification to the original creator ───────────────────────
     // Skip for: initial sync (just a confirmation echo), CRS-originated updates, or no real changes
     if (!isInitialSync && !isCrsOriginated && changeItems.length > 0 && ticket.creator_email) {
-      const updatedAt = new Date().toLocaleString("en-GB", { timeZone: "UTC" });
-      const updatedByLine = updated_by_name
-        ? `Updated by: ${updated_by_name}${updated_by_email ? ` (${updated_by_email})` : ""}`
-        : "Updated by: Vitauri Support Team";
+      const updatedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
+      const updatedByText = updated_by_name
+        ? `${updated_by_name}${updated_by_email ? ` (${updated_by_email})` : ""}`
+        : "Vitauri Support Team";
 
-      const changeList = changeItems.map(c => `  • ${c}`).join("\n");
+      const currentStatus   = updates.status             || ticket.status;
+      const currentPriority = updates.priority            || ticket.priority;
+      const currentType     = updates.ticket_type         || ticket.ticket_type;
+      const currentAgent    = updates.assigned_agent_name || ticket.assigned_agent_name || "Unassigned";
 
-      const currentStatus  = updates.status        || ticket.status;
-      const currentPriority = updates.priority      || ticket.priority;
-      const currentType    = updates.ticket_type    || ticket.ticket_type;
-      const currentAgent   = updates.assigned_agent_name || ticket.assigned_agent_name || "Unassigned";
+      const statusColor = currentStatus === "Resolved" || currentStatus === "Closed"
+        ? "background:#dcfce7;color:#166534;"
+        : currentStatus === "In Progress"
+        ? "background:#dbeafe;color:#1d4ed8;"
+        : currentStatus === "Waiting for Customer"
+        ? "background:#fef3c7;color:#92400e;"
+        : "background:#dcfce7;color:#166534;";
 
-      const subject = `🔔 Ticket Update: ${ticket.ticket_id} — ${ticket.ticket_title}`;
-      const emailBody = `Dear ${ticket.creator_name || "User"},
+      const changeRows = changeItems.map(c =>
+        `<tr><td style="padding:8px 16px;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">• ${c}</td></tr>`
+      ).join("");
 
-Your support ticket has been updated in the Vitauri Support Hub.
+      const subject = `[Vitauri CRS] Ticket Updated — ${ticket.ticket_id}`;
+      const emailBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
-─────────────────────────────────────────
-WHAT CHANGED
-─────────────────────────────────────────
-${changeList}
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#1e293b;padding:24px 32px;">
+            <td style="color:#60a5fa;font-size:20px;font-weight:bold;">🔔 Ticket Updated — ${ticket.ticket_id}</td>
+          </td>
+        </tr>
 
-${updatedByLine}
-Updated at: ${updatedAt} UTC
+        <!-- Intro -->
+        <tr>
+          <td style="padding:24px 32px 8px 32px;color:#374151;font-size:15px;line-height:1.6;">
+            Dear <strong>${ticket.creator_name || "User"}</strong>,<br><br>
+            Your support ticket has been updated in the Vitauri Support Hub.
+            Updated by <strong>${updatedByText}</strong> on ${updatedAtFormatted}.
+          </td>
+        </tr>
 
-─────────────────────────────────────────
-CURRENT TICKET SNAPSHOT
-─────────────────────────────────────────
-Ticket ID:  ${ticket.ticket_id}
-Title:      ${ticket.ticket_title}
-Status:     ${currentStatus}
-Type:       ${currentType}
-Priority:   ${currentPriority}
-Assigned:   ${currentAgent}
-─────────────────────────────────────────
+        <!-- What Changed -->
+        <tr>
+          <td style="padding:16px 32px 8px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+              <tr style="background-color:#fef3c7;">
+                <td style="padding:12px 16px;font-size:13px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;">What Changed</td>
+              </tr>
+              ${changeRows}
+            </table>
+          </td>
+        </tr>
 
-Please log in to the Vitauri CRS Compliance platform to view the full ticket details and respond if needed.
+        <!-- Current Snapshot -->
+        <tr>
+          <td style="padding:16px 32px 24px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+              <tr style="background-color:#f8fafc;">
+                <td colspan="2" style="padding:12px 16px;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;">Current Ticket Snapshot</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;width:160px;">Ticket ID</td>
+                <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#1e293b;border-bottom:1px solid #f3f4f6;">${ticket.ticket_id}</td>
+              </tr>
+              <tr style="background:#fafafa;">
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Title</td>
+                <td style="padding:10px 16px;font-size:14px;font-weight:600;border-bottom:1px solid #f3f4f6;">${ticket.ticket_title}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Status</td>
+                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;"><span style="${statusColor}padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${currentStatus}</span></td>
+              </tr>
+              <tr style="background:#fafafa;">
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Type</td>
+                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;">${currentType}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Priority</td>
+                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;">${currentPriority}</td>
+              </tr>
+              <tr style="background:#fafafa;">
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;white-space:nowrap;">Assigned To</td>
+                <td style="padding:10px 16px;font-size:14px;">${currentAgent}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-Thank you,
-Vitauri Compliance Support`;
+        <!-- Footer -->
+        <tr>
+          <td style="background-color:#f8fafc;padding:16px 32px;border-top:1px solid #e5e7eb;text-align:center;color:#9ca3af;font-size:12px;">
+            This is an automated notification from Vitauri CRS Compliance Platform.
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
       try {
         await base44.integrations.Core.SendEmail({ to: ticket.creator_email, subject, body: emailBody });

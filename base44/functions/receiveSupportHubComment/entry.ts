@@ -98,38 +98,102 @@ Deno.serve(async (req) => {
 
         // ── Send email notification to ticket creator for new comment ──────────
         if (ticket.creator_email) {
-          const commentedAt = new Date().toLocaleString("en-GB", { timeZone: "UTC" });
-          const agentLine = author_name
-            ? `From: ${author_name}${author_email ? ` (${author_email})` : ""}`
-            : "From: Vitauri Support Team";
+          const commentedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
+          const agentDisplay = author_name
+            ? `${author_name}${author_email ? ` (${author_email})` : ""}`
+            : "Vitauri Support Team";
 
-          const subject = `💬 New Comment on Ticket ${ticket.ticket_id}: ${ticket.ticket_title}`;
-          const emailBody = `Dear ${ticket.creator_name || "User"},
+          const statusColor = ticket.status === "Resolved" || ticket.status === "Closed"
+            ? "background:#dcfce7;color:#166534;"
+            : ticket.status === "In Progress"
+            ? "background:#dbeafe;color:#1d4ed8;"
+            : ticket.status === "Waiting for Customer"
+            ? "background:#fef3c7;color:#92400e;"
+            : "background:#dcfce7;color:#166534;";
 
-A new comment has been added to your support ticket by the Vitauri Support Team.
+          const subject = `[Vitauri CRS] New Comment on Ticket ${ticket.ticket_id}`;
+          const emailBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
-─────────────────────────────────────────
-NEW COMMENT
-─────────────────────────────────────────
-${agentLine}
-Posted at: ${commentedAt} UTC
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#1e293b;padding:24px 32px;">
+            <span style="color:#a78bfa;font-size:20px;font-weight:bold;">💬 New Comment — ${ticket.ticket_id}</span>
+          </td>
+        </tr>
 
-"${comment_text}"
-─────────────────────────────────────────
-TICKET SNAPSHOT
-─────────────────────────────────────────
-Ticket ID:  ${ticket.ticket_id}
-Title:      ${ticket.ticket_title}
-Status:     ${ticket.status}
-Priority:   ${ticket.priority}
-Type:       ${ticket.ticket_type}
-Assigned:   ${ticket.assigned_agent_name || "Unassigned"}
-─────────────────────────────────────────
+        <!-- Intro -->
+        <tr>
+          <td style="padding:24px 32px 8px 32px;color:#374151;font-size:15px;line-height:1.6;">
+            Dear <strong>${ticket.creator_name || "User"}</strong>,<br><br>
+            A new comment has been added to your support ticket by <strong>${agentDisplay}</strong>.
+          </td>
+        </tr>
 
-Please log in to the Vitauri CRS Compliance platform to view and respond to this comment.
+        <!-- Comment Box -->
+        <tr>
+          <td style="padding:16px 32px 8px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+              <tr style="background-color:#f0f9ff;">
+                <td style="padding:12px 16px;font-size:13px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;">
+                  Comment from ${agentDisplay} &nbsp;·&nbsp; ${commentedAtFormatted}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px;font-size:14px;color:#374151;line-height:1.7;font-style:italic;">"${comment_text.replace(/\n/g, "<br>")}"</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-Thank you,
-Vitauri Compliance Support`;
+        <!-- Ticket Snapshot -->
+        <tr>
+          <td style="padding:16px 32px 24px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+              <tr style="background-color:#f8fafc;">
+                <td colspan="2" style="padding:12px 16px;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;">Ticket Snapshot</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;width:160px;">Ticket ID</td>
+                <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#1e293b;border-bottom:1px solid #f3f4f6;">${ticket.ticket_id}</td>
+              </tr>
+              <tr style="background:#fafafa;">
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Title</td>
+                <td style="padding:10px 16px;font-size:14px;font-weight:600;border-bottom:1px solid #f3f4f6;">${ticket.ticket_title}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Status</td>
+                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;"><span style="${statusColor}padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${ticket.status}</span></td>
+              </tr>
+              <tr style="background:#fafafa;">
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Priority</td>
+                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;">${ticket.priority}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;color:#6b7280;font-size:14px;white-space:nowrap;">Assigned To</td>
+                <td style="padding:10px 16px;font-size:14px;">${ticket.assigned_agent_name || "Unassigned"}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background-color:#f8fafc;padding:16px 32px;border-top:1px solid #e5e7eb;text-align:center;color:#9ca3af;font-size:12px;">
+            This is an automated notification from Vitauri CRS Compliance Platform.
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
           try {
             await base44.integrations.Core.SendEmail({ to: ticket.creator_email, subject, body: emailBody });
