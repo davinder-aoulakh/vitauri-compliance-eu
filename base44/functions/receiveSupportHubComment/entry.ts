@@ -97,7 +97,22 @@ Deno.serve(async (req) => {
         });
 
         // ── Send email notification to ticket creator for new comment ──────────
-        if (ticket.creator_email) {
+        // Fall back to User lookup if creator_email not stored on old tickets
+        let creatorEmail = ticket.creator_email;
+        let creatorName  = ticket.creator_name;
+        if (!creatorEmail && ticket.tenant_user_id) {
+          try {
+            const users = await base44.asServiceRole.entities.User.filter({ id: ticket.tenant_user_id });
+            if (users.length > 0) {
+              creatorEmail = users[0].email;
+              creatorName  = users[0].full_name || users[0].email;
+              console.log(`[receiveSupportHubComment] Resolved creator email from User record: ${creatorEmail}`);
+            }
+          } catch (uErr) {
+            console.warn("[receiveSupportHubComment] Could not resolve creator email:", uErr.message);
+          }
+        }
+        if (creatorEmail) {
           const commentedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
           const agentDisplay = author_name
             ? `${author_name}${author_email ? ` (${author_email})` : ""}`
@@ -130,7 +145,7 @@ Deno.serve(async (req) => {
         <!-- Intro -->
         <tr>
           <td style="padding:24px 32px 8px 32px;color:#374151;font-size:15px;line-height:1.6;">
-            Dear <strong>${ticket.creator_name || "User"}</strong>,<br><br>
+            Dear <strong>${creatorName || "User"}</strong>,<br><br>
             A new comment has been added to your support ticket by <strong>${agentDisplay}</strong>.
           </td>
         </tr>
@@ -196,10 +211,10 @@ Deno.serve(async (req) => {
 </html>`;
 
           try {
-            await base44.integrations.Core.SendEmail({ to: ticket.creator_email, subject, body: emailBody });
-            console.log(`[receiveSupportHubComment] New comment notification sent to ${ticket.creator_email} for ticket ${ticket.ticket_id}`);
+            await base44.integrations.Core.SendEmail({ to: creatorEmail, subject, body: emailBody });
+            console.log(`[receiveSupportHubComment] New comment notification sent to ${creatorEmail} for ticket ${ticket.ticket_id}`);
           } catch (emailErr) {
-            console.warn("[receiveSupportHubComment] Email send failed:", emailErr.message);
+            console.error("[receiveSupportHubComment] Email send FAILED for", creatorEmail, ":", emailErr.message, emailErr);
           }
         }
       } else {

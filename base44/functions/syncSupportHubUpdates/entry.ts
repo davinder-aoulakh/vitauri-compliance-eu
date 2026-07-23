@@ -148,8 +148,24 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.Ticket.update(ticket.id, updates);
 
     // ── Send email notification to the original creator ───────────────────────
+    // If creator_email missing on old ticket records, fall back to looking up user by tenant_user_id
+    let creatorEmail = ticket.creator_email;
+    let creatorName  = ticket.creator_name;
+    if (!creatorEmail && ticket.tenant_user_id) {
+      try {
+        const users = await base44.asServiceRole.entities.User.filter({ id: ticket.tenant_user_id });
+        if (users.length > 0) {
+          creatorEmail = users[0].email;
+          creatorName  = users[0].full_name || users[0].email;
+          console.log(`[syncSupportHubUpdates] Resolved creator email from User record: ${creatorEmail}`);
+        }
+      } catch (uErr) {
+        console.warn("[syncSupportHubUpdates] Could not resolve creator email:", uErr.message);
+      }
+    }
+
     // Skip for: initial sync (just a confirmation echo), CRS-originated updates, or no real changes
-    if (!isInitialSync && !isCrsOriginated && changeItems.length > 0 && ticket.creator_email) {
+    if (!isInitialSync && !isCrsOriginated && changeItems.length > 0 && creatorEmail) {
       const updatedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
       const updatedByText = updated_by_name
         ? `${updated_by_name}${updated_by_email ? ` (${updated_by_email})` : ""}`
@@ -183,15 +199,13 @@ Deno.serve(async (req) => {
 
         <!-- Header -->
         <tr>
-          <td style="background-color:#1e293b;padding:24px 32px;">
-            <td style="color:#60a5fa;font-size:20px;font-weight:bold;">🔔 Ticket Updated — ${ticket.ticket_id}</td>
-          </td>
+          <td style="background-color:#1e293b;padding:24px 32px;color:#60a5fa;font-size:20px;font-weight:bold;">🔔 Ticket Updated — ${ticket.ticket_id}</td>
         </tr>
 
         <!-- Intro -->
         <tr>
           <td style="padding:24px 32px 8px 32px;color:#374151;font-size:15px;line-height:1.6;">
-            Dear <strong>${ticket.creator_name || "User"}</strong>,<br><br>
+            Dear <strong>${creatorName || "User"}</strong>,<br><br>
             Your support ticket has been updated in the Vitauri Support Hub.
             Updated by <strong>${updatedByText}</strong> on ${updatedAtFormatted}.
           </td>
@@ -258,10 +272,10 @@ Deno.serve(async (req) => {
 </html>`;
 
       try {
-        await base44.integrations.Core.SendEmail({ to: ticket.creator_email, subject, body: emailBody });
-        console.log(`[syncSupportHubUpdates] Update notification email sent to ${ticket.creator_email} for ticket ${ticket.ticket_id}`);
+        await base44.integrations.Core.SendEmail({ to: creatorEmail, subject, body: emailBody });
+        console.log(`[syncSupportHubUpdates] Update notification email sent to ${creatorEmail} for ticket ${ticket.ticket_id}`);
       } catch (emailErr) {
-        console.warn("[syncSupportHubUpdates] Email send failed:", emailErr.message);
+        console.error("[syncSupportHubUpdates] Email send FAILED for", creatorEmail, ":", emailErr.message, emailErr);
       }
     }
 
