@@ -1,6 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { resolveTicketCreator, sendTicketUpdateEmail } from '../../shared/ticketNotifier.js';
 
-// Helper: only include field in update if the incoming value is explicitly provided (not undefined/null)
 function ifProvided(value) {
   return value !== undefined && value !== null;
 }
@@ -8,7 +8,6 @@ function ifProvided(value) {
 Deno.serve(async (req) => {
   const SUPPORT_HUB_SHARED_SECRET = Deno.env.get("SUPPORT_HUB_SHARED_SECRET");
   try {
-    // Validate shared secret FIRST
     const incomingSecret = req.headers.get("x-shared-secret") || req.headers.get("x-webhook-secret");
     if (!SUPPORT_HUB_SHARED_SECRET || incomingSecret !== SUPPORT_HUB_SHARED_SECRET) {
       console.warn("[syncSupportHubUpdates] Unauthorized: invalid shared secret");
@@ -41,7 +40,6 @@ Deno.serve(async (req) => {
       updated_by_email
     } = body;
 
-    // Accept both field names — Support Hub may send either crs_ticket_id or crs_internal_id
     const crs_internal_id = _crs_internal_id || _crs_ticket_id;
 
     if (!event_type || !crs_internal_id) {
@@ -70,14 +68,14 @@ Deno.serve(async (req) => {
 
     const isCrsOriginated = source_app === "crs_compliance";
 
-    // isInitialSync: ONLY true when this is the first confirmation from Support Hub
+    // isInitialSync: ONLY true when this is the very first confirmation from Support Hub
     const isInitialSync =
       ifProvided(hub_ticket_id) &&
       !ticket.support_hub_ticket_id &&
       ticket.support_hub_sync_status === "pending";
 
-    // ── Build updates object ──────────────────────────────────────────────────
-    const updates: Record<string, any> = {};
+    // Build updates object
+    const updates = {};
 
     if (ifProvided(hub_ticket_id))           updates.support_hub_ticket_id = hub_ticket_id;
     if (ifProvided(status))                  updates.status = status;
@@ -108,9 +106,8 @@ Deno.serve(async (req) => {
 
     updates.support_hub_sync_status = "synced";
 
-    // ── Compute what actually changed (for notifications & unread badge) ───────
-    const changeItems: string[] = [];
-
+    // Compute what changed (for unread badge and email summary)
+    const changeItems = [];
     if (ifProvided(status) && status !== ticket.status)
       changeItems.push(`Status changed from "${ticket.status}" to "${status}"`);
     if (ifProvided(priority) && priority !== ticket.priority)
@@ -126,7 +123,7 @@ Deno.serve(async (req) => {
     if (ifProvided(description) && description !== ticket.description)
       changeItems.push("Description updated");
 
-    // ── Unread notification logic ─────────────────────────────────────────────
+    // Unread badge logic
     if (isInitialSync) {
       updates.has_unread_updates      = false;
       updates.unread_updates_count    = 0;
@@ -140,146 +137,38 @@ Deno.serve(async (req) => {
       updates.has_unread_updates    = true;
       updates.unread_updates_count  = allSummary.length;
       updates.unread_update_summary = allSummary;
-      console.log(`[syncSupportHubUpdates] Unread updates for ticket ${ticket.id}:`, changeItems);
-    } else {
-      console.log(`[syncSupportHubUpdates] No notification changes for ticket ${ticket.id}. isCrsOriginated: ${isCrsOriginated}`);
     }
 
     await base44.asServiceRole.entities.Ticket.update(ticket.id, updates);
 
-    // ── Send email notification to the original creator ───────────────────────
-    // If creator_email missing on old ticket records, fall back to looking up user by tenant_user_id
-    let creatorEmail = ticket.creator_email;
-    let creatorName  = ticket.creator_name;
-    if (!creatorEmail && ticket.tenant_user_id) {
-      try {
-        const users = await base44.asServiceRole.entities.User.filter({ id: ticket.tenant_user_id });
-        if (users.length > 0) {
-          creatorEmail = users[0].email;
-          creatorName  = users[0].full_name || users[0].email;
-          console.log(`[syncSupportHubUpdates] Resolved creator email from User record: ${creatorEmail}`);
-        }
-      } catch (uErr) {
-        console.warn("[syncSupportHubUpdates] Could not resolve creator email:", uErr.message);
-      }
-    }
+    // Send email for ALL non-CRS, non-initialSync webhook calls
+    console.log(`[syncSupportHubUpdates] Email gate check — isCrsOriginated: ${isCrsOriginated}, isInitialSync: ${isInitialSync}`);
+    if (!isCrsOriginated && !isInitialSync) {
+      const { creatorEmail, creatorName } = await resolveTicketCreator(ticket, base44);
+      console.log(`[syncSupportHubUpdates] Resolved creatorEmail: ${creatorEmail || "NOT FOUND"}`);
 
-    // Send email for ALL non-CRS, non-initialSync updates — even if we can't detect specific field changes.
-    // The Support Hub called this webhook = something changed. Log the state for debugging.
-    console.log(`[syncSupportHubUpdates] Email gate: isCrsOriginated=${isCrsOriginated}, isInitialSync=${isInitialSync}, changeItems=${changeItems.length}, creatorEmail=${!!creatorEmail}`);
-    if (!isCrsOriginated && !isInitialSync && creatorEmail) {
-      const updatedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
+      const updatedAtFormatted = new Date().toLocaleString("en-GB", {
+        timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      }) + " UTC";
+
       const updatedByText = updated_by_name
         ? `${updated_by_name}${updated_by_email ? ` (${updated_by_email})` : ""}`
         : "Vitauri Support Team";
 
-      const currentStatus   = updates.status             || ticket.status;
-      const currentPriority = updates.priority            || ticket.priority;
-      const currentType     = updates.ticket_type         || ticket.ticket_type;
-      const currentAgent    = updates.assigned_agent_name || ticket.assigned_agent_name || "Unassigned";
-
-      const statusColor = currentStatus === "Resolved" || currentStatus === "Closed"
-        ? "background:#dcfce7;color:#166534;"
-        : currentStatus === "In Progress"
-        ? "background:#dbeafe;color:#1d4ed8;"
-        : currentStatus === "Waiting for Customer"
-        ? "background:#fef3c7;color:#92400e;"
-        : "background:#dcfce7;color:#166534;";
-
-      const changeRowsContent = changeItems.length > 0
-        ? changeItems.map(c => `<tr><td style="padding:8px 16px;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">• ${c}</td></tr>`).join("")
-        : `<tr><td style="padding:8px 16px;font-size:14px;color:#374151;">Your ticket has been updated by the support team.</td></tr>`;
-      const changeRows = changeRowsContent;
-
-      const subject = `[Vitauri CRS] Ticket Updated — ${ticket.ticket_id}`;
-      const emailBody = `<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-
-        <!-- Header -->
-        <tr>
-          <td style="background-color:#1e293b;padding:24px 32px;color:#60a5fa;font-size:20px;font-weight:bold;">🔔 Ticket Updated — ${ticket.ticket_id}</td>
-        </tr>
-
-        <!-- Intro -->
-        <tr>
-          <td style="padding:24px 32px 8px 32px;color:#374151;font-size:15px;line-height:1.6;">
-            Dear <strong>${creatorName || "User"}</strong>,<br><br>
-            Your support ticket has been updated in the Vitauri Support Hub.
-            Updated by <strong>${updatedByText}</strong> on ${updatedAtFormatted}.
-          </td>
-        </tr>
-
-        <!-- What Changed -->
-        <tr>
-          <td style="padding:16px 32px 8px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
-              <tr style="background-color:#fef3c7;">
-                <td style="padding:12px 16px;font-size:13px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;">What Changed</td>
-              </tr>
-              ${changeRows}
-            </table>
-          </td>
-        </tr>
-
-        <!-- Current Snapshot -->
-        <tr>
-          <td style="padding:16px 32px 24px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
-              <tr style="background-color:#f8fafc;">
-                <td colspan="2" style="padding:12px 16px;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;">Current Ticket Snapshot</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;width:160px;">Ticket ID</td>
-                <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#1e293b;border-bottom:1px solid #f3f4f6;">${ticket.ticket_id}</td>
-              </tr>
-              <tr style="background:#fafafa;">
-                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Title</td>
-                <td style="padding:10px 16px;font-size:14px;font-weight:600;border-bottom:1px solid #f3f4f6;">${ticket.ticket_title}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Status</td>
-                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;"><span style="${statusColor}padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${currentStatus}</span></td>
-              </tr>
-              <tr style="background:#fafafa;">
-                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Type</td>
-                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;">${currentType}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Priority</td>
-                <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;">${currentPriority}</td>
-              </tr>
-              <tr style="background:#fafafa;">
-                <td style="padding:10px 16px;color:#6b7280;font-size:14px;white-space:nowrap;">Assigned To</td>
-                <td style="padding:10px 16px;font-size:14px;">${currentAgent}</td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="background-color:#f8fafc;padding:16px 32px;border-top:1px solid #e5e7eb;text-align:center;color:#9ca3af;font-size:12px;">
-            This is an automated notification from Vitauri CRS Compliance Platform.
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-
-      try {
-        await base44.integrations.Core.SendEmail({ to: creatorEmail, subject, body: emailBody });
-        console.log(`[syncSupportHubUpdates] Update notification email sent to ${creatorEmail} for ticket ${ticket.ticket_id}`);
-      } catch (emailErr) {
-        console.error("[syncSupportHubUpdates] Email send FAILED for", creatorEmail, ":", emailErr.message, emailErr);
-      }
+      await sendTicketUpdateEmail({
+        base44,
+        creatorEmail,
+        creatorName,
+        ticket,
+        changeItems,
+        updatedByText,
+        updatedAtFormatted,
+        currentStatus:   updates.status             || ticket.status,
+        currentPriority: updates.priority            || ticket.priority,
+        currentType:     updates.ticket_type         || ticket.ticket_type,
+        currentAgent:    updates.assigned_agent_name || ticket.assigned_agent_name || "Unassigned"
+      });
     }
 
     console.log(`[syncSupportHubUpdates] Ticket ${ticket.id} updated. Fields: ${Object.keys(updates).join(", ")}. isInitialSync: ${isInitialSync}, isCrsOriginated: ${isCrsOriginated}`);
