@@ -63,12 +63,9 @@ Deno.serve(async (req) => {
     });
 
     // Helper to send the creation confirmation email
-    const sendCreationEmail = async (supportHubTicketId?: string) => {
+    const sendCreationEmail = async () => {
       if (!user.email) return;
       const createdAtFormatted = new Date(createdAt).toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
-      const hubRefRow = supportHubTicketId
-        ? `<tr><td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Support Hub Ref</td><td style="padding:10px 16px;font-size:14px;font-weight:600;border-bottom:1px solid #f3f4f6;">${supportHubTicketId}</td></tr>`
-        : "";
 
       const subject = `[Vitauri CRS] New Ticket Created — ${ticket_id}`;
       const body = `<!DOCTYPE html>
@@ -129,7 +126,6 @@ Deno.serve(async (req) => {
                 <td style="padding:10px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">Created At</td>
                 <td style="padding:10px 16px;font-size:14px;border-bottom:1px solid #f3f4f6;">${createdAtFormatted}</td>
               </tr>
-              ${hubRefRow}
             </table>
           </td>
         </tr>
@@ -203,7 +199,7 @@ Deno.serve(async (req) => {
           });
           console.log(`[createSupportTicket] Ticket ${ticket_id} synced to Support Hub: ${data.support_hub_ticket_id}`);
           // Send confirmation email with Support Hub ticket ID
-          await sendCreationEmail(data.support_hub_ticket_id);
+          await sendCreationEmail();
           return Response.json({ success: true, ticket_id, ticket_db_id: newTicket.id, support_hub_ticket_id: data.support_hub_ticket_id });
         } else {
           await base44.asServiceRole.entities.Ticket.update(newTicket.id, { support_hub_sync_status: "failed" });

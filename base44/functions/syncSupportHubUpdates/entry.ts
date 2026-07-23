@@ -164,8 +164,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Skip for: initial sync (just a confirmation echo), CRS-originated updates, or no real changes
-    if (!isInitialSync && !isCrsOriginated && changeItems.length > 0 && creatorEmail) {
+    // Skip for: CRS-originated updates or no real changes. Send even on initial sync if real fields changed.
+    if (!isCrsOriginated && changeItems.length > 0 && creatorEmail) {
       const updatedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
       const updatedByText = updated_by_name
         ? `${updated_by_name}${updated_by_email ? ` (${updated_by_email})` : ""}`
