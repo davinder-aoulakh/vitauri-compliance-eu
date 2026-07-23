@@ -164,8 +164,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Skip for: CRS-originated updates or no real changes. Send even on initial sync if real fields changed.
-    if (!isCrsOriginated && changeItems.length > 0 && creatorEmail) {
+    // Send email for ALL non-CRS, non-initialSync updates — even if we can't detect specific field changes.
+    // The Support Hub called this webhook = something changed. Log the state for debugging.
+    console.log(`[syncSupportHubUpdates] Email gate: isCrsOriginated=${isCrsOriginated}, isInitialSync=${isInitialSync}, changeItems=${changeItems.length}, creatorEmail=${!!creatorEmail}`);
+    if (!isCrsOriginated && !isInitialSync && creatorEmail) {
       const updatedAtFormatted = new Date().toLocaleString("en-GB", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC";
       const updatedByText = updated_by_name
         ? `${updated_by_name}${updated_by_email ? ` (${updated_by_email})` : ""}`
@@ -184,9 +186,10 @@ Deno.serve(async (req) => {
         ? "background:#fef3c7;color:#92400e;"
         : "background:#dcfce7;color:#166534;";
 
-      const changeRows = changeItems.map(c =>
-        `<tr><td style="padding:8px 16px;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">• ${c}</td></tr>`
-      ).join("");
+      const changeRowsContent = changeItems.length > 0
+        ? changeItems.map(c => `<tr><td style="padding:8px 16px;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">• ${c}</td></tr>`).join("")
+        : `<tr><td style="padding:8px 16px;font-size:14px;color:#374151;">Your ticket has been updated by the support team.</td></tr>`;
+      const changeRows = changeRowsContent;
 
       const subject = `[Vitauri CRS] Ticket Updated — ${ticket.ticket_id}`;
       const emailBody = `<!DOCTYPE html>
