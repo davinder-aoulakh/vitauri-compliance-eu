@@ -21,6 +21,8 @@ export default function AIFormAssistant({
   formData, 
   formType = "account", // "account" or "entity"
   onSuggestionApply,
+  onRequestSave,
+  onClose,
   tenant
 }) {
   // Voice handler: receives { field: value, ... } object and fans out to onSuggestionApply
@@ -184,6 +186,8 @@ Be specific and actionable.`;
           formData={formData}
           formType={formType}
           onApplyChanges={handleVoiceChanges}
+          onRequestSave={onRequestSave}
+          onClose={onClose}
         />
       </div>
     );
@@ -271,6 +275,8 @@ Be specific and actionable.`;
             formData={formData}
             formType={formType}
             onApplyChanges={handleVoiceChanges}
+            onRequestSave={onRequestSave}
+            onClose={onClose}
           />
           {/* Validation Issues */}
           {validationIssues.map((issue, idx) => (

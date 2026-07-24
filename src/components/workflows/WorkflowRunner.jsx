@@ -28,6 +28,7 @@ import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
 import { computePrefillAnswers } from "./workflowPrefillUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
+import WorkflowVoiceAssistant from "./WorkflowVoiceAssistant";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1713,6 +1714,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </CardContent>
         </Card>
 
+        <WorkflowVoiceAssistant
+          currentStep={null}
+          answers={answers}
+          onApplyAnswer={null}
+          onProceed={null}
+          onGoBack={() => setShowSummary(false)}
+          onComplete={handleComplete}
+          summaryMode={true}
+        />
+
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button
             type="button"
@@ -1771,6 +1782,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             <Sparkles className="w-4 h-4 mr-1" />
             AI Assist
           </Button>
+          <WorkflowVoiceAssistant
+            currentStep={currentStep}
+            answers={answers}
+            onApplyAnswer={(value) => handleAnswer(currentStep.step_id, value)}
+            onProceed={handleNext}
+            onGoBack={handleBack}
+            onSummary={() => { setCompletedPath([...new Set([...history, currentStep.step_id])]); setShowSummary(true); }}
+            onComplete={handleComplete}
+          />
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">

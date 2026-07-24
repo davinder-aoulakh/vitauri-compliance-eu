@@ -12,7 +12,7 @@ import { Mic, MicOff, Loader2, CheckCircle2, X, Volume2, MessageCircle } from "l
  * 3. Auto-applies changes and speaks the response back
  * 4. Stays in conversation — user can continue speaking follow-ups
  */
-export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges }) {
+export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges, onRequestSave, onClose }) {
   const [status, setStatus] = useState("idle"); // idle | listening | processing | review | speaking
   const [transcript, setTranscript] = useState("");
   const [pendingChanges, setPendingChanges] = useState([]);
@@ -124,6 +124,21 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - address.street, address.city, address.state, address.postal_code, address.country`;
 
   const processTranscript = async (text) => {
+    const lower = text.toLowerCase().trim();
+
+    // Pre-LLM: close/cancel
+    if (onClose && ["close", "close form", "cancel form", "discard changes", "exit form"].some(p => lower === p || lower.includes(p))) {
+      onClose();
+      return;
+    }
+
+    // Pre-LLM: save
+    if (onRequestSave && ["save", "save it", "save now", "save changes", "save the form", "commit", "apply changes"].some(p => lower === p || lower.startsWith(p))) {
+      setAssistantMessage("Saving the form now...");
+      setTimeout(() => onRequestSave(), 600);
+      return;
+    }
+
     const recentHistory = conversationHistory.slice(-4).map(h =>
       `${h.role === "user" ? "User" : "Assistant"}: ${h.text}`
     ).join("\n");
@@ -164,13 +179,15 @@ Keep replies warm and concise. Do not be robotic.`;
                 }
               }
             },
-            assistant_reply: { type: "string" }
+            assistant_reply: { type: "string" },
+            wants_save: { type: "boolean" }
           }
         }
       });
 
       const changes = result.changes || [];
       const reply = result.assistant_reply || "Done! Anything else you'd like me to update?";
+      const wantsSave = result.wants_save || false;
 
       // Update conversation history
       setConversationHistory(prev => [
@@ -203,6 +220,9 @@ Keep replies warm and concise. Do not be robotic.`;
       speak(reply, () => {
         statusRef.current = "idle";
         setStatus("idle");
+        if (wantsSave && onRequestSave) {
+          setTimeout(() => onRequestSave(), 600);
+        }
       });
 
     } catch (err) {

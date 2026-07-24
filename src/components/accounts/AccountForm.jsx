@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
+  const formRef = useRef(null);
+  const formDataRef = useRef({});
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
   const [referencedData, setReferencedData] = useState([]);
   const [formData, setFormData] = useState({
@@ -301,6 +303,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   };
 
+  const handleRequestSave = () => {
+    if (formRef.current) formRef.current.requestSubmit();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -381,17 +387,40 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
-  // Handle AI suggestion application
-  const handleAISuggestionApply = (field, value) => {
+  // Handle AI suggestion application (single field or bulk object from voice)
+  const handleAISuggestionApply = (fieldOrObj, value) => {
+    if (typeof fieldOrObj === "object" && value === undefined) {
+      // Bulk update from VoiceFormAssistant
+      setFormData(prev => {
+        let updated = { ...prev };
+        Object.entries(fieldOrObj).forEach(([field, val]) => {
+          if (field.includes('.')) {
+            const [parent, child] = field.split('.');
+            updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: val } };
+          } else {
+            updated = { ...updated, [field]: val };
+          }
+        });
+        formDataRef.current = updated;
+        return updated;
+      });
+      return;
+    }
+    const field = fieldOrObj;
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: { ...prev[parent], [child]: value }
-      }));
+      setFormData(prev => {
+        const updated = { ...prev, [parent]: { ...prev[parent], [child]: value } };
+        formDataRef.current = updated;
+        return updated;
+      });
     } else {
       handleChange(field, value);
     }
@@ -437,13 +466,15 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {/* AI Form Assistant */}
       <AIFormAssistant
         formData={formData}
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
+        onRequestSave={handleRequestSave}
+        onClose={onCancel}
       />
 
       {/* Change Detection Alert */}
