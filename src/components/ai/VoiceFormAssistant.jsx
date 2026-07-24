@@ -161,6 +161,7 @@ Your job:
 3. If the user changed an address country, mention you've updated it and ask if there are related fields they'd like to update (like postal code or tax residency).
 4. If nothing changed (e.g. a question or unclear command), just reply conversationally and set changes to empty.
 5. End your reply with a brief open invitation like "Anything else you'd like me to update?" or "What else can I help with?"
+6. NEVER trigger saving — the user must explicitly say "save" to save. Just update fields and confirm.
 
 Keep replies warm and concise. Do not be robotic.`;
 
@@ -181,15 +182,13 @@ Keep replies warm and concise. Do not be robotic.`;
                 }
               }
             },
-            assistant_reply: { type: "string" },
-            wants_save: { type: "boolean" }
+            assistant_reply: { type: "string" }
           }
         }
       });
 
       const changes = result.changes || [];
       const reply = result.assistant_reply || "Done! Anything else you'd like me to update?";
-      const wantsSave = result.wants_save || false;
 
       // Update conversation history
       setConversationHistory(prev => [
@@ -222,9 +221,6 @@ Keep replies warm and concise. Do not be robotic.`;
       speak(reply, () => {
         statusRef.current = "idle";
         setStatus("idle");
-        if (wantsSave && onRequestSave) {
-          setTimeout(() => onRequestSave(), 600);
-        }
       });
 
     } catch (err) {
