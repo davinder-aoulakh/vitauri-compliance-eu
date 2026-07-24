@@ -161,7 +161,15 @@ Navigation commands: go back (call onGoBack), complete classification (call onCo
       context += `This step requires a file upload — voice cannot upload files. Set value to null and tell the user to use the upload button.`;
     } else if (qt === "multi_field_input") {
       const fields = currentStep.multi_fields || [];
-      context += `Multi-field step. Return a JSON object with field_ids as keys: ${fields.map(f => `"${f.field_id}" (${f.display_label}, type: ${f.field_type})`).join(", ")}`;
+      const currentAnswers = answers[currentStep?.step_id] || {};
+      const alreadyFilled = fields
+        .filter(f => currentAnswers[f.field_id] !== undefined && currentAnswers[f.field_id] !== null && currentAnswers[f.field_id] !== '')
+        .map(f => `"${f.field_id}" = ${JSON.stringify(currentAnswers[f.field_id])}`);
+      context += `Multi-field step with sub-fields: ${fields.map(f => `"${f.field_id}" (${f.display_label}, type: ${f.field_type})`).join(", ")}.\n`;
+      if (alreadyFilled.length > 0) {
+        context += `IMPORTANT: These sub-fields are ALREADY filled — do NOT return them (to avoid overwriting): ${alreadyFilled.join(", ")}.\n`;
+      }
+      context += `Return a JSON object containing ONLY the sub-fields the user is providing a value for. Do NOT include already-filled fields unless the user is explicitly changing them.`;
     } else if (qt === "address_input") {
       context += `Return a JSON object with keys: street, city, state, postal_code, country, tax_residence_country, tin.`;
     } else if (qt === "info" || qt === "result") {

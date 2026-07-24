@@ -1785,7 +1785,22 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           <WorkflowVoiceAssistant
             currentStep={currentStep}
             answers={answers}
-            onApplyAnswer={(value) => handleAnswer(currentStep.step_id, value)}
+            onApplyAnswer={(value) => {
+              // For multi_field_input steps, merge the new value into the existing answer
+              // so filling one sub-field doesn't wipe out previously entered sub-fields
+              if (currentStep.question_type === 'multi_field_input') {
+                if (value && typeof value === 'object' && !Array.isArray(value)) {
+                  setAnswers(prev => ({
+                    ...prev,
+                    [currentStep.step_id]: { ...(prev[currentStep.step_id] || {}), ...value }
+                  }));
+                } else {
+                  handleAnswer(currentStep.step_id, value);
+                }
+              } else {
+                handleAnswer(currentStep.step_id, value);
+              }
+            }}
             onProceed={handleNext}
             onGoBack={handleBack}
             onSummary={() => { setCompletedPath([...new Set([...history, currentStep.step_id])]); setShowSummary(true); }}
