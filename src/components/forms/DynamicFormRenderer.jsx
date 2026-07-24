@@ -59,6 +59,7 @@ export default function DynamicFormRenderer({
   };
 
   const [formData, setFormData] = useState(initialData || {});
+  const formDataRef = useRef(initialData || {});
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
   const [entityNameError, setEntityNameError] = useState("");
@@ -222,10 +223,12 @@ export default function DynamicFormRenderer({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Always use formDataRef.current to get the latest data (avoids stale closure after voice changes)
+    const currentFormData = formDataRef.current;
     
     // Validate entity name uniqueness for Entity forms
-    if (entityType === 'Entity' && formData.entity_name) {
-      const isValid = await validateEntityName(formData.entity_name, formData.tenant_id);
+    if (entityType === 'Entity' && currentFormData.entity_name) {
+      const isValid = await validateEntityName(currentFormData.entity_name, currentFormData.tenant_id);
       if (!isValid) return;
     }
     
@@ -234,10 +237,10 @@ export default function DynamicFormRenderer({
     let firstErrorSection = null;
     
     config.fields_config.forEach(field => {
-      const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
+      const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, currentFormData);
       if (isVisible) {
-        const fieldValue = getNestedValue(formData, field.field_name);
-        const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
+        const fieldValue = getNestedValue(currentFormData, field.field_name);
+        const isRequired = field.is_required || evaluateCondition(field.conditional_required, currentFormData);
         
         // Special debug logging for number fields
         if (field.field_type === 'number') {
@@ -302,19 +305,20 @@ export default function DynamicFormRenderer({
     }
 
     setValidationErrors({});
-    onSubmit(formData);
+    onSubmit(currentFormData);
   };
 
   const handleChange = (fieldName, value) => {
     // Support nested field names like "address.street"
     setFormData(prev => {
-      const updated = setNestedValue(prev, fieldName, value);
+      let updated = setNestedValue(prev, fieldName, value);
       
       // Auto-populate address.country from country_of_incorporation for Entity forms only
       if (entityType === 'Entity' && fieldName === 'country_of_incorporation' && value) {
-        return setNestedValue(updated, 'address.country', value);
+        updated = setNestedValue(updated, 'address.country', value);
       }
       
+      formDataRef.current = updated;
       return updated;
     });
     // Clear validation error for this field
@@ -670,8 +674,14 @@ export default function DynamicFormRenderer({
   );
 
   const handleVoiceChanges = (changesObj) => {
-    Object.entries(changesObj).forEach(([field, value]) => {
-      handleChange(field, value);
+    // Apply all voice changes in a single state update to avoid stale closure issues
+    setFormData(prev => {
+      let updated = { ...prev };
+      Object.entries(changesObj).forEach(([field, value]) => {
+        updated = setNestedValue(updated, field, value);
+      });
+      formDataRef.current = updated;
+      return updated;
     });
   };
 
