@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export default function DynamicFormRenderer({
   onCancel,
   additionalFields
 }) {
+  const formRef = useRef(null);
   // Helper to get nested value from object (e.g., "address.street" -> formData.address.street)
   const getNestedValue = (obj, path) => {
     if (!path) return undefined;
@@ -674,8 +675,12 @@ export default function DynamicFormRenderer({
     });
   };
 
+  const handleRequestSave = () => {
+    if (formRef.current) formRef.current.requestSubmit();
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       <Alert className="bg-blue-50 border-blue-200">
         <AlertDescription className="text-sm text-blue-900">
           Form: <strong>{config.form_name}</strong> (v{config.version})
@@ -686,6 +691,8 @@ export default function DynamicFormRenderer({
         formData={formData}
         formType={entityType === "Entity" ? "entity" : "account"}
         onApplyChanges={handleVoiceChanges}
+        onRequestSave={handleRequestSave}
+        onClose={onCancel}
       />
 
       {hasSections ? (
