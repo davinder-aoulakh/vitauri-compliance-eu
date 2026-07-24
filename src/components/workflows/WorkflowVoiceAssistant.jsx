@@ -169,7 +169,7 @@ Navigation commands: go back (call onGoBack), complete classification (call onCo
       if (alreadyFilled.length > 0) {
         context += `IMPORTANT: These sub-fields are ALREADY filled — do NOT return them (to avoid overwriting): ${alreadyFilled.join(", ")}.\n`;
       }
-      context += `Return a JSON object containing ONLY the sub-fields the user is providing a value for. Do NOT include already-filled fields unless the user is explicitly changing them.`;
+      context += `Return a JSON object containing ONLY the sub-fields the user is providing a value for right now. Do NOT include already-filled fields unless the user is explicitly changing them.\nIMPORTANT: Always use the exact field_id as the key. For boolean fields use true/false. For select/yes-no sub-fields use the exact option value (e.g. "YES" or "NO"). For date fields use YYYY-MM-DD format.`;
     } else if (qt === "address_input") {
       context += `Return a JSON object with keys: street, city, state, postal_code, country, tax_residence_country, tin.`;
     } else if (qt === "info" || qt === "result") {

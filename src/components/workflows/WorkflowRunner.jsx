@@ -1786,17 +1786,27 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             currentStep={currentStep}
             answers={answers}
             onApplyAnswer={(value) => {
-              // For multi_field_input steps, merge the new value into the existing answer
-              // so filling one sub-field doesn't wipe out previously entered sub-fields
+              // For multi_field_input steps, always MERGE into existing answer
               if (currentStep.question_type === 'multi_field_input') {
-                if (value && typeof value === 'object' && !Array.isArray(value)) {
-                  setAnswers(prev => ({
-                    ...prev,
-                    [currentStep.step_id]: { ...(prev[currentStep.step_id] || {}), ...value }
-                  }));
-                } else {
-                  handleAnswer(currentStep.step_id, value);
-                }
+                setAnswers(prev => {
+                  const existing = prev[currentStep.step_id] || {};
+                  let patch = {};
+                  if (value && typeof value === 'object' && !Array.isArray(value)) {
+                    // LLM returned a proper field-keyed object — merge it
+                    patch = value;
+                  } else if (value !== null && value !== undefined) {
+                    // LLM returned a primitive — find the first unfilled required field to assign it to
+                    const fields = currentStep.multi_fields || [];
+                    const unfilled = fields.find(f => {
+                      const v = existing[f.field_id];
+                      return v === undefined || v === null || v === '';
+                    });
+                    if (unfilled) {
+                      patch = { [unfilled.field_id]: value };
+                    }
+                  }
+                  return { ...prev, [currentStep.step_id]: { ...existing, ...patch } };
+                });
               } else {
                 handleAnswer(currentStep.step_id, value);
               }
