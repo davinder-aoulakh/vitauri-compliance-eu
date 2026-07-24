@@ -126,14 +126,16 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
   const processTranscript = async (text) => {
     const lower = text.toLowerCase().trim();
 
-    // Pre-LLM: close/cancel
-    if (onClose && ["close", "close form", "cancel form", "discard changes", "exit form"].some(p => lower === p || lower.includes(p))) {
+    // Pre-LLM: close/cancel — exact phrases only to avoid false triggers
+    const closePhrases = ["close", "close form", "cancel form", "discard changes", "exit form", "cancel"];
+    if (onClose && closePhrases.includes(lower)) {
       onClose();
       return;
     }
 
-    // Pre-LLM: save
-    if (onRequestSave && ["save", "save it", "save now", "save changes", "save the form", "commit", "apply changes"].some(p => lower === p || lower.startsWith(p))) {
+    // Pre-LLM: save — exact phrases only
+    const savePhrases = ["save", "save it", "save now", "save changes", "save the form", "commit", "apply changes"];
+    if (onRequestSave && savePhrases.includes(lower)) {
       setAssistantMessage("Saving the form now...");
       setTimeout(() => onRequestSave(), 600);
       return;
