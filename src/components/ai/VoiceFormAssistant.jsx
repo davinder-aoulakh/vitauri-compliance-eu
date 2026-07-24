@@ -12,7 +12,7 @@ import { Mic, MicOff, Loader2, CheckCircle2, X, Volume2, MessageCircle } from "l
  * 3. Auto-applies changes and speaks the response back
  * 4. Stays in conversation — user can continue speaking follow-ups
  */
-export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges, onRequestSave, onClose }) {
+export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges }) {
   const [status, setStatus] = useState("idle"); // idle | listening | processing | review | speaking
   const [transcript, setTranscript] = useState("");
   const [pendingChanges, setPendingChanges] = useState([]);
@@ -100,8 +100,8 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
     setStatus("idle");
   };
 
-  const buildFieldHints = () => {
-    if (formType === "account") return `Available fields:
+  const buildFieldHints = () => formType === "account"
+    ? `Available fields:
 - first_name, last_name, middle_name, name_prefix, title
 - account_holder_name (entity accounts)
 - date_of_birth (YYYY-MM-DD), place_of_birth
@@ -113,14 +113,8 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - current_address.street, current_address.city, current_address.state, current_address.postal_code, current_address.country
 - account_holder_is_alive (true/false), is_pre_existing (true/false)
 - account_type: depository | custodial | equity_debt_interest | cash_value_insurance | annuity
-- status: active | closed | dormant`;
-    if (formType === "controlling_person") return `Available fields:
-- first_name, last_name, date_of_birth (YYYY-MM-DD)
-- control_type: legal_person_ownership | legal_person_other_means | legal_person_senior_managing_official | trust_settlor | trust_trustee | trust_protector | trust_beneficiary | trust_other
-- ownership_percentage (number 0-100)
-- is_reportable (true/false)
-- address.street, address.city, address.state, address.postal_code, address.country`;
-    return `Available fields:
+- status: active | closed | dormant`
+    : `Available fields:
 - entity_name
 - entity_type: corporation | trust | partnership | fund | branch | other
 - country_of_incorporation
@@ -128,32 +122,8 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - rfi_status: pending_classification | reporting_fi | non_reporting_fi | nfe_active | nfe_passive
 - fi_type: custodial_institution | depository_institution | investment_entity | specified_insurance_company | not_applicable
 - address.street, address.city, address.state, address.postal_code, address.country`;
-  };
 
   const processTranscript = async (text) => {
-    const lower = text.toLowerCase().trim();
-
-    // Pre-LLM: close/cancel — exact phrases only to avoid false triggers
-    const closePhrases = ["close", "close form", "cancel form", "discard changes", "exit form", "cancel"];
-    if (onClose && closePhrases.includes(lower)) {
-      onClose();
-      return;
-    }
-
-    // Pre-LLM: save — check exact phrases AND key substrings so natural commands work
-    const savePhrases = [
-      "save", "save it", "save now", "save changes", "save the form", "save the record",
-      "save the changes", "commit", "apply changes", "update", "update the record",
-      "update it", "submit", "submit the form", "done", "save and close"
-    ];
-    const saveKeywords = ["save", "update the record", "submit the form", "save and close"];
-    const isSaveCommand = savePhrases.includes(lower) || saveKeywords.some(k => lower.startsWith(k));
-    if (onRequestSave && isSaveCommand) {
-      setAssistantMessage("Saving the form now...");
-      setTimeout(() => onRequestSave(), 600);
-      return;
-    }
-
     const recentHistory = conversationHistory.slice(-4).map(h =>
       `${h.role === "user" ? "User" : "Assistant"}: ${h.text}`
     ).join("\n");
@@ -174,7 +144,6 @@ Your job:
 3. If the user changed an address country, mention you've updated it and ask if there are related fields they'd like to update (like postal code or tax residency).
 4. If nothing changed (e.g. a question or unclear command), just reply conversationally and set changes to empty.
 5. End your reply with a brief open invitation like "Anything else you'd like me to update?" or "What else can I help with?"
-6. NEVER trigger saving — the user must explicitly say "save" to save. Just update fields and confirm.
 
 Keep replies warm and concise. Do not be robotic.`;
 

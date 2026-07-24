@@ -19,7 +19,6 @@ import {
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
-import WorkflowVoiceAssistant from "../workflows/WorkflowVoiceAssistant";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -1248,17 +1247,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           </CardContent>
         </Card>
 
-        {/* Voice Assistant on summary */}
-        <WorkflowVoiceAssistant
-          currentStep={null}
-          answers={answers}
-          onApplyAnswer={null}
-          onProceed={null}
-          onGoBack={handleBack}
-          onComplete={completeClassification}
-          summaryMode={true}
-        />
-
         {/* Actions */}
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button 
@@ -1465,20 +1453,6 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           </CardContent>
         </Card>
       )}
-
-      {/* Voice Assistant */}
-      <WorkflowVoiceAssistant
-        currentStep={currentNode}
-        answers={answers}
-        onApplyAnswer={(value) => {
-          setSelectedValue(value);
-          setAnswers(prev => ({ ...prev, [currentNodeId]: value }));
-        }}
-        onProceed={handleNext}
-        onGoBack={handleBack}
-        onSummary={() => { setCompletedPath([...new Set([...history, currentNodeId])]); setShowSummary(true); }}
-        onComplete={completeClassification}
-      />
 
       {/* AI Workflow Helper */}
       <AIWorkflowHelper

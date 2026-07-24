@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ export default function DynamicFormRenderer({
   onCancel,
   additionalFields
 }) {
-  const formRef = useRef(null);
   // Helper to get nested value from object (e.g., "address.street" -> formData.address.street)
   const getNestedValue = (obj, path) => {
     if (!path) return undefined;
@@ -59,7 +58,6 @@ export default function DynamicFormRenderer({
   };
 
   const [formData, setFormData] = useState(initialData || {});
-  const formDataRef = useRef(initialData || {});
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
   const [entityNameError, setEntityNameError] = useState("");
@@ -223,12 +221,10 @@ export default function DynamicFormRenderer({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Always use formDataRef.current to get the latest data (avoids stale closure after voice changes)
-    const currentFormData = formDataRef.current;
     
     // Validate entity name uniqueness for Entity forms
-    if (entityType === 'Entity' && currentFormData.entity_name) {
-      const isValid = await validateEntityName(currentFormData.entity_name, currentFormData.tenant_id);
+    if (entityType === 'Entity' && formData.entity_name) {
+      const isValid = await validateEntityName(formData.entity_name, formData.tenant_id);
       if (!isValid) return;
     }
     
@@ -237,10 +233,10 @@ export default function DynamicFormRenderer({
     let firstErrorSection = null;
     
     config.fields_config.forEach(field => {
-      const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, currentFormData);
+      const isVisible = field.is_visible && evaluateCondition(field.conditional_visibility, formData);
       if (isVisible) {
-        const fieldValue = getNestedValue(currentFormData, field.field_name);
-        const isRequired = field.is_required || evaluateCondition(field.conditional_required, currentFormData);
+        const fieldValue = getNestedValue(formData, field.field_name);
+        const isRequired = field.is_required || evaluateCondition(field.conditional_required, formData);
         
         // Special debug logging for number fields
         if (field.field_type === 'number') {
@@ -305,20 +301,19 @@ export default function DynamicFormRenderer({
     }
 
     setValidationErrors({});
-    onSubmit(currentFormData);
+    onSubmit(formData);
   };
 
   const handleChange = (fieldName, value) => {
     // Support nested field names like "address.street"
     setFormData(prev => {
-      let updated = setNestedValue(prev, fieldName, value);
+      const updated = setNestedValue(prev, fieldName, value);
       
       // Auto-populate address.country from country_of_incorporation for Entity forms only
       if (entityType === 'Entity' && fieldName === 'country_of_incorporation' && value) {
-        updated = setNestedValue(updated, 'address.country', value);
+        return setNestedValue(updated, 'address.country', value);
       }
       
-      formDataRef.current = updated;
       return updated;
     });
     // Clear validation error for this field
@@ -674,23 +669,13 @@ export default function DynamicFormRenderer({
   );
 
   const handleVoiceChanges = (changesObj) => {
-    // Apply all voice changes in a single state update to avoid stale closure issues
-    setFormData(prev => {
-      let updated = { ...prev };
-      Object.entries(changesObj).forEach(([field, value]) => {
-        updated = setNestedValue(updated, field, value);
-      });
-      formDataRef.current = updated;
-      return updated;
+    Object.entries(changesObj).forEach(([field, value]) => {
+      handleChange(field, value);
     });
   };
 
-  const handleRequestSave = () => {
-    if (formRef.current) formRef.current.requestSubmit();
-  };
-
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <Alert className="bg-blue-50 border-blue-200">
         <AlertDescription className="text-sm text-blue-900">
           Form: <strong>{config.form_name}</strong> (v{config.version})
@@ -701,8 +686,6 @@ export default function DynamicFormRenderer({
         formData={formData}
         formType={entityType === "Entity" ? "entity" : "account"}
         onApplyChanges={handleVoiceChanges}
-        onRequestSave={handleRequestSave}
-        onClose={onCancel}
       />
 
       {hasSections ? (

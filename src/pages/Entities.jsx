@@ -504,7 +504,7 @@ export default function EntitiesPage() {
         setShowForm(open);
         if (!open) setSelectedEntity(null);
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedEntity ? "Edit Entity" : "Add New Entity"}

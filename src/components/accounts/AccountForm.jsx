@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +27,6 @@ import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
-  const formRef = useRef(null);
-  const formDataRef = useRef({});
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
   const [referencedData, setReferencedData] = useState([]);
   const [formData, setFormData] = useState({
@@ -210,17 +208,15 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   const handleDocumentsChange = (newDocuments) => {
+    // Check if any self-certification document exists
     const hasSelfCert = newDocuments.some(d => d.document_type === "self_certification");
-    setFormData(prev => {
-      const updated = {
-        ...prev,
-        documents: newDocuments,
-        self_certification_obtained: hasSelfCert,
-        self_certification_date: hasSelfCert ? new Date().toISOString().split('T')[0] : null
-      };
-      formDataRef.current = updated;
-      return updated;
-    });
+    
+    setFormData(prev => ({
+      ...prev,
+      documents: newDocuments,
+      self_certification_obtained: hasSelfCert,
+      self_certification_date: hasSelfCert ? new Date().toISOString().split('T')[0] : null
+    }));
   };
 
   // Validate account number uniqueness within tenant and entity
@@ -305,30 +301,22 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   };
 
-  const handleRequestSave = () => {
-    if (formRef.current) formRef.current.requestSubmit();
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
-    // Always use the ref so voice-applied changes are included
-    const data = formDataRef.current && Object.keys(formDataRef.current).length > 0
-      ? formDataRef.current
-      : formData;
     
     // Validate account number uniqueness
-    const isValid = await validateAccountNumber(data.account_number, data.entity_id);
+    const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
     if (!isValid) return;
 
     // GAP 27: Validate account number type/format
-    if (data.account_number_type !== "No account number exists") {
-      if (!data.account_number?.trim()) {
-        const holderName = data.account_holder_name || `${data.first_name} ${data.last_name}`.trim() || "this account";
+    if (formData.account_number_type !== "No account number exists") {
+      if (!formData.account_number?.trim()) {
+        const holderName = formData.account_holder_name || `${formData.first_name} ${formData.last_name}`.trim() || "this account";
         alert(`Please enter an account number for ${holderName}, or select 'No account number exists' if one is not available.`);
         return;
       }
-      const formatErr = validateAccountNumberFormat(data.account_number, data.account_number_type);
+      const formatErr = validateAccountNumberFormat(formData.account_number, formData.account_number_type);
       if (formatErr) {
         setAccountNumberTypeError(formatErr);
         return;
@@ -336,41 +324,42 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
     
     // Validate mandatory fields for individual accounts
-    if (data.account_holder_type === 'individual') {
-      if (!data.first_name?.trim()) {
+    if (formData.account_holder_type === 'individual') {
+      if (!formData.first_name?.trim()) {
         alert("First Name is required for individual accounts");
         return;
       }
-      if (!data.last_name?.trim()) {
+      if (!formData.last_name?.trim()) {
         alert("Last Name is required for individual accounts");
         return;
       }
+
     }
     
     // Validate mandatory fields for entity accounts
-    if (data.account_holder_type === 'entity') {
-      if (!data.account_holder_name?.trim()) {
+    if (formData.account_holder_type === 'entity') {
+      if (!formData.account_holder_name?.trim()) {
         alert("Account Holder Name is required for entity accounts");
         return;
       }
     }
     
     // Validate mandatory address fields for both individual and entity accounts
-    if (!data.current_address?.street?.trim() || !data.current_address?.city?.trim() || 
-        !data.current_address?.state?.trim() || !data.current_address?.postal_code?.trim() || 
-        !data.current_address?.country?.trim()) {
+    if (!formData.current_address?.street?.trim() || !formData.current_address?.city?.trim() || 
+        !formData.current_address?.state?.trim() || !formData.current_address?.postal_code?.trim() || 
+        !formData.current_address?.country?.trim()) {
       alert("Current Address (all fields) is required");
       return;
     }
-    if (!data.account_holder_address?.street?.trim() || !data.account_holder_address?.city?.trim() || 
-        !data.account_holder_address?.state?.trim() || !data.account_holder_address?.postal_code?.trim() || 
-        !data.account_holder_address?.country?.trim()) {
+    if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.city?.trim() || 
+        !formData.account_holder_address?.state?.trim() || !formData.account_holder_address?.postal_code?.trim() || 
+        !formData.account_holder_address?.country?.trim()) {
       alert("Original Address (all fields) is required");
       return;
     }
     
     // Auto-detect indicia
-    const newIndicia = detectIndicia(data, tenant?.jurisdiction);
+    const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
     
     // Determine if needs reclassification
     const needsReclassification = detectedChanges.length > 0 && 
@@ -378,54 +367,31 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       account.reportability_status !== 'pending_review';
 
     const updatedData = {
-      ...data,
+      ...formData,
       indicia_found: newIndicia.length > 0 ? newIndicia : undefined,
       needs_reclassification: needsReclassification
     };
     
     // For individual accounts, construct account_holder_name from first_name and last_name
-    if (data.account_holder_type === 'individual') {
-      updatedData.account_holder_name = `${data.first_name} ${data.last_name}`.trim();
+    if (formData.account_holder_type === 'individual') {
+      updatedData.account_holder_name = `${formData.first_name} ${formData.last_name}`.trim();
     }
 
     onSubmit(updatedData);
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Handle AI suggestion application (single field or bulk object from voice)
-  const handleAISuggestionApply = (fieldOrObj, value) => {
-    if (typeof fieldOrObj === "object" && value === undefined) {
-      // Bulk update from VoiceFormAssistant
-      setFormData(prev => {
-        let updated = { ...prev };
-        Object.entries(fieldOrObj).forEach(([field, val]) => {
-          if (field.includes('.')) {
-            const [parent, child] = field.split('.');
-            updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: val } };
-          } else {
-            updated = { ...updated, [field]: val };
-          }
-        });
-        formDataRef.current = updated;
-        return updated;
-      });
-      return;
-    }
-    const field = fieldOrObj;
+  // Handle AI suggestion application
+  const handleAISuggestionApply = (field, value) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
-      setFormData(prev => {
-        const updated = { ...prev, [parent]: { ...prev[parent], [child]: value } };
-        formDataRef.current = updated;
-        return updated;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [parent]: { ...prev[parent], [child]: value }
+      }));
     } else {
       handleChange(field, value);
     }
@@ -453,39 +419,31 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, account_holder_address: { ...prev.account_holder_address, [field]: value } };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({
+      ...prev,
+      account_holder_address: { ...prev.account_holder_address, [field]: value }
+    }));
   };
 
   const handleCurrentAddressChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, current_address: { ...prev.current_address, [field]: value } };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({
+      ...prev,
+      current_address: { ...prev.current_address, [field]: value }
+    }));
   };
 
   const handleTaxResidenciesChange = (residencies) => {
-    setFormData(prev => {
-      const updated = { ...prev, tax_residencies: residencies };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, tax_residencies: residencies }));
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* AI Form Assistant */}
       <AIFormAssistant
         formData={formData}
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
-        onRequestSave={handleRequestSave}
-        onClose={onCancel}
       />
 
       {/* Change Detection Alert */}

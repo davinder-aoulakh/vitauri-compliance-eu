@@ -32,7 +32,6 @@ import { computePrefillAnswers } from "../workflows/workflowPrefillUtils";
 import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
-import WorkflowVoiceAssistant from "@/components/workflows/WorkflowVoiceAssistant";
 
 // ─── AUTOFILL DEBUG LOGGER ───────────────────────────────────────────────────
 // Watches for DOM mutations that add address-like inputs, and logs every
@@ -1121,16 +1120,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
           />
         )}
 
-        <WorkflowVoiceAssistant
-          currentStep={null}
-          answers={answers}
-          onApplyAnswer={null}
-          onProceed={null}
-          onGoBack={() => setShowSummary(false)}
-          onComplete={handleComplete}
-          summaryMode={true}
-        />
-
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button variant="outline" onClick={() => setShowSummary(false)} size="lg">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1282,20 +1271,6 @@ export default function AccountClassification({ account, onComplete, onCancel })
       {history.length > 0 && (
         <PreviousAnswers history={history} stepMap={stepMap} answers={answers} getStepOptions={getStepOptions} />
       )}
-
-      {/* Voice Assistant */}
-      <WorkflowVoiceAssistant
-        currentStep={currentNode}
-        answers={answers}
-        onApplyAnswer={(value) => {
-          setSelectedValue(value);
-          setAnswers(prev => ({ ...prev, [currentNodeId]: value }));
-        }}
-        onProceed={handleNext}
-        onGoBack={handleBack}
-        onSummary={() => { setCompletedPath([...new Set([...history, currentNodeId])]); setShowSummary(true); }}
-        onComplete={handleComplete}
-      />
 
       {/* AI Helper */}
       <AIWorkflowHelper
