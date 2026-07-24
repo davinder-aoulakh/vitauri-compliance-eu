@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,40 +12,67 @@ import {
 import { XCircle, Save, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
+import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 
 export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel }) {
-  const [formData, setFormData] = useState(controllingPerson || {
+  const formRef = useRef(null);
+  const formDataRef = useRef(null);
+
+  const defaultData = {
     account_id: account?.id || "",
     first_name: "",
     last_name: "",
     date_of_birth: "",
-    address: {
-      street: "",
-      city: "",
-      state: "",
-      postal_code: "",
-      country: ""
-    },
+    address: { street: "", city: "", state: "", postal_code: "", country: "" },
     tax_residencies: [{ country: "", tin: "", tin_unavailable_reason: "" }],
     control_type: "legal_person_ownership",
     ownership_percentage: 0,
     is_reportable: null
-  });
+  };
+
+  const [formData, setFormData] = useState(controllingPerson || defaultData);
+  if (formDataRef.current === null) formDataRef.current = controllingPerson || defaultData;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    const data = formDataRef.current || formData;
+    onSubmit(data);
+  };
+
+  const handleRequestSave = () => {
+    if (formRef.current) formRef.current.requestSubmit();
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      address: { ...prev.address, [field]: value }
-    }));
+    setFormData(prev => {
+      const updated = { ...prev, address: { ...prev.address, [field]: value } };
+      formDataRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleVoiceChanges = (changesObj) => {
+    setFormData(prev => {
+      let updated = { ...prev };
+      Object.entries(changesObj).forEach(([field, value]) => {
+        if (field.includes('.')) {
+          const [parent, child] = field.split('.');
+          updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: value } };
+        } else {
+          updated = { ...updated, [field]: value };
+        }
+      });
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
   const handleTaxResidencyChange = (index, field, value) => {
@@ -69,7 +96,14 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+      <VoiceFormAssistant
+        formData={formData}
+        formType="controlling_person"
+        onApplyChanges={handleVoiceChanges}
+        onRequestSave={handleRequestSave}
+        onClose={onCancel}
+      />
       {/* Basic Information */}
       <Card className="border-2 border-indigo-100">
         <CardHeader className="bg-indigo-50/50">

@@ -100,8 +100,8 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
     setStatus("idle");
   };
 
-  const buildFieldHints = () => formType === "account"
-    ? `Available fields:
+  const buildFieldHints = () => {
+    if (formType === "account") return `Available fields:
 - first_name, last_name, middle_name, name_prefix, title
 - account_holder_name (entity accounts)
 - date_of_birth (YYYY-MM-DD), place_of_birth
@@ -113,8 +113,14 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - current_address.street, current_address.city, current_address.state, current_address.postal_code, current_address.country
 - account_holder_is_alive (true/false), is_pre_existing (true/false)
 - account_type: depository | custodial | equity_debt_interest | cash_value_insurance | annuity
-- status: active | closed | dormant`
-    : `Available fields:
+- status: active | closed | dormant`;
+    if (formType === "controlling_person") return `Available fields:
+- first_name, last_name, date_of_birth (YYYY-MM-DD)
+- control_type: legal_person_ownership | legal_person_other_means | legal_person_senior_managing_official | trust_settlor | trust_trustee | trust_protector | trust_beneficiary | trust_other
+- ownership_percentage (number 0-100)
+- is_reportable (true/false)
+- address.street, address.city, address.state, address.postal_code, address.country`;
+    return `Available fields:
 - entity_name
 - entity_type: corporation | trust | partnership | fund | branch | other
 - country_of_incorporation
@@ -122,6 +128,7 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - rfi_status: pending_classification | reporting_fi | non_reporting_fi | nfe_active | nfe_passive
 - fi_type: custodial_institution | depository_institution | investment_entity | specified_insurance_company | not_applicable
 - address.street, address.city, address.state, address.postal_code, address.country`;
+  };
 
   const processTranscript = async (text) => {
     const lower = text.toLowerCase().trim();
@@ -133,9 +140,15 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
       return;
     }
 
-    // Pre-LLM: save — exact phrases only
-    const savePhrases = ["save", "save it", "save now", "save changes", "save the form", "commit", "apply changes"];
-    if (onRequestSave && savePhrases.includes(lower)) {
+    // Pre-LLM: save — check exact phrases AND key substrings so natural commands work
+    const savePhrases = [
+      "save", "save it", "save now", "save changes", "save the form", "save the record",
+      "save the changes", "commit", "apply changes", "update", "update the record",
+      "update it", "submit", "submit the form", "done", "save and close"
+    ];
+    const saveKeywords = ["save", "update the record", "submit the form", "save and close"];
+    const isSaveCommand = savePhrases.includes(lower) || saveKeywords.some(k => lower.startsWith(k));
+    if (onRequestSave && isSaveCommand) {
       setAssistantMessage("Saving the form now...");
       setTimeout(() => onRequestSave(), 600);
       return;
