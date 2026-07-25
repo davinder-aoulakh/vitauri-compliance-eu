@@ -444,6 +444,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
+        onSave={() => handleSubmit({ preventDefault: () => {} })}
       />
 
       {/* Change Detection Alert */}
