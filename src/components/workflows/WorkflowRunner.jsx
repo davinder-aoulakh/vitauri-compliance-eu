@@ -20,6 +20,7 @@ import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, G
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
+import WorkflowVoiceAssistant from "./WorkflowVoiceAssistant";
 import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
 import MultiFieldRenderer from "./MultiFieldRenderer";
@@ -1713,7 +1714,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </CardContent>
         </Card>
 
-        <div className="flex justify-between gap-3 pt-4 border-t">
+          {/* Voice Assistant (summary mode) */}
+        <WorkflowVoiceAssistant
+          summaryMode={true}
+          onComplete={!loading ? handleComplete : undefined}
+          onGoBack={() => setShowSummary(false)}
+        />
+
+      <div className="flex justify-between gap-3 pt-4 border-t">
           <Button
             type="button"
             variant="outline"
@@ -1949,6 +1957,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </CardContent>
         </Card>
       )}
+
+      {/* Voice Assistant */}
+      <WorkflowVoiceAssistant
+        currentStep={currentStep}
+        answers={answers}
+        onApplyAnswer={(value) => handleAnswer(currentStep.step_id, value)}
+        onProceed={canProceed() ? handleNext : undefined}
+        onGoBack={history.length > 0 ? handleBack : undefined}
+        onSummary={isActionNode(currentStep) && canProceed() ? handleNext : undefined}
+      />
 
       <div className="flex justify-between gap-3 pt-4 border-t">
         <Button

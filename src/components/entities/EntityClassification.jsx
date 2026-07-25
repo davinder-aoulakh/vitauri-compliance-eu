@@ -19,6 +19,7 @@ import {
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
+import WorkflowVoiceAssistant from "../workflows/WorkflowVoiceAssistant";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -1247,6 +1248,13 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           </CardContent>
         </Card>
 
+        {/* Voice Assistant (summary mode) */}
+        <WorkflowVoiceAssistant
+          summaryMode={true}
+          onComplete={completeClassification}
+          onGoBack={handleBack}
+        />
+
         {/* Actions */}
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button 
@@ -1453,6 +1461,23 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Voice Assistant */}
+      <WorkflowVoiceAssistant
+        currentStep={currentNode}
+        answers={answers}
+        onApplyAnswer={(value) => {
+          setSelectedValue(value);
+          setAnswers(prev => ({ ...prev, [currentNodeId]: value }));
+        }}
+        onProceed={
+          (currentNode.question_type === 'yes_no' || currentNode.question_type === 'single_choice' || currentNode.question_type === 'multiple_choice')
+            ? (selectedValue || answers[currentNodeId] ? handleNext : undefined)
+            : undefined
+        }
+        onGoBack={history.length > 0 ? handleBack : undefined}
+        onSummary={isActionNode(currentNode) ? handleNext : undefined}
+      />
 
       {/* AI Workflow Helper */}
       <AIWorkflowHelper
