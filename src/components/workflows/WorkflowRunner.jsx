@@ -1914,21 +1914,33 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         currentStep={currentStep}
         answers={answers}
         onApplyAnswer={(value) => {
-          // For file_upload, voice can only set date_received — merge into existing answer
-          if (currentStep.question_type === 'file_upload') {
-            const existing = answers[currentStep.step_id] || { files: [], date_received: "" };
-            // If the value looks like a date string (YYYY-MM-DD), treat as date_received
+          const qt = currentStep.question_type;
+          const stepId = currentStep.step_id;
+          if (qt === 'file_upload') {
+            // Voice can only set date_received — never touch files
+            const existing = answers[stepId] || { files: [], date_received: "" };
             if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-              handleAnswer(currentStep.step_id, { ...existing, date_received: value });
+              handleAnswer(stepId, { ...existing, date_received: value });
             }
-            // Otherwise ignore (can't set files via voice)
+          } else if (qt === 'multi_field_input') {
+            // Merge into existing sub-fields atomically
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              const existing = answers[stepId] || {};
+              handleAnswer(stepId, { ...existing, ...value });
+            }
+          } else if (qt === 'address_input') {
+            // Merge into existing address fields
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              const existing = answers[stepId] || {};
+              handleAnswer(stepId, { ...existing, ...value });
+            }
           } else {
-            handleAnswer(currentStep.step_id, value);
+            handleAnswer(stepId, value);
           }
         }}
-        onProceed={handleNext}
+        onProceed={canProceed() ? handleNext : undefined}
         onGoBack={history.length > 0 ? handleBack : undefined}
-        onSummary={isActionNode(currentStep) ? handleNext : undefined}
+        onSummary={isActionNode(currentStep) && canProceed() ? handleNext : undefined}
       />
 
       <div className="flex justify-between gap-3 pt-4 border-t">
