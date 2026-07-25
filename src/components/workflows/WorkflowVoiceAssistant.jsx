@@ -198,6 +198,29 @@ export default function WorkflowVoiceAssistant({
       return;
     }
 
+    // Pre-LLM: instant yes/no snapping for yes_no and single_choice with YES/NO options
+    if (currentStep?.question_type === "yes_no" || currentStep?.question_type === "single_choice") {
+      const opts = currentStep?.options || [];
+      const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
+      const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
+      if (yesOpt && /\byes\b|\byeah\b|\byep\b|\bcorrect\b|\baffirm|\bsure\b|\bconfirm\b|\btrue\b/.test(lower)) {
+        onApplyAnswer?.(yesOpt.value);
+        setConfirmedValue(yesOpt.value);
+        setMessage(`Selected ${yesOpt.label} for this question.`);
+        speak(`Selected ${yesOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
+        statusRef.current = "speaking"; setStatus("speaking");
+        return;
+      }
+      if (noOpt && /\bno\b|\bnope\b|\bnegative\b|\bfalse\b/.test(lower)) {
+        onApplyAnswer?.(noOpt.value);
+        setConfirmedValue(noOpt.value);
+        setMessage(`Selected ${noOpt.label} for this question.`);
+        speak(`Selected ${noOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
+        statusRef.current = "speaking"; setStatus("speaking");
+        return;
+      }
+    }
+
     // LLM call for answer extraction
     const stepContext = buildStepContext(currentStep);
     const prompt = `You are a compliance workflow voice assistant helping a user answer a classification question by voice.
@@ -251,27 +274,26 @@ Response schema:
         const qt = currentStep?.question_type;
         const opts = currentStep?.options || [];
         if ((qt === "yes_no" || qt === "single_choice") && opts.length > 0) {
+          // Only accept exact option value matches
           const exactMatch = opts.find(o => o.value === finalValue);
           if (!exactMatch) {
-            // Try label match (case-insensitive)
+            const s = String(finalValue).toLowerCase();
+            // Try label or value case-insensitive match
             const labelMatch = opts.find(o =>
-              o.label?.toLowerCase() === String(finalValue).toLowerCase() ||
-              o.value?.toLowerCase() === String(finalValue).toLowerCase()
+              o.label?.toLowerCase() === s || o.value?.toLowerCase() === s
             );
-            // Fallback: YES/NO keyword snapping
             if (labelMatch) {
               finalValue = labelMatch.value;
             } else {
-              const s = String(finalValue).toLowerCase();
+              // Keyword snapping as last resort
               const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
               const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
-              if (yesOpt && (s.includes("yes") || s.includes("true") || s.includes("correct") || s.includes("affirm"))) {
+              if (yesOpt && /yes|true|correct|affirm|sure/.test(s)) {
                 finalValue = yesOpt.value;
-              } else if (noOpt && (s.includes("no") || s.includes("false") || s.includes("negative"))) {
+              } else if (noOpt && /\bno\b|false|negative/.test(s)) {
                 finalValue = noOpt.value;
               } else {
-                // Can't determine — don't apply
-                finalValue = null;
+                finalValue = null; // Can't resolve — reject
               }
             }
           }
