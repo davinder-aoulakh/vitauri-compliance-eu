@@ -25,12 +25,10 @@ export default function AIFormAssistant({
   onRequestSave,  // replaces onSave — fires formRef.current.requestSubmit()
   onClose,        // optional — closes/cancels the form
 }) {
-  // Voice handler: receives { field: value, ... } object and fans out to onSuggestionApply
+  // Voice handler: receives { field: value, ... } object — pass directly to onSuggestionApply (atomic bulk apply)
   const handleVoiceChanges = (changesObj) => {
     if (!onSuggestionApply) return;
-    Object.entries(changesObj).forEach(([field, value]) => {
-      onSuggestionApply(field, value);
-    });
+    onSuggestionApply(changesObj);
   };
   const [suggestions, setSuggestions] = useState([]);
   const [validationIssues, setValidationIssues] = useState([]);
