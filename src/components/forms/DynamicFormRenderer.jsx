@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,8 @@ export default function DynamicFormRenderer({
   };
 
   const [formData, setFormData] = useState(initialData || {});
+  const formDataRef = useRef(initialData || {});
+  const formRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
   const [entityNameError, setEntityNameError] = useState("");
@@ -301,19 +303,16 @@ export default function DynamicFormRenderer({
     }
 
     setValidationErrors({});
-    onSubmit(formData);
+    onSubmit(formDataRef.current);
   };
 
   const handleChange = (fieldName, value) => {
-    // Support nested field names like "address.street"
     setFormData(prev => {
-      const updated = setNestedValue(prev, fieldName, value);
-      
-      // Auto-populate address.country from country_of_incorporation for Entity forms only
+      let updated = setNestedValue(prev, fieldName, value);
       if (entityType === 'Entity' && fieldName === 'country_of_incorporation' && value) {
-        return setNestedValue(updated, 'address.country', value);
+        updated = setNestedValue(updated, 'address.country', value);
       }
-      
+      formDataRef.current = updated;
       return updated;
     });
     // Clear validation error for this field
@@ -668,14 +667,24 @@ export default function DynamicFormRenderer({
     </div>
   );
 
-  const handleVoiceChanges = (changesObj) => {
-    Object.entries(changesObj).forEach(([field, value]) => {
-      handleChange(field, value);
+  // Atomic voice bulk-apply — handles nested dotted fields
+  const handleVoiceApply = (changesObj) => {
+    setFormData(prev => {
+      let updated = { ...prev };
+      Object.entries(changesObj).forEach(([field, val]) => {
+        updated = setNestedValue(updated, field, val);
+      });
+      formDataRef.current = updated;
+      return updated;
     });
   };
 
+  const handleRequestSave = () => {
+    if (formRef.current) formRef.current.requestSubmit();
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       <Alert className="bg-blue-50 border-blue-200">
         <AlertDescription className="text-sm text-blue-900">
           Form: <strong>{config.form_name}</strong> (v{config.version})
@@ -685,7 +694,9 @@ export default function DynamicFormRenderer({
       <VoiceFormAssistant
         formData={formData}
         formType={entityType === "Entity" ? "entity" : "account"}
-        onApplyChanges={handleVoiceChanges}
+        onApplyChanges={handleVoiceApply}
+        onRequestSave={handleRequestSave}
+        onClose={onCancel}
       />
 
       {hasSections ? (

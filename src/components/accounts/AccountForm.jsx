@@ -385,8 +385,35 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     onSubmit(updatedData);
   };
 
+  const formRef = useRef(null);
+
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      formDataRef.current = updated;
+      return updated;
+    });
+  };
+
+  // Atomic voice bulk-apply — handles nested dotted fields
+  const handleVoiceApply = (changesObj) => {
+    setFormData(prev => {
+      let updated = { ...prev };
+      Object.entries(changesObj).forEach(([field, val]) => {
+        if (field.includes(".")) {
+          const [parent, child] = field.split(".");
+          updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: val } };
+        } else {
+          updated = { ...updated, [field]: val };
+        }
+      });
+      formDataRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleRequestSave = () => {
+    if (formRef.current) formRef.current.requestSubmit();
   };
 
   // Handle AI suggestion application
@@ -424,32 +451,39 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      account_holder_address: { ...prev.account_holder_address, [field]: value }
-    }));
+    setFormData(prev => {
+      const updated = { ...prev, account_holder_address: { ...prev.account_holder_address, [field]: value } };
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
   const handleCurrentAddressChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      current_address: { ...prev.current_address, [field]: value }
-    }));
+    setFormData(prev => {
+      const updated = { ...prev, current_address: { ...prev.current_address, [field]: value } };
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
   const handleTaxResidenciesChange = (residencies) => {
-    setFormData(prev => ({ ...prev, tax_residencies: residencies }));
+    setFormData(prev => {
+      const updated = { ...prev, tax_residencies: residencies };
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {/* AI Form Assistant */}
       <AIFormAssistant
         formData={formData}
         formType="account"
         tenant={tenant}
-        onSuggestionApply={handleAISuggestionApply}
-        onSave={() => handleSubmit({ preventDefault: () => {} })}
+        onSuggestionApply={handleVoiceApply}
+        onRequestSave={handleRequestSave}
+        onClose={onCancel}
       />
 
       {/* Change Detection Alert */}

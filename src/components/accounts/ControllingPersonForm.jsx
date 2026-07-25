@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,20 +33,49 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
     is_reportable: null
   });
 
+  const formRef = useRef(null);
+  const formDataRef = useRef(formData);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit(formDataRef.current);
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      formDataRef.current = updated;
+      return updated;
+    });
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      address: { ...prev.address, [field]: value }
-    }));
+    setFormData(prev => {
+      const updated = { ...prev, address: { ...prev.address, [field]: value } };
+      formDataRef.current = updated;
+      return updated;
+    });
+  };
+
+  // Atomic voice bulk-apply — handles nested dotted fields
+  const handleVoiceApply = (changesObj) => {
+    setFormData(prev => {
+      let updated = { ...prev };
+      Object.entries(changesObj).forEach(([field, val]) => {
+        if (field.includes(".")) {
+          const [parent, child] = field.split(".");
+          updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: val } };
+        } else {
+          updated = { ...updated, [field]: val };
+        }
+      });
+      formDataRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleRequestSave = () => {
+    if (formRef.current) formRef.current.requestSubmit();
   };
 
   const handleTaxResidencyChange = (index, field, value) => {
@@ -70,13 +99,14 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {/* Voice Form Assistant */}
       <VoiceFormAssistant
         formData={formData}
         formType="controlling_person"
-        onApplyChanges={(changes) => setFormData(prev => ({ ...prev, ...changes }))}
-        onSave={() => handleSubmit({ preventDefault: () => {} })}
+        onApplyChanges={handleVoiceApply}
+        onRequestSave={handleRequestSave}
+        onClose={onCancel}
       />
 
       {/* Basic Information */}

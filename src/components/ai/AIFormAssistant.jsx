@@ -22,7 +22,8 @@ export default function AIFormAssistant({
   formType = "account", // "account" or "entity"
   onSuggestionApply,
   tenant,
-  onSave
+  onRequestSave,  // replaces onSave — fires formRef.current.requestSubmit()
+  onClose,        // optional — closes/cancels the form
 }) {
   // Voice handler: receives { field: value, ... } object and fans out to onSuggestionApply
   const handleVoiceChanges = (changesObj) => {
@@ -185,7 +186,8 @@ Be specific and actionable.`;
           formData={formData}
           formType={formType}
           onApplyChanges={handleVoiceChanges}
-          onSave={onSave}
+          onRequestSave={onRequestSave}
+          onClose={onClose}
         />
       </div>
     );
@@ -273,7 +275,8 @@ Be specific and actionable.`;
             formData={formData}
             formType={formType}
             onApplyChanges={handleVoiceChanges}
-            onSave={onSave}
+            onRequestSave={onRequestSave}
+            onClose={onClose}
           />
           {/* Validation Issues */}
           {validationIssues.map((issue, idx) => (
