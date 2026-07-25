@@ -199,28 +199,25 @@ export default function WorkflowVoiceAssistant({
     // Nav-only mode: summaryMode or info/result step
     const isNavOnly = isNavOnlyMode || step?.question_type === "info" || step?.question_type === "result";
 
-    // For yes_no/single_choice steps, try answer snapping FIRST before nav phrases
+    // For yes_no/single_choice steps, try answer snapping FIRST before anything else
+    // Use broad matching — any mention of yes/no keywords selects the answer
     if (!isNavOnly && (step?.question_type === "yes_no" || step?.question_type === "single_choice")) {
       const opts = step?.options || [];
       const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
       const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
 
-      const isYes = yesOpt && (
-        /\byes\b/.test(lower) || /\byeah\b/.test(lower) || /\byep\b/.test(lower) ||
-        /\bsure\b/.test(lower) || /\baffirmative\b/.test(lower) || /\bcorrect\b/.test(lower) ||
-        /\bselect yes\b/.test(lower) || /\bchoose yes\b/.test(lower) || /\bi say yes\b/.test(lower) ||
-        /\banswer is yes\b/.test(lower) || /\bmark yes\b/.test(lower) || lower === "y"
-      );
-      const isNo = noOpt && (
-        /\bno\b/.test(lower) || /\bnope\b/.test(lower) || /\bnegative\b/.test(lower) ||
-        /\bselect no\b/.test(lower) || /\bchoose no\b/.test(lower) || /\bi say no\b/.test(lower) ||
-        /\banswer is no\b/.test(lower) || /\bmark no\b/.test(lower) || lower === "n"
-      );
+      // Broad yes/no detection — catches "select yes", "yes please", "i want yes", etc.
+      const hasYes = /yes|yeah|yep|yup|sure|correct|affirm|right|true/i.test(lower);
+      const hasNo = /\bno\b|\bnope\b|\bnot\b|\bnegative\b|\bfalse\b/i.test(lower);
+
+      // Only snap if exactly one direction is mentioned (avoid "yes or no" ambiguity)
+      const isYes = yesOpt && hasYes && !hasNo;
+      const isNo = noOpt && hasNo && !hasYes;
 
       if (isYes) {
         applyAnswer?.(yesOpt.value);
         setConfirmedValue(yesOpt.value);
-        setMessage(`Selected ${yesOpt.label}.`);
+        setMessage(`Selected "${yesOpt.label}" for this question.`);
         speak(`Selected ${yesOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
         statusRef.current = "speaking"; setStatus("speaking");
         return;
@@ -228,7 +225,7 @@ export default function WorkflowVoiceAssistant({
       if (isNo) {
         applyAnswer?.(noOpt.value);
         setConfirmedValue(noOpt.value);
-        setMessage(`Selected ${noOpt.label}.`);
+        setMessage(`Selected "${noOpt.label}" for this question.`);
         speak(`Selected ${noOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
         statusRef.current = "speaking"; setStatus("speaking");
         return;
@@ -271,33 +268,22 @@ export default function WorkflowVoiceAssistant({
 
     // LLM call for answer extraction — only send the CURRENT step's info, nothing else
     const stepContext = buildStepContext(step);
-    const prompt = `You are a compliance workflow voice assistant. The user is answering ONE specific question by voice.
+    const prompt = `You are a voice assistant for a compliance workflow. The user just spoke to answer ONE question.
 
-CURRENT QUESTION ONLY:
-Step title: "${step?.step_title}"
-Question: "${step?.question_text || ""}"
-
+QUESTION: "${step?.step_title || step?.question_text || "Unknown"}"
 ${stepContext}
 
-User said: "${text}"
+USER SAID: "${text}"
 
-CRITICAL RULES:
-- Answer ONLY the current question above. Do NOT reference any other field or question.
-- For yes_no and single_choice: "value" MUST be exactly one of the option values listed — nothing else.
-- Do NOT return a label as the value.
-- Do NOT return null for yes/no if user's intent is clear (yes/no keywords).
-- assistant_reply: 1 sentence confirming the selection for THIS question only.
-- Only set wants_proceed/wants_back if user explicitly asked to navigate.
+RULES (strictly follow):
+1. There is ONLY ONE question. Do NOT mention "both fields" or "all fields" — there is only one.
+2. For yes_no: return "YES" or "NO" only. No other value.
+3. For single_choice: return the exact option value string only.
+4. assistant_reply: 1 short sentence. Example: "Selected Yes." or "Selected No."
+5. Do NOT add extra commentary about other questions or fields.
 
-Response schema:
-{
-  "value": <exact option value string, array, object, or null>,
-  "assistant_reply": "<1 sentence>",
-  "wants_proceed": false,
-  "wants_back": false,
-  "wants_summary": false,
-  "wants_complete": false
-}`;
+Return JSON:
+{ "value": <string|array|object|null>, "assistant_reply": "<1 sentence>", "wants_proceed": false, "wants_back": false, "wants_summary": false, "wants_complete": false }`;
 
     try {
       const result = await base44.integrations.Core.InvokeLLM({
