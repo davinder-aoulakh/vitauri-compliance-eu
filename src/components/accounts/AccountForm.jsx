@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,6 +114,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     acct_holder_address_unchanged: account?.acct_holder_address_unchanged || false,
     us_person_indic: account?.us_person_indic || false,
   });
+
+  const formDataRef = useRef(formData);
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
 
   const [detectedChanges, setDetectedChanges] = useState([]);
   const [initialData, setInitialData] = useState(null);
@@ -304,19 +307,22 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
+
+    // Always use the latest formData (handles voice assistant stale closure)
+    const fd = formDataRef.current;
     
     // Validate account number uniqueness
-    const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
+    const isValid = await validateAccountNumber(fd.account_number, fd.entity_id);
     if (!isValid) return;
 
     // GAP 27: Validate account number type/format
-    if (formData.account_number_type !== "No account number exists") {
-      if (!formData.account_number?.trim()) {
-        const holderName = formData.account_holder_name || `${formData.first_name} ${formData.last_name}`.trim() || "this account";
+    if (fd.account_number_type !== "No account number exists") {
+      if (!fd.account_number?.trim()) {
+        const holderName = fd.account_holder_name || `${fd.first_name} ${fd.last_name}`.trim() || "this account";
         alert(`Please enter an account number for ${holderName}, or select 'No account number exists' if one is not available.`);
         return;
       }
-      const formatErr = validateAccountNumberFormat(formData.account_number, formData.account_number_type);
+      const formatErr = validateAccountNumberFormat(fd.account_number, fd.account_number_type);
       if (formatErr) {
         setAccountNumberTypeError(formatErr);
         return;
@@ -324,42 +330,41 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
     
     // Validate mandatory fields for individual accounts
-    if (formData.account_holder_type === 'individual') {
-      if (!formData.first_name?.trim()) {
+    if (fd.account_holder_type === 'individual') {
+      if (!fd.first_name?.trim()) {
         alert("First Name is required for individual accounts");
         return;
       }
-      if (!formData.last_name?.trim()) {
+      if (!fd.last_name?.trim()) {
         alert("Last Name is required for individual accounts");
         return;
       }
-
     }
     
     // Validate mandatory fields for entity accounts
-    if (formData.account_holder_type === 'entity') {
-      if (!formData.account_holder_name?.trim()) {
+    if (fd.account_holder_type === 'entity') {
+      if (!fd.account_holder_name?.trim()) {
         alert("Account Holder Name is required for entity accounts");
         return;
       }
     }
     
     // Validate mandatory address fields for both individual and entity accounts
-    if (!formData.current_address?.street?.trim() || !formData.current_address?.city?.trim() || 
-        !formData.current_address?.state?.trim() || !formData.current_address?.postal_code?.trim() || 
-        !formData.current_address?.country?.trim()) {
+    if (!fd.current_address?.street?.trim() || !fd.current_address?.city?.trim() || 
+        !fd.current_address?.state?.trim() || !fd.current_address?.postal_code?.trim() || 
+        !fd.current_address?.country?.trim()) {
       alert("Current Address (all fields) is required");
       return;
     }
-    if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.city?.trim() || 
-        !formData.account_holder_address?.state?.trim() || !formData.account_holder_address?.postal_code?.trim() || 
-        !formData.account_holder_address?.country?.trim()) {
+    if (!fd.account_holder_address?.street?.trim() || !fd.account_holder_address?.city?.trim() || 
+        !fd.account_holder_address?.state?.trim() || !fd.account_holder_address?.postal_code?.trim() || 
+        !fd.account_holder_address?.country?.trim()) {
       alert("Original Address (all fields) is required");
       return;
     }
     
     // Auto-detect indicia
-    const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
+    const newIndicia = detectIndicia(fd, tenant?.jurisdiction);
     
     // Determine if needs reclassification
     const needsReclassification = detectedChanges.length > 0 && 
@@ -367,14 +372,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       account.reportability_status !== 'pending_review';
 
     const updatedData = {
-      ...formData,
+      ...fd,
       indicia_found: newIndicia.length > 0 ? newIndicia : undefined,
       needs_reclassification: needsReclassification
     };
     
     // For individual accounts, construct account_holder_name from first_name and last_name
-    if (formData.account_holder_type === 'individual') {
-      updatedData.account_holder_name = `${formData.first_name} ${formData.last_name}`.trim();
+    if (fd.account_holder_type === 'individual') {
+      updatedData.account_holder_name = `${fd.first_name} ${fd.last_name}`.trim();
     }
 
     onSubmit(updatedData);

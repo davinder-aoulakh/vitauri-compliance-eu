@@ -148,7 +148,7 @@ ${buildFieldHints()}
 
 Your job:
 1. Extract any field changes the user wants to make. Apply them immediately — do NOT ask for confirmation first.
-2. Detect if the user wants to SAVE/SUBMIT the record. Keywords: "save", "submit", "save this", "apply changes", "save changes", "update", "done", "confirm", "save and close". If detected, set action to "COMMIT".
+2. Detect if the user wants to SAVE/SUBMIT the record. ONLY set action to "COMMIT" if the user's message is PURELY a save/submit command with NO field changes — e.g. "save", "save this", "save and close", "submit", "done saving". If the message also contains field updates (e.g. "set first name to John and save"), apply the changes but do NOT set action to "COMMIT" — the user should press Save manually after reviewing changes.
 3. Write a SHORT, natural conversational reply (1-2 sentences max) confirming what you changed or saved.
 4. If the user changed an address country, mention you've updated it and ask if there are related fields they'd like to update (like postal code or tax residency).
 5. If nothing changed (e.g. a question or unclear command), just reply conversationally and set changes to empty.
