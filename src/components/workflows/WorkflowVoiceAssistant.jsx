@@ -170,6 +170,43 @@ export default function WorkflowVoiceAssistant({
     // Nav-only mode: summaryMode or info/result step
     const isNavOnly = summaryMode || currentStep?.question_type === "info" || currentStep?.question_type === "result";
 
+    // For yes_no/single_choice steps, try answer snapping FIRST before nav phrases
+    // This prevents "confirm" (which is in NEXT_PHRASES) from navigating away instead of selecting YES
+    if (!isNavOnly && (currentStep?.question_type === "yes_no" || currentStep?.question_type === "single_choice")) {
+      const opts = currentStep?.options || [];
+      const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
+      const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
+
+      const isYes = yesOpt && (
+        /\byes\b/.test(lower) || /\byeah\b/.test(lower) || /\byep\b/.test(lower) ||
+        /\bsure\b/.test(lower) || /\baffirmative\b/.test(lower) || /\bcorrect\b/.test(lower) ||
+        /\bselect yes\b/.test(lower) || /\bchoose yes\b/.test(lower) || /\bi say yes\b/.test(lower) ||
+        /\banswer is yes\b/.test(lower) || /\bmark yes\b/.test(lower) || lower === "y"
+      );
+      const isNo = noOpt && (
+        /\bno\b/.test(lower) || /\bnope\b/.test(lower) || /\bnegative\b/.test(lower) ||
+        /\bselect no\b/.test(lower) || /\bchoose no\b/.test(lower) || /\bi say no\b/.test(lower) ||
+        /\banswer is no\b/.test(lower) || /\bmark no\b/.test(lower) || lower === "n"
+      );
+
+      if (isYes) {
+        onApplyAnswer?.(yesOpt.value);
+        setConfirmedValue(yesOpt.value);
+        setMessage(`Selected ${yesOpt.label}.`);
+        speak(`Selected ${yesOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
+        statusRef.current = "speaking"; setStatus("speaking");
+        return;
+      }
+      if (isNo) {
+        onApplyAnswer?.(noOpt.value);
+        setConfirmedValue(noOpt.value);
+        setMessage(`Selected ${noOpt.label}.`);
+        speak(`Selected ${noOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
+        statusRef.current = "speaking"; setStatus("speaking");
+        return;
+      }
+    }
+
     // Pre-LLM phrase matching — instant, no API
     if (matchPhrase(lower, COMPLETE_PHRASES) && onComplete) {
       speak("Completing the classification.", () => onComplete());
@@ -196,29 +233,6 @@ export default function WorkflowVoiceAssistant({
       setMessage("You can say 'next', 'back', 'summary', or 'complete' to navigate.");
       statusRef.current = "idle"; setStatus("idle");
       return;
-    }
-
-    // Pre-LLM: instant yes/no snapping for yes_no and single_choice with YES/NO options
-    if (currentStep?.question_type === "yes_no" || currentStep?.question_type === "single_choice") {
-      const opts = currentStep?.options || [];
-      const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
-      const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
-      if (yesOpt && /\byes\b|\byeah\b|\byep\b|\bcorrect\b|\baffirm|\bsure\b|\bconfirm\b|\btrue\b/.test(lower)) {
-        onApplyAnswer?.(yesOpt.value);
-        setConfirmedValue(yesOpt.value);
-        setMessage(`Selected ${yesOpt.label} for this question.`);
-        speak(`Selected ${yesOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
-        statusRef.current = "speaking"; setStatus("speaking");
-        return;
-      }
-      if (noOpt && /\bno\b|\bnope\b|\bnegative\b|\bfalse\b/.test(lower)) {
-        onApplyAnswer?.(noOpt.value);
-        setConfirmedValue(noOpt.value);
-        setMessage(`Selected ${noOpt.label} for this question.`);
-        speak(`Selected ${noOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
-        statusRef.current = "speaking"; setStatus("speaking");
-        return;
-      }
     }
 
     // LLM call for answer extraction
