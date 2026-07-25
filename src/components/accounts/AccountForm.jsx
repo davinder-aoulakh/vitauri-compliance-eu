@@ -25,7 +25,6 @@ import BeneficiaryManager from "./BeneficiaryManager";
 import ControllingPersonManager from "./ControllingPersonManager";
 import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
-import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
@@ -445,18 +444,6 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
-      />
-
-      {/* Voice Form Assistant */}
-      <VoiceFormAssistant
-        formData={formData}
-        formType="account"
-        onApplyChanges={(changes) => setFormData(prev => ({ ...prev, ...changes }))}
-        onSave={() => {
-          // Simulate form submit by creating a synthetic event
-          const syntheticEvent = { preventDefault: () => {} };
-          handleSubmit(syntheticEvent);
-        }}
       />
 
       {/* Change Detection Alert */}
