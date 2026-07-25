@@ -219,9 +219,15 @@ export default function WorkflowVoiceAssistant({
       return;
     }
     if (matchPhrase(lower, NEXT_PHRASES) && onProceed) {
-      speak("Moving to the next question.", () => onProceed());
-      statusRef.current = "idle"; setStatus("idle");
-      return;
+      // Only auto-proceed if the current step has an answer already
+      const currentAnswer = answers?.[currentStep?.step_id];
+      const hasAnswer = currentAnswer !== null && currentAnswer !== undefined && currentAnswer !== '';
+      if (hasAnswer) {
+        speak("Moving to the next question.", () => onProceed());
+        statusRef.current = "idle"; setStatus("idle");
+        return;
+      }
+      // No answer yet — fall through to answer extraction
     }
     if (matchPhrase(lower, BACK_PHRASES) && onGoBack) {
       speak("Going back.", () => onGoBack());
@@ -321,13 +327,13 @@ Response schema:
       statusRef.current = "speaking";
       setStatus("speaking");
       speak(reply, () => {
-        statusRef.current = "idle";
-        setStatus("idle");
-        // Post-speak navigation
-        if (result.wants_complete && onComplete) onComplete();
-        else if (result.wants_summary && onSummary) onSummary();
-        else if (result.wants_proceed && onProceed) onProceed();
-        else if (result.wants_back && onGoBack) onGoBack();
+      statusRef.current = "idle";
+      setStatus("idle");
+      // Post-speak navigation — only proceed if an answer was actually set
+      if (result.wants_complete && onComplete) onComplete();
+      else if (result.wants_summary && onSummary) onSummary();
+      else if (result.wants_proceed && onProceed && result.value !== null && result.value !== undefined) onProceed();
+      else if (result.wants_back && onGoBack) onGoBack();
       });
     } catch (err) {
       setError("Failed to process voice command. Please try again.");

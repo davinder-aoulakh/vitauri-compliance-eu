@@ -1926,9 +1926,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             handleAnswer(currentStep.step_id, value);
           }
         }}
-        onProceed={canProceed() ? handleNext : undefined}
+        onProceed={handleNext}
         onGoBack={history.length > 0 ? handleBack : undefined}
-        onSummary={isActionNode(currentStep) && canProceed() ? handleNext : undefined}
+        onSummary={isActionNode(currentStep) ? handleNext : undefined}
       />
 
       <div className="flex justify-between gap-3 pt-4 border-t">

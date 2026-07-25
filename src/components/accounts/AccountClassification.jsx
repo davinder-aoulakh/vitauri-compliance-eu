@@ -1306,9 +1306,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
             setAnswers(p => ({ ...p, [currentNodeId]: value }));
           }
         }}
-        onProceed={canProceed() ? handleNext : undefined}
+        onProceed={handleNext}
         onGoBack={history.length > 0 ? handleBack : undefined}
-        onSummary={isActionNode(currentNode) && canProceed() ? handleNext : undefined}
+        onSummary={isActionNode(currentNode) ? handleNext : undefined}
       />
 
       {/* AI Helper */}
