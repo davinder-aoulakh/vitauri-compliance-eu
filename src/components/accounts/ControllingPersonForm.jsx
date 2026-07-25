@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { XCircle, Save, Plus, Trash2 } from "lucide-react";
+import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
 
@@ -70,6 +71,14 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Voice Form Assistant */}
+      <VoiceFormAssistant
+        formData={formData}
+        formType="controlling_person"
+        onApplyChanges={(changes) => setFormData(prev => ({ ...prev, ...changes }))}
+        onSave={() => handleSubmit({ preventDefault: () => {} })}
+      />
+
       {/* Basic Information */}
       <Card className="border-2 border-indigo-100">
         <CardHeader className="bg-indigo-50/50">

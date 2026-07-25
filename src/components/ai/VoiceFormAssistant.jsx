@@ -12,7 +12,7 @@ import { Mic, MicOff, Loader2, CheckCircle2, X, Volume2, MessageCircle } from "l
  * 3. Auto-applies changes and speaks the response back
  * 4. Stays in conversation — user can continue speaking follow-ups
  */
-export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges }) {
+export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges, onSave }) {
   const [status, setStatus] = useState("idle"); // idle | listening | processing | review | speaking
   const [transcript, setTranscript] = useState("");
   const [pendingChanges, setPendingChanges] = useState([]);
@@ -114,6 +114,14 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - account_holder_is_alive (true/false), is_pre_existing (true/false)
 - account_type: depository | custodial | equity_debt_interest | cash_value_insurance | annuity
 - status: active | closed | dormant`
+    : formType === "controlling_person"
+    ? `Available fields:
+- first_name, last_name
+- date_of_birth (YYYY-MM-DD)
+- control_type: legal_person_ownership | legal_person_other_means | legal_person_senior_managing_official | trust_settlor | trust_trustee | trust_protector | trust_beneficiary | trust_other | legal_arrangement_settlor_equivalent | legal_arrangement_trustee_equivalent | legal_arrangement_protector_equivalent | legal_arrangement_beneficiary_equivalent | legal_arrangement_other_equivalent
+- ownership_percentage (number 0-100)
+- is_reportable (true/false)
+- address.street, address.city, address.state, address.postal_code, address.country`
     : `Available fields:
 - entity_name
 - entity_type: corporation | trust | partnership | fund | branch | other
@@ -140,10 +148,11 @@ ${buildFieldHints()}
 
 Your job:
 1. Extract any field changes the user wants to make. Apply them immediately — do NOT ask for confirmation first.
-2. Write a SHORT, natural conversational reply (1-2 sentences max) confirming what you changed.
-3. If the user changed an address country, mention you've updated it and ask if there are related fields they'd like to update (like postal code or tax residency).
-4. If nothing changed (e.g. a question or unclear command), just reply conversationally and set changes to empty.
-5. End your reply with a brief open invitation like "Anything else you'd like me to update?" or "What else can I help with?"
+2. Detect if the user wants to SAVE/SUBMIT the record. Keywords: "save", "submit", "save this", "apply changes", "save changes", "update", "done", "confirm", "save and close". If detected, set action to "COMMIT".
+3. Write a SHORT, natural conversational reply (1-2 sentences max) confirming what you changed or saved.
+4. If the user changed an address country, mention you've updated it and ask if there are related fields they'd like to update (like postal code or tax residency).
+5. If nothing changed (e.g. a question or unclear command), just reply conversationally and set changes to empty.
+6. End your reply (unless saving) with a brief open invitation like "Anything else you'd like me to update?" or "What else can I help with?"
 
 Keep replies warm and concise. Do not be robotic.`;
 
@@ -164,12 +173,14 @@ Keep replies warm and concise. Do not be robotic.`;
                 }
               }
             },
+            action: { type: "string", description: "Set to COMMIT if user wants to save/submit the form" },
             assistant_reply: { type: "string" }
           }
         }
       });
 
       const changes = result.changes || [];
+      const action = result.action || "";
       const reply = result.assistant_reply || "Done! Anything else you'd like me to update?";
 
       // Update conversation history
@@ -197,12 +208,15 @@ Keep replies warm and concise. Do not be robotic.`;
         setPendingChanges(changes);
       }
 
-      // Speak the reply, then go back to ready state (not listening — user clicks mic)
+      // Speak the reply, then trigger save if COMMIT
       statusRef.current = "speaking";
       setStatus("speaking");
       speak(reply, () => {
         statusRef.current = "idle";
         setStatus("idle");
+        if (action === "COMMIT" && onSave) {
+          onSave();
+        }
       });
 
     } catch (err) {
