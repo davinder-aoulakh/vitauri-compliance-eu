@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mic, MicOff, Loader2, CheckCircle2, X, Volume2, MessageCircle, ArrowRight } from "lucide-react";
+import { Mic, MicOff, Loader2, CheckCircle2, X, Volume2, MessageCircle } from "lucide-react";
 
 const NEXT_PHRASES = ["next", "confirm", "done", "submit", "proceed", "continue", "go ahead", "move on"];
 const BACK_PHRASES = ["back", "previous", "go back", "prev", "undo", "last question", "previous question"];
@@ -20,21 +20,29 @@ function buildStepContext(step) {
 
   switch (qt) {
     case "yes_no":
-    case "single_choice":
-      return `Question type: ${qt}. Options: ${opts.map(o => `"${o.value}" (${o.label})`).join(", ")}. Return the EXACT value string of the chosen option.`;
-    case "multiple_choice":
-      return `Question type: multiple_choice. Options: ${opts.map(o => `"${o.value}" (${o.label})`).join(", ")}. Return a JSON array of matching value strings.`;
+    case "single_choice": {
+      const optList = opts.map(o => `value="${o.value}" label="${o.label}"`).join(" | ");
+      return `Question type: ${qt}.
+AVAILABLE OPTIONS: ${optList}
+CRITICAL: You MUST return the EXACT "value" string from one of the options above — do NOT return the label, do NOT paraphrase, do NOT return any other string. For yes/no questions the values are typically "YES" or "NO". If the user says "yes", "yeah", "correct", "affirmative" → return "YES". If the user says "no", "nope", "negative" → return "NO". Match the user's intent to the closest option value.`;
+    }
+    case "multiple_choice": {
+      const optList = opts.map(o => `value="${o.value}" label="${o.label}"`).join(" | ");
+      return `Question type: multiple_choice.
+AVAILABLE OPTIONS: ${optList}
+Return a JSON ARRAY of exact "value" strings from the options above that match what the user said. NEVER return labels.`;
+    }
     case "text_input":
     case "textarea":
       return `Question type: ${qt}. Extract the free-text answer. Return as a string.`;
     case "number_input":
-      return `Question type: number_input. Extract the numeric value. Return as a string.`;
+      return `Question type: number_input. Extract the numeric value. Return as a string of just the number.`;
     case "date_input":
-      return `Question type: date_input. Extract the date in YYYY-MM-DD format.`;
+      return `Question type: date_input. Extract the date and return in YYYY-MM-DD format only.`;
     case "file_upload": {
       const hasDateRequired = step.file_upload_config?.require_date_received;
       if (hasDateRequired) {
-        return `Question type: file_upload with date_received required. Voice cannot upload files. If user mentions a date, extract it in YYYY-MM-DD format and return it as a plain string. Otherwise return null and explain file upload must be done manually.`;
+        return `Question type: file_upload with date_received required. Voice cannot upload files. If user mentions a date, return it in YYYY-MM-DD format. Otherwise return null and explain file upload must be done manually.`;
       }
       return `Question type: file_upload. Voice cannot upload files. Return null and tell the user to use the upload button.`;
     }
@@ -200,16 +208,18 @@ Help text: "${currentStep?.help_text || ""}"
 
 ${stepContext}
 
-Current answers so far: ${JSON.stringify(answers || {})}
-
 User said: "${text}"
 
-Extract the answer and provide a short conversational confirmation (1-2 sentences).
+RULES:
+- For yes_no and single_choice questions, "value" MUST be one of the exact option value strings listed above — nothing else.
+- Do NOT return a label as the value. Do NOT return null for yes/no if the user's intent is clear.
+- Keep assistant_reply to 1 short sentence confirming what was selected.
+- Only set wants_proceed/wants_back/wants_summary/wants_complete if the user explicitly asked to navigate.
 
 Response schema:
 {
-  "value": <extracted value or null>,
-  "assistant_reply": "<short confirmation>",
+  "value": <extracted exact option value string, array, object, or null>,
+  "assistant_reply": "<1 short sentence>",
   "wants_proceed": false,
   "wants_back": false,
   "wants_summary": false,
@@ -236,8 +246,40 @@ Response schema:
       setMessage(reply);
 
       if (result.value !== null && result.value !== undefined) {
-        onApplyAnswer?.(result.value);
-        setConfirmedValue(result.value);
+        // Client-side safety: snap value to a valid option for yes_no / single_choice
+        let finalValue = result.value;
+        const qt = currentStep?.question_type;
+        const opts = currentStep?.options || [];
+        if ((qt === "yes_no" || qt === "single_choice") && opts.length > 0) {
+          const exactMatch = opts.find(o => o.value === finalValue);
+          if (!exactMatch) {
+            // Try label match (case-insensitive)
+            const labelMatch = opts.find(o =>
+              o.label?.toLowerCase() === String(finalValue).toLowerCase() ||
+              o.value?.toLowerCase() === String(finalValue).toLowerCase()
+            );
+            // Fallback: YES/NO keyword snapping
+            if (labelMatch) {
+              finalValue = labelMatch.value;
+            } else {
+              const s = String(finalValue).toLowerCase();
+              const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
+              const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
+              if (yesOpt && (s.includes("yes") || s.includes("true") || s.includes("correct") || s.includes("affirm"))) {
+                finalValue = yesOpt.value;
+              } else if (noOpt && (s.includes("no") || s.includes("false") || s.includes("negative"))) {
+                finalValue = noOpt.value;
+              } else {
+                // Can't determine — don't apply
+                finalValue = null;
+              }
+            }
+          }
+        }
+        if (finalValue !== null && finalValue !== undefined) {
+          onApplyAnswer?.(finalValue);
+          setConfirmedValue(finalValue);
+        }
       }
 
       statusRef.current = "speaking";
@@ -307,17 +349,7 @@ Response schema:
           </Button>
         )}
 
-        {/* Next shortcut after confirmed answer */}
-        {confirmedValue !== null && status === "idle" && onProceed && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={onProceed}
-            className="gap-1 bg-green-600 hover:bg-green-700 text-white text-sm"
-          >
-            Next Question <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        )}
+
       </div>
 
       {/* Transcript */}
