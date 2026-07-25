@@ -82,6 +82,25 @@ export default function WorkflowVoiceAssistant({
   const recognitionRef = useRef(null);
   const statusRef = useRef("idle");
 
+  // Always-fresh refs so async processTranscript never uses stale closures
+  const currentStepRef = useRef(currentStep);
+  const answersRef = useRef(answers);
+  const onApplyAnswerRef = useRef(onApplyAnswer);
+  const onProceedRef = useRef(onProceed);
+  const onGoBackRef = useRef(onGoBack);
+  const onSummaryRef = useRef(onSummary);
+  const onCompleteRef = useRef(onComplete);
+  const summaryModeRef = useRef(summaryMode);
+
+  useEffect(() => { currentStepRef.current = currentStep; }, [currentStep]);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { onApplyAnswerRef.current = onApplyAnswer; }, [onApplyAnswer]);
+  useEffect(() => { onProceedRef.current = onProceed; }, [onProceed]);
+  useEffect(() => { onGoBackRef.current = onGoBack; }, [onGoBack]);
+  useEffect(() => { onSummaryRef.current = onSummary; }, [onSummary]);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  useEffect(() => { summaryModeRef.current = summaryMode; }, [summaryMode]);
+
   const isSupported =
     typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
@@ -165,15 +184,24 @@ export default function WorkflowVoiceAssistant({
   };
 
   const processTranscript = async (text) => {
+    // Use always-fresh refs to avoid stale closure bugs
+    const step = currentStepRef.current;
+    const currentAnswers = answersRef.current;
+    const applyAnswer = onApplyAnswerRef.current;
+    const proceed = onProceedRef.current;
+    const goBack = onGoBackRef.current;
+    const goSummary = onSummaryRef.current;
+    const complete = onCompleteRef.current;
+    const isNavOnlyMode = summaryModeRef.current;
+
     const lower = text.toLowerCase().trim();
 
     // Nav-only mode: summaryMode or info/result step
-    const isNavOnly = summaryMode || currentStep?.question_type === "info" || currentStep?.question_type === "result";
+    const isNavOnly = isNavOnlyMode || step?.question_type === "info" || step?.question_type === "result";
 
     // For yes_no/single_choice steps, try answer snapping FIRST before nav phrases
-    // This prevents "confirm" (which is in NEXT_PHRASES) from navigating away instead of selecting YES
-    if (!isNavOnly && (currentStep?.question_type === "yes_no" || currentStep?.question_type === "single_choice")) {
-      const opts = currentStep?.options || [];
+    if (!isNavOnly && (step?.question_type === "yes_no" || step?.question_type === "single_choice")) {
+      const opts = step?.options || [];
       const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
       const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
 
@@ -190,7 +218,7 @@ export default function WorkflowVoiceAssistant({
       );
 
       if (isYes) {
-        onApplyAnswer?.(yesOpt.value);
+        applyAnswer?.(yesOpt.value);
         setConfirmedValue(yesOpt.value);
         setMessage(`Selected ${yesOpt.label}.`);
         speak(`Selected ${yesOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
@@ -198,7 +226,7 @@ export default function WorkflowVoiceAssistant({
         return;
       }
       if (isNo) {
-        onApplyAnswer?.(noOpt.value);
+        applyAnswer?.(noOpt.value);
         setConfirmedValue(noOpt.value);
         setMessage(`Selected ${noOpt.label}.`);
         speak(`Selected ${noOpt.label}.`, () => { statusRef.current = "idle"; setStatus("idle"); });
@@ -208,29 +236,29 @@ export default function WorkflowVoiceAssistant({
     }
 
     // Pre-LLM phrase matching — instant, no API
-    if (matchPhrase(lower, COMPLETE_PHRASES) && onComplete) {
-      speak("Completing the classification.", () => onComplete());
+    if (matchPhrase(lower, COMPLETE_PHRASES) && complete) {
+      speak("Completing the classification.", () => complete());
       statusRef.current = "idle"; setStatus("idle");
       return;
     }
-    if (matchPhrase(lower, SUMMARY_PHRASES) && onSummary) {
-      speak("Going to the summary.", () => onSummary());
+    if (matchPhrase(lower, SUMMARY_PHRASES) && goSummary) {
+      speak("Going to the summary.", () => goSummary());
       statusRef.current = "idle"; setStatus("idle");
       return;
     }
-    if (matchPhrase(lower, NEXT_PHRASES) && onProceed) {
+    if (matchPhrase(lower, NEXT_PHRASES) && proceed) {
       // Only auto-proceed if the current step has an answer already
-      const currentAnswer = answers?.[currentStep?.step_id];
+      const currentAnswer = currentAnswers?.[step?.step_id];
       const hasAnswer = currentAnswer !== null && currentAnswer !== undefined && currentAnswer !== '';
       if (hasAnswer) {
-        speak("Moving to the next question.", () => onProceed());
+        speak("Moving to the next question.", () => proceed());
         statusRef.current = "idle"; setStatus("idle");
         return;
       }
       // No answer yet — fall through to answer extraction
     }
-    if (matchPhrase(lower, BACK_PHRASES) && onGoBack) {
-      speak("Going back.", () => onGoBack());
+    if (matchPhrase(lower, BACK_PHRASES) && goBack) {
+      speak("Going back.", () => goBack());
       statusRef.current = "idle"; setStatus("idle");
       return;
     }
@@ -241,28 +269,30 @@ export default function WorkflowVoiceAssistant({
       return;
     }
 
-    // LLM call for answer extraction
-    const stepContext = buildStepContext(currentStep);
-    const prompt = `You are a compliance workflow voice assistant helping a user answer a classification question by voice.
+    // LLM call for answer extraction — only send the CURRENT step's info, nothing else
+    const stepContext = buildStepContext(step);
+    const prompt = `You are a compliance workflow voice assistant. The user is answering ONE specific question by voice.
 
-Step: "${currentStep?.step_title}"
-Question: "${currentStep?.question_text || ""}"
-Help text: "${currentStep?.help_text || ""}"
+CURRENT QUESTION ONLY:
+Step title: "${step?.step_title}"
+Question: "${step?.question_text || ""}"
 
 ${stepContext}
 
 User said: "${text}"
 
-RULES:
-- For yes_no and single_choice questions, "value" MUST be one of the exact option value strings listed above — nothing else.
-- Do NOT return a label as the value. Do NOT return null for yes/no if the user's intent is clear.
-- Keep assistant_reply to 1 short sentence confirming what was selected.
-- Only set wants_proceed/wants_back/wants_summary/wants_complete if the user explicitly asked to navigate.
+CRITICAL RULES:
+- Answer ONLY the current question above. Do NOT reference any other field or question.
+- For yes_no and single_choice: "value" MUST be exactly one of the option values listed — nothing else.
+- Do NOT return a label as the value.
+- Do NOT return null for yes/no if user's intent is clear (yes/no keywords).
+- assistant_reply: 1 sentence confirming the selection for THIS question only.
+- Only set wants_proceed/wants_back if user explicitly asked to navigate.
 
 Response schema:
 {
-  "value": <extracted exact option value string, array, object, or null>,
-  "assistant_reply": "<1 short sentence>",
+  "value": <exact option value string, array, object, or null>,
+  "assistant_reply": "<1 sentence>",
   "wants_proceed": false,
   "wants_back": false,
   "wants_summary": false,
@@ -289,23 +319,19 @@ Response schema:
       setMessage(reply);
 
       if (result.value !== null && result.value !== undefined) {
-        // Client-side safety: snap value to a valid option for yes_no / single_choice
         let finalValue = result.value;
-        const qt = currentStep?.question_type;
-        const opts = currentStep?.options || [];
+        const qt = step?.question_type;
+        const opts = step?.options || [];
         if ((qt === "yes_no" || qt === "single_choice") && opts.length > 0) {
-          // Only accept exact option value matches
           const exactMatch = opts.find(o => o.value === finalValue);
           if (!exactMatch) {
             const s = String(finalValue).toLowerCase();
-            // Try label or value case-insensitive match
             const labelMatch = opts.find(o =>
               o.label?.toLowerCase() === s || o.value?.toLowerCase() === s
             );
             if (labelMatch) {
               finalValue = labelMatch.value;
             } else {
-              // Keyword snapping as last resort
               const yesOpt = opts.find(o => o.value === "YES" || o.label?.toLowerCase() === "yes");
               const noOpt = opts.find(o => o.value === "NO" || o.label?.toLowerCase() === "no");
               if (yesOpt && /yes|true|correct|affirm|sure/.test(s)) {
@@ -313,13 +339,13 @@ Response schema:
               } else if (noOpt && /\bno\b|false|negative/.test(s)) {
                 finalValue = noOpt.value;
               } else {
-                finalValue = null; // Can't resolve — reject
+                finalValue = null;
               }
             }
           }
         }
         if (finalValue !== null && finalValue !== undefined) {
-          onApplyAnswer?.(finalValue);
+          applyAnswer?.(finalValue);
           setConfirmedValue(finalValue);
         }
       }
@@ -327,13 +353,12 @@ Response schema:
       statusRef.current = "speaking";
       setStatus("speaking");
       speak(reply, () => {
-      statusRef.current = "idle";
-      setStatus("idle");
-      // Post-speak navigation — only proceed if an answer was actually set
-      if (result.wants_complete && onComplete) onComplete();
-      else if (result.wants_summary && onSummary) onSummary();
-      else if (result.wants_proceed && onProceed && result.value !== null && result.value !== undefined) onProceed();
-      else if (result.wants_back && onGoBack) onGoBack();
+        statusRef.current = "idle";
+        setStatus("idle");
+        if (result.wants_complete && complete) complete();
+        else if (result.wants_summary && goSummary) goSummary();
+        else if (result.wants_proceed && proceed && result.value !== null && result.value !== undefined) proceed();
+        else if (result.wants_back && goBack) goBack();
       });
     } catch (err) {
       setError("Failed to process voice command. Please try again.");
