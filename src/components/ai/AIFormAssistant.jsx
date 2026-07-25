@@ -19,16 +19,21 @@ import VoiceFormAssistant from "./VoiceFormAssistant";
 
 export default function AIFormAssistant({ 
   formData, 
-  formType = "account", // "account" or "entity"
+  formType = "account",
   onSuggestionApply,
+  onVoiceApply,
+  onRequestSave,
   tenant
 }) {
-  // Voice handler: receives { field: value, ... } object and fans out to onSuggestionApply
+  // Voice handler: use the dedicated bulk onVoiceApply if provided, else fan out via onSuggestionApply
   const handleVoiceChanges = (changesObj) => {
-    if (!onSuggestionApply) return;
-    Object.entries(changesObj).forEach(([field, value]) => {
-      onSuggestionApply(field, value);
-    });
+    if (onVoiceApply) {
+      onVoiceApply(changesObj);
+    } else if (onSuggestionApply) {
+      Object.entries(changesObj).forEach(([field, value]) => {
+        onSuggestionApply(field, value);
+      });
+    }
   };
   const [suggestions, setSuggestions] = useState([]);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -184,6 +189,7 @@ Be specific and actionable.`;
           formData={formData}
           formType={formType}
           onApplyChanges={handleVoiceChanges}
+          onRequestSave={onRequestSave}
         />
       </div>
     );
@@ -271,6 +277,7 @@ Be specific and actionable.`;
             formData={formData}
             formType={formType}
             onApplyChanges={handleVoiceChanges}
+            onRequestSave={onRequestSave}
           />
           {/* Validation Issues */}
           {validationIssues.map((issue, idx) => (

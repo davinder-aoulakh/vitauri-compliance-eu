@@ -25,6 +25,7 @@ import BeneficiaryInputRenderer from "@/components/accounts/BeneficiaryInputRend
 import ControllingPersonInputRenderer from "@/components/accounts/ControllingPersonInputRenderer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import AIClassificationAssistant from "../ai/AIClassificationAssistant";
+import WorkflowVoiceAssistant from "../workflows/WorkflowVoiceAssistant";
 import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/workflowConditionUtils";
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
@@ -1120,6 +1121,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
           />
         )}
 
+        <WorkflowVoiceAssistant
+          summaryMode={true}
+          onComplete={!loading ? handleComplete : undefined}
+          onGoBack={() => setShowSummary(false)}
+        />
+
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button variant="outline" onClick={() => setShowSummary(false)} size="lg">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1271,6 +1278,41 @@ export default function AccountClassification({ account, onComplete, onCancel })
       {history.length > 0 && (
         <PreviousAnswers history={history} stepMap={stepMap} answers={answers} getStepOptions={getStepOptions} />
       )}
+
+      {/* Voice Assistant */}
+      <WorkflowVoiceAssistant
+        currentStep={currentNode}
+        answers={answers}
+        onApplyAnswer={(value) => {
+          const qt = currentNode.question_type;
+          if (qt === 'multi_field_input') {
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              setMultiFieldValues(prev => {
+                const merged = { ...prev, ...value };
+                setAnswers(p => ({ ...p, [currentNodeId]: merged }));
+                return merged;
+              });
+            }
+          } else if (qt === 'address_input') {
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              setAddressValues(prev => ({ ...prev, ...value }));
+              setAnswers(p => ({ ...p, [currentNodeId]: { ...(p[currentNodeId] || {}), ...value } }));
+            }
+          } else if (qt === 'file_upload') {
+            const dateStr = typeof value === 'string' ? value : (value?.date_received || null);
+            if (dateStr) {
+              setDateReceivedValue(dateStr);
+              setAnswers(p => ({ ...p, [currentNodeId]: { ...(p[currentNodeId] || { files: [] }), date_received: dateStr } }));
+            }
+          } else {
+            setSelectedValue(value);
+            setAnswers(p => ({ ...p, [currentNodeId]: value }));
+          }
+        }}
+        onProceed={canProceed() ? handleNext : undefined}
+        onGoBack={history.length > 0 ? handleBack : undefined}
+        onSummary={isActionNode(currentNode) && canProceed() ? handleNext : undefined}
+      />
 
       {/* AI Helper */}
       <AIWorkflowHelper
