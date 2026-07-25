@@ -1274,10 +1274,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         </CardContent>
       </Card>
 
-      {/* View Previous Answers */}
-      {history.length > 0 && (
-        <PreviousAnswers history={history} stepMap={stepMap} answers={answers} getStepOptions={getStepOptions} />
-      )}
+
 
       {/* Voice Assistant */}
       <WorkflowVoiceAssistant

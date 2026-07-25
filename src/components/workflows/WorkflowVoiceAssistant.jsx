@@ -379,11 +379,22 @@ Response schema:
               {confirmedValue !== null && (
                 <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 rounded-full px-2 py-0.5 mt-1">
                   <CheckCircle2 className="w-3 h-3" />
-                  {Array.isArray(confirmedValue)
-                    ? confirmedValue.join(", ")
-                    : typeof confirmedValue === "object"
-                    ? JSON.stringify(confirmedValue)
-                    : String(confirmedValue)}
+                  {(() => {
+                    // Show human-readable label, not raw backend value
+                    const opts = currentStep?.options || [];
+                    if (typeof confirmedValue === "string" && opts.length > 0) {
+                      const opt = opts.find(o => o.value === confirmedValue);
+                      return opt ? opt.label : confirmedValue;
+                    }
+                    if (Array.isArray(confirmedValue)) {
+                      return confirmedValue.map(v => {
+                        const opt = opts.find(o => o.value === v);
+                        return opt ? opt.label : v;
+                      }).join(", ");
+                    }
+                    if (typeof confirmedValue === "object") return "Answer applied";
+                    return String(confirmedValue);
+                  })()}
                 </span>
               )}
             </div>
