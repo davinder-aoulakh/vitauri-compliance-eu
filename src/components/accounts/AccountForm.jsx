@@ -27,8 +27,6 @@ import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
-  const formRef = React.useRef(null);
-  const formDataRef = React.useRef({});
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
   const [referencedData, setReferencedData] = useState([]);
   const [formData, setFormData] = useState({
@@ -306,20 +304,19 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
-    const currentFormData = formDataRef.current;
     
     // Validate account number uniqueness
-    const isValid = await validateAccountNumber(currentFormData.account_number, currentFormData.entity_id);
+    const isValid = await validateAccountNumber(formData.account_number, formData.entity_id);
     if (!isValid) return;
 
     // GAP 27: Validate account number type/format
-    if (currentFormData.account_number_type !== "No account number exists") {
-      if (!currentFormData.account_number?.trim()) {
-        const holderName = currentFormData.account_holder_name || `${currentFormData.first_name} ${currentFormData.last_name}`.trim() || "this account";
+    if (formData.account_number_type !== "No account number exists") {
+      if (!formData.account_number?.trim()) {
+        const holderName = formData.account_holder_name || `${formData.first_name} ${formData.last_name}`.trim() || "this account";
         alert(`Please enter an account number for ${holderName}, or select 'No account number exists' if one is not available.`);
         return;
       }
-      const formatErr = validateAccountNumberFormat(currentFormData.account_number, currentFormData.account_number_type);
+      const formatErr = validateAccountNumberFormat(formData.account_number, formData.account_number_type);
       if (formatErr) {
         setAccountNumberTypeError(formatErr);
         return;
@@ -327,41 +324,42 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
     
     // Validate mandatory fields for individual accounts
-    if (currentFormData.account_holder_type === 'individual') {
-      if (!currentFormData.first_name?.trim()) {
+    if (formData.account_holder_type === 'individual') {
+      if (!formData.first_name?.trim()) {
         alert("First Name is required for individual accounts");
         return;
       }
-      if (!currentFormData.last_name?.trim()) {
+      if (!formData.last_name?.trim()) {
         alert("Last Name is required for individual accounts");
         return;
       }
+
     }
     
     // Validate mandatory fields for entity accounts
-    if (currentFormData.account_holder_type === 'entity') {
-      if (!currentFormData.account_holder_name?.trim()) {
+    if (formData.account_holder_type === 'entity') {
+      if (!formData.account_holder_name?.trim()) {
         alert("Account Holder Name is required for entity accounts");
         return;
       }
     }
     
     // Validate mandatory address fields for both individual and entity accounts
-    if (!currentFormData.current_address?.street?.trim() || !currentFormData.current_address?.city?.trim() || 
-        !currentFormData.current_address?.state?.trim() || !currentFormData.current_address?.postal_code?.trim() || 
-        !currentFormData.current_address?.country?.trim()) {
+    if (!formData.current_address?.street?.trim() || !formData.current_address?.city?.trim() || 
+        !formData.current_address?.state?.trim() || !formData.current_address?.postal_code?.trim() || 
+        !formData.current_address?.country?.trim()) {
       alert("Current Address (all fields) is required");
       return;
     }
-    if (!currentFormData.account_holder_address?.street?.trim() || !currentFormData.account_holder_address?.city?.trim() || 
-        !currentFormData.account_holder_address?.state?.trim() || !currentFormData.account_holder_address?.postal_code?.trim() || 
-        !currentFormData.account_holder_address?.country?.trim()) {
+    if (!formData.account_holder_address?.street?.trim() || !formData.account_holder_address?.city?.trim() || 
+        !formData.account_holder_address?.state?.trim() || !formData.account_holder_address?.postal_code?.trim() || 
+        !formData.account_holder_address?.country?.trim()) {
       alert("Original Address (all fields) is required");
       return;
     }
     
     // Auto-detect indicia
-    const newIndicia = detectIndicia(currentFormData, tenant?.jurisdiction);
+    const newIndicia = detectIndicia(formData, tenant?.jurisdiction);
     
     // Determine if needs reclassification
     const needsReclassification = detectedChanges.length > 0 && 
@@ -369,57 +367,31 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       account.reportability_status !== 'pending_review';
 
     const updatedData = {
-      ...currentFormData,
+      ...formData,
       indicia_found: newIndicia.length > 0 ? newIndicia : undefined,
       needs_reclassification: needsReclassification
     };
     
     // For individual accounts, construct account_holder_name from first_name and last_name
-    if (currentFormData.account_holder_type === 'individual') {
-      updatedData.account_holder_name = `${currentFormData.first_name} ${currentFormData.last_name}`.trim();
+    if (formData.account_holder_type === 'individual') {
+      updatedData.account_holder_name = `${formData.first_name} ${formData.last_name}`.trim();
     }
 
     onSubmit(updatedData);
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRequestSave = () => {
-    if (formRef.current) formRef.current.requestSubmit();
-  };
-
-  // Bulk atomic voice apply — handles dot-notation
-  const handleVoiceApply = (changesObj) => {
-    setFormData(prev => {
-      let updated = { ...prev };
-      Object.entries(changesObj).forEach(([field, val]) => {
-        if (field.includes('.')) {
-          const [parent, child] = field.split('.');
-          updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: val } };
-        } else {
-          updated = { ...updated, [field]: val };
-        }
-      });
-      formDataRef.current = updated;
-      return updated;
-    });
-  };
-
-  // Handle AI suggestion application (single field)
+  // Handle AI suggestion application
   const handleAISuggestionApply = (field, value) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
-      setFormData(prev => {
-        const updated = { ...prev, [parent]: { ...prev[parent], [child]: value } };
-        formDataRef.current = updated;
-        return updated;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [parent]: { ...prev[parent], [child]: value }
+      }));
     } else {
       handleChange(field, value);
     }
@@ -447,19 +419,17 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, account_holder_address: { ...prev.account_holder_address, [field]: value } };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({
+      ...prev,
+      account_holder_address: { ...prev.account_holder_address, [field]: value }
+    }));
   };
 
   const handleCurrentAddressChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, current_address: { ...prev.current_address, [field]: value } };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({
+      ...prev,
+      current_address: { ...prev.current_address, [field]: value }
+    }));
   };
 
   const handleTaxResidenciesChange = (residencies) => {
@@ -467,15 +437,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* AI Form Assistant */}
       <AIFormAssistant
         formData={formData}
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
-        onVoiceApply={handleVoiceApply}
-        onRequestSave={handleRequestSave}
       />
 
       {/* Change Detection Alert */}

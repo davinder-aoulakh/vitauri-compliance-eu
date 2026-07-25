@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +12,8 @@ import {
 import { XCircle, Save, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
-import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 
 export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel }) {
-  const formRef = useRef(null);
-  const formDataRef = useRef({});
   const [formData, setFormData] = useState(controllingPerson || {
     account_id: account?.id || "",
     first_name: "",
@@ -37,41 +34,18 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formDataRef.current);
+    onSubmit(formData);
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, address: { ...prev.address, [field]: value } };
-      formDataRef.current = updated;
-      return updated;
-    });
-  };
-
-  const handleVoiceChanges = (changesObj) => {
-    setFormData(prev => {
-      let updated = { ...prev };
-      Object.entries(changesObj).forEach(([field, value]) => {
-        if (field.startsWith("address.")) {
-          const subField = field.replace("address.", "");
-          updated = { ...updated, address: { ...updated.address, [subField]: value } };
-        } else if (field === "address" && typeof value === "object") {
-          updated = { ...updated, address: { ...updated.address, ...value } };
-        } else {
-          updated = { ...updated, [field]: value };
-        }
-      });
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({
+      ...prev,
+      address: { ...prev.address, [field]: value }
+    }));
   };
 
   const handleTaxResidencyChange = (index, field, value) => {
@@ -95,15 +69,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-      {/* Voice Form Assistant */}
-      <VoiceFormAssistant
-        formData={formData}
-        formType="controlling_person"
-        onApplyChanges={handleVoiceChanges}
-        onRequestSave={() => formRef.current?.requestSubmit()}
-        onClose={onCancel}
-      />
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Information */}
       <Card className="border-2 border-indigo-100">
         <CardHeader className="bg-indigo-50/50">
