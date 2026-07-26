@@ -1266,8 +1266,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 currentStep={currentNode}
                 answers={answers}
                 onAnswer={(stepId, answer) => {
-                  setAnswers(p => ({ ...p, [stepId]: answer }));
-                  setSelectedValue(answer);
+                  if (currentNode.question_type === 'file_upload' && typeof answer === 'string') {
+                    // Voice returned a date for the date_received field
+                    setDateReceivedValue(answer);
+                  } else {
+                    setAnswers(p => ({ ...p, [stepId]: answer }));
+                    setSelectedValue(answer);
+                  }
                 }}
                 onNext={handleNext}
                 onBack={handleBack}
