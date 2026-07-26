@@ -1473,14 +1473,26 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     const cp = cpData[n];
     if (!cp.first_name && !cp.last_name) continue;
     const tax_residencies = [];
-    if (cp.tax1_country) tax_residencies.push({ country: cp.tax1_country, tin: cp.tax1_tin || "" });
-    if (cp.tax2_country) tax_residencies.push({ country: cp.tax2_country, tin: cp.tax2_tin || "" });
+    // Support both old (tin/tin2) and new (tax1_tin/tax2_tin) field names
+    const tin1 = cp.tax1_tin || cp.tin || "";
+    const tin2 = cp.tax2_tin || cp.tin2 || "";
+    if (cp.tax1_country) tax_residencies.push({ country: cp.tax1_country, country_code: cp.tax1_country_code || "", tin: tin1 });
+    if (cp.tax2_country) tax_residencies.push({ country: cp.tax2_country, country_code: cp.tax2_country_code || "", tin: tin2 });
+
+    // Clean date fields — skip boolean strings
+    const cleanDate = (v) => {
+      if (!v) return null;
+      const s = String(v).toLowerCase().trim();
+      if (s === "true" || s === "false" || s === "") return null;
+      return v;
+    };
+
     const cpRecord = {
       tenant_id: tenant.id,
       first_name: (cp.first_name || "").trim(),
       last_name: (cp.last_name || "").trim(),
       full_name: `${(cp.first_name || "").trim()} ${(cp.last_name || "").trim()}`.trim(),
-      date_of_birth: cp.date_of_birth || null,
+      date_of_birth: cleanDate(cp.date_of_birth),
       place_of_birth: cp.place_of_birth || null,
       place_of_birth_code: cp.place_of_birth_code || null,
       country_of_residence: cp.country_of_residence || null,
@@ -1491,13 +1503,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         state: cp.address_state || "",
         postal_code: cp.address_postal_code || "",
         country: cp.address_country || "",
+        country_code: cp.address_country_code || "",
       },
       tax_residencies,
       control_type: cp.control_type || null,
       ownership_percentage: cp.ownership_percentage ? parseFloat(cp.ownership_percentage) || null : null,
       self_certification_obtained: cp.self_cert_obtained ? parseBool(cp.self_cert_obtained) : false,
-      self_certification_receipt_date: cp.self_cert_date || null,
-      self_certification_request_date: cp.self_cert_request_date || null,
+      self_certification_receipt_date: cleanDate(cp.self_cert_date),
+      self_certification_request_date: cleanDate(cp.self_cert_request_date),
     };
     controllingPersons.push(cpRecord);
     }

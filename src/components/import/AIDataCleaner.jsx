@@ -210,8 +210,9 @@ export default function AIDataCleaner({
 
         if (holderType === 'entity') {
           const col = Object.entries(mappings).find(([_, f]) => f === 'account_holder_name')?.[0];
-          if (col && !row[col]?.trim()) {
-            issues.push({ row: rowNum, column: col, field: 'account_holder_name', value: '', type: 'missing_required', message: 'Missing required field: account_holder_name (required for entity holders)', severity: 'error' });
+          const val = col ? String(row[col] ?? '').trim() : '';
+          if (col && !val) {
+            issues.push({ row: rowNum, column: col, field: 'account_holder_name', value: '', type: 'missing_required', message: 'Missing required field: account_holder_name (required for entity holders)', severity: 'warning' });
           }
         } else if (holderType === 'individual') {
           ['first_name', 'last_name'].forEach(field => {
@@ -311,6 +312,10 @@ Return JSON:
   const isValidDate = (str) => {
     if (!str) return false;
     
+    // Boolean strings are not dates — treat as empty/missing, not invalid
+    const lower = String(str).toLowerCase().trim();
+    if (lower === 'true' || lower === 'false') return true; // skip validation, let boolean pass silently
+    
     // Accept YYYY-MM-DD format (target format)
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
       const date = new Date(str);
@@ -325,6 +330,9 @@ Return JSON:
     if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
       return false; // DD-MM-YYYY needs conversion
     }
+    
+    // Numeric-only values (Excel serial dates) — not a valid date string
+    if (/^\d+$/.test(str)) return false;
     
     // Try parsing as standard date
     const date = new Date(str);
@@ -374,6 +382,27 @@ Return JSON:
       case 'invalid_date':
         // Try to parse and standardize date from various formats
         if (!value) return value;
+        
+        // Boolean strings in date fields — treat as empty
+        const valLower = String(value).toLowerCase().trim();
+        if (valLower === 'true' || valLower === 'false') return '';
+        
+        // Excel serial date number (e.g., 28347)
+        if (/^\d+$/.test(value)) {
+          const serial = parseInt(value, 10);
+          if (serial > 1000 && serial < 100000) {
+            // Excel serial: days since 1900-01-01 (with Lotus 1-2-3 bug correction)
+            const excelEpoch = new Date(1899, 11, 30);
+            const d = new Date(excelEpoch.getTime() + serial * 86400000);
+            if (!isNaN(d.getTime())) {
+              const yr = d.getFullYear();
+              const mo = String(d.getMonth() + 1).padStart(2, '0');
+              const dy = String(d.getDate()).padStart(2, '0');
+              return `${yr}-${mo}-${dy}`;
+            }
+          }
+          return '';
+        }
         
         // Check for DD/MM/YYYY format
         const ddmmyyyyMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
