@@ -21,14 +21,14 @@ export default function AIFormAssistant({
   formData, 
   formType = "account", // "account" or "entity"
   onSuggestionApply,
-  tenant,
-  onRequestSave,  // replaces onSave — fires formRef.current.requestSubmit()
-  onClose,        // optional — closes/cancels the form
+  tenant
 }) {
-  // Voice handler: receives { field: value, ... } object — pass directly to onSuggestionApply (atomic bulk apply)
+  // Voice handler: receives { field: value, ... } object and fans out to onSuggestionApply
   const handleVoiceChanges = (changesObj) => {
     if (!onSuggestionApply) return;
-    onSuggestionApply(changesObj);
+    Object.entries(changesObj).forEach(([field, value]) => {
+      onSuggestionApply(field, value);
+    });
   };
   const [suggestions, setSuggestions] = useState([]);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -184,8 +184,6 @@ Be specific and actionable.`;
           formData={formData}
           formType={formType}
           onApplyChanges={handleVoiceChanges}
-          onRequestSave={onRequestSave}
-          onClose={onClose}
         />
       </div>
     );
@@ -273,8 +271,6 @@ Be specific and actionable.`;
             formData={formData}
             formType={formType}
             onApplyChanges={handleVoiceChanges}
-            onRequestSave={onRequestSave}
-            onClose={onClose}
           />
           {/* Validation Issues */}
           {validationIssues.map((issue, idx) => (

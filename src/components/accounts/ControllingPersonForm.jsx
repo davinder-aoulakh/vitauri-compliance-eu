@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { XCircle, Save, Plus, Trash2 } from "lucide-react";
-import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
 
@@ -33,49 +32,20 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
     is_reportable: null
   });
 
-  const formRef = useRef(null);
-  const formDataRef = useRef(formData);
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formDataRef.current);
+    onSubmit(formData);
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      formDataRef.current = updated;
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddressChange = (field, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, address: { ...prev.address, [field]: value } };
-      formDataRef.current = updated;
-      return updated;
-    });
-  };
-
-  // Atomic voice bulk-apply — handles nested dotted fields
-  const handleVoiceApply = (changesObj) => {
-    setFormData(prev => {
-      let updated = { ...prev };
-      Object.entries(changesObj).forEach(([field, val]) => {
-        if (field.includes(".")) {
-          const [parent, child] = field.split(".");
-          updated = { ...updated, [parent]: { ...(updated[parent] || {}), [child]: val } };
-        } else {
-          updated = { ...updated, [field]: val };
-        }
-      });
-      formDataRef.current = updated;
-      return updated;
-    });
-  };
-
-  const handleRequestSave = () => {
-    if (formRef.current) formRef.current.requestSubmit();
+    setFormData(prev => ({
+      ...prev,
+      address: { ...prev.address, [field]: value }
+    }));
   };
 
   const handleTaxResidencyChange = (index, field, value) => {
@@ -99,16 +69,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-      {/* Voice Form Assistant */}
-      <VoiceFormAssistant
-        formData={formData}
-        formType="controlling_person"
-        onApplyChanges={handleVoiceApply}
-        onRequestSave={handleRequestSave}
-        onClose={onCancel}
-      />
-
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Information */}
       <Card className="border-2 border-indigo-100">
         <CardHeader className="bg-indigo-50/50">
