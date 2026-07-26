@@ -134,6 +134,9 @@ export default function VoiceWorkflowAssistant({ currentStep, answers, onAnswer,
       case "file_upload":
         typeGuidance = "This is a file upload step. The file must be uploaded manually by the user. However, if the step requires a 'Date Received', the user can speak the date and you should extract it as a YYYY-MM-DD string in the answer. If the user says 'next', 'proceed', 'done', or 'continue', set should_next to true.";
         break;
+      case "controlling_person_input":
+        typeGuidance = "This step requires adding controlling persons manually using a form. Voice cannot fill the form directly. Use voice only for navigation: if the user says 'next', 'save', 'continue', 'proceed', 'done' — set should_next to true. If they say 'back' or 'previous' — set should_back to true. Set answer to null.";
+        break;
       case "address_input":
         typeGuidance = "This requires an address. Extract street, city, state, postal_code, country, tax_residence_country, and tin from what the user says. Return as an object.";
         break;
@@ -257,7 +260,7 @@ Only set should_next or should_back if user explicitly asked to navigate. Do not
   if (!isSupported) return null;
 
   // Don't show for step types that truly can't be voice-driven
-  const noInputTypes = ["controlling_person_input", "beneficiary_input"];
+  const noInputTypes = ["beneficiary_input"];
   if (currentStep && noInputTypes.includes(currentStep.question_type)) return null;
 
   return (

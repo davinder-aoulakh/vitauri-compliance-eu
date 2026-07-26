@@ -1121,6 +1121,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
           />
         )}
 
+        <VoiceWorkflowAssistant
+          currentStep={{ step_id: 'summary', question_type: 'info', step_title: 'Classification Complete', question_text: 'Review your answers and confirm the classification.' }}
+          answers={answers}
+          onAnswer={() => {}}
+          onNext={handleComplete}
+          onBack={() => setShowSummary(false)}
+        />
+
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button variant="outline" onClick={() => setShowSummary(false)} size="lg">
             <ArrowLeft className="w-4 h-4 mr-2" />
