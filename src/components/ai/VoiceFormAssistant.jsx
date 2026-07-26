@@ -12,7 +12,7 @@ import { Mic, MicOff, Loader2, CheckCircle2, X, Volume2, MessageCircle } from "l
  * 3. Auto-applies changes and speaks the response back
  * 4. Stays in conversation — user can continue speaking follow-ups
  */
-export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges }) {
+export default function VoiceFormAssistant({ formData, formType = "account", onApplyChanges, onSubmit }) {
   const [status, setStatus] = useState("idle"); // idle | listening | processing | review | speaking
   const [transcript, setTranscript] = useState("");
   const [pendingChanges, setPendingChanges] = useState([]);
@@ -151,7 +151,8 @@ Your job:
 2. Write a SHORT, natural conversational reply (1-2 sentences max) confirming what you changed.
 3. If the user changed an address country, mention you've updated it and ask if there are related fields they'd like to update (like postal code or tax residency).
 4. If nothing changed (e.g. a question or unclear command), just reply conversationally and set changes to empty.
-5. End your reply with a brief open invitation like "Anything else you'd like me to update?" or "What else can I help with?"
+ 5. If the user says something like "save", "save the changes", "update", "submit", "save and update", "save now" — set should_save to true and confirm you are saving.
+ 6. End your reply with a brief open invitation like "Anything else you'd like me to update?" or "What else can I help with?" (unless saving).
 
 Keep replies warm and concise. Do not be robotic.`;
 
@@ -172,13 +173,15 @@ Keep replies warm and concise. Do not be robotic.`;
                 }
               }
             },
-            assistant_reply: { type: "string" }
+            assistant_reply: { type: "string" },
+            should_save: { type: "boolean" }
           }
         }
       });
 
       const changes = result.changes || [];
       const reply = result.assistant_reply || "Done! Anything else you'd like me to update?";
+      const shouldSave = result.should_save === true;
 
       // Update conversation history
       setConversationHistory(prev => [
@@ -203,6 +206,11 @@ Keep replies warm and concise. Do not be robotic.`;
         });
         onApplyChanges(changeObj);
         setPendingChanges(changes);
+      }
+
+      // If user said save/update/submit — trigger form submit
+      if (shouldSave && onSubmit) {
+        onSubmit();
       }
 
       // Speak the reply, then go back to ready state (not listening — user clicks mic)

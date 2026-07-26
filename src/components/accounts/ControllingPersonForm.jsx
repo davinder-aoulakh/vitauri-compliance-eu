@@ -90,6 +90,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
         formData={formData}
         formType="controlling_person"
         onApplyChanges={handleVoiceChanges}
+        onSubmit={() => document.getElementById("cp-form-submit-btn")?.click()}
       />
 
       {/* Basic Information */}
@@ -348,7 +349,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
           <XCircle className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+        <Button id="cp-form-submit-btn" type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">
           <Save className="w-4 h-4 mr-2" />
           {controllingPerson ? "Update Controlling Person" : "Add Controlling Person"}
         </Button>

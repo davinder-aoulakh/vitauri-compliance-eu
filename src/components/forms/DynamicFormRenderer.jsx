@@ -686,6 +686,7 @@ export default function DynamicFormRenderer({
         formData={formData}
         formType={entityType === "Entity" ? "entity" : "account"}
         onApplyChanges={handleVoiceChanges}
+        onSubmit={() => document.getElementById("dynamic-form-submit-btn")?.click()}
       />
 
       {hasSections ? (
@@ -723,6 +724,7 @@ export default function DynamicFormRenderer({
           Cancel
         </Button>
         <Button 
+          id="dynamic-form-submit-btn"
           type="submit" 
           className="bg-indigo-600 hover:bg-indigo-700 text-white"
           disabled={isValidatingEntityName || !!entityNameError}

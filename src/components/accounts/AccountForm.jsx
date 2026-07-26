@@ -25,6 +25,7 @@ import BeneficiaryManager from "./BeneficiaryManager";
 import ControllingPersonManager from "./ControllingPersonManager";
 import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
+import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
@@ -444,6 +445,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
+      />
+
+      {/* Voice Form Assistant */}
+      <VoiceFormAssistant
+        formData={formData}
+        formType="account"
+        onApplyChanges={handleAISuggestionApply}
+        onSubmit={() => document.getElementById("account-form-submit-btn")?.click()}
       />
 
       {/* Change Detection Alert */}
@@ -1811,6 +1820,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
           Cancel
         </Button>
         <Button 
+          id="account-form-submit-btn"
           type="submit" 
           className="bg-indigo-600 hover:bg-indigo-700 text-white"
           disabled={isValidating || !!accountNumberError}
