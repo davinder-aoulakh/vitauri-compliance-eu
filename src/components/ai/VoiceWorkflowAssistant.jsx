@@ -132,8 +132,14 @@ export default function VoiceWorkflowAssistant({ currentStep, answers, onAnswer,
         typeGuidance = "This requires a date. Convert what the user says to YYYY-MM-DD format.";
         break;
       case "address_input":
-        typeGuidance = "This requires an address. Extract street, city, state, postal_code, country, tax_residence_country, and tin from what the user says.";
+        typeGuidance = "This requires an address. Extract street, city, state, postal_code, country, tax_residence_country, and tin from what the user says. Return as an object.";
         break;
+      case "multi_field_input": {
+        const fields = currentStep.multi_fields || [];
+        const fieldList = fields.map(f => `  - "${f.field_label || f.field_id}" (id: "${f.field_id}", type: "${f.field_type}")`).join("\n");
+        typeGuidance = `This is a multi-field form. Extract answers for each field from what the user says and return as an object keyed by field_id.\nFields:\n${fieldList}`;
+        break;
+      }
       case "result":
       case "info":
         typeGuidance = "This is an informational step with no input required. User can say 'next' to proceed.";
@@ -247,8 +253,8 @@ Only set should_next or should_back if user explicitly asked to navigate. Do not
 
   if (!isSupported) return null;
 
-  // Don't show for step types that don't have user input
-  const noInputTypes = ["controlling_person_input", "beneficiary_input", "file_upload", "address_input", "multi_field_input"];
+  // Don't show for step types that truly can't be voice-driven
+  const noInputTypes = ["controlling_person_input", "beneficiary_input", "file_upload"];
   if (currentStep && noInputTypes.includes(currentStep.question_type)) return null;
 
   return (
