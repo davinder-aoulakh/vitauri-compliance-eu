@@ -1714,6 +1714,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </CardContent>
         </Card>
 
+        <VoiceWorkflowAssistant
+          currentStep={{ step_id: 'summary', question_type: 'info', step_title: 'Classification Complete', question_text: 'Review your answers and confirm the classification.' }}
+          answers={answers}
+          onAnswer={() => {}}
+          onNext={handleComplete}
+          onBack={() => setShowSummary(false)}
+        />
+
         <div className="flex justify-between gap-3 pt-4 border-t">
           <Button
             type="button"
