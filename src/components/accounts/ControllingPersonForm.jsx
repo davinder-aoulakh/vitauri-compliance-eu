@@ -12,6 +12,7 @@ import {
 import { XCircle, Save, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
+import VoiceFormAssistant from "@/components/ai/VoiceFormAssistant";
 
 export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel }) {
   const [formData, setFormData] = useState(controllingPerson || {
@@ -68,8 +69,29 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
     }
   };
 
+  const handleVoiceChanges = (changes) => {
+    setFormData(prev => {
+      const updated = { ...prev };
+      Object.entries(changes).forEach(([key, value]) => {
+        if (key === "address") {
+          updated.address = { ...prev.address, ...value };
+        } else {
+          updated[key] = value;
+        }
+      });
+      return updated;
+    });
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Voice Input */}
+      <VoiceFormAssistant
+        formData={formData}
+        formType="controlling_person"
+        onApplyChanges={handleVoiceChanges}
+      />
+
       {/* Basic Information */}
       <Card className="border-2 border-indigo-100">
         <CardHeader className="bg-indigo-50/50">

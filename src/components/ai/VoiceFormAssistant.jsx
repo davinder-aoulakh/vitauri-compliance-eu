@@ -114,6 +114,14 @@ export default function VoiceFormAssistant({ formData, formType = "account", onA
 - account_holder_is_alive (true/false), is_pre_existing (true/false)
 - account_type: depository | custodial | equity_debt_interest | cash_value_insurance | annuity
 - status: active | closed | dormant`
+    : formType === "controlling_person"
+    ? `Available fields:
+- first_name, last_name
+- date_of_birth (YYYY-MM-DD)
+- control_type: legal_person_ownership | legal_person_other_means | legal_person_senior_managing_official | trust_settlor | trust_trustee | trust_protector | trust_beneficiary | trust_other | legal_arrangement_settlor_equivalent | legal_arrangement_trustee_equivalent | legal_arrangement_protector_equivalent | legal_arrangement_beneficiary_equivalent | legal_arrangement_other_equivalent
+- ownership_percentage (number 0-100)
+- is_reportable (true/false)
+- address.street, address.city, address.state, address.postal_code, address.country`
     : `Available fields:
 - entity_name
 - entity_type: corporation | trust | partnership | fund | branch | other
