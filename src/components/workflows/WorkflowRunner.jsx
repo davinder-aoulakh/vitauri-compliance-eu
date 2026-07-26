@@ -28,6 +28,7 @@ import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
 import { computePrefillAnswers } from "./workflowPrefillUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
+import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1892,7 +1893,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               </div>
             </div>
 
-            <div className="pl-16">
+            <div className="pl-16 space-y-4">
+              {/* Voice input for workflow steps */}
+              <VoiceWorkflowAssistant
+                currentStep={currentStep}
+                answers={answers}
+                onAnswer={handleAnswer}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
               {renderQuestionInput()}
             </div>
           </div>
