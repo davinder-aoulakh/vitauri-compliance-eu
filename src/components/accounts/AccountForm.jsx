@@ -445,13 +445,6 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
         formType="account"
         tenant={tenant}
         onSuggestionApply={handleAISuggestionApply}
-      />
-
-      {/* Voice Form Assistant */}
-      <VoiceFormAssistant
-        formData={formData}
-        formType="account"
-        onApplyChanges={handleAISuggestionApply}
         onSubmit={() => document.getElementById("account-form-submit-btn")?.click()}
       />
 
