@@ -19,6 +19,7 @@ import {
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
+import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 
 export default function EntityClassification({ entity, onComplete, onCancel }) {
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -1397,7 +1398,17 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
             </div>
 
             {/* Render current node */}
-            <div className="pl-16">
+            <div className="pl-16 space-y-4">
+              <VoiceWorkflowAssistant
+                currentStep={currentNode}
+                answers={answers}
+                onAnswer={(stepId, answer) => {
+                  setAnswers(p => ({ ...p, [stepId]: answer }));
+                  setSelectedValue(answer);
+                }}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
               {renderNode()}
             </div>
           </div>

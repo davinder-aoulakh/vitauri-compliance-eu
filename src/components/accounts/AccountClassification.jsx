@@ -32,6 +32,7 @@ import { computePrefillAnswers } from "../workflows/workflowPrefillUtils";
 import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
+import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 
 // ─── AUTOFILL DEBUG LOGGER ───────────────────────────────────────────────────
 // Watches for DOM mutations that add address-like inputs, and logs every
@@ -1260,7 +1261,17 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 )}
               </div>
             </div>
-            <div className="pl-16">
+            <div className="pl-16 space-y-4">
+              <VoiceWorkflowAssistant
+                currentStep={currentNode}
+                answers={answers}
+                onAnswer={(stepId, answer) => {
+                  setAnswers(p => ({ ...p, [stepId]: answer }));
+                  setSelectedValue(answer);
+                }}
+                onNext={handleNext}
+                onBack={handleBack}
+              />
               {renderNode()}
             </div>
           </div>
