@@ -1204,46 +1204,17 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             <div className="space-y-4">
               {/* Pre-existing Account */}
               <div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
-                    Pre-existing Account (opened before Dec 31, 2017)
-                  </Label>
-                  {isPreExistingLocked && (
-                    <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
-                      <Lock className="w-3 h-3" />
-                      Auto-determined
-                    </span>
-                  )}
-                </div>
+                <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
+                  Pre-existing Account (opened before Dec 31, 2017)
+                </Label>
                 <div className="mt-2">
                   {isPreExistingLocked ? (
-                    <div className="space-y-2">
-                      <Alert className="bg-amber-50 border-amber-200 py-2 px-3">
-                        <Lock className="w-3.5 h-3.5 text-amber-600" />
-                        <AlertDescription className="text-xs text-amber-800 ml-1">
-                          This answer was automatically determined from the account opening date and cannot be changed.
-                        </AlertDescription>
-                      </Alert>
-                      <RadioGroup
-                        value={formData.is_pre_existing ? "yes" : "no"}
-                        className="flex gap-4"
-                        disabled
-                      >
-                        <div className="flex items-center space-x-2 opacity-70">
-                          <RadioGroupItem value="yes" id="pre_existing_yes" disabled />
-                          <Label htmlFor="pre_existing_yes" className="font-normal cursor-not-allowed text-slate-600">
-                            Yes
-                          </Label>
-                          {formData.is_pre_existing && <Lock className="w-3.5 h-3.5 text-amber-500" />}
-                        </div>
-                        <div className="flex items-center space-x-2 opacity-70">
-                          <RadioGroupItem value="no" id="pre_existing_no" disabled />
-                          <Label htmlFor="pre_existing_no" className="font-normal cursor-not-allowed text-slate-600">
-                            No
-                          </Label>
-                          {!formData.is_pre_existing && <Lock className="w-3.5 h-3.5 text-amber-500" />}
-                        </div>
-                      </RadioGroup>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border ${formData.is_pre_existing ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                        {formData.is_pre_existing ? 'Yes' : 'No'}
+                        <Lock className="w-3 h-3 opacity-50" />
+                      </span>
+                      <span className="text-xs text-slate-400 italic">Set from account opening date</span>
                     </div>
                   ) : (
                     <RadioGroup
@@ -1262,9 +1233,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     </RadioGroup>
                   )}
                   <p className="text-xs text-slate-500 mt-1">
-                    {isPreExistingLocked
-                      ? `Determined from account opening date: ${formData.account_creation_date}`
-                      : "Pre-existing accounts may have different due diligence requirements under CRS"}
+                    Pre-existing accounts may have different due diligence requirements under CRS
                   </p>
                 </div>
               </div>
