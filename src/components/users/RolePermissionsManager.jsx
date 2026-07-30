@@ -9,6 +9,27 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Eye, Edit, Trash2, Plus, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const ROLES = [
+  { value: 'tenant_admin', label: 'Administrator', color: 'bg-blue-100 text-blue-800' },
+  { value: 'tenant_supervisor', label: 'Supervisor', color: 'bg-purple-100 text-purple-800' },
+  { value: 'tenant_user', label: 'User', color: 'bg-green-100 text-green-800' }
+];
+
+const RESOURCES = [
+  { value: 'Account', label: 'Accounts', icon: Eye },
+  { value: 'Entity', label: 'Entities', icon: Shield },
+  { value: 'Report', label: 'Reports', icon: CheckCircle2 },
+  { value: 'User', label: 'User Management', icon: Shield },
+  { value: 'Dashboard', label: 'Dashboards', icon: Eye },
+  { value: 'Settings', label: 'Settings', icon: Edit }
+];
+
+const DEFAULT_VALUES = {
+  tenant_admin:     { can_view: true,  can_create: true,  can_edit: true,  can_delete: true  },
+  tenant_supervisor:{ can_view: true,  can_create: true,  can_edit: true,  can_delete: true  },
+  tenant_user:      { can_view: false, can_create: false, can_edit: false, can_delete: false },
+};
+
 export default function RolePermissionsManager({ tenant }) {
   const queryClient = useQueryClient();
   const [hasChanges, setHasChanges] = useState(false);
@@ -24,20 +45,39 @@ export default function RolePermissionsManager({ tenant }) {
   });
 
   useEffect(() => {
-    if (permissions.length > 0) {
-      const permMap = {};
-      permissions.forEach(p => {
-        const key = `${p.role_name}___${p.resource_type}`;
-        permMap[key] = {
-          can_view: p.can_view,
-          can_create: p.can_create,
-          can_edit: p.can_edit,
-          can_delete: p.can_delete,
-          id: p.id
-        };
+    // Build a map from saved DB records
+    const permMap = {};
+    permissions.forEach(p => {
+      const key = `${p.role_name}___${p.resource_type}`;
+      permMap[key] = {
+        can_view: p.can_view,
+        can_create: p.can_create,
+        can_edit: p.can_edit,
+        can_delete: p.can_delete,
+        id: p.id
+      };
+    });
+
+    // Pre-populate toggles for roles/resources that have no DB record yet:
+    // - tenant_admin: all ON (display only — admins always have full access)
+    // - tenant_supervisor: all ON by default
+    // - tenant_user: all OFF by default (deny by default)
+    const defaultValues = {
+      tenant_admin: { can_view: true, can_create: true, can_edit: true, can_delete: true },
+      tenant_supervisor: { can_view: true, can_create: true, can_edit: true, can_delete: true },
+      tenant_user: { can_view: false, can_create: false, can_edit: false, can_delete: false },
+    };
+
+    ROLES.forEach(role => {
+      RESOURCES.forEach(resource => {
+        const key = `${role.value}___${resource.value}`;
+        if (!permMap[key]) {
+          permMap[key] = { ...DEFAULT_VALUES[role.value] };
+        }
       });
-      setLocalPermissions(permMap);
-    }
+    });
+
+    setLocalPermissions(permMap);
   }, [permissions]);
 
   const savePermissionsMutation = useMutation({
@@ -110,20 +150,8 @@ export default function RolePermissionsManager({ tenant }) {
     return localPermissions[key]?.[permission] || false;
   };
 
-  const roles = [
-    { value: 'tenant_admin', label: 'Administrator', color: 'bg-blue-100 text-blue-800' },
-    { value: 'tenant_supervisor', label: 'Supervisor', color: 'bg-purple-100 text-purple-800' },
-    { value: 'tenant_user', label: 'User', color: 'bg-green-100 text-green-800' }
-  ];
-
-  const resources = [
-    { value: 'Account', label: 'Accounts', icon: Eye },
-    { value: 'Entity', label: 'Entities', icon: Shield },
-    { value: 'Report', label: 'Reports', icon: CheckCircle2 },
-    { value: 'User', label: 'User Management', icon: Shield },
-    { value: 'Dashboard', label: 'Dashboards', icon: Eye },
-    { value: 'Settings', label: 'Settings', icon: Edit }
-  ];
+  const roles = ROLES;
+  const resources = RESOURCES;
 
   const permissionTypes = [
     { key: 'can_view', label: 'View', icon: Eye, color: 'text-blue-600' },

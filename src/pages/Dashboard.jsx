@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import WidgetPreview from "@/components/dashboard/WidgetPreview";
 import GuidedTour from "@/components/tours/GuidedTour";
 import { getTourByPage } from "@/components/tours/tourDefinitions";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -61,6 +62,7 @@ export default function Dashboard() {
   };
 
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+  const { can } = usePermissions(user, tenant);
 
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
@@ -274,15 +276,17 @@ export default function Dashboard() {
                   </Button>
                 </Link>
               )}
-              <Link to={createPageUrl("Reports")}>
-                <Button 
-                  className="gap-2 text-white shadow-lg hover:shadow-xl transition-all"
-                  style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-                >
-                  <FileCheck className="w-4 h-4" />
-                  Generate Report
-                </Button>
-              </Link>
+              {can('Report', 'create') && (
+                <Link to={createPageUrl("Reports")}>
+                  <Button 
+                    className="gap-2 text-white shadow-lg hover:shadow-xl transition-all"
+                    style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    Generate Report
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -387,21 +391,25 @@ export default function Dashboard() {
                 </Button>
               </Link>
             )}
-            <Link to={createPageUrl("Entities")}>
-              <Button variant="outline" className="gap-2">
-                <Building2 className="w-4 h-4" />
-                Add Entity
-              </Button>
-            </Link>
-            <Link to={createPageUrl("Reports")}>
-              <Button 
-                className="gap-2 text-white shadow-lg hover:shadow-xl transition-all"
-                style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-              >
-                <FileCheck className="w-4 h-4" />
-                Generate Report
-              </Button>
-            </Link>
+            {can('Entity', 'create') && (
+              <Link to={createPageUrl("Entities")}>
+                <Button variant="outline" className="gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Add Entity
+                </Button>
+              </Link>
+            )}
+            {can('Report', 'create') && (
+              <Link to={createPageUrl("Reports")}>
+                <Button 
+                  className="gap-2 text-white shadow-lg hover:shadow-xl transition-all"
+                  style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+                >
+                  <FileCheck className="w-4 h-4" />
+                  Generate Report
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 

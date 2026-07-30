@@ -204,7 +204,10 @@ export default function EntitiesPage() {
     }
   };
 
-  const accessibleEntities = isAdmin ? entities : entities.filter(e => !!entityAccessMap[e.id]);
+  // Entity-level access: only restrict if user has explicit UserEntityAccess records.
+  // If none exist (common for tenant_user with only role-level permissions), show all tenant records.
+  const hasEntityRestrictions = !isAdmin && userEntityAccess.length > 0;
+  const accessibleEntities = hasEntityRestrictions ? entities.filter(e => !!entityAccessMap[e.id]) : entities;
 
   const filteredEntities = accessibleEntities.filter(entity => {
     const matchesSearch = entity.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
