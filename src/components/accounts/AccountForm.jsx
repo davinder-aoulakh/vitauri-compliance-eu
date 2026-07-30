@@ -1212,9 +1212,8 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     <div className="flex items-center gap-3 mt-1">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border ${formData.is_pre_existing ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
                         {formData.is_pre_existing ? 'Yes' : 'No'}
-                        <Lock className="w-3 h-3 opacity-50" />
+                        <Lock className="w-3 h-3 opacity-40" />
                       </span>
-                      <span className="text-xs text-slate-400 italic">Set from account opening date</span>
                     </div>
                   ) : (
                     <RadioGroup
