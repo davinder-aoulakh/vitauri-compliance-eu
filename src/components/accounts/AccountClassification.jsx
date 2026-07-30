@@ -633,7 +633,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const answer = answers[currentNodeId];
     // For the fiduciary trust step: only lock if RFI entity is Investment Entity Type A
     const FIDUCIARY_STEP_ID = 'step_1769573962356';
-    const isTypeA = rfiEntityFiType === 'investment_entity_type_a' || rfiEntityFiType === 'type_a';
+    const fiTypeNorm = (rfiEntityFiType || '').toLowerCase().replace(/[\s_-]/g, '');
+    const isTypeA = fiTypeNorm.includes('typea') || fiTypeNorm.includes('investmententitytypea');
     const isLocked = prefilledSteps.has(currentNodeId) && (
       currentNodeId !== FIDUCIARY_STEP_ID || isTypeA
     );
