@@ -1208,29 +1208,26 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   Pre-existing Account (opened before Dec 31, 2017)
                 </Label>
                 <div className="mt-2">
-                  {isPreExistingLocked ? (
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border ${formData.is_pre_existing ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
-                        {formData.is_pre_existing ? 'Yes' : 'No'}
-                        <Lock className="w-3 h-3 opacity-40" />
-                      </span>
+                  <RadioGroup
+                    value={formData.is_pre_existing ? "yes" : "no"}
+                    onValueChange={isPreExistingLocked ? undefined : (value) => handleChange("is_pre_existing", value === "yes")}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="pre_existing_yes" disabled={isPreExistingLocked} />
+                      <Label htmlFor="pre_existing_yes" className={`font-normal ${isPreExistingLocked ? 'cursor-default' : 'cursor-pointer'}`}>
+                        Yes
+                        {isPreExistingLocked && formData.is_pre_existing && <Lock className="inline w-3 h-3 ml-1 opacity-40" />}
+                      </Label>
                     </div>
-                  ) : (
-                    <RadioGroup
-                      value={formData.is_pre_existing ? "yes" : "no"}
-                      onValueChange={(value) => handleChange("is_pre_existing", value === "yes")}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yes" id="pre_existing_yes" />
-                        <Label htmlFor="pre_existing_yes" className="font-normal cursor-pointer">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="no" id="pre_existing_no" />
-                        <Label htmlFor="pre_existing_no" className="font-normal cursor-pointer">No</Label>
-                      </div>
-                    </RadioGroup>
-                  )}
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="pre_existing_no" disabled={isPreExistingLocked} />
+                      <Label htmlFor="pre_existing_no" className={`font-normal ${isPreExistingLocked ? 'cursor-default' : 'cursor-pointer'}`}>
+                        No
+                        {isPreExistingLocked && !formData.is_pre_existing && <Lock className="inline w-3 h-3 ml-1 opacity-40" />}
+                      </Label>
+                    </div>
+                  </RadioGroup>
                   <p className="text-xs text-slate-500 mt-1">
                     Pre-existing accounts may have different due diligence requirements under CRS
                   </p>
