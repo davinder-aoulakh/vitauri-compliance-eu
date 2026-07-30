@@ -111,6 +111,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [selectedValue, setSelectedValue] = useState(null);
   const [dateReceivedValue, setDateReceivedValue] = useState("");
   const [prefilledSteps, setPrefilledSteps] = useState(new Set());
+  const [rfiEntityFiType, setRfiEntityFiType] = useState(null);
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
@@ -204,6 +205,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
       }
       linkedEntityRef.current = entityRecord;
+      setRfiEntityFiType(entityRecord?.fi_type || null);
       setSelectedWorkflow(chosenWorkflow);
 
       // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
@@ -629,7 +631,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const renderNode = () => {
     const answer = answers[currentNodeId];
-    const isLocked = prefilledSteps.has(currentNodeId);
+    // For the fiduciary trust step: only lock if RFI entity is Investment Entity Type A
+    const FIDUCIARY_STEP_ID = 'step_1769573962356';
+    const isTypeA = rfiEntityFiType === 'investment_entity_type_a' || rfiEntityFiType === 'type_a';
+    const isLocked = prefilledSteps.has(currentNodeId) && (
+      currentNodeId !== FIDUCIARY_STEP_ID || isTypeA
+    );
 
     switch (currentNode.question_type) {
       case 'yes_no': {
