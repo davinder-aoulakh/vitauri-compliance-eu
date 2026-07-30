@@ -117,6 +117,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   });
 
   const [isPreExistingLocked, setIsPreExistingLocked] = useState(false);
+
+  // Investment Entity Type A: if the RFI entity is an investment_entity, fiduciary trust is always Yes and locked
+  const selectedEntity = entities?.find(e => e.id === formData.entity_id);
+  const isFiduciaryTrustLocked = selectedEntity?.fi_type === 'investment_entity';
   const [detectedChanges, setDetectedChanges] = useState([]);
   const [initialData, setInitialData] = useState(null);
   const [accountNumberError, setAccountNumberError] = useState("");
@@ -155,6 +159,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
       setIsPreExistingLocked(false);
     }
   }, [formData.account_creation_date]);
+
+  // Force fiduciary trust = true for Investment Entity workflow
+  useEffect(() => {
+    if (isFiduciaryTrustLocked && !formData.entity_managed_by_fiduciary_trust) {
+      setFormData(prev => ({ ...prev, entity_managed_by_fiduciary_trust: true }));
+    }
+  }, [isFiduciaryTrustLocked, formData.entity_id]);
 
   // Handle "Same as Original Address" checkbox
   useEffect(() => {
@@ -1445,21 +1456,29 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Entity Account Holder Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Entity Professionally Managed by Fiduciary Trust?</Label>
+                  <Label className="flex items-center gap-1.5">
+                    Entity Professionally Managed by Fiduciary Trust?
+                    {isFiduciaryTrustLocked && <Lock className="w-3 h-3 text-slate-400" />}
+                  </Label>
                   <RadioGroup
                     value={formData.entity_managed_by_fiduciary_trust ? "yes" : "no"}
-                    onValueChange={(value) => handleChange("entity_managed_by_fiduciary_trust", value === "yes")}
+                    onValueChange={isFiduciaryTrustLocked ? undefined : (value) => handleChange("entity_managed_by_fiduciary_trust", value === "yes")}
                     className="flex gap-4 mt-1.5"
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="fiduciary_yes" />
-                      <Label htmlFor="fiduciary_yes" className="font-normal cursor-pointer">Yes</Label>
+                      <RadioGroupItem value="yes" id="fiduciary_yes" disabled={isFiduciaryTrustLocked} />
+                      <Label htmlFor="fiduciary_yes" className={`font-normal ${isFiduciaryTrustLocked ? 'cursor-default' : 'cursor-pointer'}`}>Yes</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="fiduciary_no" />
-                      <Label htmlFor="fiduciary_no" className="font-normal cursor-pointer">No</Label>
+                      <RadioGroupItem value="no" id="fiduciary_no" disabled={isFiduciaryTrustLocked} />
+                      <Label htmlFor="fiduciary_no" className={`font-normal ${isFiduciaryTrustLocked ? 'cursor-default' : 'cursor-pointer'}`}>No</Label>
                     </div>
                   </RadioGroup>
+                  {isFiduciaryTrustLocked && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Automatically set — this RFI is an Investment Entity (Type A).
+                    </p>
+                  )}
                 </div>
 
                 <div>
