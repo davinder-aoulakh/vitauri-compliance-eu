@@ -45,6 +45,7 @@ import ReportExportDialog from "../components/reports/ReportExportDialog";
 import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
 import { PlayCircle } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function ReportsPage() {
   const [user, setUser] = useState(null);
@@ -88,6 +89,7 @@ export default function ReportsPage() {
   };
 
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+  const { can } = usePermissions(user, tenant);
 
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
@@ -258,14 +260,16 @@ export default function ReportsPage() {
             Page Tour
           </Button>
         )}
-          <Button 
-            onClick={() => setShowWizard(true)}
-            className="gap-2 text-white shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-          >
-            <Plus className="w-4 h-4" />
-            Create New Report
-          </Button>
+          {can('Report', 'create') && (
+            <Button 
+              onClick={() => setShowWizard(true)}
+              className="gap-2 text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+            >
+              <Plus className="w-4 h-4" />
+              Create New Report
+            </Button>
+          )}
         </div>
       </div>
 
@@ -357,10 +361,12 @@ export default function ReportsPage() {
                 <p className="text-slate-600 mb-6">
                   Create your first CRS report to get started
                 </p>
-                <Button onClick={() => setShowWizard(true)} style={{ backgroundColor: primaryColor }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create First Report
-                </Button>
+                {can('Report', 'create') && (
+                  <Button onClick={() => setShowWizard(true)} style={{ backgroundColor: primaryColor }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Report
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -431,33 +437,37 @@ export default function ReportsPage() {
                                   Version History
                                 </DropdownMenuItem>
                                 
-                                {report.status === 'draft' && (
+                                {can('Report', 'edit') && report.status === 'draft' && (
                                   <DropdownMenuItem onClick={() => handleGenerateXML(report)}>
                                     <FileCode className="w-4 h-4 mr-2" />
                                     Generate XML
                                   </DropdownMenuItem>
                                 )}
-                                
+
                                 {report.xml_file_url && (
                                   <>
                                     <DropdownMenuItem onClick={() => downloadXML(report)}>
                                       <Download className="w-4 h-4 mr-2" />
                                       Download XML
                                     </DropdownMenuItem>
-                                    
-                                    <DropdownMenuItem onClick={() => handleGenerateXML(report)}>
-                                      <FileCode className="w-4 h-4 mr-2" />
-                                      Regenerate XML
-                                    </DropdownMenuItem>
+
+                                    {can('Report', 'edit') && (
+                                      <DropdownMenuItem onClick={() => handleGenerateXML(report)}>
+                                        <FileCode className="w-4 h-4 mr-2" />
+                                        Regenerate XML
+                                      </DropdownMenuItem>
+                                    )}
                                   </>
                                 )}
-                                
-                                <DropdownMenuItem onClick={() => handleManageSubmission(report)}>
-                                  <Send className="w-4 h-4 mr-2" />
-                                  Manage Submission
-                                </DropdownMenuItem>
 
-                                {(report.status === 'submitted' || report.status === 'accepted') && (
+                                {can('Report', 'edit') && (
+                                  <DropdownMenuItem onClick={() => handleManageSubmission(report)}>
+                                    <Send className="w-4 h-4 mr-2" />
+                                    Manage Submission
+                                  </DropdownMenuItem>
+                                )}
+
+                                {can('Report', 'edit') && (report.status === 'submitted' || report.status === 'accepted') && (
                                   <>
                                     <DropdownMenuItem onClick={() => handleCreateCorrection(report)}>
                                       <Edit className="w-4 h-4 mr-2" />
@@ -469,15 +479,19 @@ export default function ReportsPage() {
                                     </DropdownMenuItem>
                                   </>
                                 )}
-                                
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                   onClick={() => handleDelete(report.id)}
-                                   className="text-red-600"
-                                 >
-                                   <Trash2 className="w-4 h-4 mr-2" />
-                                   Delete Report
-                                 </DropdownMenuItem>
+
+                                {can('Report', 'delete') && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDelete(report.id)}
+                                      className="text-red-600"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Report
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

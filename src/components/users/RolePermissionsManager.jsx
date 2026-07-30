@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, Eye, Edit, Trash2, Plus, Save, CheckCircle2 } from "lucide-react";
+import { Shield, Eye, Edit, Trash2, Plus, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function RolePermissionsManager({ tenant }) {
@@ -27,7 +27,7 @@ export default function RolePermissionsManager({ tenant }) {
     if (permissions.length > 0) {
       const permMap = {};
       permissions.forEach(p => {
-        const key = `${p.role_name}_${p.resource_type}`;
+        const key = `${p.role_name}___${p.resource_type}`;
         permMap[key] = {
           can_view: p.can_view,
           can_create: p.can_create,
@@ -45,7 +45,10 @@ export default function RolePermissionsManager({ tenant }) {
       const promises = [];
       
       for (const [key, perms] of Object.entries(updates)) {
-        const [role_name, resource_type] = key.split('_');
+        // Key format: "roleName___resourceType" — use triple underscore separator to avoid splitting role names like "tenant_admin"
+        const sepIdx = key.indexOf('___');
+        const role_name = key.substring(0, sepIdx);
+        const resource_type = key.substring(sepIdx + 3);
         
         if (perms.id) {
           // Update existing
@@ -87,7 +90,7 @@ export default function RolePermissionsManager({ tenant }) {
   });
 
   const handlePermissionChange = (role, resource, permission, value) => {
-    const key = `${role}_${resource}`;
+    const key = `${role}___${resource}`;
     setLocalPermissions(prev => ({
       ...prev,
       [key]: {
@@ -103,7 +106,7 @@ export default function RolePermissionsManager({ tenant }) {
   };
 
   const getPermission = (role, resource, permission) => {
-    const key = `${role}_${resource}`;
+    const key = `${role}___${resource}`;
     return localPermissions[key]?.[permission] || false;
   };
 
@@ -186,6 +189,14 @@ export default function RolePermissionsManager({ tenant }) {
 
           {roles.map(role => (
             <TabsContent key={role.value} value={role.value} className="mt-6">
+              {role.value === 'tenant_admin' && (
+                <Alert className="mb-4 bg-blue-50 border-blue-200">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    Administrators always have <strong>full access</strong> to all resources. These toggles are shown for reference only and do not restrict admin users.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-4">
                 {resources.map(resource => {
                   const ResourceIcon = resource.icon;
@@ -234,8 +245,9 @@ export default function RolePermissionsManager({ tenant }) {
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-900">
-            <strong>Note:</strong> These permissions control what users can do with different resources.
-            Changes apply to all users with the selected role.
+            <strong>Note:</strong> These permissions control what Supervisors and Users can see and do.
+            <strong> Administrators always have full access</strong> regardless of these settings.
+            Changes take effect immediately for all users of that role.
           </p>
         </div>
       </CardContent>

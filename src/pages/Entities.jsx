@@ -58,6 +58,7 @@ import AIClassificationAssistant from "../components/ai/AIClassificationAssistan
 import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
 import { PlayCircle } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
@@ -130,6 +131,7 @@ export default function EntitiesPage() {
   });
 
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+  const { can } = usePermissions(user, tenant);
 
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
@@ -269,17 +271,19 @@ export default function EntitiesPage() {
             </Button>
           )}
 
-            <Button 
-              onClick={() => {
-                setSelectedEntity(null);
-                setShowForm(true);
-              }}
-              className="gap-2 text-white shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-            >
-              <Plus className="w-4 h-4" />
-              Add Entity
-            </Button>
+            {can('Entity', 'create') && (
+              <Button 
+                onClick={() => {
+                  setSelectedEntity(null);
+                  setShowForm(true);
+                }}
+                className="gap-2 text-white shadow-lg"
+                style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+              >
+                <Plus className="w-4 h-4" />
+                Add Entity
+              </Button>
+            )}
           </div>
         </div>
 
@@ -346,7 +350,7 @@ export default function EntitiesPage() {
                     ? "Try adjusting your filters" 
                     : "Get started by adding your first legal entity"}
                 </p>
-                {!searchTerm && statusFilter === "all" && (
+                {!searchTerm && statusFilter === "all" && can('Entity', 'create') && (
                   <Button onClick={() => setShowForm(true)} style={{ backgroundColor: primaryColor }}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add First Entity
@@ -440,42 +444,44 @@ export default function EntitiesPage() {
                                 <History className="w-4 h-4 mr-2" />
                                 View History
                               </DropdownMenuItem>
-                              {(isAdmin || entityAccessMap[entity.id] === 'edit') && (
-                                <>
-                                  {entity.rfi_status === "pending_classification" && (
-                                    <DropdownMenuItem onClick={() => handleClassify(entity)}>
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Classify Entity
-                                    </DropdownMenuItem>
-                                  )}
-                                  {entity.classification_completed_date && (
-                                    <DropdownMenuItem onClick={() => handleClassify(entity)}>
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Re-classify Entity
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
-                                    <DropdownMenuItem onClick={() => {
-                                      setSelectedEntity(entity);
-                                      setShowAIClassifier(true);
-                                    }}>
-                                      <Brain className="w-4 h-4 mr-2" />
-                                      AI Classification Help
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem onClick={() => handleEdit(entity)}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDelete(entity.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              {can('Entity', 'edit') && (
+                                 <>
+                                   {entity.rfi_status === "pending_classification" && (
+                                     <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                       <Eye className="w-4 h-4 mr-2" />
+                                       Classify Entity
+                                     </DropdownMenuItem>
+                                   )}
+                                   {entity.classification_completed_date && (
+                                     <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                       <Eye className="w-4 h-4 mr-2" />
+                                       Re-classify Entity
+                                     </DropdownMenuItem>
+                                   )}
+                                   {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
+                                     <DropdownMenuItem onClick={() => {
+                                       setSelectedEntity(entity);
+                                       setShowAIClassifier(true);
+                                     }}>
+                                       <Brain className="w-4 h-4 mr-2" />
+                                       AI Classification Help
+                                     </DropdownMenuItem>
+                                   )}
+                                   <DropdownMenuItem onClick={() => handleEdit(entity)}>
+                                     <Edit className="w-4 h-4 mr-2" />
+                                     Edit Details
+                                   </DropdownMenuItem>
+                                 </>
+                               )}
+                              {can('Entity', 'delete') && (
+                                   <DropdownMenuItem 
+                                     onClick={() => handleDelete(entity.id)}
+                                     className="text-red-600"
+                                   >
+                                     <Trash2 className="w-4 h-4 mr-2" />
+                                     Delete
+                                   </DropdownMenuItem>
+                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

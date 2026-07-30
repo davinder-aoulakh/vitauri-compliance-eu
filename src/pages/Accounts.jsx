@@ -71,6 +71,7 @@ import BulkUpdateForm from "../components/accounts/BulkUpdateForm";
 import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
 import AccountExport from "../components/accounts/AccountExport";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -157,6 +158,7 @@ export default function AccountsPage() {
   });
 
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+  const { can } = usePermissions(user, tenant);
 
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
@@ -584,22 +586,26 @@ export default function AccountsPage() {
           <div className="flex gap-2">
             {selectedAccountIds.length > 0 && (
               <>
-                <Button 
-                  onClick={() => setShowBulkUpdate(true)}
-                  variant="outline"
-                  className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Bulk Update ({selectedAccountIds.length})
-                </Button>
-                <Button 
-                  onClick={() => setShowBulkDelete(true)}
-                  variant="outline"
-                  className="gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Bulk Delete ({selectedAccountIds.length})
-                </Button>
+                {can('Account', 'edit') && (
+                  <Button 
+                    onClick={() => setShowBulkUpdate(true)}
+                    variant="outline"
+                    className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Bulk Update ({selectedAccountIds.length})
+                  </Button>
+                )}
+                {can('Account', 'delete') && (
+                  <Button 
+                    onClick={() => setShowBulkDelete(true)}
+                    variant="outline"
+                    className="gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Bulk Delete ({selectedAccountIds.length})
+                  </Button>
+                )}
               </>
             )}
             {(tenant?.enabled_features?.guided_tours === true) && (
@@ -612,7 +618,7 @@ export default function AccountsPage() {
               Page Tour
             </Button>
             )}
-            {(tenant?.enabled_features?.ai_bulk_import !== false) && (
+            {(tenant?.enabled_features?.ai_bulk_import !== false) && can('Account', 'create') && (
               <Button 
                 onClick={() => setShowBulkImport(true)}
                 variant="outline"
@@ -622,17 +628,19 @@ export default function AccountsPage() {
                 Bulk Import
               </Button>
             )}
-            <Button 
-              onClick={() => {
-                setSelectedAccount(null);
-                setShowForm(true);
-              }}
-              className="gap-2 text-white shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
-            >
-              <Plus className="w-4 h-4" />
-              Add Account
-            </Button>
+            {can('Account', 'create') && (
+              <Button 
+                onClick={() => {
+                  setSelectedAccount(null);
+                  setShowForm(true);
+                }}
+                className="gap-2 text-white shadow-lg"
+                style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+              >
+                <Plus className="w-4 h-4" />
+                Add Account
+              </Button>
+            )}
           </div>
         </div>
 
@@ -867,7 +875,7 @@ export default function AccountsPage() {
                         ? "Try adjusting your filters" 
                         : "Get started by adding your first account"}
                     </p>
-                    {!searchTerm && statusFilter === "all" && entityFilter === "all" && classificationFilter === "all" && countryFilter === "all" && (
+                    {!searchTerm && statusFilter === "all" && entityFilter === "all" && classificationFilter === "all" && countryFilter === "all" && can('Account', 'create') && (
                       <Button onClick={() => setShowForm(true)} style={{ backgroundColor: primaryColor }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Account
@@ -988,7 +996,7 @@ export default function AccountsPage() {
                                       View History
                                     </DropdownMenuItem>
                                     
-                                    {(isAdmin || entityAccessMap[account.entity_id] === 'edit') && (
+                                    {can('Account', 'edit') && (
                                      <>
                                         {account.reportability_status === "pending_review" && (
                                           <DropdownMenuItem onClick={() => handleClassify(account)}>
@@ -1033,6 +1041,9 @@ export default function AccountsPage() {
                                           <Edit className="w-4 h-4 mr-2" />
                                           Edit Account
                                         </DropdownMenuItem>
+                                      </>
+                                    )}
+                                    {can('Account', 'delete') && (
                                         <DropdownMenuItem 
                                           onClick={() => handleDelete(account.id)}
                                           className="text-red-600"
@@ -1040,7 +1051,6 @@ export default function AccountsPage() {
                                           <Trash2 className="w-4 h-4 mr-2" />
                                           Delete
                                         </DropdownMenuItem>
-                                      </>
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
