@@ -231,7 +231,15 @@
     },
     "type_of_financial_institution": {
       "type": "string",
-      "description": "Type of financial institution if account holder is an FI"
+      "enum": [
+        "custodial_institution",
+        "depository_institution",
+        "investment_entity_type_a",
+        "investment_entity_type_b",
+        "specified_insurance_company",
+        "not_applicable"
+      ],
+      "description": "Standardized type of financial institution if account holder is an FI"
     },
     "crs_entity_classification": {
       "type": "string",

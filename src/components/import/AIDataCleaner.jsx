@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { normalizeFIType, FI_TYPE_OPTIONS } from "@/lib/fiTypeConstants";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -63,12 +64,18 @@ export default function AIDataCleaner({
     setIssues(allIssues);
     setFixes(suggestedFixes);
     
-    // Auto-select all safe fixes
+    // Auto-select all safe fixes + always auto-select fi_type normalization fixes
     const safeFixes = new Set(
       Object.entries(suggestedFixes)
         .filter(([_, fix]) => fix.safe)
         .map(([key]) => key)
     );
+    // Auto-select FI type normalization fixes (they are deterministic, always safe)
+    allIssues.forEach(issue => {
+      if (issue.type === 'invalid_fi_type') {
+        safeFixes.add(`${issue.type}|${issue.field}`);
+      }
+    });
     setSelectedFixes(safeFixes);
     
     setIsAnalyzing(false);
@@ -177,6 +184,36 @@ export default function AIDataCleaner({
               message: `Should be individual/entity: "${value}"`,
               severity: 'error'
             });
+          }
+        }
+
+        // Enum validation + normalization for type_of_financial_institution
+        if (targetField === 'type_of_financial_institution' && value) {
+          const validValues = FI_TYPE_OPTIONS.map(o => o.value);
+          if (!validValues.includes(value)) {
+            const normalized = normalizeFIType(value);
+            if (normalized) {
+              issues.push({
+                row: rowNum,
+                column: csvCol,
+                field: targetField,
+                value: value,
+                type: 'invalid_fi_type',
+                normalizedValue: normalized,
+                message: `Non-standard FI type "${value}" — will be mapped to "${FI_TYPE_OPTIONS.find(o => o.value === normalized)?.label}"`,
+                severity: 'warning'
+              });
+            } else {
+              issues.push({
+                row: rowNum,
+                column: csvCol,
+                field: targetField,
+                value: value,
+                type: 'unknown_fi_type',
+                message: `Unknown FI type "${value}" — please set manually after import`,
+                severity: 'warning'
+              });
+            }
           }
         }
         
@@ -359,14 +396,14 @@ Return JSON:
       
       // Apply selected fixes
       issues
-        .filter(issue => issue.row === idx + 2)
-        .forEach(issue => {
-          const fixKey = `${issue.type}|${issue.field}`;
-          if (selectedFixes.has(fixKey)) {
-            const csvCol = issue.column;
-            newRow[csvCol] = applyFix(issue.type, row[csvCol]);
-          }
-        });
+      .filter(issue => issue.row === idx + 2)
+      .forEach(issue => {
+        const fixKey = `${issue.type}|${issue.field}`;
+        if (selectedFixes.has(fixKey)) {
+          const csvCol = issue.column;
+          newRow[csvCol] = applyFix(issue.type, row[csvCol], issue);
+        }
+      });
       
       return newRow;
     });
@@ -375,8 +412,10 @@ Return JSON:
     onCleaningComplete(newData, issues.filter(i => i.severity === 'error'));
   };
 
-  const applyFix = (type, value) => {
+  const applyFix = (type, value, issue) => {
     switch (type) {
+      case 'invalid_fi_type':
+        return issue?.normalizedValue || normalizeFIType(value) || value;
       case 'whitespace':
         return value?.trim() || '';
       case 'invalid_date':

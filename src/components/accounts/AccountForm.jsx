@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { FI_TYPE_OPTIONS, normalizeFIType } from "@/lib/fiTypeConstants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -763,13 +764,19 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="type_of_financial_institution" className="text-slate-700">Type of Financial Institution</Label>
-                  <Input
-                    id="type_of_financial_institution"
-                    value={formData.type_of_financial_institution}
-                    onChange={(e) => handleChange("type_of_financial_institution", e.target.value)}
-                    placeholder="e.g. Custodial, Depository"
-                    className="mt-1.5"
-                  />
+                  <Select
+                    value={formData.type_of_financial_institution || ""}
+                    onValueChange={(value) => handleChange("type_of_financial_institution", value)}
+                  >
+                    <SelectTrigger className="mt-1.5" id="type_of_financial_institution">
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FI_TYPE_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-slate-500 mt-1">Only if account holder is a financial institution</p>
                 </div>
               </>
