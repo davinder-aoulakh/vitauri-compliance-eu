@@ -41,6 +41,17 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         initialAnswers[step.step_id] = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
       }
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
+      // For fields that default to false (e.g. entity_managed_by_asset_manager), only prefill
+      // and lock the answer when the value is explicitly true. A false value on such fields may
+      // simply mean "no data was provided" (e.g. bulk import omitted this column), so we must
+      // not lock the user out of answering manually.
+      const fieldName = step.mapped_field?.field_name;
+      const falseDefaultFields = ['entity_managed_by_asset_manager'];
+      if (falseDefaultFields.includes(fieldName) && fieldValue === false) {
+        // Skip — treat missing/false as "no data provided"; leave step unlocked
+        console.log(`[computePrefillAnswers] Skipping lock for "${fieldName}" because value is false (no data provided)`);
+        continue;
+      }
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
