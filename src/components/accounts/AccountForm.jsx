@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { XCircle, Save, Info, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { XCircle, Save, Info, Loader2, Sparkles, AlertCircle, Lock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
@@ -116,6 +116,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     us_person_indic: account?.us_person_indic || false,
   });
 
+  const [isPreExistingLocked, setIsPreExistingLocked] = useState(false);
   const [detectedChanges, setDetectedChanges] = useState([]);
   const [initialData, setInitialData] = useState(null);
   const [accountNumberError, setAccountNumberError] = useState("");
@@ -142,15 +143,16 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   };
 
   // Auto-determine if account is pre-existing based on account creation date
+  // If a valid date is present, lock the field; otherwise leave it editable
   useEffect(() => {
     if (formData.account_creation_date) {
       const creationDate = new Date(formData.account_creation_date);
       const crsThresholdDate = new Date('2018-12-31');
       const isPreExisting = creationDate <= crsThresholdDate;
-      
-      if (formData.is_pre_existing !== isPreExisting) {
-        setFormData(prev => ({ ...prev, is_pre_existing: isPreExisting }));
-      }
+      setFormData(prev => ({ ...prev, is_pre_existing: isPreExisting }));
+      setIsPreExistingLocked(true);
+    } else {
+      setIsPreExistingLocked(false);
     }
   }, [formData.account_creation_date]);
 
@@ -1202,30 +1204,67 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             <div className="space-y-4">
               {/* Pre-existing Account */}
               <div>
-                <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
-                  Pre-existing Account (opened before Dec 31, 2017)
-                </Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
+                    Pre-existing Account (opened before Dec 31, 2017)
+                  </Label>
+                  {isPreExistingLocked && (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                      <Lock className="w-3 h-3" />
+                      Auto-determined
+                    </span>
+                  )}
+                </div>
                 <div className="mt-2">
-                  <RadioGroup
-                    value={formData.is_pre_existing ? "yes" : "no"}
-                    onValueChange={(value) => handleChange("is_pre_existing", value === "yes")}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="pre_existing_yes" />
-                      <Label htmlFor="pre_existing_yes" className="font-normal cursor-pointer">
-                        Yes
-                      </Label>
+                  {isPreExistingLocked ? (
+                    <div className="space-y-2">
+                      <Alert className="bg-amber-50 border-amber-200 py-2 px-3">
+                        <Lock className="w-3.5 h-3.5 text-amber-600" />
+                        <AlertDescription className="text-xs text-amber-800 ml-1">
+                          This answer was automatically determined from the account opening date and cannot be changed.
+                        </AlertDescription>
+                      </Alert>
+                      <RadioGroup
+                        value={formData.is_pre_existing ? "yes" : "no"}
+                        className="flex gap-4"
+                        disabled
+                      >
+                        <div className="flex items-center space-x-2 opacity-70">
+                          <RadioGroupItem value="yes" id="pre_existing_yes" disabled />
+                          <Label htmlFor="pre_existing_yes" className="font-normal cursor-not-allowed text-slate-600">
+                            Yes
+                          </Label>
+                          {formData.is_pre_existing && <Lock className="w-3.5 h-3.5 text-amber-500" />}
+                        </div>
+                        <div className="flex items-center space-x-2 opacity-70">
+                          <RadioGroupItem value="no" id="pre_existing_no" disabled />
+                          <Label htmlFor="pre_existing_no" className="font-normal cursor-not-allowed text-slate-600">
+                            No
+                          </Label>
+                          {!formData.is_pre_existing && <Lock className="w-3.5 h-3.5 text-amber-500" />}
+                        </div>
+                      </RadioGroup>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="pre_existing_no" />
-                      <Label htmlFor="pre_existing_no" className="font-normal cursor-pointer">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
+                  ) : (
+                    <RadioGroup
+                      value={formData.is_pre_existing ? "yes" : "no"}
+                      onValueChange={(value) => handleChange("is_pre_existing", value === "yes")}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="pre_existing_yes" />
+                        <Label htmlFor="pre_existing_yes" className="font-normal cursor-pointer">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="pre_existing_no" />
+                        <Label htmlFor="pre_existing_no" className="font-normal cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+                  )}
                   <p className="text-xs text-slate-500 mt-1">
-                    Pre-existing accounts may have different due diligence requirements under CRS
+                    {isPreExistingLocked
+                      ? `Determined from account opening date: ${formData.account_creation_date}`
+                      : "Pre-existing accounts may have different due diligence requirements under CRS"}
                   </p>
                 </div>
               </div>
