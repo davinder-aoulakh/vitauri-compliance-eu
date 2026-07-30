@@ -43,6 +43,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [dragActive, setDragActive] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
+  const [isRfiTypeA, setIsRfiTypeA] = useState(false);
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
@@ -74,6 +75,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
           if (entityRecords[0]) {
             secondaryPrefill = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
+            // Check if the RFI entity is Investment Entity Type A
+            const rfiTypeA = entityRecords[0].fi_type === 'investment_entity_type_a' || entityRecords[0].fi_type === 'type_a';
+            setIsRfiTypeA(rfiTypeA);
           }
         }
 
@@ -927,24 +931,42 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           { value: "NO", label: "No" }
         ];
         
+        const isFiduciaryStep = currentStep.step_id === 'step_1769573962356';
+        const isStepLocked = isFiduciaryStep && isRfiTypeA;
+
         return (
           <div className="space-y-3">
-            <RadioGroup value={answer} onValueChange={(value) => handleAnswer(currentStep.step_id, value)}>
+            {isStepLocked && (
+              <Alert className="bg-amber-50 border-amber-200 py-2">
+                <Info className="w-4 h-4 text-amber-600" />
+                <AlertDescription className="text-xs text-amber-800">
+                  This answer is pre-filled and locked because the RFI Entity is classified as an Investment Entity Type A (fiduciary).
+                </AlertDescription>
+              </Alert>
+            )}
+            <RadioGroup 
+              value={answer} 
+              onValueChange={isStepLocked ? undefined : (value) => handleAnswer(currentStep.step_id, value)}
+            >
               {yesNoOptions.map((option) => (
                 <div 
                   key={option.value}
-                  className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-                  onClick={() => handleAnswer(currentStep.step_id, option.value)}
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
+                    isStepLocked
+                      ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-75'
+                      : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
+                  }`}
+                  onClick={isStepLocked ? undefined : () => handleAnswer(currentStep.step_id, option.value)}
                 >
-                  <RadioGroupItem value={option.value} id={option.value} />
+                  <RadioGroupItem value={option.value} id={option.value} disabled={isStepLocked} />
                   <Label 
                     htmlFor={option.value}
-                    className="flex-1 cursor-pointer font-medium text-slate-900"
+                    className={`flex-1 font-medium text-slate-900 ${isStepLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     {option.label}
                   </Label>
                   {option.value === answer && (
-                    <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                    <CheckCircle2 className={`w-5 h-5 ${isStepLocked ? 'text-slate-400' : 'text-indigo-600'}`} />
                   )}
                 </div>
               ))}
