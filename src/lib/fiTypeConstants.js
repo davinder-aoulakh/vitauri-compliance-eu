@@ -13,7 +13,6 @@ export const FI_TYPE_OPTIONS = [
   { value: "investment_entity_type_a",   label: "Type A Investment Entity" },
   { value: "investment_entity_type_b",   label: "Type B Investment Entity" },
   { value: "specified_insurance_company",label: "Specified Insurance Company" },
-  { value: "not_applicable",             label: "Not Applicable" },
 ];
 
 /** Returns the display label for a stored canonical value */
@@ -74,9 +73,6 @@ export const normalizeFIType = (raw) => {
 
   // Legacy "financial_institution" (generic) — flag as manual review by returning empty
   if (v === "financial_institution" || v === "financial institution") return "";
-
-  // Not applicable
-  if (v === "not_applicable" || v === "not applicable" || v === "n/a" || v === "na") return "not_applicable";
 
   return ""; // Unknown — leave empty for manual review
 };

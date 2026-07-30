@@ -236,8 +236,7 @@
         "depository_institution",
         "investment_entity_type_a",
         "investment_entity_type_b",
-        "specified_insurance_company",
-        "not_applicable"
+        "specified_insurance_company"
       ],
       "description": "Standardized type of financial institution if account holder is an FI"
     },
