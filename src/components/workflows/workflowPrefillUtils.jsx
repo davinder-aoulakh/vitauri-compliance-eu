@@ -13,7 +13,15 @@ export const evaluateComputedComparison = (cfg, entityData) => {
 };
 
 /**
+ * Wraps a prefilled value with source metadata so WorkflowRunner can lock it.
+ * source: "bulk_import" means data came from entity/account fields (populated via bulk import).
+ */
+const prefilled = (value) => ({ value, source: "bulk_import" });
+
+/**
  * Computes initial prefill answers for all workflow steps given entity data.
+ * Returns objects shaped as { value, source } for fields that have data,
+ * so WorkflowRunner can distinguish bulk-imported answers from manual ones.
  */
 export const computePrefillAnswers = async (workflow, entityData, entityType) => {
   const initialAnswers = {};
@@ -32,19 +40,18 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       if (prefillType === 'country_crs') {
         try {
           const crsCountries = await base44.entities.CrsCountryInfo.filter({ $or: [{ country_name: fieldValue }, { country_code: fieldValue }] });
-          initialAnswers[step.step_id] = (crsCountries.length > 0 && crsCountries[0].is_crs_country === true) ? 'YES' : 'NO';
+          initialAnswers[step.step_id] = prefilled((crsCountries.length > 0 && crsCountries[0].is_crs_country === true) ? 'YES' : 'NO');
         } catch (e) { /* skip */ }
       } else if (prefillType === 'enum_match') {
         const matchValues = step.mapped_field.prefill_config.match_values || [];
-        initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
+        initialAnswers[step.step_id] = prefilled(matchValues.includes(String(fieldValue)) ? 'YES' : 'NO');
       } else if (prefillType === 'computed_comparison') {
-        initialAnswers[step.step_id] = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
+        initialAnswers[step.step_id] = prefilled(evaluateComputedComparison(step.mapped_field.prefill_config, entityData));
       }
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
-      initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+      initialAnswers[step.step_id] = prefilled(fieldValue ? 'YES' : 'NO');
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
-      // If options are static, try to match by value, then exact label, then case-insensitive label
       const options = step.options || [];
       if (options.length > 0) {
         const strLower = strVal.toLowerCase();
@@ -52,25 +59,22 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         const byLabel = options.find(o => o.label === strVal);
         const byValueCI = options.find(o => o.value?.toLowerCase() === strLower);
         const byLabelCI = options.find(o => o.label?.toLowerCase() === strLower);
-        // Partial match: stored value contains option label or vice versa
         const byValueContains = options.find(o => strLower.includes(o.value?.toLowerCase()) || o.value?.toLowerCase().includes(strLower));
         const byLabelContains = options.find(o => strLower.includes(o.label?.toLowerCase()) || o.label?.toLowerCase().includes(strLower));
         const matched = byValue || byLabel || byValueCI || byLabelCI || byValueContains || byLabelContains;
         console.log(`[computePrefillAnswers] single_choice options:`, options.map(o => `${o.value}="${o.label}"`).join(', '));
         console.log(`[computePrefillAnswers] single_choice (static options) match for "${strVal}": → using ${matched?.value || strVal}`);
-        initialAnswers[step.step_id] = matched ? matched.value : strVal;
+        initialAnswers[step.step_id] = prefilled(matched ? matched.value : strVal);
       } else {
-        // Options come from referenced data — store the raw field value directly
-        // The value in the entity field should already match ReferencedData.value
         console.log(`[computePrefillAnswers] single_choice (referenced data) — storing raw value: "${strVal}"`);
-        initialAnswers[step.step_id] = strVal;
+        initialAnswers[step.step_id] = prefilled(strVal);
       }
     } else if (step.question_type === 'multiple_choice' && Array.isArray(fieldValue)) {
-      initialAnswers[step.step_id] = fieldValue;
+      initialAnswers[step.step_id] = prefilled(fieldValue);
     } else if (step.question_type === 'address_input' && typeof fieldValue === 'object') {
-      initialAnswers[step.step_id] = fieldValue;
+      initialAnswers[step.step_id] = prefilled(fieldValue);
     } else {
-      initialAnswers[step.step_id] = String(fieldValue);
+      initialAnswers[step.step_id] = prefilled(String(fieldValue));
     }
   }
   return initialAnswers;

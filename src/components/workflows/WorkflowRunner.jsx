@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
@@ -47,7 +47,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
 
+  // Helper: extract the raw value from an answer (handles both plain values and {value, source} objects)
+  const getRawValue = (ans) => (ans !== null && typeof ans === 'object' && 'source' in ans) ? ans.value : ans;
+
+  // Helper: check if a step is locked (pre-filled from bulk import)
+  const isStepLocked = (stepId) => answers[stepId]?.source === "bulk_import";
+
   const handleAnswer = (stepId, answer) => {
+    // Block updates to fields that were pre-filled from entity/bulk-import data
+    if (isStepLocked(stepId)) return;
     setAnswers(prev => ({ ...prev, [stepId]: answer }));
   };
 
@@ -77,6 +85,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
         }
 
+        // Merge: prefill answers are { value, source:"bulk_import" } objects; manual answers are plain values
         setAnswers(prev => ({ ...prev, ...primaryPrefill, ...secondaryPrefill }));
       }
     };
@@ -84,7 +93,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   }, [workflow, accountId, entityId]);
 
   const handleNext = async () => {
-    const answer = answers[currentStep.step_id];
+    const answer = getRawValue(answers[currentStep.step_id]);
     
     // Debug omitted for brevity
     
@@ -600,7 +609,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`[ACTION ${i + 1}]    ✅ Using static value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
-          valueToUpdate = answers[sourceStepId];
+          valueToUpdate = getRawValue(answers[sourceStepId]);
           console.log(`[ACTION ${i + 1}]    📝 From step answer (step ID: ${sourceStepId})`);
           console.log(`[ACTION ${i + 1}]    Raw answer value: ${valueToUpdate}`);
           
@@ -868,32 +877,33 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     
   
     
-    const completionData = Object.entries(answers).map(([stepId, answer]) => {
+    const completionData = Object.entries(answers).map(([stepId, answerObj]) => {
       const step = workflow.steps.find(s => s.step_id === stepId);
       return {
         step_id: stepId,
         step_title: step?.step_title,
-        answer: answer,
+        answer: getRawValue(answerObj),
         result_status: step?.result_status,
         result_description: step?.result_description
       };
     });
 
     const updates = {};
-    for (const [stepId, answer] of Object.entries(answers)) {
+    for (const [stepId, answerObj] of Object.entries(answers)) {
       const step = workflow.steps.find(s => s.step_id === stepId);
       if (step?.mapped_field && step.mapped_field.entity_type === mappedEntityType && step.mapped_field.field_name) {
         const fieldName = step.mapped_field.field_name;
-        let valueToUpdate = answer;
+        // Extract raw value (handles both plain values and {value, source} bulk-import objects)
+        let valueToUpdate = getRawValue(answerObj);
 
         if (step.question_type === 'yes_no') {
-          valueToUpdate = (answer === 'YES');
+          valueToUpdate = (valueToUpdate === 'YES');
         } else if (step.question_type === 'number_input') {
-          valueToUpdate = Number(answer);
-        } else if (step.question_type === 'date_input' && answer) {
-          valueToUpdate = answer.includes('T') ? answer.split('T')[0] : answer;
+          valueToUpdate = Number(valueToUpdate);
+        } else if (step.question_type === 'date_input' && valueToUpdate) {
+          valueToUpdate = valueToUpdate.includes('T') ? valueToUpdate.split('T')[0] : valueToUpdate;
         } else if (step.question_type === 'file_upload') {
-          valueToUpdate = answer.files || [];
+          valueToUpdate = valueToUpdate?.files || [];
         }
 
         updates[fieldName] = valueToUpdate;
@@ -918,7 +928,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const renderQuestionInput = () => {
-    const answer = answers[currentStep.step_id];
+    const answerObj = answers[currentStep.step_id];
+    const answer = getRawValue(answerObj);
+    const locked = isStepLocked(currentStep.step_id);
+
+    const LockBanner = () => (
+      <Alert className="bg-amber-50 border-amber-200 mb-3">
+        <Lock className="w-4 h-4 text-amber-600" />
+        <AlertDescription className="text-sm text-amber-800">
+          This answer was automatically determined from data imported via bulk upload and cannot be changed.
+        </AlertDescription>
+      </Alert>
+    );
 
     switch (currentStep.question_type) {
       case 'yes_no':
@@ -929,22 +950,23 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         
         return (
           <div className="space-y-3">
-            <RadioGroup value={answer} onValueChange={(value) => handleAnswer(currentStep.step_id, value)}>
+            {locked && <LockBanner />}
+            <RadioGroup value={answer} onValueChange={(value) => !locked && handleAnswer(currentStep.step_id, value)}>
               {yesNoOptions.map((option) => (
                 <div 
                   key={option.value}
-                  className="flex items-center space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-                  onClick={() => handleAnswer(currentStep.step_id, option.value)}
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${locked ? 'opacity-70 cursor-not-allowed border-slate-200 bg-slate-50' : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'}`}
+                  onClick={() => !locked && handleAnswer(currentStep.step_id, option.value)}
                 >
-                  <RadioGroupItem value={option.value} id={option.value} />
+                  <RadioGroupItem value={option.value} id={option.value} disabled={locked} />
                   <Label 
                     htmlFor={option.value}
-                    className="flex-1 cursor-pointer font-medium text-slate-900"
+                    className={`flex-1 font-medium text-slate-900 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     {option.label}
                   </Label>
                   {option.value === answer && (
-                    <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                    locked ? <Lock className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                   )}
                 </div>
               ))}
@@ -955,11 +977,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       case 'single_choice':
         return (
           <div className="space-y-4">
+            {locked && <LockBanner />}
             <Select
               value={answer}
-              onValueChange={(value) => handleAnswer(currentStep.step_id, value)}
+              onValueChange={(value) => !locked && handleAnswer(currentStep.step_id, value)}
+              disabled={locked}
             >
-              <SelectTrigger className="w-full h-12">
+              <SelectTrigger className={`w-full h-12 ${locked ? 'opacity-70 cursor-not-allowed bg-slate-50' : ''}`}>
                 <SelectValue placeholder="Select an option..." />
               </SelectTrigger>
               <SelectContent>
@@ -979,37 +1003,40 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
         return (
           <div className="space-y-3">
+            {locked && <LockBanner />}
             {currentStep.options?.map((option, index) => {
               const isSelected = selectedOptions.includes(option.value);
               
               return (
                 <div 
                   key={option.value}
-                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                    isSelected
-                      ? 'border-indigo-400 bg-indigo-50'
-                      : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
+                    locked
+                      ? 'opacity-70 cursor-not-allowed border-slate-200 bg-slate-50'
+                      : isSelected
+                        ? 'border-indigo-400 bg-indigo-50 cursor-pointer'
+                        : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
                   }`}
                   onClick={(e) => {
+                    if (locked) return;
                     e.preventDefault();
                     e.stopPropagation();
-                    
-                            const newValues = isSelected
+                    const newValues = isSelected
                       ? selectedOptions.filter(v => v !== option.value)
                       : [...selectedOptions, option.value];
-                    
                     handleAnswer(currentStep.step_id, newValues);
                   }}
                 >
                   <Checkbox 
                     checked={isSelected}
                     onCheckedChange={() => {}}
+                    disabled={locked}
                   />
-                  <span className="flex-1 cursor-pointer font-medium text-slate-900">
+                  <span className={`flex-1 font-medium text-slate-900 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                     {option.label}
                   </span>
                   {isSelected && (
-                    <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                    locked ? <Lock className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                   )}
                 </div>
               );
@@ -1024,31 +1051,46 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
       case 'text_input':
         return (
-          <Input
-            value={answer || ""}
-            onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
-            placeholder={currentStep.help_text || "Enter your answer..."}
-          />
+          <div className="space-y-2">
+            {locked && <LockBanner />}
+            <Input
+              value={answer || ""}
+              onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
+              placeholder={currentStep.help_text || "Enter your answer..."}
+              readOnly={locked}
+              className={locked ? 'bg-slate-50 cursor-not-allowed opacity-70' : ''}
+            />
+          </div>
         );
 
       case 'textarea':
         return (
-          <Textarea
-            value={answer || ""}
-            onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
-            placeholder={currentStep.help_text || "Enter your answer..."}
-            rows={4}
-          />
+          <div className="space-y-2">
+            {locked && <LockBanner />}
+            <Textarea
+              value={answer || ""}
+              onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
+              placeholder={currentStep.help_text || "Enter your answer..."}
+              rows={4}
+              readOnly={locked}
+              className={locked ? 'bg-slate-50 cursor-not-allowed opacity-70' : ''}
+            />
+          </div>
         );
 
       case 'number_input':
         return (
-          <Input
-            type="number"
-            value={answer || ""}
-            onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
-            placeholder={currentStep.help_text || "Enter a number..."}
-          />
+          <div className="space-y-2">
+            {locked && <LockBanner />}
+            <Input
+              type="number"
+              value={answer || ""}
+              onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
+              placeholder={currentStep.help_text || "Enter a number..."}
+              readOnly={locked}
+              className={locked ? 'bg-slate-50 cursor-not-allowed opacity-70' : ''}
+            />
+          </div>
         );
 
       case 'date_input':
@@ -1060,12 +1102,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         }
         
         return (
-          <Input
-            key={`${currentStep.step_id}-${dateValue}`}
-            type="date"
-            value={dateValue}
-            onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
-          />
+          <div className="space-y-2">
+            {locked && <LockBanner />}
+            <Input
+              key={`${currentStep.step_id}-${dateValue}`}
+              type="date"
+              value={dateValue}
+              onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
+              readOnly={locked}
+              className={locked ? 'bg-slate-50 cursor-not-allowed opacity-70' : ''}
+            />
+          </div>
         );
 
       case 'file_upload':
@@ -1528,7 +1575,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const canProceed = () => {
-    const answer = answers[currentStep.step_id];
+    const answer = getRawValue(answers[currentStep.step_id]);
     
     if (currentStep.question_type === 'info' || currentStep.question_type === 'result') return true;
     if (!currentStep.required) return true;
@@ -1666,7 +1713,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             <div className="space-y-4">
               {completedPath.map((stepId, idx) => {
                 const step = workflow.steps.find(s => s.step_id === stepId);
-                const answer = answers[stepId];
+                const answer = getRawValue(answers[stepId]);
                 if (!step || !answer) return null;
 
                 let displayValue = '';
@@ -1925,9 +1972,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                 View Previous Answers ({Object.keys(answers).length})
               </summary>
               <div className="mt-3 space-y-2 pl-6">
-                {Object.entries(answers).map(([key, value]) => {
+                {Object.entries(answers).map(([key, answerObj]) => {
                   const step = workflow.steps.find(s => s.step_id === key);
                   if (!step) return null;
+                  const value = getRawValue(answerObj);
+                  const isLocked = answerObj?.source === "bulk_import";
                   
                   let displayValue = '';
                   if (Array.isArray(value)) {
@@ -1952,7 +2001,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   
                   return (
                     <div key={key} className="flex items-start justify-between gap-4 text-sm py-2 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-600 text-xs flex-shrink-0 max-w-[40%]">
+                      <span className="text-slate-600 text-xs flex-shrink-0 max-w-[40%] flex items-center gap-1">
+                        {isLocked && <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
                         {step.step_title || key}
                       </span>
                       <span className="text-xs text-right text-slate-800 break-words">
