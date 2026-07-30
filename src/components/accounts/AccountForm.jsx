@@ -120,7 +120,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
   // Investment Entity Type A: if the RFI entity is an investment_entity, fiduciary trust is always Yes and locked
   const selectedEntity = entities?.find(e => e.id === formData.entity_id);
-  const isFiduciaryTrustLocked = selectedEntity?.fi_type === 'investment_entity';
+  const isFiduciaryTrustLocked = selectedEntity?.fi_type === 'investment_entity' ||
+    selectedEntity?.fi_type === 'Type A Investment entity' ||
+    (typeof selectedEntity?.fi_type === 'string' && selectedEntity.fi_type.toLowerCase().includes('investment_entity')) ||
+    (typeof selectedEntity?.fi_type === 'string' && selectedEntity.fi_type.toLowerCase().includes('type a') && selectedEntity.fi_type.toLowerCase().includes('investment'));
   const [detectedChanges, setDetectedChanges] = useState([]);
   const [initialData, setInitialData] = useState(null);
   const [accountNumberError, setAccountNumberError] = useState("");
