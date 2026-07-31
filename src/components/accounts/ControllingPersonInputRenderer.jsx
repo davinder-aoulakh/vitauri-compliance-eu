@@ -22,8 +22,7 @@ import {
   CheckCircle2,
   Users,
   Save,
-  Globe,
-  AlertTriangle
+  Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import CountrySelect from "../shared/CountrySelect";
@@ -62,7 +61,6 @@ export default function ControllingPersonInputRenderer({
   
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [ownershipError, setOwnershipError] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -118,15 +116,11 @@ export default function ControllingPersonInputRenderer({
     setPersons(newPersons);
     if (onPersonsChange) onPersonsChange(newPersons);
     
-    // Clear field-level error
+    // Clear error for this field
     if (errors[`${index}.${field}`]) {
       const newErrors = { ...errors };
       delete newErrors[`${index}.${field}`];
       setErrors(newErrors);
-    }
-    // Clear aggregate ownership error as user is editing
-    if (field === "ownership_percentage" || field === "control_type") {
-      setOwnershipError("");
     }
   };
 
@@ -161,15 +155,6 @@ export default function ControllingPersonInputRenderer({
     if (onPersonsChange) onPersonsChange(newPersons);
   };
 
-  // Compute running total of ownership percentages (only for ownership control type)
-  const totalOwnership = persons.reduce((sum, p) => {
-    if (p.control_type === "legal_person_ownership") {
-      return sum + (parseFloat(p.ownership_percentage) || 0);
-    }
-    return sum;
-  }, 0);
-  const ownershipExceeds = totalOwnership > 100;
-
   const validatePersons = () => {
     const newErrors = {};
     
@@ -196,15 +181,6 @@ export default function ControllingPersonInputRenderer({
       }
       return;
     }
-
-    // Block if total ownership exceeds 100%
-    if (ownershipExceeds) {
-      setOwnershipError(
-        `Total ownership percentage (${totalOwnership.toFixed(1)}%) across all controlling persons cannot exceed 100%. Please review and correct before continuing.`
-      );
-      return;
-    }
-    setOwnershipError("");
 
     if (!validatePersons()) return;
 
@@ -512,36 +488,8 @@ export default function ControllingPersonInputRenderer({
         ))}
       </div>
 
-      {/* Running Total Ownership Bar */}
-      {persons.some(p => p.control_type === "legal_person_ownership") && !alreadySaved && (
-        <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg border ${ownershipExceeds ? 'bg-red-50 border-red-300' : totalOwnership === 100 ? 'bg-green-50 border-green-300' : 'bg-slate-50 border-slate-200'}`}>
-          <div className="flex items-center gap-2">
-            {ownershipExceeds
-              ? <AlertTriangle className="w-4 h-4 text-red-600" />
-              : totalOwnership === 100
-                ? <CheckCircle2 className="w-4 h-4 text-green-600" />
-                : <Users className="w-4 h-4 text-slate-500" />
-            }
-            <span className="text-sm font-medium text-slate-700">Total Ownership Allocated:</span>
-          </div>
-          <span className={`text-sm font-bold ${ownershipExceeds ? 'text-red-600' : totalOwnership === 100 ? 'text-green-700' : 'text-slate-800'}`}>
-            {totalOwnership.toFixed(1)}% / 100%
-          </span>
-        </div>
-      )}
-
-      {/* Ownership aggregate error */}
-      {ownershipError && (
-        <Alert className="bg-red-50 border-red-300">
-          <AlertTriangle className="w-4 h-4 text-red-600" />
-          <AlertDescription className="text-sm text-red-800">
-            {ownershipError}
-          </AlertDescription>
-        </Alert>
-      )}
-
       {!alreadySaved && (
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-4">
           <Button
             type="button"
             variant="outline"
@@ -556,7 +504,7 @@ export default function ControllingPersonInputRenderer({
             <Badge variant="outline" className="bg-purple-50 text-purple-700">
               {persons.length} person(s)
             </Badge>
-            {isValid && !ownershipExceeds && (
+            {isValid && (
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             )}
           </div>
@@ -566,7 +514,7 @@ export default function ControllingPersonInputRenderer({
       <Button
         type="button"
         onClick={handleSaveAll}
-        disabled={!isValid || saving || alreadySaved || ownershipExceeds}
+        disabled={!isValid || saving || alreadySaved}
         className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
       >
         <Save className="w-4 h-4 mr-2" />
