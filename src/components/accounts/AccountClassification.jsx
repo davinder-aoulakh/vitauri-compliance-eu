@@ -112,6 +112,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [dateReceivedValue, setDateReceivedValue] = useState("");
   const [prefilledSteps, setPrefilledSteps] = useState(new Set());
   const [rfiEntityFiType, setRfiEntityFiType] = useState(null);
+  // answerHistory: { [step_id]: [valueIteration1, valueIteration2, ...] }
+  // Stores every distinct answer per step visit in order — used by PreviousAnswers to show
+  // the correct value for each loop iteration instead of always showing the latest overwrite.
+  const [answerHistory, setAnswerHistory] = useState({});
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
@@ -360,6 +364,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const newAnswers = { ...answers, [currentNodeId]: currentAnswer };
     setAnswers(newAnswers);
 
+    // Push this answer into the per-step history array so loop iterations are preserved
+    setAnswerHistory(prev => ({
+      ...prev,
+      [currentNodeId]: [...(prev[currentNodeId] || []), currentAnswer],
+    }));
+
     // Handle address saving
     if (currentNode.question_type === 'address_input' && currentAnswer && account?.id) {
       const addressConfig = currentNode.address_config || {};
@@ -520,6 +530,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const prevIndex = steps.findIndex(s => s.step_id === prevId);
       if (prevIndex !== -1) setCurrentStepIndex(prevIndex);
       setHistory(prev => prev.slice(0, -1));
+      // Pop the last entry from answerHistory for the step being un-visited
+      setAnswerHistory(prev => {
+        const arr = prev[prevId] || [];
+        if (arr.length <= 1) {
+          const { [prevId]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [prevId]: arr.slice(0, -1) };
+      });
     } else {
       onCancel?.();
     }
@@ -1065,26 +1084,49 @@ export default function AccountClassification({ account, onComplete, onCancel })
     const isReportable = summaryStatus === 'reportable';
     const isPending = summaryStatus === 'pending_review';
 
-    // Build previous answers rows for summary
+    // Build previous answers rows for summary — use answerHistory for iteration-correct display
+    const summaryIterCounters = {};
     const summaryAnswerRows = completedPath
       .map((stepId) => {
         const step = stepMap[stepId];
         if (!step || step.question_type === 'info' || step.question_type === 'result') return null;
-        const ans = answers[stepId];
+
+        summaryIterCounters[stepId] = (summaryIterCounters[stepId] ?? -1) + 1;
+        const iterIdx = summaryIterCounters[stepId];
+
+        let ans;
+        if (answerHistory && answerHistory[stepId] && answerHistory[stepId].length > iterIdx) {
+          ans = answerHistory[stepId][iterIdx];
+        } else {
+          ans = answers[stepId];
+        }
+
         if (ans === null || ans === undefined || ans === '') return null;
         let displayAnswer = '';
         if (typeof ans === 'boolean') displayAnswer = ans ? 'Yes' : 'No';
         else if (ans === 'YES') displayAnswer = 'Yes';
         else if (ans === 'NO') displayAnswer = 'No';
-        else if (Array.isArray(ans)) displayAnswer = ans.join(', ');
-        else if (typeof ans === 'object') displayAnswer = ans.file_name || JSON.stringify(ans);
+        else if (Array.isArray(ans)) {
+          const opts = getStepOptions(step);
+          displayAnswer = ans.map(v => opts.find(o => o.value === v)?.label || v).join(', ');
+        }
+        else if (typeof ans === 'object') {
+          if (ans.file_name) {
+            displayAnswer = ans.date_received ? `${ans.file_name} (Received: ${ans.date_received})` : ans.file_name;
+          } else {
+            displayAnswer = JSON.stringify(ans);
+          }
+        }
         else {
           const opts = getStepOptions(step);
           const matched = opts.find(o => o.value === ans);
           displayAnswer = matched ? matched.label : String(ans);
         }
         if (!displayAnswer) return null;
-        return { stepId, step, displayAnswer };
+
+        const totalVisits = completedPath.filter(id => id === stepId).length;
+        const iterationLabel = totalVisits > 1 ? ` (Attempt ${iterIdx + 1})` : '';
+        return { stepId, step, displayAnswer, iterationLabel };
       })
       .filter(Boolean);
 
@@ -1125,6 +1167,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
             history={completedPath}
             stepMap={stepMap}
             answers={answers}
+            answerHistory={answerHistory}
             getStepOptions={getStepOptions}
           />
         )}
@@ -1301,7 +1344,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
       {/* View Previous Answers */}
       {history.length > 0 && (
-        <PreviousAnswers history={history} stepMap={stepMap} answers={answers} getStepOptions={getStepOptions} />
+        <PreviousAnswers history={history} stepMap={stepMap} answers={answers} answerHistory={answerHistory} getStepOptions={getStepOptions} />
       )}
 
       {/* AI Helper */}
