@@ -22,7 +22,8 @@ import {
   CheckCircle2,
   Users,
   Save,
-  Globe
+  Globe,
+  AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 import CountrySelect from "../shared/CountrySelect";
@@ -155,6 +156,17 @@ export default function ControllingPersonInputRenderer({
     if (onPersonsChange) onPersonsChange(newPersons);
   };
 
+  // Calculate total ownership percentage across all persons with ownership-based control
+  const totalOwnershipPercentage = persons.reduce((sum, p) => {
+    if (p.control_type === "legal_person_ownership") {
+      return sum + (parseFloat(p.ownership_percentage) || 0);
+    }
+    return sum;
+  }, 0);
+
+  const ownershipExceedsLimit = totalOwnershipPercentage > 100;
+  const hasMultipleOwners = persons.filter(p => p.control_type === "legal_person_ownership").length > 1;
+
   const validatePersons = () => {
     const newErrors = {};
     
@@ -183,6 +195,12 @@ export default function ControllingPersonInputRenderer({
     }
 
     if (!validatePersons()) return;
+
+    // Block submission if total ownership exceeds 100%
+    if (ownershipExceedsLimit) {
+      toast.error(`Total ownership percentage (${totalOwnershipPercentage.toFixed(1)}%) exceeds 100%. Please correct before saving.`);
+      return;
+    }
 
     setSaving(true);
     
@@ -489,32 +507,65 @@ export default function ControllingPersonInputRenderer({
       </div>
 
       {!alreadySaved && (
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleAddPerson}
-            className="border-purple-200 text-purple-700 hover:bg-purple-50"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Another Controlling Person
-          </Button>
+        <div className="space-y-3 pt-4">
+          <div className="flex items-center justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddPerson}
+              className="border-purple-200 text-purple-700 hover:bg-purple-50"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Another Controlling Person
+            </Button>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-purple-50 text-purple-700">
-              {persons.length} person(s)
-            </Badge>
-            {isValid && (
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-            )}
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                {persons.length} person(s)
+              </Badge>
+              {isValid && !ownershipExceedsLimit && (
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              )}
+            </div>
           </div>
+
+          {/* Running ownership total — only shown when there are ownership-type persons */}
+          {persons.some(p => p.control_type === "legal_person_ownership") && (
+            <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm font-medium ${
+              ownershipExceedsLimit
+                ? "bg-red-50 border-red-300 text-red-700"
+                : totalOwnershipPercentage === 100
+                ? "bg-green-50 border-green-300 text-green-700"
+                : "bg-slate-50 border-slate-200 text-slate-700"
+            }`}>
+              <span className="flex items-center gap-2">
+                {ownershipExceedsLimit && <AlertTriangle className="w-4 h-4" />}
+                Total Ownership Allocated
+              </span>
+              <span className={`text-base font-bold ${ownershipExceedsLimit ? "text-red-700" : totalOwnershipPercentage === 100 ? "text-green-700" : "text-slate-900"}`}>
+                {totalOwnershipPercentage.toFixed(1)}% / 100%
+              </span>
+            </div>
+          )}
+
+          {/* Inline error when limit exceeded */}
+          {ownershipExceedsLimit && (
+            <Alert className="bg-red-50 border-red-300">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <AlertDescription className="text-sm text-red-800">
+                <strong>Ownership exceeds 100%:</strong> The combined ownership percentage is{" "}
+                <strong>{totalOwnershipPercentage.toFixed(1)}%</strong>. Total ownership across all controlling
+                persons cannot exceed 100%. Please review and correct the percentages before saving.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       )}
 
       <Button
         type="button"
         onClick={handleSaveAll}
-        disabled={!isValid || saving || alreadySaved}
+        disabled={!isValid || saving || alreadySaved || ownershipExceedsLimit}
         className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
       >
         <Save className="w-4 h-4 mr-2" />
