@@ -261,6 +261,13 @@ export default function ControllingPersonInputRenderer({
   const isValid = persons.every(p => p.first_name?.trim() && p.last_name?.trim() && p.address?.country);
   const alreadySaved = savedPersons && savedPersons.length > 0;
 
+  // Compute which required fields are missing per person for live inline hints
+  const missingFields = persons.map(p => ({
+    first_name: !p.first_name?.trim(),
+    last_name: !p.last_name?.trim(),
+    country: !p.address?.country,
+  }));
+
   return (
     <div className="space-y-4">
       {alreadySaved && (
@@ -313,10 +320,10 @@ export default function ControllingPersonInputRenderer({
                     value={person.first_name}
                     onChange={(e) => handlePersonChange(index, "first_name", e.target.value)}
                     placeholder="First name"
-                    className={`mt-1 ${errors[`${index}.first_name`] ? 'border-red-500' : ''}`}
+                    className={`mt-1 ${missingFields[index]?.first_name ? 'border-red-400' : ''}`}
                   />
-                  {errors[`${index}.first_name`] && (
-                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.first_name`]}</p>
+                  {missingFields[index]?.first_name && (
+                    <p className="text-xs text-red-600 mt-1">First name is required</p>
                   )}
                 </div>
 
@@ -326,10 +333,10 @@ export default function ControllingPersonInputRenderer({
                     value={person.last_name}
                     onChange={(e) => handlePersonChange(index, "last_name", e.target.value)}
                     placeholder="Last name"
-                    className={`mt-1 ${errors[`${index}.last_name`] ? 'border-red-500' : ''}`}
+                    className={`mt-1 ${missingFields[index]?.last_name ? 'border-red-400' : ''}`}
                   />
-                  {errors[`${index}.last_name`] && (
-                    <p className="text-xs text-red-600 mt-1">{errors[`${index}.last_name`]}</p>
+                  {missingFields[index]?.last_name && (
+                    <p className="text-xs text-red-600 mt-1">Last name is required</p>
                   )}
                 </div>
 
@@ -435,12 +442,12 @@ export default function ControllingPersonInputRenderer({
                       <CountrySelect
                         value={person.address.country}
                         onValueChange={(value) => handlePersonChange(index, "address.country", value)}
-                        placeholder="Select..."
-                        className={errors[`${index}.address.country`] ? 'border-red-500' : ''}
+                        placeholder="Select country..."
+                        className={missingFields[index]?.country ? 'border-red-400' : ''}
                       />
                     </div>
-                    {errors[`${index}.address.country`] && (
-                      <p className="text-xs text-red-600 mt-1">{errors[`${index}.address.country`]}</p>
+                    {missingFields[index]?.country && (
+                      <p className="text-xs text-red-600 mt-1">Country is required to save</p>
                     )}
                   </div>
                 </div>
@@ -560,6 +567,12 @@ export default function ControllingPersonInputRenderer({
             </Alert>
           )}
         </div>
+      )}
+
+      {!isValid && !alreadySaved && (
+        <p className="text-xs text-center text-red-600 -mb-1">
+          Please fill in all required fields (First Name, Last Name, Country) for each controlling person before saving.
+        </p>
       )}
 
       <Button
