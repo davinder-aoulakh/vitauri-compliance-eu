@@ -1081,11 +1081,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
         }
         
+        const todayMax = new Date().toISOString().split('T')[0];
+        
         return (
           <Input
             key={`${currentStep.step_id}-${dateValue}`}
             type="date"
             value={dateValue}
+            max={todayMax}
             onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
           />
         );
