@@ -55,20 +55,29 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
-      // If options are static, try to match by value, then exact label, then case-insensitive label
+      // Explicit mapping for type_of_financial_institution → workflow option values
+      const FI_TYPE_MAP = {
+        'investment_entity_type_a': 'type_a',
+        'investment_entity_type_b': 'type_b',
+        'custodial_institution': 'custodial_institution',
+        'depository_institution': 'depository_institution',
+        'specified_insurance_company': 'specified_insurance_company',
+      };
+      // If options are static, try explicit map first, then exact value/label match, then case-insensitive
       const options = step.options || [];
       if (options.length > 0) {
         const strLower = strVal.toLowerCase();
+        // Use explicit map if available (prevents false partial matches)
+        const mappedVal = FI_TYPE_MAP[strVal];
+        const byExplicitMap = mappedVal ? options.find(o => o.value === mappedVal) : null;
         const byValue = options.find(o => o.value === strVal);
         const byLabel = options.find(o => o.label === strVal);
         const byValueCI = options.find(o => o.value?.toLowerCase() === strLower);
         const byLabelCI = options.find(o => o.label?.toLowerCase() === strLower);
-        // Partial match: stored value contains option label or vice versa
-        const byValueContains = options.find(o => strLower.includes(o.value?.toLowerCase()) || o.value?.toLowerCase().includes(strLower));
-        const byLabelContains = options.find(o => strLower.includes(o.label?.toLowerCase()) || o.label?.toLowerCase().includes(strLower));
-        const matched = byValue || byLabel || byValueCI || byLabelCI || byValueContains || byLabelContains;
+        // NOTE: no partial/contains matching — it causes false positives (e.g. "type_b" matching "type_a" substring)
+        const matched = byExplicitMap || byValue || byLabel || byValueCI || byLabelCI;
         console.log(`[computePrefillAnswers] single_choice options:`, options.map(o => `${o.value}="${o.label}"`).join(', '));
-        console.log(`[computePrefillAnswers] single_choice (static options) match for "${strVal}": → using ${matched?.value || strVal}`);
+        console.log(`[computePrefillAnswers] single_choice match for "${strVal}": mappedVal=${mappedVal} → using ${matched?.value || strVal}`);
         initialAnswers[step.step_id] = matched ? matched.value : strVal;
       } else {
         // Options come from referenced data — store the raw field value directly
