@@ -80,35 +80,47 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         continue;
       }
 
-      // Explicit mapping: account type_of_financial_institution values → workflow option values
+      // ── FI Type Mapping ──────────────────────────────────────────────────────
+      // Maps account.type_of_financial_institution → workflow step option values.
+      //
+      // Investment workflow has: type_a, type_b, custodial_institution, depository_institution, specified_insurance_company
+      // Insurance & Depository workflow has: type_a, custodial_institution, depository_institution, specified_insurance_company, none (= "None of the above")
+      //
+      // Key rule: investment_entity_type_b → type_b if available in options, otherwise → none.
+      // This handles the cross-workflow difference automatically by checking available options.
       const FI_TYPE_MAP = {
-        'investment_entity_type_a': 'type_a',
-        'investment_entity_type_b': 'type_b',
-        'custodial_institution': 'custodial_institution',
-        'depository_institution': 'depository_institution',
+        'investment_entity_type_a':    'type_a',
+        'investment_entity_type_b':    'type_b',           // Falls back to 'none' if type_b absent (Insurance & Depository)
+        'custodial_institution':       'custodial_institution',
+        'depository_institution':      'depository_institution',
         'specified_insurance_company': 'specified_insurance_company',
       };
+
       const options = step.options || [];
       if (options.length > 0) {
         const strLower = strVal.toLowerCase();
-        // Step 1: Use explicit FI type map to get the ideal target value
+        // 1. Get the ideal target value from the explicit FI type map
         const mappedVal = FI_TYPE_MAP[strVal];
-        // Step 2: Check if that mapped value actually exists as an option in THIS workflow step
+        // 2. Check if that mapped value exists in THIS workflow step's options
         const byExplicitMap = mappedVal ? options.find(o => o.value === mappedVal) : null;
-        // Step 3: If the mapped value doesn't exist in this workflow's options (e.g. type_b not listed),
-        //         fall back to "none" option if available — per business rule
+        // 3. If mapped value not in options (e.g. type_b absent in Insurance & Depository),
+        //    fall back to 'none' ("None of the above") — per business rule
         const noneOption = options.find(o => o.value === 'none');
         const fallbackToNone = mappedVal && !byExplicitMap && noneOption ? noneOption : null;
-        // Step 4: Standard exact/case-insensitive matching for non-FI-type fields
-        const byValue = options.find(o => o.value === strVal);
-        const byLabel = options.find(o => o.label === strVal);
+        // 4. Standard matching for non-FI-type steps (exact value, exact label, case-insensitive)
+        const byValue   = options.find(o => o.value === strVal);
+        const byLabel   = options.find(o => o.label === strVal);
         const byValueCI = options.find(o => o.value?.toLowerCase() === strLower);
         const byLabelCI = options.find(o => o.label?.toLowerCase() === strLower);
-        // NOTE: no partial/contains matching — it causes false positives
+        // NOTE: no partial/contains matching — causes false positives
         const matched = byExplicitMap || fallbackToNone || byValue || byLabel || byValueCI || byLabelCI;
         console.log(`[computePrefillAnswers] single_choice options:`, options.map(o => `${o.value}="${o.label}"`).join(', '));
-        console.log(`[computePrefillAnswers] single_choice match for "${strVal}": mappedVal=${mappedVal} byExplicitMap=${byExplicitMap?.value} fallbackToNone=${fallbackToNone?.value} → using ${matched?.value || strVal}`);
-        initialAnswers[step.step_id] = matched ? matched.value : strVal;
+        console.log(`[computePrefillAnswers] single_choice match for "${strVal}": mappedVal=${mappedVal} byExplicitMap=${byExplicitMap?.value} fallbackToNone=${fallbackToNone?.value} → using ${matched?.value || 'NO_MATCH (step left editable)'}`);
+        // Only store a prefill answer if we found a valid match.
+        // If no match, leave the step unanswered so the user can answer it manually.
+        if (matched) {
+          initialAnswers[step.step_id] = matched.value;
+        }
       } else {
         // Options come from referenced data — store the raw field value directly
         // The value in the entity field should already match ReferencedData.value

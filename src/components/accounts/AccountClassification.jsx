@@ -271,7 +271,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
         }
 
         setAnswers(prev => ({ ...prev, ...mergedPrefill }));
-        setPrefilledSteps(new Set(Object.keys(mergedPrefill)));
+        // Only lock steps that actually have a non-empty prefilled value.
+        // Steps where prefill produced no answer (e.g. account has no FI type set)
+        // must remain editable so the user can answer them manually.
+        const lockable = Object.entries(mergedPrefill)
+          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+          .map(([k]) => k);
+        setPrefilledSteps(new Set(lockable));
       }
     };
 
