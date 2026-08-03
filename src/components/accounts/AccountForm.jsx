@@ -118,6 +118,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   });
 
   const [isPreExistingLocked, setIsPreExistingLocked] = useState(false);
+  const isGrossIncomeLocked = account !== undefined && account !== null && account.gross_income_from_financial_assets !== undefined && account.gross_income_from_financial_assets !== null;
 
   // Investment Entity Type A: if the RFI entity is an investment_entity, fiduciary trust is always Yes and locked
   const selectedEntity = entities?.find(e => e.id === formData.entity_id);
@@ -1510,21 +1511,29 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label>Gross Income &gt;50% from (Re)-Investing/Trading in Financial Assets?</Label>
+                  <Label className="flex items-center gap-1.5">
+                    Gross Income &gt;50% from (Re)-Investing/Trading in Financial Assets?
+                    {isGrossIncomeLocked && <Lock className="w-3 h-3 text-slate-400" />}
+                  </Label>
                   <RadioGroup
                     value={formData.gross_income_from_financial_assets ? "yes" : "no"}
-                    onValueChange={(value) => handleChange("gross_income_from_financial_assets", value === "yes")}
+                    onValueChange={isGrossIncomeLocked ? undefined : (value) => handleChange("gross_income_from_financial_assets", value === "yes")}
                     className="flex gap-4 mt-1.5"
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="gross_income_yes" />
-                      <Label htmlFor="gross_income_yes" className="font-normal cursor-pointer">Yes</Label>
+                      <RadioGroupItem value="yes" id="gross_income_yes" disabled={isGrossIncomeLocked} />
+                      <Label htmlFor="gross_income_yes" className={`font-normal ${isGrossIncomeLocked ? 'cursor-default opacity-60' : 'cursor-pointer'}`}>Yes</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="gross_income_no" />
-                      <Label htmlFor="gross_income_no" className="font-normal cursor-pointer">No</Label>
+                      <RadioGroupItem value="no" id="gross_income_no" disabled={isGrossIncomeLocked} />
+                      <Label htmlFor="gross_income_no" className={`font-normal ${isGrossIncomeLocked ? 'cursor-default opacity-60' : 'cursor-pointer'}`}>No</Label>
                     </div>
                   </RadioGroup>
+                  {isGrossIncomeLocked && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Automatically set — this value is read-only based on provided account data.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
