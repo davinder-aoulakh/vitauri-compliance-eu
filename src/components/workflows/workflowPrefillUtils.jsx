@@ -61,8 +61,22 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
-      // If this is a FI type step and the account has one of the 6 exception entity types,
-      // skip prefill — the exception path handles classification, not the FI type step.
+
+      // ── Determine if this is the FI Type step ────────────────────────────────
+      // The FI type step maps to fi_type (Entity) or type_of_financial_institution (Account).
+      // IMPORTANT: For the FI type step, we ONLY read from Account.type_of_financial_institution.
+      // We must SKIP the Entity pass entirely for this step — Entity.fi_type uses different
+      // values (e.g. 'investment_entity') that do NOT map 1:1 to workflow option values
+      // and would cause false prefills (e.g. 'investment_entity' matching 'type_a' incorrectly).
+      const isFiTypeStep = fieldName === 'fi_type' || resolvedFieldName === 'type_of_financial_institution';
+      if (isFiTypeStep && entityType === 'Entity') {
+        // Skip entirely — FI type prefill only runs on the Account pass
+        console.log(`[computePrefillAnswers] Skipping FI type step on Entity pass — only Account.type_of_financial_institution is used`);
+        continue;
+      }
+
+      // ── Exception entity types: skip FI type prefill entirely ────────────────
+      // These 6 types go through the exception sub-path, not the FI type classification tree.
       const EXCEPTION_ENTITY_TYPES = new Set([
         'DGA', 'NONPROFIT', 'STAK', 'holding', 'treasury', 'realestate',
         'N.V. or B.V. acting with one 100% shareholder/director (100% DGA)',
@@ -74,56 +88,61 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         'Treasury Center',
         'Real Estate Fund',
       ]);
-      const isFiTypeStep2 = fieldName === 'fi_type' || resolvedFieldName === 'type_of_financial_institution';
-      if (isFiTypeStep2 && entityData.account_holder_entity_type && EXCEPTION_ENTITY_TYPES.has(entityData.account_holder_entity_type)) {
+      if (isFiTypeStep && entityData.account_holder_entity_type && EXCEPTION_ENTITY_TYPES.has(entityData.account_holder_entity_type)) {
         console.log(`[computePrefillAnswers] Skipping FI type prefill — account_holder_entity_type "${entityData.account_holder_entity_type}" is an exception type`);
         continue;
       }
 
-      // ── FI Type Mapping ──────────────────────────────────────────────────────
-      // Maps account.type_of_financial_institution → workflow step option values.
-      //
-      // Investment workflow has: type_a, type_b, custodial_institution, depository_institution, specified_insurance_company
-      // Insurance & Depository workflow has: type_a, custodial_institution, depository_institution, specified_insurance_company, none (= "None of the above")
-      //
-      // Key rule: investment_entity_type_b → type_b if available in options, otherwise → none.
-      // This handles the cross-workflow difference automatically by checking available options.
-      const FI_TYPE_MAP = {
-        'investment_entity_type_a':    'type_a',
-        'investment_entity_type_b':    'type_b',           // Falls back to 'none' if type_b absent (Insurance & Depository)
-        'custodial_institution':       'custodial_institution',
-        'depository_institution':      'depository_institution',
-        'specified_insurance_company': 'specified_insurance_company',
-      };
-
       const options = step.options || [];
       if (options.length > 0) {
-        const strLower = strVal.toLowerCase();
-        // 1. Get the ideal target value from the explicit FI type map
-        const mappedVal = FI_TYPE_MAP[strVal];
-        // 2. Check if that mapped value exists in THIS workflow step's options
-        const byExplicitMap = mappedVal ? options.find(o => o.value === mappedVal) : null;
-        // 3. If mapped value not in options (e.g. type_b absent in Insurance & Depository),
-        //    fall back to 'none' ("None of the above") — per business rule
-        const noneOption = options.find(o => o.value === 'none');
-        const fallbackToNone = mappedVal && !byExplicitMap && noneOption ? noneOption : null;
-        // 4. Standard matching for non-FI-type steps (exact value, exact label, case-insensitive)
-        const byValue   = options.find(o => o.value === strVal);
-        const byLabel   = options.find(o => o.label === strVal);
-        const byValueCI = options.find(o => o.value?.toLowerCase() === strLower);
-        const byLabelCI = options.find(o => o.label?.toLowerCase() === strLower);
-        // NOTE: no partial/contains matching — causes false positives
-        const matched = byExplicitMap || fallbackToNone || byValue || byLabel || byValueCI || byLabelCI;
-        console.log(`[computePrefillAnswers] single_choice options:`, options.map(o => `${o.value}="${o.label}"`).join(', '));
-        console.log(`[computePrefillAnswers] single_choice match for "${strVal}": mappedVal=${mappedVal} byExplicitMap=${byExplicitMap?.value} fallbackToNone=${fallbackToNone?.value} → using ${matched?.value || 'NO_MATCH (step left editable)'}`);
-        // Only store a prefill answer if we found a valid match.
-        // If no match, leave the step unanswered so the user can answer it manually.
+        let matched = null;
+
+        if (isFiTypeStep) {
+          // ── FI Type step: use ONLY the explicit map, no generic fallbacks ───
+          // Account.type_of_financial_institution → workflow option value.
+          //
+          // Investment workflow options:           type_a, type_b, custodial_institution, depository_institution, specified_insurance_company
+          // Insurance & Depository workflow options: type_a, custodial_institution, depository_institution, specified_insurance_company, none
+          //
+          // Rule: investment_entity_type_b → type_b if that option exists, otherwise → none
+          const FI_TYPE_MAP = {
+            'investment_entity_type_a':    'type_a',
+            'investment_entity_type_b':    'type_b',
+            'custodial_institution':       'custodial_institution',
+            'depository_institution':      'depository_institution',
+            'specified_insurance_company': 'specified_insurance_company',
+          };
+          const mappedVal = FI_TYPE_MAP[strVal];
+          if (mappedVal) {
+            // Check if the mapped value exists in THIS workflow's step options
+            const byMap = options.find(o => o.value === mappedVal);
+            if (byMap) {
+              matched = byMap;
+            } else {
+              // Mapped value not available in this workflow (e.g. type_b in Insurance & Depository)
+              // Fall back to 'none' per business rule
+              matched = options.find(o => o.value === 'none') || null;
+            }
+          }
+          // If strVal is not in FI_TYPE_MAP at all → no prefill, step stays editable
+          console.log(`[computePrefillAnswers] FI type step: account value="${strVal}" mappedVal=${mappedVal} → option=${matched?.value || 'NO_MATCH (step left editable)'}`);
+        } else {
+          // ── Non-FI-type step: generic option matching ─────────────────────
+          const strLower = strVal.toLowerCase();
+          matched = options.find(o => o.value === strVal)
+            || options.find(o => o.label === strVal)
+            || options.find(o => o.value?.toLowerCase() === strLower)
+            || options.find(o => o.label?.toLowerCase() === strLower)
+            || null;
+          console.log(`[computePrefillAnswers] single_choice match for "${strVal}": ${matched?.value || 'NO_MATCH (step left editable)'}`);
+        }
+
+        // Only write the prefill answer if we found a valid option match
         if (matched) {
           initialAnswers[step.step_id] = matched.value;
         }
       } else {
-        // Options come from referenced data — store the raw field value directly
-        // The value in the entity field should already match ReferencedData.value
+        // Options come from referenced data — store raw field value directly
         console.log(`[computePrefillAnswers] single_choice (referenced data) — storing raw value: "${strVal}"`);
         initialAnswers[step.step_id] = strVal;
       }
