@@ -667,30 +667,18 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 </SelectTrigger>
                 <SelectContent>
                   {(() => {
-                    const HARDCODED = [
-                      "Naamloze Vennootschap (N.V.) (Limited Liability Company)",
-                      "Besloten Vennootschap (B.V.) (Private Limited Liability Company)",
-                      "N.V. or B.V. acting with one 100% shareholder/director (100% DGA)",
-                      "Stichting (Foundation) or other Non-Profit Organization",
-                      "Stichting Particulier Fonds (SPF) (Private Foundation)",
-                      "Stichting Administratiekantoor (STAK)",
-                      "Cura\u00e7ao Trust Arrangement",
-                      "Holding Company",
-                      "Treasury Center",
-                      "Partnership",
-                      "Real Estate Fund",
-                      "Vereniging met rechtspersoonlijkheid (Association with corporate capacity)",
-                      "Cooperatie (Cooperation)",
-                      "Onderlinge Waarborgmaatschappij (Mutual Guarantee Company)",
-                    ];
-                    const dbItems = referencedData.filter(item => item.entity_name === 'Account' && item.field_name === 'account_holder_entity_type').sort((a, b) => a.order - b.order);
-                    // Merge: start with hardcoded, add any db items whose value isn't already in the list
-                    const dbValues = new Set(dbItems.map(i => i.value));
-                    const allOptions = [
-                      ...HARDCODED.map(v => ({ value: v, label: v })),
-                      ...dbItems.filter(i => !HARDCODED.includes(i.value)).map(i => ({ value: i.value, label: i.label })),
-                    ];
-                    // Always include current value even if not in list
+                    // Use only ReferencedData as the single source of truth, deduplicated by value
+                    const dbItems = referencedData
+                      .filter(item => item.entity_name === 'Account' && item.field_name === 'account_holder_entity_type')
+                      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+                    // Deduplicate by value — keep first occurrence
+                    const seen = new Set();
+                    const allOptions = dbItems.filter(i => {
+                      if (seen.has(i.value)) return false;
+                      seen.add(i.value);
+                      return true;
+                    }).map(i => ({ value: i.value, label: i.label }));
+                    // Always include current value even if not in list (for legacy data)
                     if (formData.account_holder_entity_type && !allOptions.find(o => o.value === formData.account_holder_entity_type)) {
                       allOptions.unshift({ value: formData.account_holder_entity_type, label: formData.account_holder_entity_type });
                     }

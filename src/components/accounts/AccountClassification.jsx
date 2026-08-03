@@ -221,9 +221,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const mergedPrefill = { ...accountPrefilled, ...entityPrefilled };
 
         // 4b. Special prefill: "Select potential EXCEPTION" step from account_holder_entity_type
-        // This handles the case where the step does not have a mapped_field configured in the
-        // workflow definition. We identify the step by its title keyword and inject the value.
-        if (latestAccount.account_holder_entity_type) {
+        // Only prefill for the 6 ReferencedData values that map to a known exception category.
+        // Any other value leaves the step editable (no prefill, no lock).
+        const EXCEPTION_PREFILL_VALUES = new Set(['DGA', 'NONPROFIT', 'STAK', 'holding', 'treasury', 'realestate']);
+        if (latestAccount.account_holder_entity_type && EXCEPTION_PREFILL_VALUES.has(latestAccount.account_holder_entity_type)) {
           const exceptionStep = chosenWorkflow.steps.find(s =>
             s.step_title?.toLowerCase().includes('exception') &&
             (s.question_type === 'single_choice' || s.question_type === 'multiple_choice')
@@ -239,7 +240,10 @@ export default function AccountClassification({ account, onComplete, onCancel })
               stepOpts.find(o => o.label?.toLowerCase() === rawLower) ||
               stepOpts.find(o => rawLower.includes(o.value?.toLowerCase()) || o.value?.toLowerCase().includes(rawLower)) ||
               stepOpts.find(o => rawLower.includes(o.label?.toLowerCase()) || o.label?.toLowerCase().includes(rawLower));
-            mergedPrefill[exceptionStep.step_id] = matchedOpt ? matchedOpt.value : rawVal;
+            if (matchedOpt) {
+              mergedPrefill[exceptionStep.step_id] = matchedOpt.value;
+            }
+            // If no match found, do NOT add to mergedPrefill — step remains editable
           }
         }
 
