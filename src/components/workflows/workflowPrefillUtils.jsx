@@ -22,10 +22,13 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
     if (!step.mapped_field) continue;
     console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType, '| match:', step.mapped_field.entity_type === entityType);
     // entity_type null = match any entity type; otherwise must match
-    if (!step.mapped_field || (step.mapped_field.entity_type && step.mapped_field.entity_type !== entityType) || !step.mapped_field.field_name) continue;
+    // Exception: fi_type steps always run on Account pass too (value lives in type_of_financial_institution on Account)
+    const isFiTypeStep = step.mapped_field.field_name === 'fi_type';
+    const entityTypeMatches = !step.mapped_field.entity_type || step.mapped_field.entity_type === entityType;
+    if (!step.mapped_field || (!entityTypeMatches && !(isFiTypeStep && entityType === 'Account')) || !step.mapped_field.field_name) continue;
     const fieldName = step.mapped_field.field_name;
-    // fi_type is the workflow config name, but Account stores this as type_of_financial_institution
-    const resolvedFieldName = fieldName === 'fi_type' ? 'type_of_financial_institution' : fieldName;
+    // fi_type is the workflow config name, but Account entity stores this as type_of_financial_institution
+    const resolvedFieldName = (fieldName === 'fi_type' && entityType === 'Account') ? 'type_of_financial_institution' : fieldName;
     const fieldValue = entityData[resolvedFieldName] ?? entityData[fieldName];
     console.log(`[computePrefillAnswers] step "${step.step_title}" fieldName="${fieldName}" fieldValue="${fieldValue}" question_type="${step.question_type}"`);
     if (fieldValue === undefined || fieldValue === null || fieldValue === "") { console.log(`[computePrefillAnswers] Skipping - field value is empty`); continue; }

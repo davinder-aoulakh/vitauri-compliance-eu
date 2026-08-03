@@ -213,12 +213,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setSelectedWorkflow(chosenWorkflow);
 
       // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
+      // Account values take priority — entity pass only fills steps not already covered by account
       if (chosenWorkflow) {
         const accountPrefilled = await computePrefillAnswers(chosenWorkflow, latestAccount, "Account");
         const entityPrefilled = entityRecord
           ? await computePrefillAnswers(chosenWorkflow, entityRecord, "Entity")
           : {};
-        const mergedPrefill = { ...accountPrefilled, ...entityPrefilled };
+        // Account prefill wins — entity prefill only fills gaps (steps account didn't cover)
+        const mergedPrefill = { ...entityPrefilled, ...accountPrefilled };
 
         // 4b. Special prefill: "Select potential EXCEPTION" step from account_holder_entity_type
         // Only prefill for the 6 values that map to a known exception category.
