@@ -61,6 +61,25 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
+      // If this is a FI type step and the account has one of the 6 exception entity types,
+      // skip prefill — the exception path handles classification, not the FI type step.
+      const EXCEPTION_ENTITY_TYPES = new Set([
+        'DGA', 'NONPROFIT', 'STAK', 'holding', 'treasury', 'realestate',
+        'N.V. or B.V. acting with one 100% shareholder/director (100% DGA)',
+        'N.V. or B.V. acting with one 100% shareholder/director (DGA)',
+        'Non-Profit Organization',
+        'Stichting (Foundation) or other Non-Profit Organization',
+        'Stichting Administratiekantoor (STAK)',
+        'Holding Company',
+        'Treasury Center',
+        'Real Estate Fund',
+      ]);
+      const isFiTypeStep2 = fieldName === 'fi_type' || resolvedFieldName === 'type_of_financial_institution';
+      if (isFiTypeStep2 && entityData.account_holder_entity_type && EXCEPTION_ENTITY_TYPES.has(entityData.account_holder_entity_type)) {
+        console.log(`[computePrefillAnswers] Skipping FI type prefill — account_holder_entity_type "${entityData.account_holder_entity_type}" is an exception type`);
+        continue;
+      }
+
       // Explicit mapping: account type_of_financial_institution values → workflow option values
       const FI_TYPE_MAP = {
         'investment_entity_type_a': 'type_a',

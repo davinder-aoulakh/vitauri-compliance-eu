@@ -223,42 +223,50 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const mergedPrefill = { ...entityPrefilled, ...accountPrefilled };
 
         // 4b. Special prefill: "Select potential EXCEPTION" step from account_holder_entity_type
-        // Only prefill for the 6 values that map to a known exception category.
-        // Includes both short codes (new accounts) and full label strings (legacy/imported accounts).
-        // Any other value leaves the step editable (no prefill, no lock).
-        const EXCEPTION_PREFILL_VALUES = new Set([
-          // Short codes from ReferencedData
-          'DGA', 'NONPROFIT', 'STAK', 'holding', 'treasury', 'realestate',
-          // Full label strings (as stored by legacy import / older accounts)
-          'N.V. or B.V. acting with one 100% shareholder/director (100% DGA)',
-          'N.V. or B.V. acting with one 100% shareholder/director (DGA)',
-          'Non-Profit Organization',
-          'Stichting (Foundation) or other Non-Profit Organization',
-          'Stichting Administratiekantoor (STAK)',
-          'Holding Company',
-          'Treasury Center',
-          'Real Estate Fund',
-        ]);
-        if (latestAccount.account_holder_entity_type && EXCEPTION_PREFILL_VALUES.has(latestAccount.account_holder_entity_type)) {
+        // Explicit map from ReferencedData values (and legacy label strings) → workflow option values OPT1–OPT6.
+        // Only the 6 approved entity types get prefilled+locked; all others leave the step editable.
+        const EXCEPTION_OPTION_MAP = {
+          // Short codes (ReferencedData.value)
+          'DGA':        'OPT1',
+          'NONPROFIT':  'OPT2',
+          'STAK':       'OPT3',
+          'holding':    'OPT4',
+          'treasury':   'OPT5',
+          'realestate': 'OPT6',
+          // Legacy full label strings (imported / older accounts)
+          'N.V. or B.V. acting with one 100% shareholder/director (100% DGA)': 'OPT1',
+          'N.V. or B.V. acting with one 100% shareholder/director (DGA)':       'OPT1',
+          'Non-Profit Organization':                                             'OPT2',
+          'Stichting (Foundation) or other Non-Profit Organization':            'OPT2',
+          'Non-Profit Organization ((religious/charitable/scientific/ artistic/cultural/athletic/educational))': 'OPT2',
+          'Stichting Administratiekantoor (STAK)':                              'OPT3',
+          'Holding Company':                                                     'OPT4',
+          'Treasury Center':                                                     'OPT5',
+          'Real Estate Fund':                                                    'OPT6',
+        };
+
+        const entityTypeVal = latestAccount.account_holder_entity_type;
+        const exceptionOptValue = entityTypeVal ? EXCEPTION_OPTION_MAP[entityTypeVal] : null;
+
+        if (exceptionOptValue) {
+          // Prefill the exception step
           const exceptionStep = chosenWorkflow.steps.find(s =>
             s.step_title?.toLowerCase().includes('exception') &&
             (s.question_type === 'single_choice' || s.question_type === 'multiple_choice')
           );
-          if (exceptionStep && !mergedPrefill[exceptionStep.step_id]) {
-            const rawVal = String(latestAccount.account_holder_entity_type);
-            const stepOpts = exceptionStep.options || [];
-            const rawLower = rawVal.toLowerCase();
-            const matchedOpt =
-              stepOpts.find(o => o.value === rawVal) ||
-              stepOpts.find(o => o.label === rawVal) ||
-              stepOpts.find(o => o.value?.toLowerCase() === rawLower) ||
-              stepOpts.find(o => o.label?.toLowerCase() === rawLower) ||
-              stepOpts.find(o => rawLower.includes(o.value?.toLowerCase()) || o.value?.toLowerCase().includes(rawLower)) ||
-              stepOpts.find(o => rawLower.includes(o.label?.toLowerCase()) || o.label?.toLowerCase().includes(rawLower));
-            if (matchedOpt) {
-              mergedPrefill[exceptionStep.step_id] = matchedOpt.value;
-            }
-            // If no match found, do NOT add to mergedPrefill — step remains editable
+          if (exceptionStep) {
+            mergedPrefill[exceptionStep.step_id] = exceptionOptValue;
+          }
+
+          // Also clear any FI type prefill for these exception accounts — they go through
+          // the exception path, so the "Select potential type of Financial Institution" step
+          // should not be locked with a FI type value derived from type_of_financial_institution.
+          const fiTypeStep = chosenWorkflow.steps.find(s =>
+            s.step_title?.toLowerCase().includes('type of financial institution') &&
+            s.question_type === 'single_choice'
+          );
+          if (fiTypeStep) {
+            delete mergedPrefill[fiTypeStep.step_id];
           }
         }
 
