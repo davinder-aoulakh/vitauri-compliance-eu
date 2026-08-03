@@ -219,6 +219,30 @@ export default function AccountClassification({ account, onComplete, onCancel })
           ? await computePrefillAnswers(chosenWorkflow, entityRecord, "Entity")
           : {};
         const mergedPrefill = { ...accountPrefilled, ...entityPrefilled };
+
+        // 4b. Special prefill: "Select potential EXCEPTION" step from account_holder_entity_type
+        // This handles the case where the step does not have a mapped_field configured in the
+        // workflow definition. We identify the step by its title keyword and inject the value.
+        if (latestAccount.account_holder_entity_type) {
+          const exceptionStep = chosenWorkflow.steps.find(s =>
+            s.step_title?.toLowerCase().includes('exception') &&
+            (s.question_type === 'single_choice' || s.question_type === 'multiple_choice')
+          );
+          if (exceptionStep && !mergedPrefill[exceptionStep.step_id]) {
+            const rawVal = String(latestAccount.account_holder_entity_type);
+            const stepOpts = exceptionStep.options || [];
+            const rawLower = rawVal.toLowerCase();
+            const matchedOpt =
+              stepOpts.find(o => o.value === rawVal) ||
+              stepOpts.find(o => o.label === rawVal) ||
+              stepOpts.find(o => o.value?.toLowerCase() === rawLower) ||
+              stepOpts.find(o => o.label?.toLowerCase() === rawLower) ||
+              stepOpts.find(o => rawLower.includes(o.value?.toLowerCase()) || o.value?.toLowerCase().includes(rawLower)) ||
+              stepOpts.find(o => rawLower.includes(o.label?.toLowerCase()) || o.label?.toLowerCase().includes(rawLower));
+            mergedPrefill[exceptionStep.step_id] = matchedOpt ? matchedOpt.value : rawVal;
+          }
+        }
+
         setAnswers(prev => ({ ...prev, ...mergedPrefill }));
         setPrefilledSteps(new Set(Object.keys(mergedPrefill)));
       }
