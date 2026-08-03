@@ -221,9 +221,22 @@ export default function AccountClassification({ account, onComplete, onCancel })
         const mergedPrefill = { ...accountPrefilled, ...entityPrefilled };
 
         // 4b. Special prefill: "Select potential EXCEPTION" step from account_holder_entity_type
-        // Only prefill for the 6 ReferencedData values that map to a known exception category.
+        // Only prefill for the 6 values that map to a known exception category.
+        // Includes both short codes (new accounts) and full label strings (legacy/imported accounts).
         // Any other value leaves the step editable (no prefill, no lock).
-        const EXCEPTION_PREFILL_VALUES = new Set(['DGA', 'NONPROFIT', 'STAK', 'holding', 'treasury', 'realestate']);
+        const EXCEPTION_PREFILL_VALUES = new Set([
+          // Short codes from ReferencedData
+          'DGA', 'NONPROFIT', 'STAK', 'holding', 'treasury', 'realestate',
+          // Full label strings (as stored by legacy import / older accounts)
+          'N.V. or B.V. acting with one 100% shareholder/director (100% DGA)',
+          'N.V. or B.V. acting with one 100% shareholder/director (DGA)',
+          'Non-Profit Organization',
+          'Stichting (Foundation) or other Non-Profit Organization',
+          'Stichting Administratiekantoor (STAK)',
+          'Holding Company',
+          'Treasury Center',
+          'Real Estate Fund',
+        ]);
         if (latestAccount.account_holder_entity_type && EXCEPTION_PREFILL_VALUES.has(latestAccount.account_holder_entity_type)) {
           const exceptionStep = chosenWorkflow.steps.find(s =>
             s.step_title?.toLowerCase().includes('exception') &&
