@@ -21,9 +21,12 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
   for (const step of workflow.steps) {
     if (!step.mapped_field) continue;
     console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType, '| match:', step.mapped_field.entity_type === entityType);
-    if (!step.mapped_field || step.mapped_field.entity_type !== entityType || !step.mapped_field.field_name) continue;
+    // entity_type null = match any entity type; otherwise must match
+    if (!step.mapped_field || (step.mapped_field.entity_type && step.mapped_field.entity_type !== entityType) || !step.mapped_field.field_name) continue;
     const fieldName = step.mapped_field.field_name;
-    const fieldValue = entityData[fieldName];
+    // fi_type is the workflow config name, but Account stores this as type_of_financial_institution
+    const resolvedFieldName = fieldName === 'fi_type' ? 'type_of_financial_institution' : fieldName;
+    const fieldValue = entityData[resolvedFieldName] ?? entityData[fieldName];
     console.log(`[computePrefillAnswers] step "${step.step_title}" fieldName="${fieldName}" fieldValue="${fieldValue}" question_type="${step.question_type}"`);
     if (fieldValue === undefined || fieldValue === null || fieldValue === "") { console.log(`[computePrefillAnswers] Skipping - field value is empty`); continue; }
 
@@ -55,7 +58,7 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
-      // Explicit mapping for type_of_financial_institution → workflow option values
+      // Explicit mapping: account type_of_financial_institution values → workflow option values
       const FI_TYPE_MAP = {
         'investment_entity_type_a': 'type_a',
         'investment_entity_type_b': 'type_b',
@@ -63,21 +66,26 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         'depository_institution': 'depository_institution',
         'specified_insurance_company': 'specified_insurance_company',
       };
-      // If options are static, try explicit map first, then exact value/label match, then case-insensitive
       const options = step.options || [];
       if (options.length > 0) {
         const strLower = strVal.toLowerCase();
-        // Use explicit map if available (prevents false partial matches)
+        // Step 1: Use explicit FI type map to get the ideal target value
         const mappedVal = FI_TYPE_MAP[strVal];
+        // Step 2: Check if that mapped value actually exists as an option in THIS workflow step
         const byExplicitMap = mappedVal ? options.find(o => o.value === mappedVal) : null;
+        // Step 3: If the mapped value doesn't exist in this workflow's options (e.g. type_b not listed),
+        //         fall back to "none" option if available — per business rule
+        const noneOption = options.find(o => o.value === 'none');
+        const fallbackToNone = mappedVal && !byExplicitMap && noneOption ? noneOption : null;
+        // Step 4: Standard exact/case-insensitive matching for non-FI-type fields
         const byValue = options.find(o => o.value === strVal);
         const byLabel = options.find(o => o.label === strVal);
         const byValueCI = options.find(o => o.value?.toLowerCase() === strLower);
         const byLabelCI = options.find(o => o.label?.toLowerCase() === strLower);
-        // NOTE: no partial/contains matching — it causes false positives (e.g. "type_b" matching "type_a" substring)
-        const matched = byExplicitMap || byValue || byLabel || byValueCI || byLabelCI;
+        // NOTE: no partial/contains matching — it causes false positives
+        const matched = byExplicitMap || fallbackToNone || byValue || byLabel || byValueCI || byLabelCI;
         console.log(`[computePrefillAnswers] single_choice options:`, options.map(o => `${o.value}="${o.label}"`).join(', '));
-        console.log(`[computePrefillAnswers] single_choice match for "${strVal}": mappedVal=${mappedVal} → using ${matched?.value || strVal}`);
+        console.log(`[computePrefillAnswers] single_choice match for "${strVal}": mappedVal=${mappedVal} byExplicitMap=${byExplicitMap?.value} fallbackToNone=${fallbackToNone?.value} → using ${matched?.value || strVal}`);
         initialAnswers[step.step_id] = matched ? matched.value : strVal;
       } else {
         // Options come from referenced data — store the raw field value directly
