@@ -1357,8 +1357,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 )}
                 {currentNode.help_text && (
                   <Alert className="bg-blue-50 border-blue-200 mb-4">
-                    <Info className="w-4 h-4 text-blue-600" />
-                    <AlertDescription className="text-sm text-blue-900">{currentNode.help_text}</AlertDescription>
+                    <Info className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
+                    <AlertDescription className="text-sm text-blue-900">
+                      {currentNode.help_text.trim().startsWith('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: currentNode.help_text }} className="workflow-help-text [&_ol]:list-decimal [&_ol]:ml-5 [&_ol]:space-y-1.5 [&_ul]:list-disc [&_ul]:ml-5 [&_ul]:space-y-1 [&_li]:leading-relaxed [&_p]:mb-2 [&_strong]:font-semibold [&_em]:italic" />
+                      ) : (
+                        currentNode.help_text
+                      )}
+                    </AlertDescription>
                   </Alert>
                 )}
               </div>
