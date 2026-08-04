@@ -118,7 +118,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   });
 
   const [isPreExistingLocked, setIsPreExistingLocked] = useState(false);
-  const isGrossIncomeLocked = account !== undefined && account !== null && account.gross_income_from_financial_assets !== undefined && account.gross_income_from_financial_assets !== null;
+  const isGrossIncomeLocked = false;
 
   // Investment Entity Type A: if the RFI entity is an investment_entity, fiduciary trust is always Yes and locked
   const selectedEntity = entities?.find(e => e.id === formData.entity_id);
