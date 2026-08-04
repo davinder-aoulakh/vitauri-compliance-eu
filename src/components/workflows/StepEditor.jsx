@@ -356,6 +356,8 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
         const hasDropdownOptions = getSuggestedValuesForField(editedStep.mapped_field.entity_type, field.value, referencedData);
         if (hasDropdownOptions && hasDropdownOptions.length > 0) return true;
       }
+      // enum fields are compatible with string-type questions (single_choice, multiple_choice, text_input)
+      if (field.type === 'enum' && questionFieldType === 'string') return true;
       return field.type === questionFieldType;
     });
   }, [editedStep.mapped_field?.entity_type, editedStep.question_type, accountFields, entityFields, controllingPersonFields, beneficiaryFields, referencedData]);
