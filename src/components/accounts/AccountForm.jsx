@@ -660,12 +660,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </Label>
               <Select
                 value={formData.account_holder_entity_type}
-                onValueChange={(value) => handleChange("account_holder_entity_type", value)}
+                onValueChange={(value) => handleChange("account_holder_entity_type", value === "__clear__" ? "" : value)}
               >
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="Select entity type..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__clear__"><span className="text-slate-400 italic">— Clear selection —</span></SelectItem>
                   {(() => {
                     // Use only ReferencedData as the single source of truth, deduplicated by value
                     const dbItems = referencedData
@@ -736,12 +737,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   <Label htmlFor="entity_classification" className="text-slate-700">Entity Classification</Label>
                   <Select
                     value={formData.entity_classification}
-                    onValueChange={(value) => handleChange("entity_classification", value)}
+                    onValueChange={(value) => handleChange("entity_classification", value === "__clear__" ? "" : value)}
                   >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue placeholder="Select classification..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__clear__"><span className="text-slate-400 italic">— Clear selection —</span></SelectItem>
                       <SelectItem value="financial_institution">Financial Institution</SelectItem>
                       <SelectItem value="active_nfe">Active NFE</SelectItem>
                       <SelectItem value="passive_nfe">Passive NFE</SelectItem>
@@ -755,12 +757,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   <Label htmlFor="type_of_financial_institution" className="text-slate-700">Type of Financial Institution</Label>
                   <Select
                     value={formData.type_of_financial_institution || ""}
-                    onValueChange={(value) => handleChange("type_of_financial_institution", value)}
+                    onValueChange={(value) => handleChange("type_of_financial_institution", value === "__clear__" ? "" : value)}
                   >
                     <SelectTrigger className="mt-1.5" id="type_of_financial_institution">
                       <SelectValue placeholder="Select type..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__clear__"><span className="text-slate-400 italic">— Clear selection —</span></SelectItem>
                       {FI_TYPE_OPTIONS.map(opt => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
@@ -1664,12 +1667,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     <p className="text-xs text-slate-500 mt-0.5 mb-2">Required because this organisation has non-US tax residencies.</p>
                     <Select
                       value={formData.crs_entity_classification}
-                      onValueChange={(value) => handleChange("crs_entity_classification", value)}
+                      onValueChange={(value) => handleChange("crs_entity_classification", value === "__clear__" ? "" : value)}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select CRS classification..." />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="__clear__"><span className="text-slate-400 italic">— Clear selection —</span></SelectItem>
                         <SelectItem value="CRS101">Passive entity (e.g. holding company, trust, foundation) with one or more controlling persons who are tax residents of a reportable country</SelectItem>
                         <SelectItem value="CRS102">Active or financial entity that is itself a tax resident of a reportable country</SelectItem>
                         <SelectItem value="CRS103">Passive entity that is itself also a tax resident of a reportable country</SelectItem>
@@ -1691,12 +1695,13 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     <p className="text-xs text-slate-500 mt-0.5 mb-2">Required because this organisation has a US tax residency.</p>
                     <Select
                       value={formData.fatca_entity_classification}
-                      onValueChange={(value) => handleChange("fatca_entity_classification", value)}
+                      onValueChange={(value) => handleChange("fatca_entity_classification", value === "__clear__" ? "" : value)}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select FATCA classification..." />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="__clear__"><span className="text-slate-400 italic">— Clear selection —</span></SelectItem>
                         <SelectItem value="FATCA101">Entity that documents its US owners (Owner-Documented FI)</SelectItem>
                         <SelectItem value="FATCA102">Passive entity with substantial US owners (e.g. passive holding company owned by US persons)</SelectItem>
                         <SelectItem value="FATCA103">Non-participating foreign financial institution</SelectItem>
