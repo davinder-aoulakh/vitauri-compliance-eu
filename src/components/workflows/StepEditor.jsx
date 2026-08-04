@@ -49,7 +49,6 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "date_of_birth", label: "Date of Birth", type: "date" },
   { value: "place_of_birth", label: "Place of Birth", type: "string", isCountry: true },
   { value: "date_of_incorporation", label: "Date of Incorporation", type: "date" },
-  { value: "country_of_incorporation", label: "Country of Incorporation", type: "string", isCountry: true },
   { value: "country_of_incorporation_code", label: "Country of Incorporation Code", type: "string" },
   // Account Status Flags
   { value: "is_pre_existing", label: "Is Pre-existing", type: "boolean" },
