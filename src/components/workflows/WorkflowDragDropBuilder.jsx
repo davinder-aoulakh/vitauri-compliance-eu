@@ -15,17 +15,27 @@ import StepEditor from "./StepEditor";
 import CopyWorkflowStepsDialog from "./CopyWorkflowStepsDialog";
 
 const ACCOUNT_FIELDS = [
+  // Core Account
   { value: "account_number", label: "Account Number" },
   { value: "account_number_type", label: "Account Number Type" },
   { value: "account_creation_date", label: "Account Creation Date" },
   { value: "account_type", label: "Account Type" },
+  { value: "status", label: "Account Status" },
+  // Account Holder Identity
   { value: "account_holder_type", label: "Account Holder Type" },
   { value: "account_holder_name", label: "Account Holder Name" },
+  { value: "account_holder_entity_type", label: "Account Holder Entity Type" },
   { value: "first_name", label: "First Name" },
   { value: "last_name", label: "Last Name" },
+  { value: "middle_name", label: "Middle Name" },
+  { value: "name_prefix", label: "Name Prefix" },
+  { value: "title", label: "Title" },
   { value: "date_of_birth", label: "Date of Birth" },
   { value: "place_of_birth", label: "Place of Birth" },
+  { value: "date_of_incorporation", label: "Date of Incorporation" },
   { value: "country_of_incorporation", label: "Country of Incorporation" },
+  { value: "country_of_incorporation_code", label: "Country of Incorporation Code" },
+  // Account Status Flags
   { value: "is_pre_existing", label: "Pre-existing Account" },
   { value: "is_recalcitrant", label: "Is Recalcitrant" },
   { value: "account_holder_is_alive", label: "Account Holder Is Alive" },
@@ -33,24 +43,66 @@ const ACCOUNT_FIELDS = [
   { value: "account_closed_during_period", label: "Account Closed During Period" },
   { value: "account_frozen_at_reporting_date", label: "Account Frozen at Reporting Date" },
   { value: "account_dormant_at_reporting_date", label: "Account Dormant at Reporting Date" },
+  { value: "acct_holder_address_unchanged", label: "Account Holder Address Unchanged" },
+  // Deceased Workflow
+  { value: "death_certificate_requested", label: "Death Certificate Requested" },
+  { value: "death_certificate_requested_date", label: "Death Certificate Requested Date" },
+  { value: "death_certificate_received", label: "Death Certificate Received" },
+  { value: "death_certificate_received_date", label: "Death Certificate Received Date" },
+  { value: "will_or_inheritance_requested", label: "Will or Inheritance Requested" },
+  { value: "will_or_inheritance_requested_date", label: "Will or Inheritance Requested Date" },
+  { value: "will_or_inheritance_received", label: "Will or Inheritance Received" },
+  { value: "will_or_inheritance_received_date", label: "Will or Inheritance Received Date" },
+  { value: "legacy_of_deceased_settled", label: "Legacy of Deceased Settled" },
+  { value: "legacy_settlement_date", label: "Legacy Settlement Date" },
+  // Entity Management
   { value: "entity_managed_by_fiduciary_trust", label: "Managed by Fiduciary Trust" },
   { value: "entity_managed_by_asset_manager", label: "Managed by Asset Manager" },
   { value: "gross_income_from_financial_assets", label: "Gross Income from Financial Assets" },
   { value: "gross_income_50_passive", label: "Gross Income 50%+ Passive" },
+  // CRS Classification
+  { value: "type_of_financial_institution", label: "Type of Financial Institution" },
   { value: "entity_classification", label: "Entity Classification" },
   { value: "crs_entity_classification", label: "CRS Entity Classification" },
+  { value: "fatca_entity_classification", label: "FATCA Entity Classification" },
+  { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type" },
+  { value: "potential_exception_type", label: "Potential Exception Type" },
+  // Treasury Centre
+  { value: "treasury_activities_operational", label: "Treasury Activities Operational" },
+  { value: "treasury_part_of_nonfinancial_group", label: "Treasury Part of Non-Financial Group" },
+  { value: "treasury_main_fn_finance_hedge_group", label: "Treasury Main Function Finance/Hedge" },
+  { value: "treasury_50pct_passive_income_fails", label: "Treasury 50% Passive Income Fails" },
+  { value: "treasury_still_operational_despite_failing_50pct", label: "Treasury Still Operational Despite Failing 50%" },
+  // Contact & Location
+  { value: "country_of_residence", label: "Country of Residence" },
+  { value: "current_email", label: "Current Email" },
+  { value: "current_phone", label: "Current Phone" },
+  // Financial Values
   { value: "year_end_cash_value", label: "Year End Cash Value" },
   { value: "year_end_cash_value_currency", label: "Year End Cash Value Currency" },
   { value: "gross_payments", label: "Gross Payments" },
   { value: "gross_payments_currency", label: "Gross Payments Currency" },
   { value: "reporting_year", label: "Reporting Year" },
+  // Reportability
   { value: "reportability_status", label: "Reportability Status" },
-  { value: "beneficiaries_count", label: "Beneficiaries Count" },
-  { value: "controlling_persons_count", label: "Controlling Persons Count" },
+  { value: "reportability_reason", label: "Reportability Reason" },
+  { value: "needs_reclassification", label: "Needs Reclassification" },
+  // US Indicia
+  { value: "us_person_indic", label: "US Person Indicia" },
+  { value: "indicia_details.citizenship", label: "Indicia - Citizenship" },
+  { value: "indicia_details.us_address", label: "Indicia - US Address" },
+  { value: "indicia_details.us_phone", label: "Indicia - US Phone" },
+  { value: "indicia_details.power_of_attorney", label: "Indicia - Power of Attorney" },
+  { value: "indicia_details.standing_instructions", label: "Indicia - Standing Instructions" },
+  // Self-Certification
   { value: "self_certification_obtained", label: "Self Certification Obtained" },
   { value: "self_certification_date", label: "Self Certification Date" },
-  { value: "country_of_residence", label: "Country of Residence" },
-  { value: "status", label: "Account Status" },
+  { value: "self_certification_request_date", label: "Self Certification Request Date" },
+  { value: "self_certification_overdue", label: "Self Certification Overdue" },
+  // Controlling Persons / Beneficiaries
+  { value: "beneficiaries_count", label: "Beneficiaries Count" },
+  { value: "controlling_persons_count", label: "Controlling Persons Count" },
+  { value: "has_unclassified_controlling_persons", label: "Has Unclassified Controlling Persons" },
 ];
 
 export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) {
