@@ -88,8 +88,8 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         'Treasury Center',
         'Real Estate Fund',
       ]);
-      if (isFiTypeStep && entityData.account_holder_entity_type && EXCEPTION_ENTITY_TYPES.has(entityData.account_holder_entity_type)) {
-        console.log(`[computePrefillAnswers] Skipping FI type prefill — account_holder_entity_type "${entityData.account_holder_entity_type}" is an exception type`);
+      if (isFiTypeStep && entityData.account_holder_entity_type && EXCEPTION_ENTITY_TYPES.has(entityData.account_holder_entity_type) && !entityData.type_of_financial_institution) {
+        console.log(`[computePrefillAnswers] Skipping FI type prefill — account_holder_entity_type "${entityData.account_holder_entity_type}" is an exception type and no type_of_financial_institution is set`);
         continue;
       }
 
