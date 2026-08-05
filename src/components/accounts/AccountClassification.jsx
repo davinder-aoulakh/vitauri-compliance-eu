@@ -258,14 +258,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
             mergedPrefill[exceptionStep.step_id] = exceptionOptValue;
           }
 
-          // Also clear any FI type prefill for these exception accounts — they go through
-          // the exception path, so the "Select potential type of Financial Institution" step
-          // should not be locked with a FI type value derived from type_of_financial_institution.
+          // Only clear the FI type prefill for exception accounts if no FI type is explicitly
+          // set on the account. If the account already has a type_of_financial_institution value,
+          // it is also a Financial Institution and the FI type step should remain prefilled.
           const fiTypeStep = chosenWorkflow.steps.find(s =>
             s.step_title?.toLowerCase().includes('type of financial institution') &&
             s.question_type === 'single_choice'
           );
-          if (fiTypeStep) {
+          if (fiTypeStep && !latestAccount.type_of_financial_institution) {
             delete mergedPrefill[fiTypeStep.step_id];
           }
         }
