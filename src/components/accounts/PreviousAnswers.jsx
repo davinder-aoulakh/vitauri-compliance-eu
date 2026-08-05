@@ -41,7 +41,7 @@ function formatAnswer(ans, step, getStepOptions) {
     // multi_field_input
     const fields = step.multi_fields || [];
     const pairs = Object.entries(ans)
-      .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== false)
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
       .map(([k, v]) => {
         const fieldDef = fields.find(f => f.field_id === k);
         const label = fieldDef?.display_label || k;
