@@ -380,7 +380,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const evalSingleCondition = async (condition, allAnswers) => {
-    return await evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {});
+    return await evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {}, linkedEntityRef.current);
   };
 
   const evalConditionalLogic = async (logic, currentAnswer, allAnswers) => {
@@ -405,7 +405,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return null;
       }
     }
-    const boundEvalSingle = (condition) => evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {});
+    const boundEvalSingle = (condition) => evaluateSingleCondition(condition, (fp) => getFieldValue(fp, allAnswers), {}, linkedEntityRef.current);
     return await evaluateConditionalLogic(logic, allAnswers, boundEvalSingle);
   };
 

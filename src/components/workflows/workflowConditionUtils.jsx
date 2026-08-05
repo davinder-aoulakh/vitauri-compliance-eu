@@ -10,7 +10,7 @@
  * @param {Object} crsCountryMap - Map of country codes to CRS info
  * @returns {Promise<boolean>} Whether the condition is met
  */
-export const evaluateSingleCondition = async (condition, getFieldValue, crsCountryMap) => {
+export const evaluateSingleCondition = async (condition, getFieldValue, crsCountryMap, linkedEntity) => {
   let fieldValue = getFieldValue(condition.field);
   let comparisonValue = condition.value;
   
@@ -22,7 +22,25 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
   console.log('  Value Type:', condition.value_type);
   
   if (condition.value_type === 'field_reference') {
+    // Try getFieldValue first (handles account fields, step answers, etc.)
     comparisonValue = getFieldValue(condition.value);
+    // If not resolved and we have a linkedEntity, try resolving directly from entity
+    // (handles display-name references like "Country of Incorporation" stored on Entity)
+    if ((comparisonValue === null || comparisonValue === undefined) && linkedEntity) {
+      const ENTITY_FIELD_MAP = {
+        'country of incorporation': 'country_of_incorporation',
+        'country_of_incorporation': 'country_of_incorporation',
+        'entity name': 'entity_name',
+        'entity type': 'entity_type',
+        'rfi status': 'rfi_status',
+        'fi type': 'fi_type',
+      };
+      const mappedKey = ENTITY_FIELD_MAP[condition.value?.toLowerCase?.()];
+      if (mappedKey && linkedEntity[mappedKey] !== undefined) {
+        comparisonValue = linkedEntity[mappedKey];
+        console.log(`  Comparison Value (resolved from linkedEntity.${mappedKey}):`, comparisonValue);
+      }
+    }
     console.log('  Comparison Value (after field_reference lookup):', comparisonValue);
   }
 
@@ -84,9 +102,9 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
     return valLower;
   };
 
-  // Check if we're comparing countries by checking if field name contains 'country'
-  // This helps determine if we should normalize values as country codes
-  const isCountryField = condition.field?.toLowerCase().includes('country');
+  // Check if we're comparing countries — covers both the left-hand field and the right-hand reference field
+  const isCountryField = condition.field?.toLowerCase().includes('country') ||
+    (condition.value_type === 'field_reference' && condition.value?.toLowerCase().includes('country'));
 
   switch (condition.operator) {
     case "=":
