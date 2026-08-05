@@ -4,6 +4,11 @@ import { base44 } from "@/api/base44Client";
  * Evaluates computed_comparison prefill config against entity data.
  */
 export const evaluateComputedComparison = (cfg, entityData) => {
+  // Guard: if config is incomplete, return null instead of defaulting to NO
+  if (!cfg || (!cfg.field_one && !cfg.field_two)) return null;
+  if (!cfg.comparison_operator) return null;
+  if (cfg.threshold_value === undefined || cfg.threshold_value === null) return null;
+
   const v1 = Number(entityData[cfg.field_one]) || 0;
   const v2 = Number(entityData[cfg.field_two]) || 0;
   const computed = { add: v1+v2, subtract: v1-v2, multiply: v1*v2, divide: v2 ? v1/v2 : 0 }[cfg.computation_operator] ?? v1+v2;
@@ -44,7 +49,20 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         const matchValues = step.mapped_field.prefill_config.match_values || [];
         initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
       } else if (prefillType === 'computed_comparison') {
-        initialAnswers[step.step_id] = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
+        let result = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
+
+        // Fallback: if config is incomplete, use year_end_cash_value vs 1,000,000 (CRS standard rule)
+        if (result === null) {
+          const balance = Number(entityData['year_end_cash_value']) || 0;
+          if (balance > 0) {
+            result = balance < 1000000 ? 'YES' : 'NO';
+          }
+        }
+
+        if (result !== null) {
+          initialAnswers[step.step_id] = result;
+        }
+        // null = no balance data, leave step editable
       }
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
       // For fields that default to false (e.g. entity_managed_by_asset_manager), only prefill
