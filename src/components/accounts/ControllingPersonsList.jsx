@@ -543,28 +543,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
         </CardContent>
       </Card>
 
-      {/* Reportability Summary */}
-      {controllingPersons.length > 0 && (
-        <Alert className={reportablePersons.length > 0 ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}>
-          {reportablePersons.length > 0 ? (
-            <>
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
-              <AlertDescription className="text-sm text-green-900">
-                <strong>Account is Reportable:</strong> {reportablePersons.length} controlling {reportablePersons.length === 1 ? 'person is' : 'persons are'} tax resident in foreign CRS participating jurisdictions. 
-                Their information will be included in CRS XML reporting.
-              </AlertDescription>
-            </>
-          ) : (
-            <>
-              <XCircle className="w-4 h-4 text-slate-600" />
-              <AlertDescription className="text-sm text-slate-700">
-                <strong>Account is Non-Reportable:</strong> No controlling persons are tax resident in foreign jurisdictions. 
-                This account does not require CRS reporting for controlling persons.
-              </AlertDescription>
-            </>
-          )}
-        </Alert>
-      )}
+
 
       {/* Controlling Person Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
