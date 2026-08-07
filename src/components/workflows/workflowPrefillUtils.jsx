@@ -64,16 +64,6 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         }
         // null = no balance data, leave step editable
       }
-    } else if (step.question_type === 'single_choice' && fieldName === 'is_pre_existing' && typeof fieldValue === 'boolean') {
-      // Special case: boolean is_pre_existing → single_choice with pre_existing/new options
-      const options = step.options || [];
-      const targetVal = fieldValue ? 'pre_existing' : 'new';
-      const matched = options.find(o => o.value === targetVal)
-        || options.find(o => o.value?.toLowerCase().includes(fieldValue ? 'pre' : 'new'));
-      if (matched) {
-        console.log(`[computePrefillAnswers] is_pre_existing (${fieldValue}) → single_choice option "${matched.value}"`);
-        initialAnswers[step.step_id] = matched.value;
-      }
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
       // For fields that default to false (e.g. entity_managed_by_asset_manager), only prefill
       // and lock the answer when the value is explicitly true. A false value on such fields may
