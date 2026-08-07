@@ -4,20 +4,26 @@ import { Card, CardContent } from "@/components/ui/card";
 
 /**
  * Formats a raw answer value into a human-readable string for WorkflowRunner.
- * Handles booleans, arrays, multi_field objects, file uploads, address inputs,
- * controlling persons, and plain scalar values.
  */
 function formatAnswer(ans, step) {
   if (ans === null || ans === undefined || ans === '') return null;
 
-  // Boolean
-  if (typeof ans === 'boolean') return ans ? 'Yes' : 'No';
-  if (ans === 'YES') return 'Yes';
-  if (ans === 'NO') return 'No';
+  const opts = step.options || [];
 
-  // Arrays (multiple_choice) — map values to option labels
+  // Boolean primitive
+  if (typeof ans === 'boolean') return ans ? 'Yes' : 'No';
+
+  // String scalars — try option label lookup first, then YES/NO conversion
+  if (typeof ans === 'string') {
+    const matched = opts.find(o => o.value === ans);
+    if (matched) return matched.label;
+    if (ans === 'YES') return 'Yes';
+    if (ans === 'NO') return 'No';
+    return ans;
+  }
+
+  // Arrays (multiple_choice) — always map to option labels
   if (Array.isArray(ans)) {
-    const opts = step.options || [];
     const labels = ans.map(v => {
       const matched = opts.find(o => o.value === v);
       return matched ? matched.label : v;
@@ -27,7 +33,7 @@ function formatAnswer(ans, step) {
 
   // Objects
   if (typeof ans === 'object') {
-    // file_upload (WorkflowRunner stores files as an array inside ans.files)
+    // file_upload: WorkflowRunner stores files array
     if (ans.files && Array.isArray(ans.files) && ans.files.length > 0) {
       const firstName = ans.files[0]?.name || 'file';
       const extra = ans.files.length > 1 ? ` (+${ans.files.length - 1} more)` : '';
@@ -35,7 +41,7 @@ function formatAnswer(ans, step) {
         ? `${firstName}${extra} (Received: ${ans.date_received})`
         : `${firstName}${extra}`;
     }
-    // file_upload (AccountClassification stores as { file_name, file_url, date_received })
+    // file_upload: AccountClassification stores as { file_name, file_url, date_received }
     if (ans.file_name) {
       return ans.date_received
         ? `${ans.file_name} (Received: ${ans.date_received})`
@@ -56,23 +62,31 @@ function formatAnswer(ans, step) {
       }
       return 'No persons added';
     }
-    // multi_field_input — build "Label: Value | Label: Value" summary
+    // multi_field_input — render each sub-field using its display_label
+    // Build pairs, resolving boolean sub-fields and yes/no strings
     const fields = step.multi_fields || [];
     const pairs = Object.entries(ans)
       .filter(([, v]) => v !== null && v !== undefined && v !== '')
       .map(([k, v]) => {
         const fieldDef = fields.find(f => f.field_id === k);
         const label = fieldDef?.display_label || k;
-        const val = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
+        let val;
+        if (typeof v === 'boolean') {
+          val = v ? 'Yes' : 'No';
+        } else if (v === 'YES' || v === 'true') {
+          val = 'Yes';
+        } else if (v === 'NO' || v === 'false') {
+          val = 'No';
+        } else {
+          // If the sub-field has options, try to resolve the label
+          const subOpts = fieldDef?.options || [];
+          const subMatched = subOpts.find(o => o.value === v);
+          val = subMatched ? subMatched.label : String(v);
+        }
         return `${label}: ${val}`;
       });
     return pairs.join(' | ') || null;
   }
-
-  // Scalar — try option label lookup first
-  const opts = step.options || [];
-  const matched = opts.find(o => o.value === ans);
-  if (matched) return matched.label;
 
   return String(ans);
 }
