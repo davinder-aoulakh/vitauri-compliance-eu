@@ -1953,36 +1953,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   
                   let displayValue = '';
                   if (Array.isArray(value)) {
-                    // For multiple_choice, look up labels from options; fall back to raw value
-                    displayValue = value.map(v => step.options?.find(o => o.value === v)?.label || v).join(', ');
+                    displayValue = value.join(', ');
                   } else if (typeof value === 'object' && value !== null) {
+                    // For file_upload, show number of files and date received if available
                     if (step.question_type === 'file_upload') {
                       const filesCount = value.files?.length || 0;
                       const dateReceivedText = value.date_received ? ` (Received: ${value.date_received})` : '';
                       displayValue = `${filesCount} file(s) uploaded${dateReceivedText}`;
-                    } else if (step.question_type === 'multi_field_input') {
-                      // Build a readable summary from each sub-field value
-                      const parts = (step.multi_fields || []).map(field => {
-                        const fv = value[field.field_id];
-                        if (fv === undefined || fv === null || fv === '') return null;
-                        // Resolve label for boolean yes/no fields
-                        let fvDisplay = fv;
-                        if (typeof fv === 'boolean') {
-                          fvDisplay = fv ? 'Yes' : 'No';
-                        } else if (field.field_type === 'boolean') {
-                          fvDisplay = String(fv).toLowerCase() === 'true' || fv === 'yes' ? 'Yes' : 'No';
-                        } else if (field.options) {
-                          fvDisplay = field.options.find(o => o.value === fv)?.label || fv;
-                        }
-                        return `${field.display_label}: ${fvDisplay}`;
-                      }).filter(Boolean);
-                      displayValue = parts.length > 0 ? parts.join(' | ') : 'Data entered';
-                    } else if (step.question_type === 'address_input') {
-                      displayValue = [value.street, value.city, value.country].filter(Boolean).join(', ') || 'Data entered';
-                    } else if (step.question_type === 'beneficiary_input') {
-                      displayValue = value.savedBeneficiaries ? `${value.savedBeneficiaries.length} beneficiary(ies)` : 'Data entered';
-                    } else if (step.question_type === 'controlling_person_input') {
-                      displayValue = value.savedPersons ? `${value.savedPersons.length} person(s)` : 'Data entered';
+                    } else if (key === currentStep.step_id && currentStep.question_type === 'address_input') {
+                      // For current step address input, show basic address
+                      displayValue = `${value.street || ''}, ${value.city || ''}, ${value.country || ''}`;
+                    } else if (key === currentStep.step_id && (currentStep.question_type === 'beneficiary_input' || currentStep.question_type === 'controlling_person_input')) {
+                      displayValue = 'Data entered'; // Or a more specific summary if desired
                     } else {
                       displayValue = 'Data entered';
                     }
