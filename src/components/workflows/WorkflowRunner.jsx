@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
@@ -33,6 +33,7 @@ import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
   const [mappedEntityData, setMappedEntityData] = useState(null);
   const [mappedEntityType, setMappedEntityType] = useState(null);
   const [mappedEntityId, setMappedEntityId] = useState(null);
@@ -89,7 +90,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           }
         }
 
-        setAnswers(prev => ({ ...prev, ...primaryPrefill, ...secondaryPrefill }));
+        const mergedPrefill = { ...primaryPrefill, ...secondaryPrefill };
+        setAnswers(prev => ({ ...prev, ...mergedPrefill }));
+        // Lock steps that have a non-empty prefilled value
+        const lockable = Object.entries(mergedPrefill)
+          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+          .map(([k]) => k);
+        setPrefilledSteps(new Set(lockable));
       }
     };
     loadMappedEntityData();
@@ -979,6 +986,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   const renderQuestionInput = () => {
     const answer = answers[getAnswerKey(currentStep.step_id)];
+    const isLocked = prefilledSteps.has(currentStep.step_id);
 
     switch (currentStep.question_type) {
       case 'yes_no':
@@ -986,43 +994,42 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           { value: "YES", label: "Yes" },
           { value: "NO", label: "No" }
         ];
-        
-        const isFiduciaryStep = currentStep.step_id === 'step_1769573962356';
-        const isStepLocked = isFiduciaryStep && isRfiTypeA;
 
         return (
           <div className="space-y-3">
-            {isStepLocked && (
-              <Alert className="bg-amber-50 border-amber-200 py-2">
-                <Info className="w-4 h-4 text-amber-600" />
-                <AlertDescription className="text-xs text-amber-800">
-                  This answer is pre-filled and locked because the RFI Entity is classified as an Investment Entity Type A (fiduciary).
-                </AlertDescription>
-              </Alert>
+            {isLocked && (
+              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>This answer was automatically determined from your account data and cannot be changed.</span>
+              </div>
             )}
             <RadioGroup 
               value={answer} 
-              onValueChange={isStepLocked ? undefined : (value) => handleAnswer(currentStep.step_id, value)}
+              onValueChange={isLocked ? undefined : (value) => handleAnswer(currentStep.step_id, value)}
             >
               {yesNoOptions.map((option) => (
                 <div 
                   key={option.value}
                   className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
-                    isStepLocked
-                      ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-75'
+                    isLocked
+                      ? option.value === answer
+                        ? 'border-indigo-300 bg-indigo-50/70 cursor-not-allowed opacity-90'
+                        : 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-40'
                       : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
                   }`}
-                  onClick={isStepLocked ? undefined : () => handleAnswer(currentStep.step_id, option.value)}
+                  onClick={isLocked ? undefined : () => handleAnswer(currentStep.step_id, option.value)}
                 >
-                  <RadioGroupItem value={option.value} id={option.value} disabled={isStepLocked} />
+                  <RadioGroupItem value={option.value} id={option.value} disabled={isLocked} />
                   <Label 
                     htmlFor={option.value}
-                    className={`flex-1 font-medium text-slate-900 ${isStepLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                    className={`flex-1 font-medium text-slate-900 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     {option.label}
                   </Label>
                   {option.value === answer && (
-                    <CheckCircle2 className={`w-5 h-5 ${isStepLocked ? 'text-slate-400' : 'text-indigo-600'}`} />
+                    isLocked
+                      ? <Lock className="w-4 h-4 text-indigo-400" />
+                      : <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                   )}
                 </div>
               ))}
@@ -1033,11 +1040,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       case 'single_choice':
         return (
           <div className="space-y-4">
+            {isLocked && (
+              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>This answer was automatically determined from your account data and cannot be changed.</span>
+              </div>
+            )}
             <Select
+              disabled={isLocked}
               value={answer}
-              onValueChange={(value) => handleAnswer(currentStep.step_id, value)}
+              onValueChange={isLocked ? undefined : (value) => handleAnswer(currentStep.step_id, value)}
             >
-              <SelectTrigger className="w-full h-12">
+              <SelectTrigger className={`w-full h-12 ${isLocked ? 'cursor-not-allowed opacity-70 bg-slate-50' : ''}`}>
                 <SelectValue placeholder="Select an option..." />
               </SelectTrigger>
               <SelectContent>
