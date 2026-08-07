@@ -49,8 +49,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
 
+  // Build occurrence-aware answer key: stepId + how many times it's already in history
+  const getAnswerKey = (stepId) => {
+    const occurrencesSoFar = history.filter(id => id === stepId).length;
+    return occurrencesSoFar > 0 ? `${stepId}__iter${occurrencesSoFar}` : stepId;
+  };
+
   const handleAnswer = (stepId, answer) => {
-    setAnswers(prev => ({ ...prev, [stepId]: answer }));
+    const key = getAnswerKey(stepId);
+    setAnswers(prev => ({ ...prev, [key]: answer }));
   };
 
   useEffect(() => {
@@ -89,7 +96,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   }, [workflow, accountId, entityId]);
 
   const handleNext = async () => {
-    const answer = answers[currentStep.step_id];
+    const answer = answers[getAnswerKey(currentStep.step_id)];
     
     // Debug omitted for brevity
     
@@ -605,7 +612,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`[ACTION ${i + 1}]    ✅ Using static value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
         } else if (action.value_source === "from_step_answer") {
           const sourceStepId = action.value;
-          valueToUpdate = answers[sourceStepId];
+          // Use the most recent answer for this step (last occurrence)
+          const allKeys = Object.keys(answers);
+          const matchingKeys = allKeys.filter(k => k === sourceStepId || k.startsWith(`${sourceStepId}__iter`));
+          const latestKey = matchingKeys.length > 0 ? matchingKeys[matchingKeys.length - 1] : sourceStepId;
+          valueToUpdate = answers[latestKey];
           console.log(`[ACTION ${i + 1}]    📝 From step answer (step ID: ${sourceStepId})`);
           console.log(`[ACTION ${i + 1}]    Raw answer value: ${valueToUpdate}`);
           
@@ -873,7 +884,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     
   
     
-    const completionData = Object.entries(answers).map(([stepId, answer]) => {
+    const completionData = Object.entries(answers).map(([stepKey, answer]) => {
+      const stepId = stepKey.includes('__iter') ? stepKey.split('__iter')[0] : stepKey;
       const step = workflow.steps.find(s => s.step_id === stepId);
       return {
         step_id: stepId,
@@ -885,7 +897,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     });
 
     const updates = {};
-    for (const [stepId, answer] of Object.entries(answers)) {
+    for (const [stepKey, answer] of Object.entries(answers)) {
+      // Strip the iteration suffix to get the base stepId
+      const stepId = stepKey.includes('__iter') ? stepKey.split('__iter')[0] : stepKey;
       const step = workflow.steps.find(s => s.step_id === stepId);
       if (step?.mapped_field && step.mapped_field.entity_type === mappedEntityType && step.mapped_field.field_name) {
         const fieldName = step.mapped_field.field_name;
@@ -923,7 +937,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const renderQuestionInput = () => {
-    const answer = answers[currentStep.step_id];
+    const answer = answers[getAnswerKey(currentStep.step_id)];
 
     switch (currentStep.question_type) {
       case 'yes_no':
@@ -1551,7 +1565,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const canProceed = () => {
-    const answer = answers[currentStep.step_id];
+    const answer = answers[getAnswerKey(currentStep.step_id)];
     
     if (currentStep.question_type === 'info' || currentStep.question_type === 'result') return true;
     if (!currentStep.required) return true;
@@ -1687,52 +1701,58 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {completedPath.map((stepId, idx) => {
-                const step = workflow.steps.find(s => s.step_id === stepId);
-                const answer = answers[stepId];
-                if (!step || !answer) return null;
+              {(() => {
+                const summaryOcc = {};
+                return completedPath.map((stepId, idx) => {
+                  const step = workflow.steps.find(s => s.step_id === stepId);
+                  const prevOcc = summaryOcc[stepId] || 0;
+                  const answerKey = prevOcc > 0 ? `${stepId}__iter${prevOcc}` : stepId;
+                  summaryOcc[stepId] = prevOcc + 1;
+                  const answer = answers[answerKey];
+                  if (!step || !answer) return null;
 
-                let displayValue = '';
-                if (Array.isArray(answer)) {
-                  const labels = answer.map(v =>
-                    step.options?.find(o => o.value === v)?.label || v
-                  );
-                  displayValue = labels.join(', ');
-                } else if (typeof answer === 'object' && answer !== null) {
-                  if (answer.files) {
-                    displayValue = `${answer.files.length} file(s) uploaded`;
-                  } else if (answer.savedPersons) {
-                    displayValue = `${answer.savedPersons.length} controlling person(s) added`;
-                  } else if (answer.savedBeneficiaries) {
-                    displayValue = `${answer.savedBeneficiaries.length} beneficiary(ies) added`;
-                  } else if (answer.street && answer.country) {
-                    displayValue = `${answer.street}, ${answer.city}, ${answer.country}`;
+                  let displayValue = '';
+                  if (Array.isArray(answer)) {
+                    const labels = answer.map(v =>
+                      step.options?.find(o => o.value === v)?.label || v
+                    );
+                    displayValue = labels.join(', ');
+                  } else if (typeof answer === 'object' && answer !== null) {
+                    if (answer.files) {
+                      displayValue = `${answer.files.length} file(s) uploaded`;
+                    } else if (answer.savedPersons) {
+                      displayValue = `${answer.savedPersons.length} controlling person(s) added`;
+                    } else if (answer.savedBeneficiaries) {
+                      displayValue = `${answer.savedBeneficiaries.length} beneficiary(ies) added`;
+                    } else if (answer.street && answer.country) {
+                      displayValue = `${answer.street}, ${answer.city}, ${answer.country}`;
+                    } else {
+                      displayValue = 'Data entered';
+                    }
                   } else {
-                    displayValue = 'Data entered';
+                    displayValue = step.options?.find(o => o.value === answer)?.label || String(answer || '');
                   }
-                } else {
-                  displayValue = step.options?.find(o => o.value === answer)?.label || String(answer || '');
-                }
 
-                return (
-                  <div key={stepId} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
-                      {idx + 1}
+                  return (
+                    <div key={`${stepId}-${idx}`} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 font-semibold text-sm">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-900 mb-1">
+                          {step.step_title}
+                        </p>
+                        {step.question_text && (
+                          <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
+                        )}
+                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
+                          {displayValue}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-900 mb-1">
-                        {step.step_title}
-                      </p>
-                      {step.question_text && (
-                        <p className="text-xs text-slate-600 mb-2">{step.question_text}</p>
-                      )}
-                      <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">
-                        {displayValue}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </CardContent>
         </Card>

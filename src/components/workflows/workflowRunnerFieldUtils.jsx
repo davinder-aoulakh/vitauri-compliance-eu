@@ -53,8 +53,11 @@ export const getFieldValue = (fieldPath, allAnswers, initialData, workflow) => {
       }
     }
     
-    const stepAnswer = allAnswers[actualStepId];
-    console.log(`    [getFieldValue] Step answer for "${actualStepId}":`, JSON.stringify(stepAnswer));
+    // Use latest iteration of the step answer if available
+    const iterKeys = Object.keys(allAnswers).filter(k => k.startsWith(`${actualStepId}__iter`));
+    const latestKey = iterKeys.length > 0 ? iterKeys[iterKeys.length - 1] : actualStepId;
+    const stepAnswer = allAnswers[latestKey];
+    console.log(`    [getFieldValue] Step answer for "${actualStepId}" (key: "${latestKey}"):`, JSON.stringify(stepAnswer));
     
     if (stepAnswer && typeof stepAnswer === 'object' && !Array.isArray(stepAnswer)) {
       // Try direct subField first, then known aliases for tax residency field name variants
@@ -80,10 +83,25 @@ export const getFieldValue = (fieldPath, allAnswers, initialData, workflow) => {
     }
   }
   
-  // Check step answers first (direct lookup)
+  // Check step answers first (direct lookup) — also check for latest iteration suffix
   if (allAnswers[fieldPath] !== undefined) {
+    // Prefer the most recent iteration if one exists
+    const allKeys = Object.keys(allAnswers);
+    const iterKeys = allKeys.filter(k => k.startsWith(`${fieldPath}__iter`));
+    if (iterKeys.length > 0) {
+      const latestIterKey = iterKeys[iterKeys.length - 1];
+      console.log(`    [getFieldValue] Latest iteration key "${latestIterKey}":`, allAnswers[latestIterKey]);
+      return allAnswers[latestIterKey];
+    }
     console.log(`    [getFieldValue] Direct step answer "${fieldPath}":`, allAnswers[fieldPath]);
     return allAnswers[fieldPath];
+  }
+  // Also check if there's an iteration key even without a base key
+  const iterKeysOnly = Object.keys(allAnswers).filter(k => k.startsWith(`${fieldPath}__iter`));
+  if (iterKeysOnly.length > 0) {
+    const latestIterKey = iterKeysOnly[iterKeysOnly.length - 1];
+    console.log(`    [getFieldValue] Latest iteration-only key "${latestIterKey}":`, allAnswers[latestIterKey]);
+    return allAnswers[latestIterKey];
   }
   
   // Check Account data (from initialData.account)

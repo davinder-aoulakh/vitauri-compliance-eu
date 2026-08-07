@@ -101,12 +101,19 @@ export default function WorkflowRunnerPreviousAnswers({ history, answers, workfl
   const stepMap = {};
   (workflow?.steps || []).forEach(s => { stepMap[s.step_id] = s; });
 
+  // Track how many times we've seen each stepId so far to compute the occurrence key
+  const occurrenceCount = {};
   const rows = history
     .map((stepId, idx) => {
       const step = stepMap[stepId];
       if (!step || step.question_type === 'info' || step.question_type === 'result') return null;
 
-      const ans = answers[stepId];
+      // Compute the answer key for this specific occurrence
+      const prevOccurrences = occurrenceCount[stepId] || 0;
+      const answerKey = prevOccurrences > 0 ? `${stepId}__iter${prevOccurrences}` : stepId;
+      occurrenceCount[stepId] = prevOccurrences + 1;
+
+      const ans = answers[answerKey];
       const displayAnswer = formatAnswer(ans, step);
       if (!displayAnswer) return null;
 
