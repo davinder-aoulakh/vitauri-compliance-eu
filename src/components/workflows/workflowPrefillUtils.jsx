@@ -29,47 +29,91 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
     // when the entityType is Account and no mapped_field is configured.
     if (entityType === 'Account' && !step.mapped_field && (step.question_type === 'yes_no' || step.question_type === 'single_choice')) {
       const titleText = ((step.step_title || '') + ' ' + (step.question_text || '')).toLowerCase();
+      const hasCustomOptions = step.options && step.options.length > 0;
+
+      // Helper: resolve answer value regardless of whether step uses YES/NO or custom option values
+      const resolveOptionValue = (options, isPositive) => {
+        if (!hasCustomOptions) {
+          // Standard yes_no step — use literal YES / NO
+          return isPositive ? 'YES' : 'NO';
+        }
+        if (isPositive) {
+          return options.find(o =>
+            o.value?.toLowerCase().includes('low') || o.label?.toLowerCase().includes('low') ||
+            o.value?.toLowerCase().includes('yes') || o.label?.toLowerCase().includes('yes') ||
+            o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre') ||
+            o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new')
+          );
+        } else {
+          return options.find(o =>
+            o.value?.toLowerCase().includes('high') || o.label?.toLowerCase().includes('high') ||
+            o.value?.toLowerCase().includes('no') || o.label?.toLowerCase().includes('no')
+          );
+        }
+      };
+
       // Balance question heuristic
       if (titleText.includes('balance') || titleText.includes('1,000,000') || titleText.includes('1000000')) {
         const balance = Number(entityData['year_end_cash_value']) || 0;
         if (balance > 0) {
-          if (step.question_type === 'yes_no') {
-            initialAnswers[step.step_id] = balance < 1000000 ? 'YES' : 'NO';
-            console.log(`[computePrefillAnswers] heuristic balance (yes_no): balance=${balance} → ${initialAnswers[step.step_id]}`);
+          const options = step.options || [];
+          const isLow = balance < 1000000;
+          if (!hasCustomOptions) {
+            // Standard YES/NO: YES = low value (< 1M), NO = high value
+            initialAnswers[step.step_id] = isLow ? 'YES' : 'NO';
+            console.log(`[computePrefillAnswers] heuristic balance (yes_no standard): balance=${balance} → ${initialAnswers[step.step_id]}`);
           } else {
-            const options = step.options || [];
-            const lowOpt = options.find(o => o.value?.toLowerCase().includes('low') || o.label?.toLowerCase().includes('low') || o.value?.toLowerCase().includes('yes') || o.label?.toLowerCase().includes('yes'));
-            const highOpt = options.find(o => o.value?.toLowerCase().includes('high') || o.label?.toLowerCase().includes('high') || o.value?.toLowerCase().includes('no') || o.label?.toLowerCase().includes('no'));
-            const matched = balance < 1000000 ? lowOpt : highOpt;
+            // Custom options: find matching option by keyword
+            const lowOpt = options.find(o =>
+              o.value?.toLowerCase().includes('low') || o.label?.toLowerCase().includes('low') ||
+              o.value?.toLowerCase().includes('below') || o.label?.toLowerCase().includes('below') ||
+              o.value?.toLowerCase().includes('under') || o.label?.toLowerCase().includes('under') ||
+              o.value?.toLowerCase().includes('yes') || o.label?.toLowerCase().includes('yes')
+            );
+            const highOpt = options.find(o =>
+              o.value?.toLowerCase().includes('high') || o.label?.toLowerCase().includes('high') ||
+              o.value?.toLowerCase().includes('above') || o.label?.toLowerCase().includes('above') ||
+              o.value?.toLowerCase().includes('over') || o.label?.toLowerCase().includes('over') ||
+              o.value?.toLowerCase().includes('no') || o.label?.toLowerCase().includes('no')
+            );
+            const matched = isLow ? lowOpt : highOpt;
             if (matched) {
               initialAnswers[step.step_id] = matched.value;
-              console.log(`[computePrefillAnswers] heuristic balance (single_choice): balance=${balance} → ${matched.value}`);
+              console.log(`[computePrefillAnswers] heuristic balance (custom options): balance=${balance} isLow=${isLow} → ${matched.value}`);
             }
           }
         }
       }
+
       // Pre-existing / new account question heuristic
       if (titleText.includes('pre-existing') || titleText.includes('pre existing') || titleText.includes('december 31') || titleText.includes('2017')) {
         const creationDate = entityData['account_creation_date'];
         if (creationDate) {
           const cutoff = new Date('2017-12-31');
           const acctDate = new Date(creationDate);
-          const isNew = acctDate > cutoff;
-          if (step.question_type === 'yes_no') {
-            // Typically: YES = pre-existing, NO = new — but depends on how question is phrased
-            // If the question asks "Is this account pre-existing?" → YES=pre-existing
-            // If the question asks "Is this account new (opened after Dec 31 2017)?" → YES=new
+          const isPreExisting = acctDate <= cutoff; // on or before Dec 31, 2017 = pre-existing
+
+          if (!hasCustomOptions) {
+            // Standard YES/NO — determine direction from question phrasing
             const questionAsksIfNew = titleText.includes('new') && (titleText.includes('opened after') || titleText.includes('after december'));
-            initialAnswers[step.step_id] = questionAsksIfNew ? (isNew ? 'YES' : 'NO') : (isNew ? 'NO' : 'YES');
-            console.log(`[computePrefillAnswers] heuristic pre_existing (yes_no): creationDate="${creationDate}" isNew=${isNew} → ${initialAnswers[step.step_id]}`);
+            initialAnswers[step.step_id] = questionAsksIfNew ? (isPreExisting ? 'NO' : 'YES') : (isPreExisting ? 'YES' : 'NO');
+            console.log(`[computePrefillAnswers] heuristic pre_existing (yes_no standard): creationDate="${creationDate}" isPreExisting=${isPreExisting} → ${initialAnswers[step.step_id]}`);
           } else {
+            // Custom options — find the matching option by keyword
             const options = step.options || [];
-            const newOpt = options.find(o => o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new'));
-            const preOpt = options.find(o => o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre'));
-            const matched = isNew ? newOpt : preOpt;
+            const preOpt = options.find(o =>
+              o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre') ||
+              o.value?.toLowerCase().includes('before') || o.label?.toLowerCase().includes('before') ||
+              o.value?.toLowerCase().includes('existing') || o.label?.toLowerCase().includes('existing')
+            );
+            const newOpt = options.find(o =>
+              o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new') ||
+              o.value?.toLowerCase().includes('after') || o.label?.toLowerCase().includes('after')
+            );
+            const matched = isPreExisting ? preOpt : newOpt;
             if (matched) {
               initialAnswers[step.step_id] = matched.value;
-              console.log(`[computePrefillAnswers] heuristic pre_existing (single_choice): creationDate="${creationDate}" isNew=${isNew} → ${matched.value}`);
+              console.log(`[computePrefillAnswers] heuristic pre_existing (custom options): creationDate="${creationDate}" isPreExisting=${isPreExisting} → ${matched.value}`);
             }
           }
         }
@@ -118,19 +162,27 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       }
       // Pre-existing date: prefill single_choice / yes_no steps mapped to account_creation_date
       const isDateField = ['account_creation_date', 'is_pre_existing'].includes(fieldName);
-      if (isDateField && step.question_type === 'single_choice' && !step.mapped_field.prefill_config) {
+      if (isDateField && (step.question_type === 'single_choice' || step.question_type === 'yes_no') && !step.mapped_field.prefill_config) {
         const creationDate = entityData['account_creation_date'];
         if (creationDate) {
           const cutoff = new Date('2017-12-31');
           const acctDate = new Date(creationDate);
-          const isNew = acctDate > cutoff;
+          const isPreExisting = acctDate <= cutoff;
           const options = step.options || [];
-          const newOpt = options.find(o => o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new'));
-          const preOpt = options.find(o => o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre'));
-          const matched = isNew ? newOpt : preOpt;
-          if (matched) {
-            initialAnswers[step.step_id] = matched.value;
-            console.log(`[computePrefillAnswers] auto pre_existing: creationDate="${creationDate}" isNew=${isNew} → ${matched.value}`);
+          const hasCustomOpts = options.length > 0;
+          if (!hasCustomOpts) {
+            const titleText = ((step.step_title || '') + ' ' + (step.question_text || '')).toLowerCase();
+            const questionAsksIfNew = titleText.includes('new') && (titleText.includes('opened after') || titleText.includes('after december'));
+            initialAnswers[step.step_id] = questionAsksIfNew ? (isPreExisting ? 'NO' : 'YES') : (isPreExisting ? 'YES' : 'NO');
+            console.log(`[computePrefillAnswers] auto pre_existing (yes_no standard): isPreExisting=${isPreExisting} → ${initialAnswers[step.step_id]}`);
+          } else {
+            const preOpt = options.find(o => o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre') || o.value?.toLowerCase().includes('before') || o.label?.toLowerCase().includes('before') || o.value?.toLowerCase().includes('existing') || o.label?.toLowerCase().includes('existing'));
+            const newOpt = options.find(o => o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new') || o.value?.toLowerCase().includes('after') || o.label?.toLowerCase().includes('after'));
+            const matched = isPreExisting ? preOpt : newOpt;
+            if (matched) {
+              initialAnswers[step.step_id] = matched.value;
+              console.log(`[computePrefillAnswers] auto pre_existing (custom options): isPreExisting=${isPreExisting} → ${matched.value}`);
+            }
           }
         }
         continue;
@@ -138,8 +190,16 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       // is_pre_existing boolean → yes_no prefill
       if (fieldName === 'is_pre_existing' && step.question_type === 'yes_no' && !step.mapped_field.prefill_config) {
         // is_pre_existing=true means pre-existing account → YES for "is this pre-existing?" question
-        initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-        console.log(`[computePrefillAnswers] auto is_pre_existing boolean: ${fieldValue} → ${fieldValue ? 'YES' : 'NO'}`);
+        const options = step.options || [];
+        if (options.length > 0) {
+          const preOpt = options.find(o => o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre') || o.value?.toLowerCase().includes('existing') || o.label?.toLowerCase().includes('existing'));
+          const newOpt = options.find(o => o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new'));
+          const matched = fieldValue ? preOpt : newOpt;
+          if (matched) initialAnswers[step.step_id] = matched.value;
+        } else {
+          initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+        }
+        console.log(`[computePrefillAnswers] auto is_pre_existing boolean: ${fieldValue} → ${initialAnswers[step.step_id]}`);
         continue;
       }
     }
@@ -183,21 +243,25 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         continue;
       }
       initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-    } else if (step.question_type === 'single_choice' && step.mapped_field?.prefill_config?.prefill_type === 'pre_existing_date') {
+    } else if ((step.question_type === 'single_choice' || step.question_type === 'yes_no') && step.mapped_field?.prefill_config?.prefill_type === 'pre_existing_date') {
       // Pre-existing / new account: compare account_creation_date against Dec 31, 2017
       const creationDate = entityData[fieldName] || entityData['account_creation_date'];
       if (creationDate) {
         const cutoff = new Date('2017-12-31');
         const acctDate = new Date(creationDate);
+        const isPreExisting = acctDate <= cutoff;
         const options = step.options || [];
-        // Options expected: one with value containing 'new' (after cutoff) and one with value containing 'pre' (before/on cutoff)
-        const isNew = acctDate > cutoff;
-        const newOpt = options.find(o => o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new'));
-        const preOpt = options.find(o => o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre'));
-        const matched = isNew ? newOpt : preOpt;
-        if (matched) {
-          initialAnswers[step.step_id] = matched.value;
-          console.log(`[computePrefillAnswers] pre_existing_date: creationDate="${creationDate}" isNew=${isNew} → option="${matched.value}"`);
+        const preOpt = options.find(o => o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre') || o.value?.toLowerCase().includes('before') || o.label?.toLowerCase().includes('before') || o.value?.toLowerCase().includes('existing') || o.label?.toLowerCase().includes('existing'));
+        const newOpt = options.find(o => o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new') || o.value?.toLowerCase().includes('after') || o.label?.toLowerCase().includes('after'));
+        if (options.length > 0) {
+          const matched = isPreExisting ? preOpt : newOpt;
+          if (matched) {
+            initialAnswers[step.step_id] = matched.value;
+            console.log(`[computePrefillAnswers] pre_existing_date (custom options): isPreExisting=${isPreExisting} → "${matched.value}"`);
+          }
+        } else {
+          initialAnswers[step.step_id] = isPreExisting ? 'YES' : 'NO';
+          console.log(`[computePrefillAnswers] pre_existing_date (standard yes_no): isPreExisting=${isPreExisting} → ${initialAnswers[step.step_id]}`);
         }
       }
     } else if (step.question_type === 'single_choice') {
