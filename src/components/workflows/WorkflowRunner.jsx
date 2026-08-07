@@ -928,18 +928,18 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       'depository_institution': 'depository_institution',
       'custodial_institution': 'custodial_institution',
       'type_a': 'investment_entity_type_a',
+      'type_b': 'investment_entity_type_b',
       'investment_entity_type_a': 'investment_entity_type_a',
       'investment_entity_type_b': 'investment_entity_type_b',
       'specified_insurance_company': 'specified_insurance_company',
     };
 
     if (accountId) {
-      // Find any step in the completed path whose mapped_field.field_name is 'fi_type'
-      // (which is the Entity field that the FI type selection step maps to)
+      // Find any step in the completed path whose mapped_field.field_name is 'fi_type' or 'type_of_financial_institution'
       for (const stepId of allStepsInPath) {
         const step = workflow.steps.find(s => s.step_id === stepId);
         if (!step) continue;
-        const isFiTypeStep = step.mapped_field?.field_name === 'fi_type';
+        const isFiTypeStep = step.mapped_field?.field_name === 'fi_type' || step.mapped_field?.field_name === 'type_of_financial_institution';
         if (isFiTypeStep) {
           // Resolve the answer for this step (iteration-aware)
           const allKeys = Object.keys(answers);

@@ -665,6 +665,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       'depository_institution': 'depository_institution',
       'custodial_institution': 'custodial_institution',
       'type_a': 'investment_entity_type_a',
+      'type_b': 'investment_entity_type_b',
       'investment_entity_type_a': 'investment_entity_type_a',
       'investment_entity_type_b': 'investment_entity_type_b',
       'specified_insurance_company': 'specified_insurance_company',
@@ -674,7 +675,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
       for (const stepId of allSteps) {
         const step = stepMap[stepId];
         if (!step) continue;
-        if (step.mapped_field?.field_name === 'fi_type') {
+        // Match steps mapped to either 'fi_type' (Entity field) or 'type_of_financial_institution' (Account field)
+        const isFiTypeStep = step.mapped_field?.field_name === 'fi_type' || step.mapped_field?.field_name === 'type_of_financial_institution';
+        if (isFiTypeStep) {
           const rawAnswer = answers[stepId];
           if (rawAnswer && rawAnswer !== 'none') {
             const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
