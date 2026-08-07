@@ -29,6 +29,7 @@ import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as e
 import { computePrefillAnswers } from "./workflowPrefillUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
+import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1938,55 +1939,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         </CardContent>
       </Card>
 
-      {Object.keys(answers).length > 0 && (
-        <Card className="bg-slate-50 border-slate-200">
-          <CardContent className="p-4">
-            <details className="cursor-pointer">
-              <summary className="text-sm font-semibold text-slate-700 flex items-center gap-2 hover:text-indigo-600 transition-colors">
-                <FileCheck className="w-4 h-4" />
-                View Previous Answers ({Object.keys(answers).length})
-              </summary>
-              <div className="mt-3 space-y-2 pl-6">
-                {Object.entries(answers).map(([key, value]) => {
-                  const step = workflow.steps.find(s => s.step_id === key);
-                  if (!step) return null;
-                  
-                  let displayValue = '';
-                  if (Array.isArray(value)) {
-                    displayValue = value.join(', ');
-                  } else if (typeof value === 'object' && value !== null) {
-                    // For file_upload, show number of files and date received if available
-                    if (step.question_type === 'file_upload') {
-                      const filesCount = value.files?.length || 0;
-                      const dateReceivedText = value.date_received ? ` (Received: ${value.date_received})` : '';
-                      displayValue = `${filesCount} file(s) uploaded${dateReceivedText}`;
-                    } else if (key === currentStep.step_id && currentStep.question_type === 'address_input') {
-                      // For current step address input, show basic address
-                      displayValue = `${value.street || ''}, ${value.city || ''}, ${value.country || ''}`;
-                    } else if (key === currentStep.step_id && (currentStep.question_type === 'beneficiary_input' || currentStep.question_type === 'controlling_person_input')) {
-                      displayValue = 'Data entered'; // Or a more specific summary if desired
-                    } else {
-                      displayValue = 'Data entered';
-                    }
-                  } else {
-                    displayValue = step.options?.find(o => o.value === value)?.label || String(value || '');
-                  }
-                  
-                  return (
-                    <div key={key} className="flex items-start justify-between gap-4 text-sm py-2 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-600 text-xs flex-shrink-0 max-w-[40%]">
-                        {step.step_title || key}
-                      </span>
-                      <span className="text-xs text-right text-slate-800 break-words">
-                        {displayValue}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </details>
-          </CardContent>
-        </Card>
+      {history.length > 0 && (
+        <WorkflowRunnerPreviousAnswers
+          history={history}
+          answers={answers}
+          workflow={workflow}
+        />
       )}
 
       <div className="flex justify-between gap-3 pt-4 border-t">
