@@ -71,10 +71,16 @@ const resolveBalanceOption = (step, isLow) => {
 
 /**
  * Computes initial prefill answers for all workflow steps given entity data.
+ * @param {object} workflow - The workflow object with steps
+ * @param {object} entityData - The data record to prefill from (Account, Entity, etc.)
+ * @param {string} entityType - "Account" | "Entity" | "ControllingPerson" etc.
+ * @param {boolean} [ignoreEntityTypeCheck=false] - If true, skips the mapped_field.entity_type guard.
+ *   Use when prefilling a CP classification workflow from parent Account data, where steps are
+ *   mapped to "ControllingPerson" but the SOURCE data is an Account record.
  */
-export const computePrefillAnswers = async (workflow, entityData, entityType) => {
+export const computePrefillAnswers = async (workflow, entityData, entityType, ignoreEntityTypeCheck = false) => {
   const initialAnswers = {};
-  console.log(`[computePrefillAnswers] entityType=${entityType}, checking ${workflow.steps.length} steps`);
+  console.log(`[computePrefillAnswers] entityType=${entityType}, ignoreEntityTypeCheck=${ignoreEntityTypeCheck}, checking ${workflow.steps.length} steps`);
   for (const step of workflow.steps) {
     // --- Heuristic prefill for CP classification workflows (no mapped_field required) ---
     // Detect balance and pre-existing questions by their title/question text keywords
@@ -110,11 +116,13 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
     }
 
     if (!step.mapped_field) continue;
-    console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType, '| match:', step.mapped_field.entity_type === entityType);
-    // entity_type null = match any entity type; otherwise must match
-    // Exception: fi_type steps always run on Account pass too (value lives in type_of_financial_institution on Account)
+    console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType);
+    // entity_type null = match any entity type; otherwise must match.
+    // Exception 1: fi_type steps always run on Account pass (value lives in type_of_financial_institution).
+    // Exception 2: ignoreEntityTypeCheck=true allows CP workflow steps (mapped to ControllingPerson)
+    //              to be prefilled from parent Account data.
     const isFiTypeStep = step.mapped_field.field_name === 'fi_type';
-    const entityTypeMatches = !step.mapped_field.entity_type || step.mapped_field.entity_type === entityType;
+    const entityTypeMatches = ignoreEntityTypeCheck || !step.mapped_field.entity_type || step.mapped_field.entity_type === entityType;
     if (!step.mapped_field || (!entityTypeMatches && !(isFiTypeStep && entityType === 'Account')) || !step.mapped_field.field_name) continue;
     const fieldName = step.mapped_field.field_name;
     // fi_type is the workflow config name, but Account entity stores this as type_of_financial_institution
@@ -158,6 +166,16 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       }
     }
 
+    // ── is_pre_existing boolean: must use resolvePreExistingOption so custom option values work ──
+    if (fieldName === 'is_pre_existing' && (step.question_type === 'yes_no' || step.question_type === 'single_choice') && !step.mapped_field.prefill_config) {
+      const val = resolvePreExistingOption(step, !!fieldValue);
+      if (val) {
+        initialAnswers[step.step_id] = val;
+        console.log(`[computePrefillAnswers] is_pre_existing boolean: ${fieldValue} → ${val}`);
+      }
+      continue;
+    }
+
     if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
       const prefillType = step.mapped_field.prefill_config.prefill_type;
       if (prefillType === 'country_crs') {
@@ -186,17 +204,21 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
       }
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
       // For fields that default to false (e.g. entity_managed_by_asset_manager), only prefill
-      // and lock the answer when the value is explicitly true. A false value on such fields may
-      // simply mean "no data was provided" (e.g. bulk import omitted this column), so we must
-      // not lock the user out of answering manually.
-      const fieldName = step.mapped_field?.field_name;
+      // and lock the answer when the value is explicitly true.
       const falseDefaultFields = ['entity_managed_by_asset_manager'];
       if (falseDefaultFields.includes(fieldName) && fieldValue === false) {
-        // Skip — treat missing/false as "no data provided"; leave step unlocked
         console.log(`[computePrefillAnswers] Skipping lock for "${fieldName}" because value is false (no data provided)`);
         continue;
       }
-      initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+      // Use resolvePreExistingOption for custom-option yes_no steps so the correct option value is selected
+      const hasCustomOptions = step.options && step.options.length > 0 &&
+        !step.options.every(o => o.value === 'YES' || o.value === 'NO');
+      if (hasCustomOptions) {
+        const val = resolvePreExistingOption(step, !!fieldValue);
+        if (val) { initialAnswers[step.step_id] = val; }
+      } else {
+        initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
+      }
     } else if ((step.question_type === 'single_choice' || step.question_type === 'yes_no') && step.mapped_field?.prefill_config?.prefill_type === 'pre_existing_date') {
       const creationDate = entityData[fieldName] || entityData['account_creation_date'];
       if (creationDate) {

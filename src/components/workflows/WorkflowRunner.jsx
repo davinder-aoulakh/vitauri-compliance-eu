@@ -87,13 +87,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
 
       // --- Case 2: Controlling Person classification — prefill from parent account in initialData ---
+      // Pass ignoreEntityTypeCheck=true so that CP workflow steps (mapped_field.entity_type="ControllingPerson")
+      // are still prefillable from the parent Account record (for balance & pre-existing date questions).
       if (workflow && initialData?.account) {
         const account = initialData.account;
-        // Prefill applicable steps from the parent account data
-        const accountPrefill = await computePrefillAnswers(workflow, account, "Account");
+        const accountPrefill = await computePrefillAnswers(workflow, account, "Account", true);
         if (Object.keys(accountPrefill).length > 0) {
           setAnswers(prev => ({ ...prev, ...accountPrefill }));
-          // Lock every step that was successfully prefilled from account data
           const locked = {};
           Object.keys(accountPrefill).forEach(stepId => { locked[stepId] = true; });
           setPrefillLockedSteps(locked);
