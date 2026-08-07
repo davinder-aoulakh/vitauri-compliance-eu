@@ -183,7 +183,8 @@ const PAGE_POSITION_MAP = {
 const CHAT_PANEL_HEIGHT = 500; // px — height of the chat card
 const CHAT_PANEL_WIDTH  = 384; // px — w-96
 const TRIGGER_SIZE      = 56;  // px — w-14 h-14
-const MARGIN            = 24;  // px — right-6 / bottom-6
+const MARGIN_BOTTOM     = 24;  // px — bottom-6
+const MARGIN_RIGHT      = 80;  // px — right-20, clear of the Actions column
 const GAP               = 12;  // px — gap between trigger and panel
 
 export default function AIHelpAssistant({ currentPage }) {
@@ -207,10 +208,10 @@ export default function AIHelpAssistant({ currentPage }) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Trigger button sits at fixed bottom-6 right-6
-    const triggerBottom = MARGIN;                        // distance from viewport bottom
-    const triggerRight  = MARGIN;                        // distance from viewport right
-    const triggerTop    = vh - MARGIN - TRIGGER_SIZE;    // px from top
+    // Trigger button sits at fixed bottom-6 right-20
+    const triggerBottom = MARGIN_BOTTOM;                          // distance from viewport bottom
+    const triggerRight  = MARGIN_RIGHT;                           // distance from viewport right
+    const triggerTop    = vh - MARGIN_BOTTOM - TRIGGER_SIZE;      // px from top
 
     // Determine preferred side from page map (default: top)
     const pagePref = PAGE_POSITION_MAP[currentPage];
@@ -233,20 +234,19 @@ export default function AIHelpAssistant({ currentPage }) {
       style.top = triggerTop + TRIGGER_SIZE + GAP;
       style.bottom = "auto";
     } else {
-      // Not enough space either way — anchor to top of viewport with scroll
-      style.top = Math.max(8, vh - CHAT_PANEL_HEIGHT - MARGIN);
+      // Not enough space either way — anchor near top with scroll
+      style.top = Math.max(8, vh - CHAT_PANEL_HEIGHT - MARGIN_BOTTOM);
       style.bottom = "auto";
       style.maxHeight = vh - 16;
     }
 
-    // Horizontal: default right-aligned, but shift left if panel overflows left edge
-    const panelLeft = vw - MARGIN - CHAT_PANEL_WIDTH;
+    // Horizontal: align panel with trigger (right-20), shift left if panel overflows
+    const panelLeft = vw - MARGIN_RIGHT - CHAT_PANEL_WIDTH;
     if (panelLeft < 8) {
-      // Panel would overflow left — shift right (use left anchor instead)
       style.right = "auto";
       style.left = 8;
     } else {
-      style.right = MARGIN;
+      style.right = MARGIN_RIGHT;
       style.left = "auto";
     }
 
@@ -370,7 +370,7 @@ Please provide a helpful response:`;
       {/* Floating Help Button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 shadow-lg transition-all duration-300 ${
+        className={`fixed bottom-6 right-20 z-50 rounded-full w-14 h-14 shadow-lg transition-all duration-300 ${
           isOpen 
             ? "bg-slate-700 hover:bg-slate-800" 
             : "bg-indigo-600 hover:bg-indigo-700"
