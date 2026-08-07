@@ -919,6 +919,47 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
 
+    // --- FI TYPE → Account.type_of_financial_institution propagation ---
+    // After all other updates, if this is an account workflow and any completed step
+    // was the "Select potential type of Financial Institution" step (mapped_field.field_name === 'fi_type'
+    // on an Entity, or a step whose answer value matches known FI type enum values),
+    // propagate the selected value to Account.type_of_financial_institution.
+    const FI_TYPE_VALUE_MAP = {
+      'depository_institution': 'depository_institution',
+      'custodial_institution': 'custodial_institution',
+      'type_a': 'investment_entity_type_a',
+      'investment_entity_type_a': 'investment_entity_type_a',
+      'investment_entity_type_b': 'investment_entity_type_b',
+      'specified_insurance_company': 'specified_insurance_company',
+    };
+
+    if (accountId) {
+      // Find any step in the completed path whose mapped_field.field_name is 'fi_type'
+      // (which is the Entity field that the FI type selection step maps to)
+      for (const stepId of allStepsInPath) {
+        const step = workflow.steps.find(s => s.step_id === stepId);
+        if (!step) continue;
+        const isFiTypeStep = step.mapped_field?.field_name === 'fi_type';
+        if (isFiTypeStep) {
+          // Resolve the answer for this step (iteration-aware)
+          const allKeys = Object.keys(answers);
+          const matchingKeys = allKeys.filter(k => k === stepId || k.startsWith(`${stepId}__iter`));
+          const latestKey = matchingKeys.length > 0 ? matchingKeys[matchingKeys.length - 1] : stepId;
+          const rawAnswer = answers[latestKey];
+
+          if (rawAnswer && rawAnswer !== 'none') {
+            const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
+            console.log(`[FI TYPE PROPAGATION] Step "${step.step_title}" answer: "${rawAnswer}" → Account.type_of_financial_institution = "${mappedFiType}"`);
+            updates['type_of_financial_institution'] = mappedFiType;
+          } else if (rawAnswer === 'none') {
+            console.log(`[FI TYPE PROPAGATION] "None of the above" selected — skipping type_of_financial_institution update`);
+          }
+          break; // Only process the first matching step
+        }
+      }
+    }
+    // --- End FI type propagation ---
+
     try {
       if (Object.keys(updates).length > 0 && mappedEntityType && mappedEntityId) {
         if (mappedEntityType === "Account") {
