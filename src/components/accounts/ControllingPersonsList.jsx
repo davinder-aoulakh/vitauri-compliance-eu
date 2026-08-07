@@ -487,17 +487,6 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {workflows.length > 0 && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleClassify(person)}
-                              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                            >
-                              <PlayCircle className="w-4 h-4 mr-1" />
-                              {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
-                            </Button>
-                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -519,6 +508,12 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                                 <History className="w-4 h-4 mr-2" />
                                 View History
                               </DropdownMenuItem>
+                              {workflows.length > 0 && (
+                                <DropdownMenuItem onClick={() => handleClassify(person)}>
+                                  <PlayCircle className="w-4 h-4 mr-2 text-indigo-600" />
+                                  {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => handleEdit(person)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
