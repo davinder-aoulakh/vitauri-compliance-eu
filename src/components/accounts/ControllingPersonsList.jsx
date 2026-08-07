@@ -587,6 +587,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
             <WorkflowRunner
               workflow={workflows[0]}
               initialData={{ controlling_person: classifyingPerson, account, entity }}
+              accountId={account?.id}
               onComplete={handleClassificationComplete}
               onCancel={() => setShowClassification(false)}
             />
