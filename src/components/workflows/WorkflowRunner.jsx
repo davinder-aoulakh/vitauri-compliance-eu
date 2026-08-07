@@ -44,8 +44,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [isRfiTypeA, setIsRfiTypeA] = useState(false);
-  // Track step IDs that were auto-prefilled from account data (for CP classification locking)
-  const [prefillLockedSteps, setPrefillLockedSteps] = useState({});
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
@@ -56,48 +54,34 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   useEffect(() => {
     const loadMappedEntityData = async () => {
-      // --- Case 1: accountId / entityId props provided (standard account/entity workflows) ---
-      if (workflow && (accountId || entityId)) {
-        let entityType = accountId ? "Account" : "Entity";
-        let id = accountId || entityId;
-        const records = accountId
-          ? await base44.entities.Account.filter({ id: accountId })
-          : await base44.entities.Entity.filter({ id: entityId });
-        const entityData = records[0];
-        if (entityData) {
-          setMappedEntityData(entityData);
-          setMappedEntityType(entityType);
-          setMappedEntityId(id);
+      if (!workflow || (!accountId && !entityId)) return;
+      let entityType = accountId ? "Account" : "Entity";
+      let id = accountId || entityId;
+      const records = accountId
+        ? await base44.entities.Account.filter({ id: accountId })
+        : await base44.entities.Entity.filter({ id: entityId });
+      const entityData = records[0];
+      if (entityData) {
+        setMappedEntityData(entityData);
+        setMappedEntityType(entityType);
+        setMappedEntityId(id);
 
-          const primaryPrefill = await computePrefillAnswers(workflow, entityData, entityType);
+        // Prefill from primary entity (Account or Entity)
+        const primaryPrefill = await computePrefillAnswers(workflow, entityData, entityType);
 
-          let secondaryPrefill = {};
-          if (accountId && entityData.entity_id) {
-            const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
-            if (entityRecords[0]) {
-              secondaryPrefill = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
-              const rfiTypeA = entityRecords[0].fi_type === 'investment_entity_type_a' || entityRecords[0].fi_type === 'type_a';
-              setIsRfiTypeA(rfiTypeA);
-            }
+        // If primary is Account, also prefill from the related Entity (e.g. fi_type mapped to Entity)
+        let secondaryPrefill = {};
+        if (accountId && entityData.entity_id) {
+          const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
+          if (entityRecords[0]) {
+            secondaryPrefill = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
+            // Check if the RFI entity is Investment Entity Type A
+            const rfiTypeA = entityRecords[0].fi_type === 'investment_entity_type_a' || entityRecords[0].fi_type === 'type_a';
+            setIsRfiTypeA(rfiTypeA);
           }
-
-          setAnswers(prev => ({ ...prev, ...primaryPrefill, ...secondaryPrefill }));
         }
-        return;
-      }
 
-      // --- Case 2: Controlling Person classification — prefill from parent account in initialData ---
-      // Pass ignoreEntityTypeCheck=true so that CP workflow steps (mapped_field.entity_type="ControllingPerson")
-      // are still prefillable from the parent Account record (for balance & pre-existing date questions).
-      if (workflow && initialData?.account) {
-        const account = initialData.account;
-        const accountPrefill = await computePrefillAnswers(workflow, account, "Account", true);
-        if (Object.keys(accountPrefill).length > 0) {
-          setAnswers(prev => ({ ...prev, ...accountPrefill }));
-          const locked = {};
-          Object.keys(accountPrefill).forEach(stepId => { locked[stepId] = true; });
-          setPrefillLockedSteps(locked);
-        }
+        setAnswers(prev => ({ ...prev, ...primaryPrefill, ...secondaryPrefill }));
       }
     };
     loadMappedEntityData();
@@ -948,20 +932,15 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         ];
         
         const isFiduciaryStep = currentStep.step_id === 'step_1769573962356';
-        const isStepLocked = (isFiduciaryStep && isRfiTypeA) || !!prefillLockedSteps[currentStep.step_id];
-        const lockReason = (isFiduciaryStep && isRfiTypeA)
-          ? "This answer is pre-filled and locked because the RFI Entity is classified as an Investment Entity Type A (fiduciary)."
-          : prefillLockedSteps[currentStep.step_id]
-            ? "This answer is automatically pre-filled from the linked account data and cannot be changed here."
-            : null;
+        const isStepLocked = isFiduciaryStep && isRfiTypeA;
 
         return (
           <div className="space-y-3">
-            {isStepLocked && lockReason && (
+            {isStepLocked && (
               <Alert className="bg-amber-50 border-amber-200 py-2">
                 <Info className="w-4 h-4 text-amber-600" />
                 <AlertDescription className="text-xs text-amber-800">
-                  {lockReason}
+                  This answer is pre-filled and locked because the RFI Entity is classified as an Investment Entity Type A (fiduciary).
                 </AlertDescription>
               </Alert>
             )}
@@ -996,53 +975,23 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         );
 
       case 'single_choice':
-        const isSingleChoiceLocked = !!prefillLockedSteps[currentStep.step_id];
         return (
-          <div className="space-y-3">
-            {isSingleChoiceLocked && (
-              <Alert className="bg-amber-50 border-amber-200 py-2">
-                <Info className="w-4 h-4 text-amber-600" />
-                <AlertDescription className="text-xs text-amber-800">
-                  This answer is automatically pre-filled from the linked account data and cannot be changed here.
-                </AlertDescription>
-              </Alert>
-            )}
-            {isSingleChoiceLocked ? (
-              <div className="space-y-2">
+          <div className="space-y-4">
+            <Select
+              value={answer}
+              onValueChange={(value) => handleAnswer(currentStep.step_id, value)}
+            >
+              <SelectTrigger className="w-full h-12">
+                <SelectValue placeholder="Select an option..." />
+              </SelectTrigger>
+              <SelectContent>
                 {currentStep.options?.map((option) => (
-                  <div
-                    key={option.value}
-                    className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
-                      answer === option.value
-                        ? 'border-slate-300 bg-slate-100 opacity-80'
-                        : 'border-slate-100 bg-slate-50 opacity-50'
-                    } cursor-not-allowed`}
-                  >
-                    <RadioGroupItem value={option.value} checked={answer === option.value} disabled />
-                    <Label className="flex-1 font-medium text-slate-700 cursor-not-allowed">
-                      {option.label}
-                    </Label>
-                    {answer === option.value && <CheckCircle2 className="w-5 h-5 text-slate-400" />}
-                  </div>
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
                 ))}
-              </div>
-            ) : (
-              <Select
-                value={answer}
-                onValueChange={(value) => handleAnswer(currentStep.step_id, value)}
-              >
-                <SelectTrigger className="w-full h-12">
-                  <SelectValue placeholder="Select an option..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {currentStep.options?.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+              </SelectContent>
+            </Select>
           </div>
         );
 

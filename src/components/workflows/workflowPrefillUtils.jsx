@@ -18,111 +18,18 @@ export const evaluateComputedComparison = (cfg, entityData) => {
 };
 
 /**
- * Resolves the correct option value for a pre-existing/new account step.
- * Works for both yes_no (custom options) and single_choice steps.
- * isPreExisting = true means account was created on or before Dec 31 2017.
- */
-const resolvePreExistingOption = (step, isPreExisting) => {
-  const options = step.options || [];
-  if (options.length === 0) {
-    // Standard YES/NO step — YES = pre-existing (typical phrasing)
-    return isPreExisting ? 'YES' : 'NO';
-  }
-  // Custom options: find by keyword in value OR label
-  const preOpt = options.find(o =>
-    o.value?.toLowerCase().includes('pre') || o.label?.toLowerCase().includes('pre') ||
-    o.value?.toLowerCase().includes('before') || o.label?.toLowerCase().includes('before') ||
-    o.value?.toLowerCase().includes('existing') || o.label?.toLowerCase().includes('existing')
-  );
-  const newOpt = options.find(o =>
-    (o.value?.toLowerCase().includes('new') || o.label?.toLowerCase().includes('new')) &&
-    o !== preOpt // don't double-match
-  );
-  const matched = isPreExisting ? preOpt : newOpt;
-  return matched ? matched.value : null;
-};
-
-/**
- * Resolves the correct option value for a balance threshold (high/low) step.
- * isLow = balance < 1,000,000
- */
-const resolveBalanceOption = (step, isLow) => {
-  const options = step.options || [];
-  if (options.length === 0) {
-    // Standard YES/NO: YES = low value (< 1M threshold satisfied)
-    return isLow ? 'YES' : 'NO';
-  }
-  const lowOpt = options.find(o =>
-    o.value?.toLowerCase().includes('low') || o.label?.toLowerCase().includes('low') ||
-    o.value?.toLowerCase().includes('below') || o.label?.toLowerCase().includes('below') ||
-    o.value?.toLowerCase().includes('under') || o.label?.toLowerCase().includes('under') ||
-    o.value?.toLowerCase() === 'yes' || o.label?.toLowerCase() === 'yes'
-  );
-  const highOpt = options.find(o =>
-    (o.value?.toLowerCase().includes('high') || o.label?.toLowerCase().includes('high') ||
-    o.value?.toLowerCase().includes('above') || o.label?.toLowerCase().includes('above') ||
-    o.value?.toLowerCase().includes('over') || o.label?.toLowerCase().includes('over') ||
-    o.value?.toLowerCase() === 'no' || o.label?.toLowerCase() === 'no') &&
-    o !== lowOpt
-  );
-  const matched = isLow ? lowOpt : highOpt;
-  return matched ? matched.value : null;
-};
-
-/**
  * Computes initial prefill answers for all workflow steps given entity data.
- * @param {object} workflow - The workflow object with steps
- * @param {object} entityData - The data record to prefill from (Account, Entity, etc.)
- * @param {string} entityType - "Account" | "Entity" | "ControllingPerson" etc.
- * @param {boolean} [ignoreEntityTypeCheck=false] - If true, skips the mapped_field.entity_type guard.
- *   Use when prefilling a CP classification workflow from parent Account data, where steps are
- *   mapped to "ControllingPerson" but the SOURCE data is an Account record.
  */
-export const computePrefillAnswers = async (workflow, entityData, entityType, ignoreEntityTypeCheck = false) => {
+export const computePrefillAnswers = async (workflow, entityData, entityType) => {
   const initialAnswers = {};
-  console.log(`[computePrefillAnswers] entityType=${entityType}, ignoreEntityTypeCheck=${ignoreEntityTypeCheck}, checking ${workflow.steps.length} steps`);
+  console.log(`[computePrefillAnswers] entityType=${entityType}, checking ${workflow.steps.length} steps`);
   for (const step of workflow.steps) {
-    // --- Heuristic prefill for CP classification workflows (no mapped_field required) ---
-    // Detect balance and pre-existing questions by their title/question text keywords
-    // when the entityType is Account and no mapped_field is configured.
-    if (entityType === 'Account' && !step.mapped_field && (step.question_type === 'yes_no' || step.question_type === 'single_choice')) {
-      const titleText = ((step.step_title || '') + ' ' + (step.question_text || '')).toLowerCase();
-
-      // Balance question heuristic
-      if (titleText.includes('balance') || titleText.includes('1,000,000') || titleText.includes('1000000')) {
-        const balance = Number(entityData['year_end_cash_value']) || 0;
-        if (balance > 0) {
-          const val = resolveBalanceOption(step, balance < 1000000);
-          if (val) {
-            initialAnswers[step.step_id] = val;
-            console.log(`[computePrefillAnswers] heuristic balance: balance=${balance} → ${val}`);
-          }
-        }
-      }
-
-      // Pre-existing / new account question heuristic
-      if (titleText.includes('pre-existing') || titleText.includes('pre existing') || titleText.includes('december 31') || titleText.includes('2017')) {
-        const creationDate = entityData['account_creation_date'];
-        if (creationDate) {
-          const isPreExisting = new Date(creationDate) <= new Date('2017-12-31');
-          const val = resolvePreExistingOption(step, isPreExisting);
-          if (val) {
-            initialAnswers[step.step_id] = val;
-            console.log(`[computePrefillAnswers] heuristic pre_existing: creationDate="${creationDate}" isPreExisting=${isPreExisting} → ${val}`);
-          }
-        }
-      }
-      continue; // Skip the rest of the loop body for unmapped steps
-    }
-
     if (!step.mapped_field) continue;
-    console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType);
-    // entity_type null = match any entity type; otherwise must match.
-    // Exception 1: fi_type steps always run on Account pass (value lives in type_of_financial_institution).
-    // Exception 2: ignoreEntityTypeCheck=true allows CP workflow steps (mapped to ControllingPerson)
-    //              to be prefilled from parent Account data.
+    console.log(`[computePrefillAnswers] step "${step.step_title}" mapped_field:`, step.mapped_field?.entity_type, step.mapped_field?.field_name, '| matching entityType:', entityType, '| match:', step.mapped_field.entity_type === entityType);
+    // entity_type null = match any entity type; otherwise must match
+    // Exception: fi_type steps always run on Account pass too (value lives in type_of_financial_institution on Account)
     const isFiTypeStep = step.mapped_field.field_name === 'fi_type';
-    const entityTypeMatches = ignoreEntityTypeCheck || !step.mapped_field.entity_type || step.mapped_field.entity_type === entityType;
+    const entityTypeMatches = !step.mapped_field.entity_type || step.mapped_field.entity_type === entityType;
     if (!step.mapped_field || (!entityTypeMatches && !(isFiTypeStep && entityType === 'Account')) || !step.mapped_field.field_name) continue;
     const fieldName = step.mapped_field.field_name;
     // fi_type is the workflow config name, but Account entity stores this as type_of_financial_institution
@@ -130,51 +37,6 @@ export const computePrefillAnswers = async (workflow, entityData, entityType, ig
     const fieldValue = entityData[resolvedFieldName] ?? entityData[fieldName];
     console.log(`[computePrefillAnswers] step "${step.step_title}" fieldName="${fieldName}" fieldValue="${fieldValue}" question_type="${step.question_type}"`);
     if (fieldValue === undefined || fieldValue === null || fieldValue === "") { console.log(`[computePrefillAnswers] Skipping - field value is empty`); continue; }
-
-    // --- Smart account-data prefill for Controlling Person classification workflows ---
-    // These steps reference account-level fields but the workflow's mapped_field.entity_type
-    // may not be set, so we apply heuristics based on field name when entityType === 'Account'.
-    if (entityType === 'Account') {
-      // Balance threshold: prefill yes_no or single_choice steps mapped to year_end_cash_value / gross_payments
-      const isBalanceField = ['year_end_cash_value', 'gross_payments', 'account_balance'].includes(fieldName);
-      if (isBalanceField && (step.question_type === 'yes_no' || step.question_type === 'single_choice') && !step.mapped_field.prefill_config) {
-        const balance = Number(fieldValue) || 0;
-        const val = resolveBalanceOption(step, balance < 1000000);
-        if (val) {
-          initialAnswers[step.step_id] = val;
-          console.log(`[computePrefillAnswers] mapped balance threshold: balance=${balance} → ${val}`);
-        }
-        continue;
-      }
-      // Pre-existing date / is_pre_existing: prefill yes_no or single_choice
-      const isDateField = ['account_creation_date', 'is_pre_existing'].includes(fieldName);
-      if (isDateField && (step.question_type === 'single_choice' || step.question_type === 'yes_no') && !step.mapped_field.prefill_config) {
-        let isPreExisting;
-        if (fieldName === 'is_pre_existing') {
-          isPreExisting = !!fieldValue;
-        } else {
-          const creationDate = entityData['account_creation_date'];
-          if (!creationDate) { continue; }
-          isPreExisting = new Date(creationDate) <= new Date('2017-12-31');
-        }
-        const val = resolvePreExistingOption(step, isPreExisting);
-        if (val) {
-          initialAnswers[step.step_id] = val;
-          console.log(`[computePrefillAnswers] mapped pre_existing: isPreExisting=${isPreExisting} → ${val}`);
-        }
-        continue;
-      }
-    }
-
-    // ── is_pre_existing boolean: must use resolvePreExistingOption so custom option values work ──
-    if (fieldName === 'is_pre_existing' && (step.question_type === 'yes_no' || step.question_type === 'single_choice') && !step.mapped_field.prefill_config) {
-      const val = resolvePreExistingOption(step, !!fieldValue);
-      if (val) {
-        initialAnswers[step.step_id] = val;
-        console.log(`[computePrefillAnswers] is_pre_existing boolean: ${fieldValue} → ${val}`);
-      }
-      continue;
-    }
 
     if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
       const prefillType = step.mapped_field.prefill_config.prefill_type;
@@ -204,31 +66,17 @@ export const computePrefillAnswers = async (workflow, entityData, entityType, ig
       }
     } else if (step.question_type === 'yes_no' && typeof fieldValue === 'boolean') {
       // For fields that default to false (e.g. entity_managed_by_asset_manager), only prefill
-      // and lock the answer when the value is explicitly true.
+      // and lock the answer when the value is explicitly true. A false value on such fields may
+      // simply mean "no data was provided" (e.g. bulk import omitted this column), so we must
+      // not lock the user out of answering manually.
+      const fieldName = step.mapped_field?.field_name;
       const falseDefaultFields = ['entity_managed_by_asset_manager'];
       if (falseDefaultFields.includes(fieldName) && fieldValue === false) {
+        // Skip — treat missing/false as "no data provided"; leave step unlocked
         console.log(`[computePrefillAnswers] Skipping lock for "${fieldName}" because value is false (no data provided)`);
         continue;
       }
-      // Use resolvePreExistingOption for custom-option yes_no steps so the correct option value is selected
-      const hasCustomOptions = step.options && step.options.length > 0 &&
-        !step.options.every(o => o.value === 'YES' || o.value === 'NO');
-      if (hasCustomOptions) {
-        const val = resolvePreExistingOption(step, !!fieldValue);
-        if (val) { initialAnswers[step.step_id] = val; }
-      } else {
-        initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
-      }
-    } else if ((step.question_type === 'single_choice' || step.question_type === 'yes_no') && step.mapped_field?.prefill_config?.prefill_type === 'pre_existing_date') {
-      const creationDate = entityData[fieldName] || entityData['account_creation_date'];
-      if (creationDate) {
-        const isPreExisting = new Date(creationDate) <= new Date('2017-12-31');
-        const val = resolvePreExistingOption(step, isPreExisting);
-        if (val) {
-          initialAnswers[step.step_id] = val;
-          console.log(`[computePrefillAnswers] pre_existing_date config: isPreExisting=${isPreExisting} → "${val}"`);
-        }
-      }
+      initialAnswers[step.step_id] = fieldValue ? 'YES' : 'NO';
     } else if (step.question_type === 'single_choice') {
       const strVal = String(fieldValue);
 
