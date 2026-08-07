@@ -47,7 +47,15 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         } catch (e) { /* skip */ }
       } else if (prefillType === 'enum_match') {
         const matchValues = step.mapped_field.prefill_config.match_values || [];
-        initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
+        // Special case: is_pre_existing=true means the account IS pre-existing.
+        // The workflow YES option = "New account", NO option = "Pre-existing account".
+        // So is_pre_existing=true → prefill 'NO' (pre-existing path).
+        // is_pre_existing=false → prefill 'YES' (new account path).
+        if (fieldName === 'is_pre_existing') {
+          initialAnswers[step.step_id] = fieldValue === true ? 'NO' : 'YES';
+        } else {
+          initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
+        }
       } else if (prefillType === 'computed_comparison') {
         let result = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
 
