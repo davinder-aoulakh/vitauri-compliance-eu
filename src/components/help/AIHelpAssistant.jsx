@@ -164,6 +164,28 @@ const QUICK_QUESTIONS = [
   "How do I upload documents?"
 ];
 
+// Page-specific safe zones: defines where the chat panel should open
+// relative to the trigger button for known page types.
+const PAGE_POSITION_MAP = {
+  // Table-heavy pages: panel opens upward (above trigger) to avoid row overlap
+  "Accounts":             { side: "top" },
+  "RFI Entities":        { side: "top" },
+  "Entities":            { side: "top" },
+  "Activity":            { side: "top" },
+  "CRS Reports":         { side: "top" },
+  "User Management":     { side: "top" },
+  "Auto Classification Rules": { side: "top" },
+  "Referenced Data":     { side: "top" },
+  "Workflow Test Runner": { side: "top" },
+  // Default (dashboard, forms, etc.): panel opens above as well, standard
+};
+
+const CHAT_PANEL_HEIGHT = 500; // px — height of the chat card
+const CHAT_PANEL_WIDTH  = 384; // px — w-96
+const TRIGGER_SIZE      = 56;  // px — w-14 h-14
+const MARGIN            = 24;  // px — right-6 / bottom-6
+const GAP               = 12;  // px — gap between trigger and panel
+
 export default function AIHelpAssistant({ currentPage }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -175,8 +197,73 @@ export default function AIHelpAssistant({ currentPage }) {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickQuestions, setShowQuickQuestions] = useState(true);
+  const [panelStyle, setPanelStyle] = useState({});
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Dynamically compute where the chat panel should appear
+  // so it never overflows the viewport — adapts per page and screen size.
+  const computePanelPosition = () => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Trigger button sits at fixed bottom-6 right-6
+    const triggerBottom = MARGIN;                        // distance from viewport bottom
+    const triggerRight  = MARGIN;                        // distance from viewport right
+    const triggerTop    = vh - MARGIN - TRIGGER_SIZE;    // px from top
+
+    // Determine preferred side from page map (default: top)
+    const pagePref = PAGE_POSITION_MAP[currentPage];
+    const preferTop = pagePref?.side === "top" || true; // always prefer top for safety
+
+    // Check if panel fits above the trigger
+    const spaceAbove = triggerTop - GAP;
+    const spaceBelow = vh - triggerTop - TRIGGER_SIZE - GAP;
+    const fitsAbove  = spaceAbove >= CHAT_PANEL_HEIGHT;
+    const fitsBelow  = spaceBelow >= CHAT_PANEL_HEIGHT;
+
+    let style = {};
+
+    if (fitsAbove) {
+      // Open upward (most common — trigger is near bottom)
+      style.bottom = triggerBottom + TRIGGER_SIZE + GAP;
+      style.top = "auto";
+    } else if (fitsBelow) {
+      // Open downward (trigger is near top of screen)
+      style.top = triggerTop + TRIGGER_SIZE + GAP;
+      style.bottom = "auto";
+    } else {
+      // Not enough space either way — anchor to top of viewport with scroll
+      style.top = Math.max(8, vh - CHAT_PANEL_HEIGHT - MARGIN);
+      style.bottom = "auto";
+      style.maxHeight = vh - 16;
+    }
+
+    // Horizontal: default right-aligned, but shift left if panel overflows left edge
+    const panelLeft = vw - MARGIN - CHAT_PANEL_WIDTH;
+    if (panelLeft < 8) {
+      // Panel would overflow left — shift right (use left anchor instead)
+      style.right = "auto";
+      style.left = 8;
+    } else {
+      style.right = MARGIN;
+      style.left = "auto";
+    }
+
+    setPanelStyle(style);
+  };
+
+  useEffect(() => {
+    if (isOpen) computePanelPosition();
+  }, [isOpen, currentPage]);
+
+  // Recompute on window resize while open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = () => computePanelPosition();
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [isOpen, currentPage]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -296,9 +383,12 @@ Please provide a helpful response:`;
         )}
       </Button>
 
-      {/* Chat Window */}
+      {/* Chat Window — dynamically positioned */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 z-50 w-96 h-[500px] shadow-2xl border-2 border-indigo-100 flex flex-col overflow-hidden">
+        <Card
+          className="fixed z-50 w-96 h-[500px] shadow-2xl border-2 border-indigo-100 flex flex-col overflow-hidden"
+          style={{ ...panelStyle, transition: "bottom 0.2s ease, top 0.2s ease" }}
+        >
           <CardHeader className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-4 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
