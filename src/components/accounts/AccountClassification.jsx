@@ -658,6 +658,38 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
     }
 
+    // --- FI TYPE → Account.type_of_financial_institution propagation ---
+    // Find any step in the completed path whose mapped_field.field_name is 'fi_type'
+    // and propagate the selected value to Account.type_of_financial_institution.
+    const FI_TYPE_VALUE_MAP = {
+      'depository_institution': 'depository_institution',
+      'custodial_institution': 'custodial_institution',
+      'type_a': 'investment_entity_type_a',
+      'investment_entity_type_a': 'investment_entity_type_a',
+      'investment_entity_type_b': 'investment_entity_type_b',
+      'specified_insurance_company': 'specified_insurance_company',
+    };
+
+    if (account?.id) {
+      for (const stepId of allSteps) {
+        const step = stepMap[stepId];
+        if (!step) continue;
+        if (step.mapped_field?.field_name === 'fi_type') {
+          const rawAnswer = answers[stepId];
+          if (rawAnswer && rawAnswer !== 'none') {
+            const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
+            await base44.entities.Account.update(account.id, {
+              type_of_financial_institution: mappedFiType,
+            });
+            const refreshed = await base44.entities.Account.filter({ id: account.id });
+            if (refreshed[0]) setLatestAccountData(refreshed[0]);
+          }
+          break;
+        }
+      }
+    }
+    // --- End FI type propagation ---
+
     // Build result data
     const finalStep = steps.find(s => s.step_id === allSteps[allSteps.length - 1]);
     const deriveStatusForComplete = (step) => {
