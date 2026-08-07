@@ -120,6 +120,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
 
+  // Returns an occurrence-aware answer key: "stepId" on first visit,
+  // "stepId__iter1", "stepId__iter2" etc. on subsequent visits.
+  // history must be read at call-time so it reflects the current navigation state.
+  const getAnswerKey = (stepId, currentHistory) => {
+    const hist = currentHistory !== undefined ? currentHistory : history;
+    const occurrencesSoFar = hist.filter(id => id === stepId).length;
+    return occurrencesSoFar > 0 ? `${stepId}__iter${occurrencesSoFar}` : stepId;
+  };
+
   // Fetch published workflows
   const { data: workflows = [] } = useQuery({
     queryKey: ['workflows-published'],
@@ -341,10 +350,13 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   // Sync selectedValue / multiFieldValues / addressValues when step changes OR when answers are prefilled
-  const currentAnswerForSync = answers[currentNodeId];
+  // Use iteration-aware key so revisiting a step starts BLANK rather than pre-filling
+  // from the previous iteration's answer.
+  const currentAnswerKey = getAnswerKey(currentNodeId);
+  const currentAnswerForSync = answers[currentAnswerKey];
   useEffect(() => {
     if (!currentNode) return;
-    const existingAnswer = answers[currentNodeId];
+    const existingAnswer = answers[getAnswerKey(currentNodeId)];
     if (currentNode.question_type === 'multi_field_input') {
       setMultiFieldValues(existingAnswer || {});
     } else if (currentNode.question_type === 'address_input') {
@@ -355,7 +367,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
     } else {
       setSelectedValue(existingAnswer || null);
     }
-  }, [currentNodeId, currentAnswerForSync]);
+  }, [currentNodeId, currentAnswerKey]);
 
   if (!workflow || steps.length === 0) {
     return (
@@ -410,7 +422,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const handleNext = async () => {
-    // Save current answer
+    // Save current answer using iteration-aware key so loop revisits don't overwrite previous answers
     let currentAnswer = selectedValue;
     if (currentNode.question_type === 'multi_field_input') currentAnswer = multiFieldValues;
     else if (currentNode.question_type === 'address_input') currentAnswer = addressValues;
@@ -418,7 +430,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
       currentAnswer = selectedValue ? { ...selectedValue, date_received: dateReceivedValue } : null;
     }
 
-    const newAnswers = { ...answers, [currentNodeId]: currentAnswer };
+    const answerKey = getAnswerKey(currentNodeId);
+    const newAnswers = { ...answers, [answerKey]: currentAnswer };
     setAnswers(newAnswers);
 
     // Push this answer into the per-step history array so loop iterations are preserved
@@ -558,9 +571,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
 
   const executeAction = async (action, allAnswers) => {
     let targetId = account?.id;
-    let valueToUpdate = action.value_source === 'static_value' ? action.value
-      : action.value_source === 'from_step_answer' ? allAnswers[action.value]
-      : null;
+    // For from_step_answer: resolve the latest iteration key so we always use the most recent answer
+    let valueToUpdate;
+    if (action.value_source === 'static_value') {
+      valueToUpdate = action.value;
+    } else if (action.value_source === 'from_step_answer') {
+      const sourceStepId = action.value;
+      const allKeys = Object.keys(allAnswers);
+      const iterKeys = allKeys.filter(k => k === sourceStepId || k.startsWith(`${sourceStepId}__iter`));
+      const latestKey = iterKeys.length > 0 ? iterKeys[iterKeys.length - 1] : sourceStepId;
+      valueToUpdate = allAnswers[latestKey];
+    } else {
+      valueToUpdate = null;
+    }
 
     if (valueToUpdate === 'true') valueToUpdate = true;
     if (valueToUpdate === 'false') valueToUpdate = false;
@@ -586,8 +609,25 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const prevId = history[history.length - 1];
       const prevIndex = steps.findIndex(s => s.step_id === prevId);
       if (prevIndex !== -1) setCurrentStepIndex(prevIndex);
+
       setHistory(prev => prev.slice(0, -1));
-      // Pop the last entry from answerHistory for the step being un-visited
+
+      // The key that was stored when we last arrived at prevId is determined
+      // by how many times prevId already appeared in history at that moment.
+      // history still contains the full path including prevId at index -1,
+      // so occurrences of prevId in history (before removing it) tells us the iteration.
+      const visitCount = history.filter(id => id === prevId).length;
+      // getAnswerKey logic: if visitCount > 0 it stored __iter<visitCount>, else bare stepId
+      // BUT visitCount here is the count AFTER the step was already pushed to history,
+      // meaning getAnswerKey saw (visitCount - 1) occurrences already in history when it ran.
+      const iterKey = (visitCount - 1) > 0 ? `${prevId}__iter${visitCount - 1}` : prevId;
+
+      setAnswers(prev => {
+        const updated = { ...prev };
+        delete updated[iterKey];
+        return updated;
+      });
+
       setAnswerHistory(prev => {
         const arr = prev[prevId] || [];
         if (arr.length <= 1) {
@@ -674,12 +714,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
       ? currentAccountStatus
       : deriveStatusForComplete(finalStep);
 
-    // Only include answers for steps the user actually visited (allSteps = completedPath)
-    // This prevents prefilled-but-never-visited answers from appearing in classification history
+    // Only include answers for steps the user actually visited (allSteps = completedPath).
+    // Use iteration-aware keys so repeated steps produce unique entries in the history.
     const visitedAnswers = {};
+    const visitCounts = {};
     for (const stepId of allSteps) {
-      if (answers[stepId] !== undefined) {
-        visitedAnswers[stepId] = answers[stepId];
+      const occ = visitCounts[stepId] ?? 0;
+      const key = occ > 0 ? `${stepId}__iter${occ}` : stepId;
+      visitCounts[stepId] = occ + 1;
+      if (answers[key] !== undefined) {
+        visitedAnswers[key] = answers[key];
       }
     }
 
@@ -706,7 +750,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
   };
 
   const renderNode = () => {
-    const answer = answers[currentNodeId];
+    const answer = answers[getAnswerKey(currentNodeId)];
     // For the fiduciary trust step: only lock if RFI entity is Investment Entity Type A
     const FIDUCIARY_STEP_ID = 'step_1769573962356';
     const fiTypeNorm = (rfiEntityFiType || '').toLowerCase().replace(/[\s_-]/g, '');
@@ -727,7 +771,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 <span>This answer was automatically determined from your account data and cannot be changed.</span>
               </div>
             )}
-            <RadioGroup value={yesNoVal} onValueChange={isLocked ? undefined : v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
+            <RadioGroup value={yesNoVal} onValueChange={isLocked ? undefined : v => { setSelectedValue(v); setAnswers(p => ({ ...p, [getAnswerKey(currentNodeId)]: v })); }}>
               {opts.map(opt => (
                 <div
                   key={opt.value}
@@ -738,7 +782,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                         : 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-40'
                       : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
                   }`}
-                  onClick={isLocked ? undefined : () => { setSelectedValue(opt.value); setAnswers(p => ({ ...p, [currentNodeId]: opt.value })); }}
+                  onClick={isLocked ? undefined : () => { setSelectedValue(opt.value); setAnswers(p => ({ ...p, [getAnswerKey(currentNodeId)]: opt.value })); }}
                 >
                   <RadioGroupItem value={opt.value} id={opt.value} disabled={isLocked} />
                   <Label htmlFor={opt.value} className={`flex-1 font-medium text-slate-900 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>{opt.label}</Label>
@@ -764,7 +808,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 <span>This answer was automatically determined from your account data and cannot be changed.</span>
               </div>
             )}
-            <Select disabled={isLocked} value={answers[currentNodeId] || ""} onValueChange={isLocked ? undefined : v => { setSelectedValue(v); setAnswers(p => ({ ...p, [currentNodeId]: v })); }}>
+            <Select disabled={isLocked} value={answers[getAnswerKey(currentNodeId)] || ""} onValueChange={isLocked ? undefined : v => { setSelectedValue(v); setAnswers(p => ({ ...p, [getAnswerKey(currentNodeId)]: v })); }}>
               <SelectTrigger className={`w-full h-12 ${isLocked ? 'cursor-not-allowed opacity-70 bg-slate-50' : ''}`}>
                 <SelectValue placeholder="Select an option..." />
               </SelectTrigger>
@@ -779,7 +823,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
       }
 
       case 'multiple_choice': {
-        const selected = Array.isArray(answers[currentNodeId]) ? answers[currentNodeId] : [];
+        const selected = Array.isArray(answers[getAnswerKey(currentNodeId)]) ? answers[getAnswerKey(currentNodeId)] : [];
         return (
           <div className="space-y-3">
             {currentNode.options?.map(opt => {
@@ -791,7 +835,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   onClick={() => {
                     const newVals = isSel ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
                     setSelectedValue(newVals);
-                    setAnswers(p => ({ ...p, [currentNodeId]: newVals }));
+                    setAnswers(p => ({ ...p, [getAnswerKey(currentNodeId)]: newVals }));
                   }}
                 >
                   <Checkbox checked={isSel} onCheckedChange={() => {}} />
@@ -1036,8 +1080,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
             tenant={{ id: account?.tenant_id }}
             initialBeneficiaries={answer?.draftBeneficiaries}
             savedBeneficiaries={answer?.savedBeneficiaries}
-            onBeneficiariesChange={(bens) => setAnswers(p => ({ ...p, [currentNodeId]: { ...p[currentNodeId], draftBeneficiaries: bens } }))}
-            onBeneficiariesAdded={(saved) => setAnswers(p => ({ ...p, [currentNodeId]: { ...p[currentNodeId], savedBeneficiaries: saved, draftBeneficiaries: saved } }))}
+            onBeneficiariesChange={(bens) => { const k = getAnswerKey(currentNodeId); setAnswers(p => ({ ...p, [k]: { ...p[k], draftBeneficiaries: bens } })); }}
+            onBeneficiariesAdded={(saved) => { const k = getAnswerKey(currentNodeId); setAnswers(p => ({ ...p, [k]: { ...p[k], savedBeneficiaries: saved, draftBeneficiaries: saved } })); }}
           />
         );
 
@@ -1047,8 +1091,8 @@ export default function AccountClassification({ account, onComplete, onCancel })
             account={latestAccountData || account}
             initialPersons={answer?.draftPersons}
             savedPersons={answer?.savedPersons}
-            onPersonsChange={(persons) => setAnswers(p => ({ ...p, [currentNodeId]: { ...p[currentNodeId], draftPersons: persons } }))}
-            onControllingPersonsAdded={(saved) => setAnswers(p => ({ ...p, [currentNodeId]: { ...p[currentNodeId], savedPersons: saved, draftPersons: saved } }))}
+            onPersonsChange={(persons) => { const k = getAnswerKey(currentNodeId); setAnswers(p => ({ ...p, [k]: { ...p[k], draftPersons: persons } })); }}
+            onControllingPersonsAdded={(saved) => { const k = getAnswerKey(currentNodeId); setAnswers(p => ({ ...p, [k]: { ...p[k], savedPersons: saved, draftPersons: saved } })); }}
           />
         );
 
@@ -1103,17 +1147,18 @@ export default function AccountClassification({ account, onComplete, onCancel })
         return val !== undefined && val !== null && val !== '';
       });
     }
+    const iterKey = getAnswerKey(currentNodeId);
     if (qt === 'address_input') return !!(addressValues.street && addressValues.city && addressValues.state && addressValues.postal_code && addressValues.country && addressValues.tax_residence_country && addressValues.tin);
-    if (qt === 'beneficiary_input') return !!answers[currentNodeId]?.savedBeneficiaries?.length;
-    if (qt === 'controlling_person_input') return !!answers[currentNodeId]?.savedPersons?.length;
+    if (qt === 'beneficiary_input') return !!answers[iterKey]?.savedBeneficiaries?.length;
+    if (qt === 'controlling_person_input') return !!answers[iterKey]?.savedPersons?.length;
     if (qt === 'file_upload') {
       if (!selectedValue?.file_url) return false;
       if (currentNode.file_upload_config?.require_date_received) return !!dateReceivedValue;
       return true;
     }
     // For all other types (yes_no, single_choice, multiple_choice, text, number, date)
-    // read directly from answers so prefilled values enable the Next button
-    const currentAnswer = answers[currentNodeId];
+    // read directly from answers using the iteration-aware key
+    const currentAnswer = answers[iterKey];
     if (qt === 'multiple_choice') return Array.isArray(currentAnswer) && currentAnswer.length > 0;
     return !!currentAnswer;
   };
@@ -1389,10 +1434,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
                 answers={answers}
                 onAnswer={(stepId, answer) => {
                   if (currentNode.question_type === 'file_upload' && typeof answer === 'string') {
-                    // Voice returned a date for the date_received field
                     setDateReceivedValue(answer);
                   } else {
-                    setAnswers(p => ({ ...p, [stepId]: answer }));
+                    setAnswers(p => ({ ...p, [getAnswerKey(stepId)]: answer }));
                     setSelectedValue(answer);
                   }
                 }}
