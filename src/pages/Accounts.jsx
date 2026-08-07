@@ -400,8 +400,15 @@ export default function AccountsPage() {
     }
   });
 
-  const handleEdit = (account) => {
-    setSelectedAccount(account);
+  const handleEdit = async (account) => {
+    // Always fetch latest account data before opening the form
+    // so fields updated by classification (e.g. type_of_financial_institution) are current.
+    try {
+      const fresh = await base44.entities.Account.filter({ id: account.id });
+      setSelectedAccount(fresh[0] || account);
+    } catch {
+      setSelectedAccount(account);
+    }
     setShowForm(true);
   };
 
