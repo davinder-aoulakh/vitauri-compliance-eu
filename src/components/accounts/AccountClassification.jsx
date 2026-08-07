@@ -340,28 +340,11 @@ export default function AccountClassification({ account, onComplete, onCancel })
     return step?.options || [];
   };
 
-  // Sync selectedValue / multiFieldValues / addressValues when step changes OR when answers are prefilled.
-  // We intentionally track history.length so that re-visiting the same step on a new iteration
-  // resets the input to blank (the new iteration has no answer yet in answerHistory).
+  // Sync selectedValue / multiFieldValues / addressValues when step changes OR when answers are prefilled
+  const currentAnswerForSync = answers[currentNodeId];
   useEffect(() => {
     if (!currentNode) return;
-    // Determine how many times this step has already been completed (appears in history)
-    const completedVisits = history.filter(id => id === currentNodeId).length;
-    const historyArr = answerHistory[currentNodeId];
-    // Use the answer for THIS visit if it exists in history, otherwise blank (fresh iteration)
-    const existingAnswer = (historyArr && historyArr.length > completedVisits)
-      ? historyArr[completedVisits]
-      : undefined;
-
-    // For a fresh iteration (no saved answer yet), clear answers[currentNodeId] so that
-    // renderNode inputs (yes_no, single_choice, multiple_choice) also show blank.
-    if (existingAnswer === undefined && completedVisits > 0) {
-      setAnswers(prev => {
-        const { [currentNodeId]: _removed, ...rest } = prev;
-        return rest;
-      });
-    }
-
+    const existingAnswer = answers[currentNodeId];
     if (currentNode.question_type === 'multi_field_input') {
       setMultiFieldValues(existingAnswer || {});
     } else if (currentNode.question_type === 'address_input') {
@@ -370,9 +353,9 @@ export default function AccountClassification({ account, onComplete, onCancel })
       setSelectedValue(existingAnswer || null);
       setDateReceivedValue(existingAnswer?.date_received || "");
     } else {
-      setSelectedValue(existingAnswer !== undefined ? existingAnswer : (answers[currentNodeId] ?? null));
+      setSelectedValue(existingAnswer || null);
     }
-  }, [currentNodeId, history.length]);
+  }, [currentNodeId, currentAnswerForSync]);
 
   if (!workflow || steps.length === 0) {
     return (
