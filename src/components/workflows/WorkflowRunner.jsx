@@ -276,7 +276,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           console.log(`   ✅ Group matched! Navigating to: ${group.next_step}`);
           const nextIndex = workflow.steps.findIndex(s => s.step_id === group.next_step);
           if (nextIndex !== -1) {
-            setCurrentStepIndex(nextIndex);
+            navigateToStep(nextIndex, group.next_step);
             return;
           }
         }
@@ -289,7 +289,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`   → Using last group's false_step: ${lastGroup.false_step}`);
         const nextIndex = workflow.steps.findIndex(s => s.step_id === lastGroup.false_step);
         if (nextIndex !== -1) {
-          setCurrentStepIndex(nextIndex);
+          navigateToStep(nextIndex, lastGroup.false_step);
           return;
         }
       }
@@ -297,7 +297,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`   → Using default step: ${currentStep.conditional_logic.multi_choice_default_step}`);
         const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.conditional_logic.multi_choice_default_step);
         if (nextIndex !== -1) {
-          setCurrentStepIndex(nextIndex);
+          navigateToStep(nextIndex, currentStep.conditional_logic.multi_choice_default_step);
           return;
         }
       }
@@ -322,7 +322,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         console.log(`   🎯 Looking for step "${nextStepId}" -> found at index: ${nextIndex}`);
         if (nextIndex !== -1) {
           console.log(`   ➡️  Navigating to step index ${nextIndex + 1}: "${workflow.steps[nextIndex].step_title}"`);
-          setCurrentStepIndex(nextIndex);
+          navigateToStep(nextIndex, nextStepId);
           return;
         } else {
           console.error(`   ❌ ERROR: Next step "${nextStepId}" NOT FOUND in workflow!`);
@@ -409,7 +409,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         if (nextIndex !== -1) {
           const nextStepTitle = workflow.steps[nextIndex].step_title;
           console.log(`   ➡️  SUCCESS: Navigating to step index ${nextIndex + 1}: "${nextStepTitle}"`);
-          setCurrentStepIndex(nextIndex);
+          navigateToStep(nextIndex, nextStepId);
           return;
         } else {
           console.error(`   ❌ ERROR: Next step "${nextStepId}" NOT FOUND in workflow steps!`);
@@ -428,7 +428,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
         if (nextIndex !== -1) {
-          setCurrentStepIndex(nextIndex);
+          navigateToStep(nextIndex, nextStepId);
           return;
         }
       }
@@ -440,13 +440,13 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       const selectedOption = currentStep.options?.find(opt => opt.value === answer);
       if (selectedOption?.next_step) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === selectedOption.next_step);
-        if (nextIndex !== -1) { setCurrentStepIndex(nextIndex); return; }
+        if (nextIndex !== -1) { navigateToStep(nextIndex, selectedOption.next_step); return; }
       }
     }
 
     if (currentStep.default_next_step) {
       const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.default_next_step);
-      if (nextIndex !== -1) { setCurrentStepIndex(nextIndex); return; }
+      if (nextIndex !== -1) { navigateToStep(nextIndex, currentStep.default_next_step); return; }
     }
 
     if (isActionNode(currentStep)) {
@@ -460,6 +460,24 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       setCompletedPath([...new Set([...history, currentStep.step_id])]);
       setShowSummary(true);
     }
+  };
+
+  // Navigate forward to a step index; if the step was already visited (new loop),
+  // clear its stored answer so it renders blank rather than showing prior-loop values.
+  const navigateToStep = (nextIndex, nextStepId) => {
+    if (history.includes(nextStepId) && !prefilledSteps.has(nextStepId)) {
+      // Find and delete all answer keys for this step (bare key + any __iterN keys)
+      setAnswers(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(k => {
+          if (k === nextStepId || k.startsWith(`${nextStepId}__iter`)) {
+            delete updated[k];
+          }
+        });
+        return updated;
+      });
+    }
+    setCurrentStepIndex(nextIndex);
   };
 
   const handleBack = () => {

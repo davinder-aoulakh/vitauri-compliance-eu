@@ -471,6 +471,19 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (nextStepId) {
       const nextIndex = steps.findIndex(s => s.step_id === nextStepId);
       if (nextIndex !== -1) {
+        // If navigating forward into a step that was already visited (new loop iteration),
+        // clear its stored answer so it renders blank — not pre-filled with the prior loop's value.
+        // Do NOT clear prefilled (auto-determined) steps; those remain locked regardless.
+        if (history.includes(nextStepId) && !prefilledSteps.has(nextStepId)) {
+          setAnswers(prev => {
+            const updated = { ...prev };
+            delete updated[nextStepId];
+            return updated;
+          });
+          setSelectedValue(null);
+          setDateReceivedValue("");
+          setMultiFieldValues({});
+        }
         setCurrentStepIndex(nextIndex);
         return;
       }

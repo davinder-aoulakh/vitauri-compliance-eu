@@ -29,19 +29,33 @@ export const resolveRequestedDate = (steps, answers, answerHistory, accountData)
     );
   });
 
+  // Helper: normalize any date string to YYYY-MM-DD, or return null if not a date
+  const normalizeDate = (str) => {
+    if (!str || typeof str !== 'string') return null;
+    // Already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    // DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = str.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+    if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
+    // MM/DD/YYYY
+    const mdyMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (mdyMatch) return `${mdyMatch[3]}-${mdyMatch[1]}-${mdyMatch[2]}`;
+    return null;
+  };
+
   // Helper: extract a date string from a step answer value
   const extractDate = (val) => {
     if (!val) return null;
     // multi_field_input answers are objects; look for any date-like field value
     if (typeof val === 'object' && !Array.isArray(val)) {
       for (const fieldVal of Object.values(val)) {
-        if (typeof fieldVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fieldVal)) return fieldVal;
+        const d = normalizeDate(fieldVal);
+        if (d) return d;
       }
       return null;
     }
     // date_input answer is a plain string
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    return null;
+    return normalizeDate(val);
   };
 
   for (const step of requestSteps) {
