@@ -865,6 +865,7 @@ export default function AccountClassification({ account, onComplete, onCancel })
           <Input
             type="date"
             value={selectedValue || ""}
+            max={new Date().toISOString().split('T')[0]}
             onChange={e => setSelectedValue(e.target.value)}
           />
         );

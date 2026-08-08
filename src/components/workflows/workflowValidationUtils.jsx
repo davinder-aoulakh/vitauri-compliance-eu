@@ -32,7 +32,7 @@ export const resolveRequestedDate = (steps, answers, answerHistory, accountData)
   // Helper: extract a date string from a step answer value
   const extractDate = (val) => {
     if (!val) return null;
-    // multi_field_input answers are objects; look for any field whose key or value looks like a date
+    // multi_field_input answers are objects; look for any date-like field value
     if (typeof val === 'object' && !Array.isArray(val)) {
       for (const fieldVal of Object.values(val)) {
         if (typeof fieldVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fieldVal)) return fieldVal;
@@ -44,20 +44,35 @@ export const resolveRequestedDate = (steps, answers, answerHistory, accountData)
     return null;
   };
 
-  // 1. Check answerHistory (last entry = most recent loop iteration)
   for (const step of requestSteps) {
-    const history = answerHistory?.[step.step_id];
-    if (history && history.length > 0) {
-      const latest = history[history.length - 1];
+    const stepId = step.step_id;
+
+    // 1. AccountClassification path: answerHistory is { stepId: [val_iter0, val_iter1, ...] }
+    //    The LAST entry is always the most recent loop iteration.
+    if (answerHistory?.[stepId]?.length > 0) {
+      const latest = answerHistory[stepId][answerHistory[stepId].length - 1];
       const d = extractDate(latest);
       if (d) return d;
     }
-  }
 
-  // 2. Check flat answers map
-  for (const step of requestSteps) {
-    const d = extractDate(answers?.[step.step_id]);
-    if (d) return d;
+    // 2. WorkflowRunner path: answers uses iteration keys — stepId, stepId__iter1, stepId__iter2 ...
+    //    Find ALL keys belonging to this step and pick the one with the highest iteration number
+    //    (that is the answer from the current/most-recent loop).
+    if (answers) {
+      const allKeys = Object.keys(answers);
+      const stepKeys = allKeys.filter(k => k === stepId || k.startsWith(`${stepId}__iter`));
+      if (stepKeys.length > 0) {
+        // Sort by iteration number descending: bare key = iter0, __iter1 = iter1, etc.
+        const getIterNum = (k) => {
+          const m = k.match(/__iter(\d+)$/);
+          return m ? parseInt(m[1], 10) : 0;
+        };
+        stepKeys.sort((a, b) => getIterNum(b) - getIterNum(a));
+        const latestKey = stepKeys[0];
+        const d = extractDate(answers[latestKey]);
+        if (d) return d;
+      }
+    }
   }
 
   // 3. Fallback to account entity field

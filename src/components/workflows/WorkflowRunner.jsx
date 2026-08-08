@@ -1157,6 +1157,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             key={`${currentStep.step_id}-${dateValue}`}
             type="date"
             value={dateValue}
+            max={new Date().toISOString().split('T')[0]}
             onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
           />
         );

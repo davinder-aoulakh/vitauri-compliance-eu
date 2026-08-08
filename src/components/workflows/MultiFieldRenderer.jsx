@@ -122,6 +122,7 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
           <Input
             type="date"
             value={value || ""}
+            max={new Date().toISOString().split('T')[0]}
             onChange={(e) => handleFieldChange(field.field_id, e.target.value)}
             className={error ? "border-red-500" : ""}
           />
