@@ -46,47 +46,67 @@ export const resolveRequestedDate = (steps, answers, answerHistory, accountData)
   // Helper: extract a date string from a step answer value
   const extractDate = (val) => {
     if (!val) return null;
-    // multi_field_input answers are objects; look for any date-like field value
+    // multi_field_input answers are objects; check known date field names first, then all values
     if (typeof val === 'object' && !Array.isArray(val)) {
+      // Prefer fields whose key contains "date"
+      const dateFieldKeys = Object.keys(val).filter(k => k.toLowerCase().includes('date'));
+      for (const key of dateFieldKeys) {
+        const d = normalizeDate(val[key]);
+        if (d) return d;
+      }
+      // Fallback: scan all values
       for (const fieldVal of Object.values(val)) {
         const d = normalizeDate(fieldVal);
         if (d) return d;
       }
       return null;
     }
-    // date_input answer is a plain string
+    // date_input or yes_no answer is a plain string
+    // Handle "YES | Date requested: YYYY-MM-DD" composite format
+    if (typeof val === 'string') {
+      const pipeDateMatch = val.match(/(\d{4}-\d{2}-\d{2})/);
+      if (pipeDateMatch) return pipeDateMatch[1];
+    }
     return normalizeDate(val);
   };
+
+  // Collect all candidate dates across all request steps, then return the most recent one.
+  const candidateDates = [];
 
   for (const step of requestSteps) {
     const stepId = step.step_id;
 
     // 1. AccountClassification path: answerHistory is { stepId: [val_iter0, val_iter1, ...] }
-    //    The LAST entry is always the most recent loop iteration.
+    //    Collect ALL entries — we'll pick the most recent date at the end.
     if (answerHistory?.[stepId]?.length > 0) {
-      const latest = answerHistory[stepId][answerHistory[stepId].length - 1];
-      const d = extractDate(latest);
-      if (d) return d;
+      for (const entry of answerHistory[stepId]) {
+        const d = extractDate(entry);
+        if (d) candidateDates.push(d);
+      }
     }
 
     // 2. WorkflowRunner path: answers uses iteration keys — stepId, stepId__iter1, stepId__iter2 ...
-    //    Find ALL keys belonging to this step and pick the one with the highest iteration number
-    //    (that is the answer from the current/most-recent loop).
+    //    Collect dates from ALL iteration keys for this step.
     if (answers) {
       const allKeys = Object.keys(answers);
       const stepKeys = allKeys.filter(k => k === stepId || k.startsWith(`${stepId}__iter`));
-      if (stepKeys.length > 0) {
-        // Sort by iteration number descending: bare key = iter0, __iter1 = iter1, etc.
-        const getIterNum = (k) => {
-          const m = k.match(/__iter(\d+)$/);
-          return m ? parseInt(m[1], 10) : 0;
-        };
-        stepKeys.sort((a, b) => getIterNum(b) - getIterNum(a));
-        const latestKey = stepKeys[0];
-        const d = extractDate(answers[latestKey]);
-        if (d) return d;
+      for (const key of stepKeys) {
+        const d = extractDate(answers[key]);
+        if (d) candidateDates.push(d);
       }
     }
+
+    // 3. Also check the plain answers map (for AccountClassification which overwrites the key each loop)
+    if (answers?.[stepId]) {
+      const d = extractDate(answers[stepId]);
+      if (d) candidateDates.push(d);
+    }
+  }
+
+  // Return the LATEST (most recent) date found across all candidates
+  if (candidateDates.length > 0) {
+    candidateDates.sort((a, b) => (a > b ? -1 : a < b ? 1 : 0));
+    return candidateDates[0];
   }
 
   // 3. Fallback to account entity field
