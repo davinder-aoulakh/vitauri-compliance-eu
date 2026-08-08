@@ -462,20 +462,30 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     }
   };
 
-  // Navigate forward to a step index; if the step was already visited (new loop),
-  // clear its stored answer so it renders blank rather than showing prior-loop values.
+  // Navigate forward to a step index.
+  // Only clear the destination step's stored answer if this is a GENUINELY NEW loop iteration —
+  // i.e. the number of times nextStepId appears in history equals the number of __iterN keys
+  // already stored for that step. This means all prior iterations are fully recorded and
+  // we need a blank slate for the new attempt.
+  // When the user navigates back-then-forward, the existing answer key count will be greater
+  // than the history occurrence count → we preserve the answer.
   const navigateToStep = (nextIndex, nextStepId) => {
-    if (history.includes(nextStepId) && !prefilledSteps.has(nextStepId)) {
-      // Find and delete all answer keys for this step (bare key + any __iterN keys)
-      setAnswers(prev => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach(k => {
-          if (k === nextStepId || k.startsWith(`${nextStepId}__iter`)) {
-            delete updated[k];
-          }
+    if (!prefilledSteps.has(nextStepId)) {
+      const historyOccurrences = history.filter(id => id === nextStepId).length;
+      // Count existing answer keys for this step (bare key = iter0, __iter1 = iter1, etc.)
+      const existingKeys = Object.keys(answers).filter(
+        k => k === nextStepId || k.startsWith(`${nextStepId}__iter`)
+      );
+      const storedIterations = existingKeys.length;
+      const isNewLoopIteration = historyOccurrences >= storedIterations && storedIterations > 0;
+
+      if (isNewLoopIteration) {
+        setAnswers(prev => {
+          const updated = { ...prev };
+          existingKeys.forEach(k => { delete updated[k]; });
+          return updated;
         });
-        return updated;
-      });
+      }
     }
     setCurrentStepIndex(nextIndex);
   };

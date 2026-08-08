@@ -471,10 +471,16 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (nextStepId) {
       const nextIndex = steps.findIndex(s => s.step_id === nextStepId);
       if (nextIndex !== -1) {
-        // If navigating forward into a step that was already visited (new loop iteration),
-        // clear its stored answer so it renders blank — not pre-filled with the prior loop's value.
-        // Do NOT clear prefilled (auto-determined) steps; those remain locked regardless.
-        if (history.includes(nextStepId) && !prefilledSteps.has(nextStepId)) {
+        // Only clear the destination step's answer if this is a genuinely NEW loop iteration,
+        // i.e. the step has been visited as many times as there are answers stored in answerHistory.
+        // This means all prior iterations are fully recorded and we need a blank slate.
+        // When the user navigates back-then-forward, answerHistory still has the entry
+        // for the current iteration, so the count is GREATER than history occurrences → no clear.
+        const historyOccurrences = newHistory.filter(id => id === nextStepId).length;
+        const storedIterations = (answerHistory[nextStepId] || []).length;
+        const isNewLoopIteration = historyOccurrences >= storedIterations && !prefilledSteps.has(nextStepId);
+
+        if (isNewLoopIteration && newAnswers[nextStepId] !== undefined) {
           setAnswers(prev => {
             const updated = { ...prev };
             delete updated[nextStepId];
@@ -601,15 +607,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
       const prevIndex = steps.findIndex(s => s.step_id === prevId);
       if (prevIndex !== -1) setCurrentStepIndex(prevIndex);
       setHistory(prev => prev.slice(0, -1));
-      // Pop the last entry from answerHistory for the step being un-visited
-      setAnswerHistory(prev => {
-        const arr = prev[prevId] || [];
-        if (arr.length <= 1) {
-          const { [prevId]: _, ...rest } = prev;
-          return rest;
-        }
-        return { ...prev, [prevId]: arr.slice(0, -1) };
-      });
+      // NOTE: Do NOT pop from answerHistory on back navigation.
+      // answerHistory is append-only (grows on handleNext) and is indexed by
+      // how many times a step appears in the completed history array.
+      // Shrinking history[] already causes PreviousAnswers to show the correct
+      // iteration entry. Popping from answerHistory destroyed the saved value,
+      // causing the blank-answer bug when the user navigated back then forward.
     } else {
       onCancel?.();
     }
