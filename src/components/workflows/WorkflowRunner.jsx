@@ -27,6 +27,7 @@ import CountrySelect from "../shared/CountrySelect";
 import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
 import { computePrefillAnswers } from "./workflowPrefillUtils";
+import { resolveRequestedDate, validateDateReceived } from "./workflowValidationUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
@@ -1324,13 +1325,34 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   Date Received
                   <span className="text-red-600">*</span>
                 </Label>
-                <Input
-                  type="date"
-                  value={dateReceived}
-                  onChange={(e) => handleDateReceivedChange(e.target.value)}
-                  className="mt-1.5"
-                  placeholder="Select date received"
-                />
+                {(() => {
+                  const reqDate = resolveRequestedDate(workflow.steps, answers, null, mappedEntityData);
+                  const today = new Date().toISOString().split('T')[0];
+                  const { error: dateError } = validateDateReceived(dateReceived, reqDate);
+                  return (
+                    <>
+                      <Input
+                        type="date"
+                        value={dateReceived}
+                        max={today}
+                        min={reqDate || undefined}
+                        onChange={(e) => handleDateReceivedChange(e.target.value)}
+                        className={`mt-1.5 ${dateError ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                      />
+                      {reqDate && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Self-certification was requested on: <strong>{reqDate}</strong>
+                        </p>
+                      )}
+                      {dateError && (
+                        <Alert className="mt-2 bg-red-50 border-red-200 py-2">
+                          <AlertCircle className="w-4 h-4 text-red-600" />
+                          <AlertDescription className="text-xs text-red-700">{dateError}</AlertDescription>
+                        </Alert>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -1635,7 +1657,10 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       const hasFiles = Array.isArray(files) && files.length > 0;
       if (!hasFiles) return false;
       if (fileConfig.require_date_received) {
-        return !!(answer.date_received && answer.date_received.trim());
+        if (!answer.date_received || !answer.date_received.trim()) return false;
+        const reqDate = resolveRequestedDate(workflow.steps, answers, null, mappedEntityData);
+        const { valid } = validateDateReceived(answer.date_received, reqDate);
+        return valid;
       }
       return true;
     }

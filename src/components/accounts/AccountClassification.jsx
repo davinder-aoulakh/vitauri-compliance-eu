@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Sparkles, Calendar, Lock } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,7 @@ import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
 import { computePrefillAnswers } from "../workflows/workflowPrefillUtils";
+import { resolveRequestedDate, validateDateReceived } from "../workflows/workflowValidationUtils";
 import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
@@ -924,7 +925,34 @@ export default function AccountClassification({ account, onComplete, onCancel })
                   <Calendar className="w-4 h-4" />
                   Date Received <span className="text-red-600">*</span>
                 </Label>
-                <Input type="date" value={dateReceivedValue} onChange={e => setDateReceivedValue(e.target.value)} className="mt-1.5" />
+                {(() => {
+                  const reqDate = resolveRequestedDate(steps, answers, answerHistory, latestAccountData || account);
+                  const today = new Date().toISOString().split('T')[0];
+                  const { error: dateError } = validateDateReceived(dateReceivedValue, reqDate);
+                  return (
+                    <>
+                      <Input
+                        type="date"
+                        value={dateReceivedValue}
+                        max={today}
+                        min={reqDate || undefined}
+                        onChange={e => setDateReceivedValue(e.target.value)}
+                        className={`mt-1.5 ${dateError ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                      />
+                      {reqDate && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Self-certification was requested on: <strong>{reqDate}</strong>
+                        </p>
+                      )}
+                      {dateError && (
+                        <Alert className="mt-2 bg-red-50 border-red-200 py-2">
+                          <AlertCircle className="w-4 h-4 text-red-600" />
+                          <AlertDescription className="text-xs text-red-700">{dateError}</AlertDescription>
+                        </Alert>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -1143,7 +1171,12 @@ export default function AccountClassification({ account, onComplete, onCancel })
     if (qt === 'controlling_person_input') return !!answers[currentNodeId]?.savedPersons?.length;
     if (qt === 'file_upload') {
       if (!selectedValue?.file_url) return false;
-      if (currentNode.file_upload_config?.require_date_received) return !!dateReceivedValue;
+      if (currentNode.file_upload_config?.require_date_received) {
+        if (!dateReceivedValue) return false;
+        const reqDate = resolveRequestedDate(steps, answers, answerHistory, latestAccountData || account);
+        const { valid } = validateDateReceived(dateReceivedValue, reqDate);
+        return valid;
+      }
       return true;
     }
     // For all other types (yes_no, single_choice, multiple_choice, text, number, date)
