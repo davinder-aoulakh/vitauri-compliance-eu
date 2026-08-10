@@ -547,7 +547,8 @@ export default function AccountsPage() {
       reportable: { label: "Reportable", color: "bg-green-100 text-green-800 border-green-200" },
       non_reportable: { label: "Non-Reportable", color: "bg-slate-100 text-slate-800 border-slate-200" },
       pending_review: { label: "Pending Review", color: "bg-amber-100 text-amber-800 border-amber-200" },
-      excluded: { label: "Excluded", color: "bg-red-100 text-red-800 border-red-200" }
+      excluded: { label: "Excluded", color: "bg-red-100 text-red-800 border-red-200" },
+      work_in_progress: { label: "Work in progress", color: "bg-red-100 text-red-800 border-red-200" }
     };
     const { label, color } = config[status] || config.pending_review;
     return <Badge variant="outline" className={`${color} border`}>{label}</Badge>;
@@ -789,6 +790,7 @@ export default function AccountsPage() {
                       <SelectItem value="non_reportable">Non-Reportable</SelectItem>
                       <SelectItem value="pending_review">Pending Review</SelectItem>
                       <SelectItem value="excluded">Excluded</SelectItem>
+                      <SelectItem value="work_in_progress">Work in progress</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1387,6 +1389,7 @@ export default function AccountsPage() {
               non_reportable: "text-slate-700 bg-slate-50 border-slate-200",
               pending_review: "text-amber-700 bg-amber-50 border-amber-200",
               excluded: "text-red-700 bg-red-50 border-red-200",
+              work_in_progress: "text-blue-700 bg-blue-50 border-blue-200",
             };
 
             return (
