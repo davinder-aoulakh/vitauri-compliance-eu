@@ -98,7 +98,8 @@ export default function AccountDetails({ account, entity }) {
       reportable: { label: "Reportable", color: "bg-green-100 text-green-800" },
       non_reportable: { label: "Non-Reportable", color: "bg-slate-100 text-slate-800" },
       pending_review: { label: "Pending Review", color: "bg-amber-100 text-amber-800" },
-      excluded: { label: "Excluded", color: "bg-red-100 text-red-800" }
+      excluded: { label: "Excluded", color: "bg-red-100 text-red-800" },
+      work_in_progress: { label: "Work in progress", color: "bg-blue-100 text-blue-800" }
     };
     const { label, color } = config[status] || config.pending_review;
     return <Badge className={color}>{label}</Badge>;
