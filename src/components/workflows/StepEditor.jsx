@@ -428,6 +428,7 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                 <SelectItem value="non_reportable">Non-Reportable</SelectItem>
                 <SelectItem value="pending_review">Pending Review</SelectItem>
                 <SelectItem value="excluded">Excluded</SelectItem>
+                <SelectItem value="work_in_progress">Work in progress</SelectItem>
               </SelectContent>
             </Select>
           </div>
