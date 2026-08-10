@@ -153,7 +153,12 @@ export default function AccountClassificationHistory({ history, account }) {
         label: "Excluded", 
         color: "bg-red-100 text-red-800 border-red-200", 
         icon: XCircle 
-      }
+      },
+      work_in_progress: { 
+        label: "Work in progress", 
+        color: "bg-slate-100 text-blue-800 border-blue-200", 
+        icon: XCircle 
+      },
     };
     const { label, color, icon: Icon } = config[status] || config.pending_review;
     return (
