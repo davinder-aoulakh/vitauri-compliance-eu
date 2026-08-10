@@ -1196,6 +1196,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   <SelectItem value="reportable">Reportable</SelectItem>
                   <SelectItem value="non_reportable">Non-Reportable</SelectItem>
                   <SelectItem value="excluded">Excluded</SelectItem>
+                  <SelectItem value="work_in_progress">Work in progress</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-500 mt-1">
