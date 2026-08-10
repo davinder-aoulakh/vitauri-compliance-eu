@@ -27,7 +27,8 @@ export default function BulkUpdateForm({ selectedAccounts, onUpdate, onCancel, i
         { value: "pending_review", label: "Pending Review" },
         { value: "reportable", label: "Reportable" },
         { value: "non_reportable", label: "Non-Reportable" },
-        { value: "excluded", label: "Excluded" }
+        { value: "excluded", label: "Excluded" },
+        { value: "work_in_progress", label: "Work in progress" }
       ]
     },
     {
