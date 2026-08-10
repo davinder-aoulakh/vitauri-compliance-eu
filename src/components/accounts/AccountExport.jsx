@@ -182,6 +182,7 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
     { value: "non_reportable", label: "Non-Reportable", color: "text-slate-600" },
     { value: "pending_review", label: "Pending Review", color: "text-amber-700" },
     { value: "excluded", label: "Excluded", color: "text-red-700" },
+    { value: "work_in_progress", label: "Work in progress", color: "text-red-700" },
   ];
 
   return (
