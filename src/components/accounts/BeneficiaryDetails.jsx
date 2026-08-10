@@ -58,6 +58,11 @@ export default function BeneficiaryDetails({ beneficiary, account }) {
         label: "Excluded",
         color: "bg-red-100 text-red-800",
         icon: XCircle
+      },
+       excluded: {
+        label: "Work in progress",
+        color: "bg-blue-100 text-blue-800",
+        icon: Calendar
       }
     };
     const { label, color, icon: Icon } = config[status] || config.pending_review;
