@@ -372,7 +372,8 @@
         "pending_review",
         "reportable",
         "non_reportable",
-        "excluded"
+        "excluded",
+        "work_in_progress"
       ],
       "default": "pending_review"
     },
