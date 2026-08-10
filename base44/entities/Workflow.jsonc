@@ -317,7 +317,8 @@
               "reportable",
               "non_reportable",
               "pending_review",
-              "excluded"
+              "excluded",
+              "work_in_progress"
             ],
             "description": "For result-type steps: the reportability status to set"
           },
