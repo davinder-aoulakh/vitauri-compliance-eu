@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -25,7 +26,8 @@ import {
   Loader2,
   AlertCircle,
   HeartHandshake,
-  Download
+  Download,
+  Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +115,9 @@ export default function AccountsPage() {
 
   const tourConfig = getTourByPage("Accounts");
   const queryClient = useQueryClient();
+
+  // Draft map: { [account_id]: draft } — used for "Continue Classification" button
+  const accountDraftMap = useClassificationDraftMap(user?.tenant_id, "Account");
 
   useEffect(() => {
     loadUserData();
@@ -499,6 +504,41 @@ export default function AccountsPage() {
     } finally {
       setAiClassifyingId(null);
     }
+  };
+
+  const handleSaveAccountDraft = async (draftState) => {
+    if (!selectedAccount || !user) return;
+    try {
+      const existing = await base44.entities.ClassificationDraft.filter({
+        target_id: selectedAccount.id,
+        target_type: "Account",
+      });
+      const payload = {
+        target_id:            selectedAccount.id,
+        target_type:          "Account",
+        tenant_id:            user.tenant_id,
+        last_step_index:      draftState.currentStepIndex ?? 0,
+        last_step_id:         draftState.lastStepId ?? null,
+        saved_answers:        draftState.answers ?? {},
+        saved_history:        draftState.history ?? [],
+        saved_answer_history: draftState.answerHistory ?? {},
+        locked_steps:         draftState.lockedSteps ?? [],
+        workflow_id:          draftState.workflowId ?? null,
+        workflow_name:        draftState.workflowName ?? null,
+        saved_by_email:       user.email,
+        saved_at:             new Date().toISOString(),
+      };
+      if (existing[0]) {
+        await base44.entities.ClassificationDraft.update(existing[0].id, payload);
+      } else {
+        await base44.entities.ClassificationDraft.create(payload);
+      }
+      queryClient.invalidateQueries(["classification-drafts-bulk"]);
+    } catch (err) {
+      console.error("Error saving classification draft:", err);
+    }
+    setShowClassification(false);
+    setSelectedAccount(null);
   };
 
   const handleComplianceFlagSelect = (account) => {
@@ -1009,19 +1049,23 @@ export default function AccountsPage() {
                                     </DropdownMenuItem>
                                     
                                     {can('Account', 'edit') && (
-                                     <>
-                                        {account.reportability_status === "pending_review" && (
-                                          <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                            <Eye className="w-4 h-4 mr-2" />
-                                            Classify Account
-                                          </DropdownMenuItem>
-                                        )}
-                                        {account.reportability_status !== "pending_review" && (
-                                          <DropdownMenuItem onClick={() => handleClassify(account)}>
-                                            <Eye className="w-4 h-4 mr-2" />
-                                            Re-classify Account
-                                          </DropdownMenuItem>
-                                        )}
+                                    <>
+                                       {accountDraftMap[account.id] ? (
+                                         <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                           <Save className="w-4 h-4 mr-2 text-amber-600" />
+                                           Continue Classification
+                                         </DropdownMenuItem>
+                                       ) : account.reportability_status === "pending_review" ? (
+                                         <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                           <Eye className="w-4 h-4 mr-2" />
+                                           Classify Account
+                                         </DropdownMenuItem>
+                                       ) : (
+                                         <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                           <Eye className="w-4 h-4 mr-2" />
+                                           Re-classify Account
+                                         </DropdownMenuItem>
+                                       )}
                                         <DropdownMenuItem
                                           onClick={() => handleAIClassify(account)}
                                           disabled={aiClassifyingId === account.id}
@@ -1158,7 +1202,30 @@ export default function AccountsPage() {
           </DialogHeader>
           <AccountClassification
           account={selectedAccount}
+          onSaveAndExit={handleSaveAccountDraft}
+          initialDraftState={
+            selectedAccount?.id && accountDraftMap[selectedAccount.id]
+              ? {
+                  answers:          accountDraftMap[selectedAccount.id].saved_answers ?? {},
+                  history:          accountDraftMap[selectedAccount.id].saved_history ?? [],
+                  answerHistory:    accountDraftMap[selectedAccount.id].saved_answer_history ?? {},
+                  currentStepIndex: accountDraftMap[selectedAccount.id].last_step_index ?? 0,
+                  lastStepId:       accountDraftMap[selectedAccount.id].last_step_id,
+                  lockedSteps:      accountDraftMap[selectedAccount.id].locked_steps ?? [],
+                }
+              : undefined
+          }
           onComplete={async (data) => {
+            // Clear draft on successful completion
+            try {
+              const drafts = await base44.entities.ClassificationDraft.filter({
+                target_id: selectedAccount?.id,
+                target_type: "Account",
+              });
+              if (drafts[0]) await base44.entities.ClassificationDraft.delete(drafts[0].id);
+              queryClient.invalidateQueries(["classification-drafts-bulk"]);
+            } catch (_) {}
+
             const shouldRedirect = data._redirectToControllingPersons;
             const { _redirectToControllingPersons, ...cleanData } = data;
             const accountId = selectedAccount.id;

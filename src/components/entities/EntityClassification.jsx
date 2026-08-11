@@ -21,18 +21,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 
-export default function EntityClassification({ entity, onComplete, onCancel }) {
-  const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [answers, setAnswers] = useState({});
+export default function EntityClassification({ entity, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
+  const isDraftResume = !!initialDraftState;
+  const [currentNodeId, setCurrentNodeId] = useState(initialDraftState?.lastStepId ?? null);
+  const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
   const [selectedValue, setSelectedValue] = useState("");
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(initialDraftState?.history ?? []);
   const [user, setUser] = useState(null);
   const [workflow, setWorkflow] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [entityStatus, setEntityStatus] = useState(null);
   const [showFlowChart, setShowFlowChart] = useState(false);
-  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
+  const [prefilledSteps, setPrefilledSteps] = useState(
+    initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
+  );
 
   // Fetch published entity classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -83,6 +86,8 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
   // Pre-fill answers based on mapped fields
   useEffect(() => {
     if (!workflow || !entity) return;
+    // Skip prefill when resuming from a draft — draft already has answers restored.
+    if (isDraftResume) return;
     
     const preFillAnswers = {};
     
@@ -1483,7 +1488,7 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
       />
 
       {/* Navigation */}
-      <div className="flex justify-between gap-3 pt-4 border-t">
+      <div className="flex justify-between gap-3 pt-4 border-t flex-wrap">
         <Button 
           type="button" 
           variant="outline" 
@@ -1493,18 +1498,39 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           <ArrowLeft className="w-4 h-4 mr-2" />
           {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
-        <Button 
-          onClick={handleNext}
-          disabled={
-            !isActionNode(currentNode) && 
-            (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0))
-          }
-          size="lg"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
-        >
-          {isActionNode(currentNode) ? "View Summary" : "Next Question"}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+        <div className="flex gap-2">
+          {onSaveAndExit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => onSaveAndExit({
+                answers: { ...answers, [currentNodeId]: selectedValue },
+                history,
+                lastStepId: currentNodeId,
+                workflowId: workflow?.id,
+                workflowName: workflow?.workflow_name,
+                lockedSteps: [...prefilledSteps],
+              })}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Save & Exit
+            </Button>
+          )}
+          <Button 
+            onClick={handleNext}
+            disabled={
+              !isActionNode(currentNode) && 
+              (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0))
+            }
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            {isActionNode(currentNode) ? "View Summary" : "Next Question"}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );
