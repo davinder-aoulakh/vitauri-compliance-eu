@@ -23,7 +23,6 @@ import DocumentsManager from "./DocumentsManager";
 import CountrySelect from "../shared/CountrySelect";
 import CurrencySelect from "../shared/CurrencySelect";
 import BeneficiaryManager from "./BeneficiaryManager";
-import ControllingPersonManager from "./ControllingPersonManager";
 import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 import VoiceFormAssistant from "../ai/VoiceFormAssistant";
@@ -1715,29 +1714,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             );
           })()}
 
-          {/* Controlling Persons Section - Only for Entity Account Holders */}
-          {formData.account_holder_type === "entity" && account?.id && (() => {
-            const crsClass = formData.crs_entity_classification;
-            const fatcaClass = formData.fatca_entity_classification;
-            // CRS102/CRS103: hide controlling persons
-            if (crsClass === 'CRS102' || crsClass === 'CRS103') return null;
-            // If only FATCA is set and it's FATCA103/104/105: hide controlling persons
-            if (!crsClass && ['FATCA103', 'FATCA104', 'FATCA105'].includes(fatcaClass)) return null;
-            return (
-              <div className="p-4 border-2 border-indigo-200 rounded-lg bg-indigo-50/30 mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-slate-700">Controlling Persons</h3>
-                  <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
-                    {formData.controlling_persons_count || 0} Controlling Person(s)
-                  </Badge>
-                </div>
-                <ControllingPersonManager 
-                  account={account} 
-                  tenant={tenant}
-                />
-              </div>
-            );
-          })()}
+
         </TabsContent>
 
         <TabsContent value="tax" className="space-y-4 mt-4">
