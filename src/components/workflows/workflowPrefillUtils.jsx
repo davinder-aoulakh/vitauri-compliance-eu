@@ -52,7 +52,7 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         // So is_pre_existing=true → prefill 'NO' (pre-existing path).
         // is_pre_existing=false → prefill 'YES' (new account path).
         if (fieldName === 'is_pre_existing') {
-          initialAnswers[step.step_id] = fieldValue === true ? 'NO' : 'YES';
+          initialAnswers[step.step_id] = fieldValue === true ? 'YES' : 'NO';
         } else {
           initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
         }
