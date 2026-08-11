@@ -96,11 +96,10 @@ if (typeof window !== 'undefined' && !window.__crsAutofillDebugInstalled) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function AccountClassification({ account, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
-  const isDraftResume = !!initialDraftState;
-  const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
-  const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
-  const [history, setHistory] = useState(initialDraftState?.history ?? []);
+export default function AccountClassification({ account, onComplete, onCancel }) {
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [history, setHistory] = useState([]);
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
@@ -112,14 +111,12 @@ export default function AccountClassification({ account, onComplete, onCancel, o
   const [addressValues, setAddressValues] = useState({ street: "", city: "", state: "", postal_code: "", country: "", tax_residence_country: "", tin: "" });
   const [selectedValue, setSelectedValue] = useState(null);
   const [dateReceivedValue, setDateReceivedValue] = useState("");
-  const [prefilledSteps, setPrefilledSteps] = useState(
-    initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
-  );
+  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
   const [rfiEntityFiType, setRfiEntityFiType] = useState(null);
   // answerHistory: { [step_id]: [valueIteration1, valueIteration2, ...] }
   // Stores every distinct answer per step visit in order — used by PreviousAnswers to show
   // the correct value for each loop iteration instead of always showing the latest overwrite.
-  const [answerHistory, setAnswerHistory] = useState(initialDraftState?.answerHistory ?? {});
+  const [answerHistory, setAnswerHistory] = useState({});
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
@@ -217,8 +214,6 @@ export default function AccountClassification({ account, onComplete, onCancel, o
       setSelectedWorkflow(chosenWorkflow);
 
       // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
-      // Skip prefill entirely when resuming from a saved draft — draft already has answers.
-      if (isDraftResume) return;
       // Account values take priority — entity pass only fills steps not already covered by account
       if (chosenWorkflow) {
         const accountPrefilled = await computePrefillAnswers(chosenWorkflow, latestAccount, "Account");
@@ -1510,43 +1505,20 @@ export default function AccountClassification({ account, onComplete, onCancel, o
       />
 
       {/* Navigation */}
-      <div className="flex justify-between gap-3 pt-4 border-t flex-wrap">
+      <div className="flex justify-between gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={handleBack} size="lg">
           <ArrowLeft className="w-4 h-4 mr-2" />
           {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
-        <div className="flex gap-2">
-          {onSaveAndExit && (
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="border-amber-300 text-amber-700 hover:bg-amber-50"
-              onClick={() => onSaveAndExit({
-                answers,
-                history,
-                answerHistory,
-                currentStepIndex,
-                lastStepId: currentNode?.step_id,
-                workflowId: selectedWorkflow?.id,
-                workflowName: selectedWorkflow?.workflow_name,
-                lockedSteps: [...prefilledSteps],
-              })}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Save & Exit
-            </Button>
-          )}
-          <Button
-            onClick={handleNext}
-            disabled={!canProceed() || loading}
-            size="lg"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
-          >
-            {isActionNode(currentNode) ? "View Summary" : "Next Question"}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+        <Button
+          onClick={handleNext}
+          disabled={!canProceed() || loading}
+          size="lg"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+        >
+          {isActionNode(currentNode) ? "View Summary" : "Next Question"}
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
       </div>
     </div>
   );

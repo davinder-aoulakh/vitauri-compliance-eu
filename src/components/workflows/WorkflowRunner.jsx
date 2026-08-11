@@ -104,8 +104,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   }, [workflow, accountId, entityId]);
 
   const handleNext = async () => {
-    const _rawKey = getAnswerKey(currentStep.step_id);
-    const answer = answers[_rawKey] !== undefined ? answers[_rawKey] : answers[currentStep.step_id];
+    const answer = answers[getAnswerKey(currentStep.step_id)];
     
     // Debug omitted for brevity
     
@@ -1015,10 +1014,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const renderQuestionInput = () => {
-    const answerKey = getAnswerKey(currentStep.step_id);
-    // Try the iteration-aware key first, fall back to bare step_id (covers draft-restored answers)
-    const answer = answers[answerKey] !== undefined ? answers[answerKey] : answers[currentStep.step_id];
-    // A step is locked if the bare step_id is prefilled (prefill always uses bare IDs)
+    const answer = answers[getAnswerKey(currentStep.step_id)];
     const isLocked = prefilledSteps.has(currentStep.step_id);
 
     switch (currentStep.question_type) {
@@ -1675,8 +1671,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   };
 
   const canProceed = () => {
-    const _ck = getAnswerKey(currentStep.step_id);
-    const answer = answers[_ck] !== undefined ? answers[_ck] : answers[currentStep.step_id];
+    const answer = answers[getAnswerKey(currentStep.step_id)];
     
     if (currentStep.question_type === 'info' || currentStep.question_type === 'result') return true;
     if (!currentStep.required) return true;
