@@ -69,16 +69,21 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow) {
-      // Get the latest version
-      const sortedWorkflows = workflows.sort((a, b) => 
+      const sortedWorkflows = [...workflows].sort((a, b) => 
         parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
       );
       const latestWorkflow = sortedWorkflows[0];
       setWorkflow(latestWorkflow);
       
-      // Set initial node
+      // If resuming from draft, restore the saved step; otherwise start at step 0
       if (latestWorkflow.steps && latestWorkflow.steps.length > 0) {
-        setCurrentNodeId(latestWorkflow.steps[0].step_id);
+        if (isDraftResume && initialDraftState?.lastStepId) {
+          // Verify the step actually exists in this workflow
+          const stepExists = latestWorkflow.steps.some(s => s.step_id === initialDraftState.lastStepId);
+          setCurrentNodeId(stepExists ? initialDraftState.lastStepId : latestWorkflow.steps[0].step_id);
+        } else {
+          setCurrentNodeId(latestWorkflow.steps[0].step_id);
+        }
       }
     }
   }, [workflows, workflow]);
@@ -124,18 +129,19 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
     }
   }, [workflow, entity, crsCountries]);
 
-  // Set selectedValue when currentNodeId changes (handles pre-filled answers)
+  // Sync selectedValue whenever the current node or answers change
   useEffect(() => {
-    if (currentNodeId && answers[currentNodeId]) {
-      setSelectedValue(answers[currentNodeId]);
-    } else if (workflow && currentNodeId) {
+    if (!currentNodeId) return;
+    const storedAnswer = answers[currentNodeId];
+    if (storedAnswer !== undefined && storedAnswer !== null) {
+      setSelectedValue(storedAnswer);
+    } else if (workflow) {
       const currentStep = workflow.steps.find(s => s.step_id === currentNodeId);
-      // Initialize as empty array for multiple choice, empty string otherwise
       setSelectedValue(currentStep?.question_type === "multiple_choice" ? [] : "");
     } else {
       setSelectedValue("");
     }
-  }, [currentNodeId, answers, workflow]);
+  }, [currentNodeId]);
 
   const loadUser = async () => {
     try {
@@ -897,15 +903,19 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
     }
 
     const previousNodeId = history[history.length - 1];
+    const prevAnswer = answers[previousNodeId];
 
-    // Remove last answer
-    const newAnswers = { ...answers };
-    delete newAnswers[currentNodeId];
+    // Only remove the current step's answer if it's not a prefilled/locked step
+    if (!prefilledSteps.has(currentNodeId)) {
+      const newAnswers = { ...answers };
+      delete newAnswers[currentNodeId];
+      setAnswers(newAnswers);
+    }
 
-    setAnswers(newAnswers);
     setHistory(history.slice(0, -1));
     setCurrentNodeId(previousNodeId);
-    setSelectedValue(answers[previousNodeId] || "");
+    // Explicitly set the previous answer so the UI reflects it immediately
+    setSelectedValue(prevAnswer !== undefined && prevAnswer !== null ? prevAnswer : "");
   };
 
   const completeClassification = async () => {
@@ -1428,50 +1438,53 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
         </CardContent>
       </Card>
 
-      {/* Previous Answers Compact View */}
-      {Object.keys(answers).length > 0 && (
+      {/* Previous Answers Compact View — walk history in order for correct answer keys */}
+      {history.length > 0 && (
         <Card className="bg-slate-50 border-slate-200">
           <CardContent className="p-4">
             <details className="cursor-pointer">
               <summary className="text-sm font-semibold text-slate-700 flex items-center gap-2 hover:text-indigo-600 transition-colors">
                 <FileCheck className="w-4 h-4" />
-                View Previous Answers ({Object.keys(answers).length})
+                View Previous Answers ({history.length})
               </summary>
               <div className="mt-3 space-y-2 pl-6">
-                {Object.entries(answers).map(([key, value]) => {
-                 const step = stepMap[key];
-                 if (!step) return null;
+                {(() => {
+                  const occ = {};
+                  return history.map((stepId, idx) => {
+                    const step = stepMap[stepId];
+                    if (!step) return null;
+                    const prevOcc = occ[stepId] || 0;
+                    const answerKey = prevOcc > 0 ? `${stepId}__iter${prevOcc}` : stepId;
+                    occ[stepId] = prevOcc + 1;
+                    const value = answers[answerKey];
+                    if (value === undefined || value === null || value === '') return null;
 
-                 // Handle multiple choice answers (arrays)
-                 if (Array.isArray(value)) {
-                   const labels = value.map(v => step.options?.find(o => o.value === v)?.label || v);
-                   return (
-                     <div key={key} className="flex items-start justify-between text-sm py-2 border-b border-slate-200 last:border-0">
-                       <span className="text-slate-600 text-xs">
-                         {step.step_title || key}
-                       </span>
-                       <div className="flex flex-wrap gap-1 justify-end">
-                         {labels.map((label, idx) => (
-                           <Badge key={idx} variant="outline" className="capitalize text-xs">
-                             {label}
-                           </Badge>
-                         ))}
-                       </div>
-                     </div>
-                   );
-                 }
+                    if (Array.isArray(value)) {
+                      const labels = value.map(v => step.options?.find(o => o.value === v)?.label || v);
+                      return (
+                        <div key={`${stepId}-${idx}`} className="flex items-start justify-between text-sm py-2 border-b border-slate-200 last:border-0">
+                          <span className="text-slate-600 text-xs">{step.step_title || stepId}</span>
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            {labels.map((label, i) => (
+                              <Badge key={i} variant="outline" className="capitalize text-xs">{label}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
 
-                 return (
-                   <div key={key} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
-                     <span className="text-slate-600 text-xs">
-                       {step.step_title || key}
-                     </span>
-                     <Badge variant="outline" className="capitalize text-xs">
-                       {step.options?.find(o => o.value === value)?.label || value}
-                     </Badge>
-                   </div>
-                 );
-                })}
+                    const displayVal = typeof value === 'boolean'
+                      ? (value ? 'Yes' : 'No')
+                      : (step.options?.find(o => o.value === value)?.label || (value === 'YES' ? 'Yes' : value === 'NO' ? 'No' : value));
+
+                    return (
+                      <div key={`${stepId}-${idx}`} className="flex items-center justify-between text-sm py-2 border-b border-slate-200 last:border-0">
+                        <span className="text-slate-600 text-xs">{step.step_title || stepId}</span>
+                        <Badge variant="outline" className="capitalize text-xs">{displayVal}</Badge>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </details>
           </CardContent>
@@ -1505,14 +1518,21 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
               variant="outline"
               size="lg"
               className="border-amber-300 text-amber-700 hover:bg-amber-50"
-              onClick={() => onSaveAndExit({
-                answers: { ...answers, [currentNodeId]: selectedValue },
-                history,
-                lastStepId: currentNodeId,
-                workflowId: workflow?.id,
-                workflowName: workflow?.workflow_name,
-                lockedSteps: [...prefilledSteps],
-              })}
+              onClick={() => {
+                const hasCurrentValue = selectedValue !== undefined && selectedValue !== "" &&
+                  !(Array.isArray(selectedValue) && selectedValue.length === 0);
+                const currentAnswers = hasCurrentValue
+                  ? { ...answers, [currentNodeId]: selectedValue }
+                  : { ...answers };
+                onSaveAndExit({
+                  answers: currentAnswers,
+                  history,
+                  lastStepId: currentNodeId,
+                  workflowId: workflow?.id,
+                  workflowName: workflow?.workflow_name,
+                  lockedSteps: [...prefilledSteps],
+                });
+              }}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Save & Exit
