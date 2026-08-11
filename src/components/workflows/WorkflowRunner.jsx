@@ -37,6 +37,10 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [prefilledSteps, setPrefilledSteps] = useState(
     initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
   );
+  // answerHistory: { [step_id]: [valueIteration0, valueIteration1, ...] }
+  // Append-only — records every distinct submitted answer per step visit in order,
+  // so WorkflowRunnerPreviousAnswers can show the correct value per loop iteration.
+  const [answerHistory, setAnswerHistory] = useState(initialDraftState?.answerHistory ?? {});
   const isDraftResume = !!initialDraftState;
   const [mappedEntityData, setMappedEntityData] = useState(null);
   const [mappedEntityType, setMappedEntityType] = useState(null);
@@ -132,6 +136,12 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
   const handleNext = async () => {
     const answer = answers[getAnswerKey(currentStep.step_id)];
+
+    // Append this answer into the per-step history array (append-only for loop tracking)
+    setAnswerHistory(prev => ({
+      ...prev,
+      [currentStep.step_id]: [...(prev[currentStep.step_id] || []), answer],
+    }));
     
     // Debug omitted for brevity
     
@@ -498,18 +508,22 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   // than the history occurrence count → we preserve the answer.
   const navigateToStep = (nextIndex, nextStepId) => {
     if (!prefilledSteps.has(nextStepId)) {
+      // Use answerHistory (same pattern as AccountClassification) to detect a genuinely new
+      // loop iteration: history occurrences >= stored iterations means all prior answers are
+      // recorded and we need a blank slate. Back-then-forward leaves answerHistory count
+      // GREATER than history occurrences, so no clear happens.
       const historyOccurrences = history.filter(id => id === nextStepId).length;
-      // Count existing answer keys for this step (bare key = iter0, __iter1 = iter1, etc.)
-      const existingKeys = Object.keys(answers).filter(
-        k => k === nextStepId || k.startsWith(`${nextStepId}__iter`)
-      );
-      const storedIterations = existingKeys.length;
+      const storedIterations = (answerHistory[nextStepId] || []).length;
       const isNewLoopIteration = historyOccurrences >= storedIterations && storedIterations > 0;
 
       if (isNewLoopIteration) {
+        // Clear all __iterN keys for this step so the input renders blank
         setAnswers(prev => {
           const updated = { ...prev };
-          existingKeys.forEach(k => { delete updated[k]; });
+          const keysToRemove = Object.keys(updated).filter(
+            k => k === nextStepId || k.startsWith(`${nextStepId}__iter`)
+          );
+          keysToRemove.forEach(k => { delete updated[k]; });
           return updated;
         });
       }
@@ -2100,6 +2114,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           history={history}
           answers={answers}
           workflow={workflow}
+          answerHistory={answerHistory}
         />
       )}
 
@@ -2125,6 +2140,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               onClick={() => onSaveAndExit({
                 answers,
                 history,
+                answerHistory,
                 currentStepIndex,
                 lastStepId: currentStep?.step_id,
                 workflowId: workflow?.id,

@@ -47,17 +47,18 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
         target_type: "ControllingPerson",
       });
       const payload = {
-        target_id:       classifyingPerson.id,
-        target_type:     "ControllingPerson",
-        tenant_id:       account.tenant_id,
-        last_step_index: draftState.currentStepIndex ?? 0,
-        last_step_id:    draftState.lastStepId ?? null,
-        saved_answers:   draftState.answers ?? {},
-        saved_history:   draftState.history ?? [],
-        locked_steps:    draftState.lockedSteps ?? [],
-        workflow_id:     draftState.workflowId ?? null,
-        workflow_name:   draftState.workflowName ?? null,
-        saved_at:        new Date().toISOString(),
+        target_id:            classifyingPerson.id,
+        target_type:          "ControllingPerson",
+        tenant_id:            account.tenant_id,
+        last_step_index:      draftState.currentStepIndex ?? 0,
+        last_step_id:         draftState.lastStepId ?? null,
+        saved_answers:        draftState.answers ?? {},
+        saved_history:        draftState.history ?? [],
+        saved_answer_history: draftState.answerHistory ?? {},
+        locked_steps:         draftState.lockedSteps ?? [],
+        workflow_id:          draftState.workflowId ?? null,
+        workflow_name:        draftState.workflowName ?? null,
+        saved_at:             new Date().toISOString(),
       };
       if (existing[0]) {
         await base44.entities.ClassificationDraft.update(existing[0].id, payload);
@@ -633,6 +634,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                   ? {
                       answers:          cpDraftMap[classifyingPerson.id].saved_answers ?? {},
                       history:          cpDraftMap[classifyingPerson.id].saved_history ?? [],
+                      answerHistory:    cpDraftMap[classifyingPerson.id].saved_answer_history ?? {},
                       currentStepIndex: cpDraftMap[classifyingPerson.id].last_step_index ?? 0,
                       lastStepId:       cpDraftMap[classifyingPerson.id].last_step_id,
                       lockedSteps:      cpDraftMap[classifyingPerson.id].locked_steps ?? [],

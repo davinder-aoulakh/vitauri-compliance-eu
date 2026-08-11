@@ -63,7 +63,6 @@ function formatAnswer(ans, step) {
       return 'No persons added';
     }
     // multi_field_input — render each sub-field using its display_label
-    // Build pairs, resolving boolean sub-fields and yes/no strings
     const fields = step.multi_fields || [];
     const pairs = Object.entries(ans)
       .filter(([, v]) => v !== null && v !== undefined && v !== '')
@@ -78,7 +77,6 @@ function formatAnswer(ans, step) {
         } else if (v === 'NO' || v === 'false') {
           val = 'No';
         } else {
-          // If the sub-field has options, try to resolve the label
           const subOpts = fieldDef?.options || [];
           const subMatched = subOpts.find(o => o.value === v);
           val = subMatched ? subMatched.label : String(v);
@@ -93,31 +91,47 @@ function formatAnswer(ans, step) {
 
 /**
  * "View Previous Answers" panel for WorkflowRunner.
- * Walks the history array in order so each step shows its actual submitted answer.
+ *
+ * Uses `answerHistory` (a per-step array of every submitted value in order) together with
+ * the ordered `history` array to show each loop iteration independently — the same pattern
+ * used by AccountClassification's PreviousAnswers component.
+ *
+ * Falls back to __iterN keyed answers when answerHistory is absent (legacy/draft-resume).
  */
-export default function WorkflowRunnerPreviousAnswers({ history, answers, workflow }) {
+export default function WorkflowRunnerPreviousAnswers({ history, answers, workflow, answerHistory }) {
   const [open, setOpen] = useState(false);
 
   const stepMap = {};
   (workflow?.steps || []).forEach(s => { stepMap[s.step_id] = s; });
 
-  // Track how many times we've seen each stepId so far to compute the occurrence key
-  const occurrenceCount = {};
+  // Walk history in order; track iteration count per step to pick correct answerHistory entry
+  const iterationCounters = {};
   const rows = history
     .map((stepId, idx) => {
       const step = stepMap[stepId];
       if (!step || step.question_type === 'info' || step.question_type === 'result') return null;
 
-      // Compute the answer key for this specific occurrence
-      const prevOccurrences = occurrenceCount[stepId] || 0;
-      const answerKey = prevOccurrences > 0 ? `${stepId}__iter${prevOccurrences}` : stepId;
-      occurrenceCount[stepId] = prevOccurrences + 1;
+      iterationCounters[stepId] = (iterationCounters[stepId] ?? -1) + 1;
+      const iterIdx = iterationCounters[stepId];
 
-      const ans = answers[answerKey];
+      let ans;
+      if (answerHistory && answerHistory[stepId] && answerHistory[stepId].length > iterIdx) {
+        // Use the per-iteration history (correct for loops)
+        ans = answerHistory[stepId][iterIdx];
+      } else {
+        // Fallback: compute __iterN key the same way WorkflowRunner does
+        const answerKey = iterIdx > 0 ? `${stepId}__iter${iterIdx}` : stepId;
+        ans = answers[answerKey];
+      }
+
       const displayAnswer = formatAnswer(ans, step);
       if (!displayAnswer) return null;
 
-      return { key: `${stepId}-${idx}`, step, displayAnswer };
+      // Add iteration label when the step appears more than once in history
+      const totalVisits = history.filter(id => id === stepId).length;
+      const iterationLabel = totalVisits > 1 ? ` (Attempt ${iterIdx + 1})` : '';
+
+      return { key: `${stepId}-${idx}`, stepId, iterIdx, step, displayAnswer, iterationLabel };
     })
     .filter(Boolean);
 
@@ -141,12 +155,14 @@ export default function WorkflowRunnerPreviousAnswers({ history, answers, workfl
       {open && (
         <CardContent className="px-4 pb-4 pt-0">
           <div className="space-y-0">
-            {rows.map(({ key, step, displayAnswer }) => (
+            {rows.map(({ key, stepId, iterIdx, step, displayAnswer, iterationLabel }) => (
               <div
                 key={key}
                 className="flex items-start justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0"
               >
-                <span className="text-xs text-slate-600 flex-1">{step.step_title}</span>
+                <span className="text-xs text-slate-600 flex-1">
+                  {step.step_title}{iterationLabel}
+                </span>
                 <span className="text-xs font-medium text-slate-900 text-right max-w-[220px]">
                   {displayAnswer}
                 </span>

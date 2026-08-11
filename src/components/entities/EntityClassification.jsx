@@ -1508,6 +1508,7 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
               onClick={() => onSaveAndExit({
                 answers: { ...answers, [currentNodeId]: selectedValue },
                 history,
+                answerHistory: {},
                 lastStepId: currentNodeId,
                 workflowId: workflow?.id,
                 workflowName: workflow?.workflow_name,

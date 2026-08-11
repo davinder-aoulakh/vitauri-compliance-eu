@@ -93,17 +93,18 @@ export default function EntitiesPage() {
         target_type: "Entity",
       });
       const payload = {
-        target_id:      selectedEntity.id,
-        target_type:    "Entity",
-        tenant_id:      user.tenant_id,
-        last_step_id:   draftState.lastStepId ?? null,
-        saved_answers:  draftState.answers ?? {},
-        saved_history:  draftState.history ?? [],
-        locked_steps:   draftState.lockedSteps ?? [],
-        workflow_id:    draftState.workflowId ?? null,
-        workflow_name:  draftState.workflowName ?? null,
-        saved_by_email: user.email,
-        saved_at:       new Date().toISOString(),
+        target_id:            selectedEntity.id,
+        target_type:          "Entity",
+        tenant_id:            user.tenant_id,
+        last_step_id:         draftState.lastStepId ?? null,
+        saved_answers:        draftState.answers ?? {},
+        saved_history:        draftState.history ?? [],
+        saved_answer_history: draftState.answerHistory ?? {},
+        locked_steps:         draftState.lockedSteps ?? [],
+        workflow_id:          draftState.workflowId ?? null,
+        workflow_name:        draftState.workflowName ?? null,
+        saved_by_email:       user.email,
+        saved_at:             new Date().toISOString(),
       };
       if (existing[0]) {
         await base44.entities.ClassificationDraft.update(existing[0].id, payload);
@@ -590,10 +591,11 @@ export default function EntitiesPage() {
             initialDraftState={
               selectedEntity?.id && entityDraftMap[selectedEntity.id]
                 ? {
-                    answers:    entityDraftMap[selectedEntity.id].saved_answers ?? {},
-                    history:    entityDraftMap[selectedEntity.id].saved_history ?? [],
-                    lastStepId: entityDraftMap[selectedEntity.id].last_step_id,
-                    lockedSteps: entityDraftMap[selectedEntity.id].locked_steps ?? [],
+                    answers:       entityDraftMap[selectedEntity.id].saved_answers ?? {},
+                    history:       entityDraftMap[selectedEntity.id].saved_history ?? [],
+                    answerHistory: entityDraftMap[selectedEntity.id].saved_answer_history ?? {},
+                    lastStepId:    entityDraftMap[selectedEntity.id].last_step_id,
+                    lockedSteps:   entityDraftMap[selectedEntity.id].locked_steps ?? [],
                   }
                 : undefined
             }
