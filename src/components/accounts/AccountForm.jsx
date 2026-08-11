@@ -156,7 +156,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
   useEffect(() => {
     if (formData.account_creation_date) {
       const creationDate = new Date(formData.account_creation_date);
-      const crsThresholdDate = new Date('2018-12-31');
+      const crsThresholdDate = new Date('2017-12-31');
       const isPreExisting = creationDate <= crsThresholdDate;
       setFormData(prev => ({ ...prev, is_pre_existing: isPreExisting }));
       setIsPreExistingLocked(true);
