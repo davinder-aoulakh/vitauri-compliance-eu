@@ -168,6 +168,15 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
   const reportablePersons = controllingPersons.filter(p => p.is_reportable);
   const pendingPersons = controllingPersons.filter(p => p.is_reportable === undefined || p.is_reportable === null);
 
+  // Ownership calculation — exclude the person being edited from the total
+  const totalOwnership = controllingPersons.reduce((sum, cp) => {
+    if (editingPerson && cp.id === editingPerson.id) return sum;
+    return Math.round((sum + (parseFloat(cp.ownership_percentage) || 0)) * 10000) / 10000;
+  }, 0);
+  const remainingOwnership = Math.max(0, Math.round((100 - totalOwnership) * 10000) / 10000);
+  const canAddMore = remainingOwnership > 0;
+  const ownershipExceeded = totalOwnership > 100;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -178,19 +187,46 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
             Controlling Persons ({controllingPersons.length})
           </h3>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => {
-            setEditingPerson(null);
-            setShowForm(true);
-          }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Add Controlling Person
-        </Button>
+        {canAddMore && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              setEditingPerson(null);
+              setShowForm(true);
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Controlling Person
+          </Button>
+        )}
       </div>
+
+      {/* Ownership Summary */}
+      {!isLoading && (
+        <div className={`flex items-center gap-4 px-4 py-2.5 rounded-lg border text-sm ${
+          ownershipExceeded
+            ? "bg-red-50 border-red-200"
+            : totalOwnership >= 100
+            ? "bg-slate-50 border-slate-200"
+            : "bg-blue-50 border-blue-200"
+        }`}>
+          <span className="text-slate-600">
+            Total Ownership: <strong className={ownershipExceeded ? "text-red-700" : "text-slate-900"}>{totalOwnership}%</strong>
+          </span>
+          <span className="text-slate-400">|</span>
+          {ownershipExceeded ? (
+            <span className="text-red-700 font-medium">⚠ Ownership exceeds 100%</span>
+          ) : totalOwnership >= 100 ? (
+            <span className="text-slate-600">Ownership fully allocated — no further additions possible</span>
+          ) : (
+            <span className="text-slate-600">
+              Remaining: <strong className="text-blue-700">{remainingOwnership}%</strong>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Summary Alert */}
       {controllingPersons.length > 0 && (
@@ -345,6 +381,7 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
             </DialogHeader>
             <ControllingPersonForm
               person={editingPerson}
+              remainingOwnership={remainingOwnership}
               onSubmit={(data) => {
                 if (editingPerson) {
                   updateMutation.mutate({ id: editingPerson.id, data });

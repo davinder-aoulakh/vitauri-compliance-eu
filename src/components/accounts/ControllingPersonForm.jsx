@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
 import VoiceFormAssistant from "@/components/ai/VoiceFormAssistant";
 
-export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel }) {
+export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel, remainingOwnership = 100 }) {
+  const [ownershipError, setOwnershipError] = useState("");
   const [formData, setFormData] = useState(controllingPerson || {
     account_id: account?.id || "",
     first_name: "",
@@ -33,8 +34,32 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
     is_reportable: null
   });
 
+  const handleOwnershipChange = (value) => {
+    const parsed = parseFloat(value) || 0;
+    handleChange("ownership_percentage", parsed);
+    if (parsed <= 0) {
+      setOwnershipError("Ownership percentage must be greater than 0.");
+    } else if (parsed > remainingOwnership) {
+      setOwnershipError(`Ownership percentage cannot exceed the remaining ownership percentage of ${remainingOwnership}%.`);
+    } else {
+      setOwnershipError("");
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Final validation before submit
+    if (formData.control_type === "legal_person_ownership") {
+      const pct = parseFloat(formData.ownership_percentage) || 0;
+      if (pct <= 0) {
+        setOwnershipError("Ownership percentage must be greater than 0.");
+        return;
+      }
+      if (pct > remainingOwnership) {
+        setOwnershipError(`Ownership percentage cannot exceed the remaining ownership percentage of ${remainingOwnership}%.`);
+        return;
+      }
+    }
     onSubmit(formData);
   };
 
@@ -141,7 +166,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
             <Label htmlFor="control_type">Type of Control *</Label>
             <Select
               value={formData.control_type}
-              onValueChange={(value) => handleChange("control_type", value)}
+              onValueChange={(value) => { handleChange("control_type", value); setOwnershipError(""); }}
             >
               <SelectTrigger className="mt-1.5">
                 <SelectValue />
@@ -166,21 +191,28 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
 
           {formData.control_type === "legal_person_ownership" && (
             <div>
-              <Label htmlFor="ownership_percentage">Ownership Percentage</Label>
+              <Label htmlFor="ownership_percentage">
+                Ownership Percentage
+                <span className="ml-2 text-xs font-normal text-blue-600">(max: {remainingOwnership}%)</span>
+              </Label>
               <Input
                 id="ownership_percentage"
                 type="number"
-                min="0"
-                max="100"
+                min="0.01"
+                max={remainingOwnership}
                 step="0.01"
                 value={formData.ownership_percentage}
-                onChange={(e) => handleChange("ownership_percentage", parseFloat(e.target.value) || 0)}
+                onChange={(e) => handleOwnershipChange(e.target.value)}
                 placeholder="e.g., 25.5"
-                className="mt-1.5"
+                className={`mt-1.5 ${ownershipError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
               />
-              <p className="text-xs text-slate-500 mt-1">
-                Percentage of ownership interest in the entity
-              </p>
+              {ownershipError ? (
+                <p className="text-xs text-red-600 mt-1">{ownershipError}</p>
+              ) : (
+                <p className="text-xs text-slate-500 mt-1">
+                  Remaining available: <strong>{remainingOwnership}%</strong>
+                </p>
+              )}
             </div>
           )}
         </CardContent>
@@ -349,7 +381,7 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
           <XCircle className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button id="cp-form-submit-btn" type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+        <Button id="cp-form-submit-btn" type="submit" disabled={!!ownershipError} className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
           <Save className="w-4 h-4 mr-2" />
           {controllingPerson ? "Update Controlling Person" : "Add Controlling Person"}
         </Button>
