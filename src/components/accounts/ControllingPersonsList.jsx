@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw, Save } from "lucide-react";
+import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
 import ControllingPersonForm from "./ControllingPersonForm";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 import ControllingPersonDetails from "./ControllingPersonDetails";
@@ -29,7 +30,7 @@ import ControllingPersonBulkUpdateForm from "./ControllingPersonBulkUpdateForm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 
-export default function ControllingPersonsList({ account, onUpdateCount }) {
+export default function ControllingPersonsList({ account, onUpdateCount, user: userProp }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [showClassification, setShowClassification] = useState(false);

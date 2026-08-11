@@ -59,6 +59,8 @@ import GuidedTour from "../components/tours/GuidedTour";
 import { getTourByPage } from "../components/tours/tourDefinitions";
 import { PlayCircle } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
+import { Save } from "lucide-react";
 
 export default function EntitiesPage() {
   const [user, setUser] = useState(null);
@@ -79,6 +81,7 @@ export default function EntitiesPage() {
 
   const tourConfig = getTourByPage("Entities");
   const queryClient = useQueryClient();
+  const entityDraftMap = useClassificationDraftMap(user?.tenant_id, "Entity");
 
   useEffect(() => {
     loadUserData();
@@ -177,6 +180,39 @@ export default function EntitiesPage() {
       await auditLog.entityDeleted(entityId, deletedEntity);
     }
   });
+
+  const handleSaveEntityDraft = async (draftState) => {
+    if (!selectedEntity || !user) return;
+    try {
+      const existing = await base44.entities.ClassificationDraft.filter({
+        target_id: selectedEntity.id,
+        target_type: "Entity",
+      });
+      const payload = {
+        target_id:     selectedEntity.id,
+        target_type:   "Entity",
+        tenant_id:     user.tenant_id,
+        last_step_id:  draftState.lastStepId ?? null,
+        saved_answers: draftState.answers ?? {},
+        saved_history: draftState.history ?? [],
+        locked_steps:  draftState.lockedSteps ?? [],
+        workflow_id:   draftState.workflowId ?? null,
+        workflow_name: draftState.workflowName ?? null,
+        saved_by_email: user.email,
+        saved_at:      new Date().toISOString(),
+      };
+      if (existing[0]) {
+        await base44.entities.ClassificationDraft.update(existing[0].id, payload);
+      } else {
+        await base44.entities.ClassificationDraft.create(payload);
+      }
+      queryClient.invalidateQueries(["classification-drafts-bulk"]);
+    } catch (err) {
+      console.error("Error saving entity draft:", err);
+    }
+    setShowClassification(false);
+    setSelectedEntity(null);
+  };
 
   const handleClassify = (entity) => {
     setSelectedEntity(entity);
@@ -449,18 +485,22 @@ export default function EntitiesPage() {
                               </DropdownMenuItem>
                               {can('Entity', 'edit') && (
                                  <>
-                                   {entity.rfi_status === "pending_classification" && (
+                                   {entityDraftMap[entity.id] ? (
+                                     <DropdownMenuItem onClick={() => handleClassify(entity)}>
+                                       <Save className="w-4 h-4 mr-2 text-amber-600" />
+                                       Continue Classification
+                                     </DropdownMenuItem>
+                                   ) : entity.rfi_status === "pending_classification" ? (
                                      <DropdownMenuItem onClick={() => handleClassify(entity)}>
                                        <Eye className="w-4 h-4 mr-2" />
                                        Classify Entity
                                      </DropdownMenuItem>
-                                   )}
-                                   {entity.classification_completed_date && (
+                                   ) : entity.classification_completed_date ? (
                                      <DropdownMenuItem onClick={() => handleClassify(entity)}>
                                        <Eye className="w-4 h-4 mr-2" />
                                        Re-classify Entity
                                      </DropdownMenuItem>
-                                   )}
+                                   ) : null}
                                    {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
                                      <DropdownMenuItem onClick={() => {
                                        setSelectedEntity(entity);
@@ -544,7 +584,24 @@ export default function EntitiesPage() {
           </DialogHeader>
           <EntityClassification
             entity={selectedEntity}
-            onComplete={(data) => {
+            onSaveAndExit={handleSaveEntityDraft}
+            initialDraftState={
+              selectedEntity?.id && entityDraftMap[selectedEntity.id]
+                ? {
+                    answers:    entityDraftMap[selectedEntity.id].saved_answers ?? {},
+                    history:    entityDraftMap[selectedEntity.id].saved_history ?? [],
+                    lastStepId: entityDraftMap[selectedEntity.id].last_step_id,
+                    lockedSteps: entityDraftMap[selectedEntity.id].locked_steps ?? [],
+                  }
+                : undefined
+            }
+            onComplete={async (data) => {
+              // Clear draft on successful completion
+              try {
+                const drafts = await base44.entities.ClassificationDraft.filter({ target_id: selectedEntity?.id, target_type: "Entity" });
+                if (drafts[0]) await base44.entities.ClassificationDraft.delete(drafts[0].id);
+                queryClient.invalidateQueries(["classification-drafts-bulk"]);
+              } catch (_) {}
               updateMutation.mutate({ id: selectedEntity.id, data });
             }}
             onCancel={() => setShowClassification(false)}

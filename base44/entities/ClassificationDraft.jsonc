@@ -1,0 +1,75 @@
+{
+  "name": "ClassificationDraft",
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "description": "ID of the record being classified (Account, Entity, or ControllingPerson)"
+    },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "Account",
+        "Entity",
+        "ControllingPerson"
+      ],
+      "description": "Type of record being classified"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant this draft belongs to"
+    },
+    "last_step_index": {
+      "type": "number",
+      "description": "0-based step index where the user last saved"
+    },
+    "last_step_id": {
+      "type": "string",
+      "description": "Step ID where the user last saved"
+    },
+    "saved_answers": {
+      "type": "object",
+      "description": "All answers collected so far, keyed by step_id"
+    },
+    "saved_history": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ordered list of step IDs visited"
+    },
+    "saved_answer_history": {
+      "type": "object",
+      "description": "Per-step answer iteration history (for loop steps)"
+    },
+    "locked_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Step IDs that were auto-prefilled and locked (read-only)"
+    },
+    "workflow_id": {
+      "type": "string",
+      "description": "ID of the workflow being executed"
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "Human-readable workflow name at time of saving"
+    },
+    "saved_by_email": {
+      "type": "string",
+      "description": "Email of user who last saved"
+    },
+    "saved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of last save"
+    }
+  },
+  "required": [
+    "target_id",
+    "target_type",
+    "tenant_id"
+  ]
+}

@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch, Lock } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch, Lock, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -21,18 +21,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 
-export default function EntityClassification({ entity, onComplete, onCancel }) {
-  const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [answers, setAnswers] = useState({});
+export default function EntityClassification({ entity, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
+  const isDraftResume = !!initialDraftState;
+  const [currentNodeId, setCurrentNodeId] = useState(initialDraftState?.lastStepId ?? null);
+  const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
   const [selectedValue, setSelectedValue] = useState("");
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(initialDraftState?.history ?? []);
   const [user, setUser] = useState(null);
   const [workflow, setWorkflow] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [entityStatus, setEntityStatus] = useState(null);
   const [showFlowChart, setShowFlowChart] = useState(false);
-  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
+  const [prefilledSteps, setPrefilledSteps] = useState(
+    initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
+  );
 
   // Fetch published entity classification workflows
   const { data: workflows = [], isLoading } = useQuery({
@@ -66,23 +69,23 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
 
   useEffect(() => {
     if (workflows.length > 0 && !workflow) {
-      // Get the latest version
       const sortedWorkflows = workflows.sort((a, b) => 
         parseFloat(b.version || "1.0") - parseFloat(a.version || "1.0")
       );
       const latestWorkflow = sortedWorkflows[0];
       setWorkflow(latestWorkflow);
       
-      // Set initial node
-      if (latestWorkflow.steps && latestWorkflow.steps.length > 0) {
+      // Only set initial node if NOT resuming from a draft
+      if (!isDraftResume && latestWorkflow.steps && latestWorkflow.steps.length > 0) {
         setCurrentNodeId(latestWorkflow.steps[0].step_id);
       }
     }
   }, [workflows, workflow]);
 
-  // Pre-fill answers based on mapped fields
+  // Pre-fill answers based on mapped fields — skip when resuming from a draft
   useEffect(() => {
     if (!workflow || !entity) return;
+    if (isDraftResume) return;
     
     const preFillAnswers = {};
     
@@ -1493,18 +1496,39 @@ export default function EntityClassification({ entity, onComplete, onCancel }) {
           <ArrowLeft className="w-4 h-4 mr-2" />
           {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
-        <Button 
-          onClick={handleNext}
-          disabled={
-            !isActionNode(currentNode) && 
-            (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0))
-          }
-          size="lg"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
-        >
-          {isActionNode(currentNode) ? "View Summary" : "Next Question"}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+        <div className="flex gap-2">
+          {onSaveAndExit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => onSaveAndExit({
+                answers: { ...answers, [currentNodeId]: selectedValue },
+                history,
+                lastStepId: currentNodeId,
+                workflowId: workflow?.id,
+                workflowName: workflow?.workflow_name,
+                lockedSteps: [...prefilledSteps],
+              })}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save & Exit
+            </Button>
+          )}
+          <Button 
+            onClick={handleNext}
+            disabled={
+              !isActionNode(currentNode) && 
+              (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0))
+            }
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            {isActionNode(currentNode) ? "View Summary" : "Next Question"}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );
