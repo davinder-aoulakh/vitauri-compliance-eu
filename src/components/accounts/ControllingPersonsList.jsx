@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw, Save } from "lucide-react";
-import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 import ControllingPersonDetails from "./ControllingPersonDetails";
@@ -30,7 +29,7 @@ import ControllingPersonBulkUpdateForm from "./ControllingPersonBulkUpdateForm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 
-export default function ControllingPersonsList({ account, onUpdateCount, user: userProp }) {
+export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
@@ -44,7 +43,6 @@ export default function ControllingPersonsList({ account, onUpdateCount, user: u
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const queryClient = useQueryClient();
-  const cpDraftMap = useClassificationDraftMap(account?.tenant_id, "ControllingPerson");
 
   const { data: controllingPersons = [], isLoading } = useQuery({
     queryKey: ['controlling-persons', account?.id],
@@ -168,45 +166,10 @@ export default function ControllingPersonsList({ account, onUpdateCount, user: u
   };
 
   const handleClassify = async (person) => {
+    // Invalidate workflow cache to ensure we get the latest version
     await queryClient.invalidateQueries(['workflows', 'controlling_person_classification']);
     setClassifyingPerson(person);
     setShowClassification(true);
-  };
-
-  const handleSaveCPDraft = async (draftState) => {
-    if (!classifyingPerson || !account?.tenant_id) return;
-    try {
-      const user = await base44.auth.me();
-      const existing = await base44.entities.ClassificationDraft.filter({
-        target_id: classifyingPerson.id,
-        target_type: "ControllingPerson"
-      });
-      const payload = {
-        target_id: classifyingPerson.id,
-        target_type: "ControllingPerson",
-        tenant_id: account.tenant_id,
-        last_step_index: draftState.currentStepIndex,
-        last_step_id: draftState.currentStepId,
-        saved_answers: draftState.answers,
-        saved_history: draftState.history,
-        saved_answer_history: draftState.answerHistory ?? {},
-        locked_steps: draftState.lockedSteps ?? [],
-        workflow_id: workflows[0]?.id,
-        workflow_name: workflows[0]?.workflow_name,
-        saved_by_email: user?.email,
-        saved_at: new Date().toISOString(),
-      };
-      if (existing[0]) {
-        await base44.entities.ClassificationDraft.update(existing[0].id, payload);
-      } else {
-        await base44.entities.ClassificationDraft.create(payload);
-      }
-      queryClient.invalidateQueries(["classification-drafts-bulk"]);
-      setShowClassification(false);
-      setClassifyingPerson(null);
-    } catch (err) {
-      console.error("Failed to save CP draft:", err);
-    }
   };
 
   const handleClassificationComplete = async (completionData) => {
@@ -292,16 +255,6 @@ export default function ControllingPersonsList({ account, onUpdateCount, user: u
         console.error('[ControllingPersonsList] Error creating audit log:', auditError);
       }
       
-      // Clear any saved draft
-      try {
-        const drafts = await base44.entities.ClassificationDraft.filter({
-          target_id: classifyingPerson.id,
-          target_type: "ControllingPerson"
-        });
-        if (drafts[0]) await base44.entities.ClassificationDraft.delete(drafts[0].id);
-        queryClient.invalidateQueries(["classification-drafts-bulk"]);
-      } catch (_) {}
-
       // Invalidate queries to refresh the data
       await queryClient.invalidateQueries(['controlling-persons', account?.id]);
       await queryClient.invalidateQueries(['accounts']);
@@ -556,17 +509,10 @@ export default function ControllingPersonsList({ account, onUpdateCount, user: u
                                 View History
                               </DropdownMenuItem>
                               {workflows.length > 0 && (
-                                cpDraftMap[person.id] ? (
-                                  <DropdownMenuItem onClick={() => handleClassify(person)}>
-                                    <Save className="w-4 h-4 mr-2 text-amber-600" />
-                                    Continue Classification
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem onClick={() => handleClassify(person)}>
-                                    <PlayCircle className="w-4 h-4 mr-2 text-indigo-600" />
-                                    {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
-                                  </DropdownMenuItem>
-                                )
+                                <DropdownMenuItem onClick={() => handleClassify(person)}>
+                                  <PlayCircle className="w-4 h-4 mr-2 text-indigo-600" />
+                                  {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
+                                </DropdownMenuItem>
                               )}
                               <DropdownMenuItem onClick={() => handleEdit(person)}>
                                 <Edit className="w-4 h-4 mr-2" />
@@ -639,17 +585,6 @@ export default function ControllingPersonsList({ account, onUpdateCount, user: u
               initialData={{ controlling_person: classifyingPerson, account, entity }}
               onComplete={handleClassificationComplete}
               onCancel={() => setShowClassification(false)}
-              onSaveAndExit={handleSaveCPDraft}
-              initialDraftState={
-                classifyingPerson?.id && cpDraftMap[classifyingPerson.id]
-                  ? {
-                      answers:     cpDraftMap[classifyingPerson.id].saved_answers ?? {},
-                      history:     cpDraftMap[classifyingPerson.id].saved_history ?? [],
-                      lastStepId:  cpDraftMap[classifyingPerson.id].last_step_id,
-                      lockedSteps: cpDraftMap[classifyingPerson.id].locked_steps ?? [],
-                    }
-                  : undefined
-              }
             />
           </DialogContent>
         </Dialog>
