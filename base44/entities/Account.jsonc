@@ -101,7 +101,7 @@
     },
     "is_pre_existing": {
       "type": "boolean",
-      "description": "Whether this account existed before December 31, 2018 (CRS pre-existing account threshold)"
+      "description": "Whether this account existed before January 1, 2018 (CRS pre-existing account threshold)"
     },
     "is_recalcitrant": {
       "type": "boolean",
