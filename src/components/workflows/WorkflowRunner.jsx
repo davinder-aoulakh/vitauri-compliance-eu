@@ -135,13 +135,21 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   }, [workflow, accountId, entityId]);
 
   const handleNext = async () => {
-    const answer = answers[getAnswerKey(currentStep.step_id)];
+    const answerKey = getAnswerKey(currentStep.step_id);
+    const answer = answers[answerKey];
 
-    // Append this answer into the per-step history array (append-only for loop tracking)
-    setAnswerHistory(prev => ({
-      ...prev,
-      [currentStep.step_id]: [...(prev[currentStep.step_id] || []), answer],
-    }));
+    // Append this answer into the per-step history array (append-only for loop tracking).
+    // Use a functional updater so we always append to the latest array, not a stale closure snapshot.
+    setAnswerHistory(prev => {
+      const existing = prev[currentStep.step_id] || [];
+      // Determine the expected index: how many times this step already appears in history
+      const expectedIdx = history.filter(id => id === currentStep.step_id).length;
+      // Only append if we don't already have an entry for this iteration (prevents double-appending)
+      if (existing.length <= expectedIdx) {
+        return { ...prev, [currentStep.step_id]: [...existing, answer] };
+      }
+      return prev;
+    });
     
     // Debug omitted for brevity
     

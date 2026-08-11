@@ -118,8 +118,9 @@ export default function WorkflowRunnerPreviousAnswers({ history, answers, workfl
       if (answerHistory && answerHistory[stepId] && answerHistory[stepId].length > iterIdx) {
         // Use the per-iteration history (correct for loops)
         ans = answerHistory[stepId][iterIdx];
-      } else {
-        // Fallback: compute __iterN key the same way WorkflowRunner does
+      }
+      // Always fall back to the __iterN keyed answer if answerHistory entry is missing or undefined
+      if (ans === undefined || ans === null) {
         const answerKey = iterIdx > 0 ? `${stepId}__iter${iterIdx}` : stepId;
         ans = answers[answerKey];
       }
