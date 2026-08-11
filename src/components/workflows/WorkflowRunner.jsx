@@ -139,16 +139,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     const answer = answers[answerKey];
 
     // Append this answer into the per-step history array (append-only for loop tracking).
-    // Use a functional updater so we always append to the latest array, not a stale closure snapshot.
+    // IMPORTANT: We compute expectedIdx from the CURRENT history (before setHistory is called below),
+    // which equals the number of times this step has already been visited in prior iterations.
+    // history.filter gives us how many times this stepId is already in the history array —
+    // that is exactly the index slot we need to fill for this iteration.
+    // We use a functional updater to read from the latest history state snapshot.
+    const expectedIdx = history.filter(id => id === currentStep.step_id).length;
     setAnswerHistory(prev => {
       const existing = prev[currentStep.step_id] || [];
-      // Determine the expected index: how many times this step already appears in history
-      const expectedIdx = history.filter(id => id === currentStep.step_id).length;
-      // Only append if we don't already have an entry for this iteration (prevents double-appending)
+      // Only append/update if this exact index is not yet recorded (prevents double-appending on re-render)
       if (existing.length <= expectedIdx) {
-        return { ...prev, [currentStep.step_id]: [...existing, answer] };
+        const updated = [...existing];
+        updated[expectedIdx] = answer;
+        return { ...prev, [currentStep.step_id]: updated };
       }
-      return prev;
+      // If already recorded for this iteration, overwrite to ensure latest answer is stored
+      // (handles case where user changed answer before clicking Next)
+      const updated = [...existing];
+      updated[expectedIdx] = answer;
+      return { ...prev, [currentStep.step_id]: updated };
     });
     
     // Debug omitted for brevity
