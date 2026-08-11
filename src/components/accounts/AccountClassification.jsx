@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -96,10 +96,10 @@ if (typeof window !== 'undefined' && !window.__crsAutofillDebugInstalled) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function AccountClassification({ account, onComplete, onCancel }) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [history, setHistory] = useState([]);
+export default function AccountClassification({ account, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
+  const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
+  const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
+  const [history, setHistory] = useState(initialDraftState?.history ?? []);
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
@@ -111,12 +111,15 @@ export default function AccountClassification({ account, onComplete, onCancel })
   const [addressValues, setAddressValues] = useState({ street: "", city: "", state: "", postal_code: "", country: "", tax_residence_country: "", tin: "" });
   const [selectedValue, setSelectedValue] = useState(null);
   const [dateReceivedValue, setDateReceivedValue] = useState("");
-  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
+  const [prefilledSteps, setPrefilledSteps] = useState(
+    initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
+  );
   const [rfiEntityFiType, setRfiEntityFiType] = useState(null);
   // answerHistory: { [step_id]: [valueIteration1, valueIteration2, ...] }
   // Stores every distinct answer per step visit in order — used by PreviousAnswers to show
   // the correct value for each loop iteration instead of always showing the latest overwrite.
-  const [answerHistory, setAnswerHistory] = useState({});
+  const [answerHistory, setAnswerHistory] = useState(initialDraftState?.answerHistory ?? {});
+  const isDraftResume = !!initialDraftState;
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
@@ -212,6 +215,14 @@ export default function AccountClassification({ account, onComplete, onCancel })
       linkedEntityRef.current = entityRecord;
       setRfiEntityFiType(entityRecord?.fi_type || null);
       setSelectedWorkflow(chosenWorkflow);
+
+      // 4. If resuming from a draft, skip prefill — answers already restored
+      if (isDraftResume) {
+        linkedEntityRef.current = entityRecord;
+        setRfiEntityFiType(entityRecord?.fi_type || null);
+        setSelectedWorkflow(chosenWorkflow);
+        return;
+      }
 
       // 4. Prefill answers from Account fields then Entity fields for the chosen workflow
       // Account values take priority — entity pass only fills steps not already covered by account
@@ -1505,20 +1516,43 @@ export default function AccountClassification({ account, onComplete, onCancel })
       />
 
       {/* Navigation */}
-      <div className="flex justify-between gap-3 pt-4 border-t">
+      <div className="flex justify-between gap-3 pt-4 border-t flex-wrap">
         <Button type="button" variant="outline" onClick={handleBack} size="lg">
           <ArrowLeft className="w-4 h-4 mr-2" />
           {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
-        <Button
-          onClick={handleNext}
-          disabled={!canProceed() || loading}
-          size="lg"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
-        >
-          {isActionNode(currentNode) ? "View Summary" : "Next Question"}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+        <div className="flex gap-3">
+          {onSaveAndExit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => onSaveAndExit({
+                answers,
+                history,
+                answerHistory,
+                currentStepIndex,
+                lastStepId: currentNode?.step_id,
+                workflowId: selectedWorkflow?.id,
+                workflowName: selectedWorkflow?.workflow_name,
+                lockedSteps: [...prefilledSteps],
+              })}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save & Exit
+            </Button>
+          )}
+          <Button
+            onClick={handleNext}
+            disabled={!canProceed() || loading}
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            {isActionNode(currentNode) ? "View Summary" : "Next Question"}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );

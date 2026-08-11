@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit, Trash2, CheckCircle2, XCircle, AlertTriangle, Globe, AlertCircle, PlayCircle, Eye, History, RefreshCw, Save } from "lucide-react";
 import ControllingPersonForm from "./ControllingPersonForm";
 import WorkflowRunner from "../workflows/WorkflowRunner";
 import ControllingPersonDetails from "./ControllingPersonDetails";
@@ -28,12 +28,49 @@ import ControllingPersonClassificationHistory from "./ControllingPersonClassific
 import ControllingPersonBulkUpdateForm from "./ControllingPersonBulkUpdateForm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
 
 export default function ControllingPersonsList({ account, onUpdateCount }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [showClassification, setShowClassification] = useState(false);
   const [classifyingPerson, setClassifyingPerson] = useState(null);
+
+  // Draft map for controlling person classifications
+  const cpDraftMap = useClassificationDraftMap(account?.tenant_id, "ControllingPerson");
+
+  const handleSaveCPDraft = async (draftState) => {
+    if (!classifyingPerson || !account) return;
+    try {
+      const existing = await base44.entities.ClassificationDraft.filter({
+        target_id: classifyingPerson.id,
+        target_type: "ControllingPerson",
+      });
+      const payload = {
+        target_id:       classifyingPerson.id,
+        target_type:     "ControllingPerson",
+        tenant_id:       account.tenant_id,
+        last_step_index: draftState.currentStepIndex ?? 0,
+        last_step_id:    draftState.lastStepId ?? null,
+        saved_answers:   draftState.answers ?? {},
+        saved_history:   draftState.history ?? [],
+        locked_steps:    draftState.lockedSteps ?? [],
+        workflow_id:     draftState.workflowId ?? null,
+        workflow_name:   draftState.workflowName ?? null,
+        saved_at:        new Date().toISOString(),
+      };
+      if (existing[0]) {
+        await base44.entities.ClassificationDraft.update(existing[0].id, payload);
+      } else {
+        await base44.entities.ClassificationDraft.create(payload);
+      }
+      queryClient.invalidateQueries(["classification-drafts-bulk"]);
+    } catch (err) {
+      console.error("Error saving CP draft:", err);
+    }
+    setShowClassification(false);
+    setClassifyingPerson(null);
+  };
   const [showDetails, setShowDetails] = useState(false);
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -509,10 +546,17 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                                 View History
                               </DropdownMenuItem>
                               {workflows.length > 0 && (
-                                <DropdownMenuItem onClick={() => handleClassify(person)}>
-                                  <PlayCircle className="w-4 h-4 mr-2 text-indigo-600" />
-                                  {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
-                                </DropdownMenuItem>
+                                cpDraftMap[person.id] ? (
+                                  <DropdownMenuItem onClick={() => handleClassify(person)}>
+                                    <Save className="w-4 h-4 mr-2 text-amber-600" />
+                                    Continue Classification
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={() => handleClassify(person)}>
+                                    <PlayCircle className="w-4 h-4 mr-2 text-indigo-600" />
+                                    {person.is_reportable === null || person.is_reportable === undefined ? "Classify" : "Re-Classify"}
+                                  </DropdownMenuItem>
+                                )
                               )}
                               <DropdownMenuItem onClick={() => handleEdit(person)}>
                                 <Edit className="w-4 h-4 mr-2" />
@@ -583,7 +627,30 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
               workflow={workflows[0]}
               accountId={account?.id}
               initialData={{ controlling_person: classifyingPerson, account, entity }}
-              onComplete={handleClassificationComplete}
+              onSaveAndExit={handleSaveCPDraft}
+              initialDraftState={
+                classifyingPerson?.id && cpDraftMap[classifyingPerson.id]
+                  ? {
+                      answers:          cpDraftMap[classifyingPerson.id].saved_answers ?? {},
+                      history:          cpDraftMap[classifyingPerson.id].saved_history ?? [],
+                      currentStepIndex: cpDraftMap[classifyingPerson.id].last_step_index ?? 0,
+                      lastStepId:       cpDraftMap[classifyingPerson.id].last_step_id,
+                      lockedSteps:      cpDraftMap[classifyingPerson.id].locked_steps ?? [],
+                    }
+                  : undefined
+              }
+              onComplete={async (completionData) => {
+                // Clear draft on completion
+                try {
+                  const drafts = await base44.entities.ClassificationDraft.filter({
+                    target_id: classifyingPerson?.id,
+                    target_type: "ControllingPerson",
+                  });
+                  if (drafts[0]) await base44.entities.ClassificationDraft.delete(drafts[0].id);
+                  queryClient.invalidateQueries(["classification-drafts-bulk"]);
+                } catch (_) {}
+                handleClassificationComplete(completionData);
+              }}
               onCancel={() => setShowClassification(false)}
             />
           </DialogContent>

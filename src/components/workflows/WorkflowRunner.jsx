@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle, Lock } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle, Lock, Save } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
@@ -31,15 +31,18 @@ import { resolveRequestedDate, validateDateReceived } from "./workflowValidation
 import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
-export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId }) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [prefilledSteps, setPrefilledSteps] = useState(new Set());
+export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId, onSaveAndExit, initialDraftState }) {
+  const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
+  const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
+  const [prefilledSteps, setPrefilledSteps] = useState(
+    initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
+  );
+  const isDraftResume = !!initialDraftState;
   const [mappedEntityData, setMappedEntityData] = useState(null);
   const [mappedEntityType, setMappedEntityType] = useState(null);
   const [mappedEntityId, setMappedEntityId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(initialDraftState?.history ?? []);
   const [showFlowchart, setShowFlowchart] = useState(false);
   const [showAIHelper, setShowAIHelper] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState({});
@@ -100,7 +103,31 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         setPrefilledSteps(new Set(lockable));
       }
     };
-    loadMappedEntityData();
+    if (!isDraftResume) {
+      loadMappedEntityData();
+    } else {
+      // On draft resume, still load entity data for context but skip prefill
+      const loadEntityOnly = async () => {
+        if (!workflow || (!accountId && !entityId)) return;
+        const records = accountId
+          ? await base44.entities.Account.filter({ id: accountId })
+          : await base44.entities.Entity.filter({ id: entityId });
+        const entityData = records[0];
+        if (entityData) {
+          setMappedEntityData(entityData);
+          setMappedEntityType(accountId ? "Account" : "Entity");
+          setMappedEntityId(accountId || entityId);
+          if (accountId && entityData.entity_id) {
+            const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
+            if (entityRecords[0]) {
+              const rfiTypeA = entityRecords[0].fi_type === 'investment_entity_type_a' || entityRecords[0].fi_type === 'type_a';
+              setIsRfiTypeA(rfiTypeA);
+            }
+          }
+        }
+      };
+      loadEntityOnly();
+    }
   }, [workflow, accountId, entityId]);
 
   const handleNext = async () => {
@@ -2076,7 +2103,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         />
       )}
 
-      <div className="flex justify-between gap-3 pt-4 border-t">
+      <div className="flex justify-between gap-3 pt-4 border-t flex-wrap">
         <Button
           type="button"
           variant="outline"
@@ -2088,25 +2115,47 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           {history.length === 0 ? "Cancel" : "Previous"}
         </Button>
 
-        <Button
-          type="button"
-          onClick={handleNext}
-          disabled={!canProceed() || loading}
-          size="lg"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
-        >
-          {isActionNode(currentStep) ? (
-            <>
-              View Summary
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </>
-          ) : (
-            <>
-              Next Question
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </>
+        <div className="flex gap-3">
+          {onSaveAndExit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => onSaveAndExit({
+                answers,
+                history,
+                currentStepIndex,
+                lastStepId: currentStep?.step_id,
+                workflowId: workflow?.id,
+                workflowName: workflow?.workflow_name,
+                lockedSteps: [...prefilledSteps],
+              })}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save & Exit
+            </Button>
           )}
-        </Button>
+          <Button
+            type="button"
+            onClick={handleNext}
+            disabled={!canProceed() || loading}
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+          >
+            {isActionNode(currentStep) ? (
+              <>
+                View Summary
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            ) : (
+              <>
+                Next Question
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
