@@ -1218,6 +1218,7 @@ export default function AccountsPage() {
           </DialogHeader>
           <AccountClassification
           account={selectedAccount}
+          entities={entities}
           onSaveAndExit={handleSaveAccountDraft}
           initialDraftState={
             selectedAccount?.id && accountDraftMap[selectedAccount.id]

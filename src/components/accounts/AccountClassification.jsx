@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock, Save } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock, Save, Pencil } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +20,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
 import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import CountrySelect from "../shared/CountrySelect";
 import BeneficiaryInputRenderer from "@/components/accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "@/components/accounts/ControllingPersonInputRenderer";
@@ -34,6 +44,9 @@ import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator"
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
+import AccountForm from "./AccountForm";
+import DraftSyncWarningBanner from "./DraftSyncWarningBanner";
+import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS } from "@/lib/classificationEvaluator";
 
 // ─── AUTOFILL DEBUG LOGGER ───────────────────────────────────────────────────
 // Watches for DOM mutations that add address-like inputs, and logs every
@@ -96,7 +109,7 @@ if (typeof window !== 'undefined' && !window.__crsAutofillDebugInstalled) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function AccountClassification({ account, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
+export default function AccountClassification({ account, entities, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
   const [history, setHistory] = useState(initialDraftState?.history ?? []);
@@ -115,11 +128,29 @@ export default function AccountClassification({ account, onComplete, onCancel, o
     initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
   );
   const [rfiEntityFiType, setRfiEntityFiType] = useState(null);
-  // answerHistory: { [step_id]: [valueIteration1, valueIteration2, ...] }
-  // Stores every distinct answer per step visit in order — used by PreviousAnswers to show
-  // the correct value for each loop iteration instead of always showing the latest overwrite.
   const [answerHistory, setAnswerHistory] = useState(initialDraftState?.answerHistory ?? {});
   const isDraftResume = !!initialDraftState;
+
+  // ── Edit Account mid-session state ──────────────────────────────────────────
+  const [showEditAccount, setShowEditAccount] = useState(false);
+  const [isSavingAccountEdit, setIsSavingAccountEdit] = useState(false);
+  const [accountEditError, setAccountEditError] = useState(null);
+  const [showWorkflowMismatchDialog, setShowWorkflowMismatchDialog] = useState(false);
+  const [pendingNewWorkflow, setPendingNewWorkflow] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [affectedSteps, setAffectedSteps] = useState([]);
+  const [resyncedSteps, setResyncedSteps] = useState([]);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const prevIsDirtyRef = useRef(false);
+
+  // Re-show banner whenever isDirty flips to true (i.e. a new account edit was saved)
+  useEffect(() => {
+    if (isDirty && !prevIsDirtyRef.current) {
+      setBannerDismissed(false);
+    }
+    prevIsDirtyRef.current = isDirty;
+  }, [isDirty]);
 
   const isEntityWorkflow = account?.account_holder_type === "entity";
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
@@ -295,6 +326,101 @@ export default function AccountClassification({ account, onComplete, onCancel, o
 
     initialize();
   }, [workflows, account?.id]);
+
+  // ── Handle account edit saved mid-classification ────────────────────────────
+  const handleAccountEditSave = async (updatedData) => {
+    setIsSavingAccountEdit(true);
+    setAccountEditError(null);
+    const beforeData = latestAccountData || account;
+    try {
+      // 1. Persist the account update
+      await base44.entities.Account.update(account.id, updatedData);
+      const [freshAccount] = await base44.entities.Account.filter({ id: account.id });
+      if (freshAccount) setLatestAccountData(freshAccount);
+
+      // 2. Refresh linked entity
+      let entityData = linkedEntityRef.current;
+      if (freshAccount?.entity_id) {
+        const [entityRecord] = await base44.entities.Entity.filter({ id: freshAccount.entity_id });
+        if (entityRecord) { entityData = entityRecord; linkedEntityRef.current = entityRecord; }
+      }
+      setRfiEntityFiType(entityData?.fi_type || null);
+
+      // 3. Re-select workflow based on fresh data
+      const newWorkflow = await selectWorkflow(freshAccount || account, entityData, workflows);
+
+      // 4. Re-compute prefill answers
+      const targetWorkflow = newWorkflow || selectedWorkflow;
+      const { prefillMap, lockableStepIds } = await computeWorkflowPrefill(
+        targetWorkflow, freshAccount || account, entityData
+      );
+
+      // 5. Smart merge — only overwrite steps that were originally auto-prefilled;
+      //    track which steps actually changed value → resyncedSteps
+      const newlyResynced = [];
+      setAnswers(prev => {
+        const updated = { ...prev };
+        for (const stepId of lockableStepIds) {
+          if (prefilledSteps.has(stepId) && prefillMap[stepId] !== undefined) {
+            if (JSON.stringify(prev[stepId]) !== JSON.stringify(prefillMap[stepId])) {
+              newlyResynced.push(stepId);
+            }
+            updated[stepId] = prefillMap[stepId];
+          }
+        }
+        // Also seed new prefillable steps that were previously empty
+        for (const stepId of lockableStepIds) {
+          if (!prefilledSteps.has(stepId) && prefillMap[stepId] !== undefined) {
+            if (prev[stepId] === undefined || prev[stepId] === null || prev[stepId] === "") {
+              updated[stepId] = prefillMap[stepId];
+              newlyResynced.push(stepId);
+            }
+          }
+        }
+        return updated;
+      });
+      setResyncedSteps(newlyResynced);
+      setPrefilledSteps(new Set(lockableStepIds));
+
+      // 6. Find manually-answered steps that may now be stale
+      const steps = targetWorkflow?.steps || [];
+      const affected = findAffectedSteps(steps, history, beforeData, updatedData);
+      setAffectedSteps(affected);
+
+      // 7. Mark dirty so banner appears
+      setIsDirty(true);
+
+      // 8. Audit log
+      const changedFields = CLASSIFICATION_FIELDS.filter(f =>
+        JSON.stringify(beforeData?.[f]) !== JSON.stringify(updatedData[f])
+      );
+      await auditAccountEditDuringClassification({
+        tenantId: account.tenant_id,
+        accountId: account.id,
+        accountName: beforeData?.account_holder_name,
+        currentWorkflowId: selectedWorkflow?.id,
+        newWorkflowId: newWorkflow?.id,
+        affectedStepCount: affected.length,
+        resyncedStepCount: newlyResynced.length,
+        beforeData,
+        afterData: updatedData,
+        changedFields,
+      });
+
+      // 9. Check if workflow template should change (only if user has progressed)
+      const workflowChanged = newWorkflow && newWorkflow.id !== selectedWorkflow?.id && history.length > 0;
+      if (workflowChanged) {
+        setPendingNewWorkflow(newWorkflow);
+        setShowWorkflowMismatchDialog(true);
+      }
+
+      setShowEditAccount(false);
+    } catch (err) {
+      setAccountEditError(err.message || "Failed to save account changes.");
+    } finally {
+      setIsSavingAccountEdit(false);
+    }
+  };
 
   const workflow = selectedWorkflow;
 
@@ -1358,6 +1484,16 @@ export default function AccountClassification({ account, onComplete, onCancel, o
             <GitBranch className="w-4 h-4 mr-1" />
             Flowchart
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
+            className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+            title="Edit Account Details"
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Edit Account
+          </Button>
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">Step {currentStepNumber}</p>
@@ -1415,6 +1551,39 @@ export default function AccountClassification({ account, onComplete, onCancel, o
             </>
           )}
         </Alert>
+      )}
+
+      {/* Draft Sync Warning Banner */}
+      {!bannerDismissed && (
+        <DraftSyncWarningBanner
+          isDirty={isDirty}
+          affectedSteps={affectedSteps}
+          resyncedSteps={resyncedSteps}
+          stepMap={stepMap}
+          isSaving={isSavingDraft}
+          onDismiss={() => setBannerDismissed(true)}
+          onSaveNow={async () => {
+            setIsSavingDraft(true);
+            try {
+              if (onSaveAndExit) {
+                await onSaveAndExit({
+                  answers,
+                  history,
+                  answerHistory,
+                  currentStepIndex,
+                  lastStepId: currentNode?.step_id,
+                  workflowId: selectedWorkflow?.id,
+                  workflowName: selectedWorkflow?.workflow_name,
+                  lockedSteps: [...prefilledSteps],
+                });
+              }
+              setIsDirty(false);
+              setResyncedSteps([]);
+            } finally {
+              setIsSavingDraft(false);
+            }
+          }}
+        />
       )}
 
       {/* Progress bar */}
@@ -1528,16 +1697,20 @@ export default function AccountClassification({ account, onComplete, onCancel, o
               variant="outline"
               size="lg"
               className="border-amber-300 text-amber-700 hover:bg-amber-50"
-              onClick={() => onSaveAndExit({
-                answers,
-                history,
-                answerHistory,
-                currentStepIndex,
-                lastStepId: currentNode?.step_id,
-                workflowId: selectedWorkflow?.id,
-                workflowName: selectedWorkflow?.workflow_name,
-                lockedSteps: [...prefilledSteps],
-              })}
+              onClick={() => {
+                setIsDirty(false);
+                setResyncedSteps([]);
+                onSaveAndExit({
+                  answers,
+                  history,
+                  answerHistory,
+                  currentStepIndex,
+                  lastStepId: currentNode?.step_id,
+                  workflowId: selectedWorkflow?.id,
+                  workflowName: selectedWorkflow?.workflow_name,
+                  lockedSteps: [...prefilledSteps],
+                });
+              }}
             >
               <Save className="w-4 h-4 mr-2" />
               Save & Exit
@@ -1554,6 +1727,79 @@ export default function AccountClassification({ account, onComplete, onCancel, o
           </Button>
         </div>
       </div>
+
+      {/* Edit Account Dialog */}
+      <Dialog open={showEditAccount} onOpenChange={(open) => { if (!open) setShowEditAccount(false); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Edit Account: {(latestAccountData || account)?.account_holder_name}</DialogTitle>
+          </DialogHeader>
+          {accountEditError && (
+            <Alert className="bg-red-50 border-red-200">
+              <AlertCircle className="w-4 h-4 text-red-600" />
+              <AlertDescription className="text-red-800 text-sm">{accountEditError}</AlertDescription>
+            </Alert>
+          )}
+          <div className="relative">
+            {isSavingAccountEdit && (
+              <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-lg">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+              </div>
+            )}
+            <AccountForm
+              account={latestAccountData || account}
+              entities={entities || []}
+              tenant={{ id: (latestAccountData || account)?.tenant_id }}
+              onSubmit={handleAccountEditSave}
+              onCancel={() => setShowEditAccount(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Workflow Template Mismatch Dialog */}
+      <AlertDialog open={showWorkflowMismatchDialog} onOpenChange={setShowWorkflowMismatchDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Workflow Template Changed</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>The account changes affect which classification workflow applies.</p>
+                <div className="text-xs bg-slate-50 border rounded p-3 space-y-1 mt-2">
+                  <p><strong>Current:</strong> {selectedWorkflow?.workflow_name}</p>
+                  <p><strong>Recommended:</strong> {pendingNewWorkflow?.workflow_name}</p>
+                </div>
+                <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 text-xs mt-2">
+                  Restart with the correct template, or keep your current progress?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowWorkflowMismatchDialog(false); setPendingNewWorkflow(null); }}>
+              Keep Current Progress
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => {
+                if (pendingNewWorkflow) {
+                  setSelectedWorkflow(pendingNewWorkflow);
+                  setCurrentStepIndex(0);
+                  setHistory([]);
+                  setAnswers({});
+                  setAnswerHistory({});
+                  setPrefilledSteps(new Set());
+                  setAffectedSteps([]);
+                }
+                setShowWorkflowMismatchDialog(false);
+                setPendingNewWorkflow(null);
+              }}
+            >
+              Restart with New Template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
