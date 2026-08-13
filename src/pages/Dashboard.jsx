@@ -19,9 +19,7 @@ import {
   Settings,
   PlayCircle,
   X,
-  Sparkles,
-  Loader2,
-  XCircle
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,10 +121,7 @@ export default function Dashboard() {
 
   const rfiEntities = entities.filter(e => e.rfi_status === "reporting_fi");
   const reportableAccounts = accounts.filter(a => a.reportability_status === "reportable");
-  const nonReportableAccounts = accounts.filter(a => a.reportability_status === "non_reportable");
   const pendingAccounts = accounts.filter(a => a.reportability_status === "pending_review");
-  const excludedAccounts = accounts.filter(a => a.reportability_status === "excluded");
-  const wipAccounts = accounts.filter(a => a.reportability_status === "work_in_progress");
   const currentYear = new Date().getFullYear();
   const currentYearReports = reports.filter(r => r.reporting_year === currentYear.toString());
 
@@ -418,15 +413,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Key Metrics — Row 1: Summary */}
+        {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link to={createPageUrl("Accounts")} className="no-underline">
+          <Link to={createPageUrl("Entities")} className="no-underline">
             <MetricCard
-              title="Total Accounts"
-              value={accounts.length}
+              title="Total Entities"
+              value={entities.length}
               subtitle={`${rfiEntities.length} Reporting FIs`}
-              icon={Wallet}
+              icon={Building2}
               color="#3b82f6"
+              trend="+2 this month"
             />
           </Link>
           <Link to={createPageUrl("Accounts") + "?status=reportable"} className="no-underline">
@@ -434,52 +430,17 @@ export default function Dashboard() {
               title="Reportable Accounts"
               value={reportableAccounts.length}
               subtitle={`${accounts.length} total accounts`}
-              icon={FileCheck}
+              icon={Wallet}
               color="#10b981"
-              trend={pendingAccounts.length > 0 ? `${pendingAccounts.length} pending review` : null}
+              trend={`${pendingAccounts.length} pending review`}
             />
           </Link>
-          <Link to={createPageUrl("Accounts") + "?status=non_reportable"} className="no-underline">
+          <Link to={createPageUrl("Reports") + `?year=${currentYear}`} className="no-underline">
             <MetricCard
-              title="Non-Reportable Accounts"
-              value={nonReportableAccounts.length}
-              subtitle={`${accounts.length} total accounts`}
-              icon={CheckCircle2}
-              color="#6b7280"
-            />
-          </Link>
-        </div>
-
-        {/* Key Metrics — Row 2: Classification Status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link to={createPageUrl("Accounts") + "?status=pending_review"} className="no-underline">
-            <MetricCard
-              title="Pending Review"
-              value={pendingAccounts.length}
-              subtitle={`${accounts.length} total accounts`}
-              icon={Clock}
-              color="#f59e0b"
-            />
-          </Link>
-          <Link to={createPageUrl("Accounts") + "?status=excluded"} className="no-underline">
-            <MetricCard
-              title="Excluded Accounts"
-              value={excludedAccounts.length}
-              subtitle={`${accounts.length} total accounts`}
-              icon={XCircle}
-              color="#ef4444"
-            />
-          </Link>
-        </div>
-
-        {/* Work in Progress — above Entity Classification Status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link to={createPageUrl("Accounts") + "?status=work_in_progress"} className="no-underline">
-            <MetricCard
-              title="Work in Progress"
-              value={wipAccounts.length}
-              subtitle="Classification in progress"
-              icon={Loader2}
+              title="CRS Reports"
+              value={currentYearReports.length}
+              subtitle={`Year ${currentYear}`}
+              icon={FileCheck}
               color="#8b5cf6"
             />
           </Link>
