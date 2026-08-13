@@ -210,6 +210,13 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
         iconBgColor = 'bg-blue-100';
         drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=pending_review");
         break;
+      case 'work_in_progress_accounts':
+        value = accountsData.filter(a => a.reportability_status === 'work_in_progress').length;
+        icon = <Clock className="w-6 h-6 text-amber-600" />;
+        iconBgColor = 'bg-amber-100';
+        if (!subDescription) subDescription = `${accountsData.length} total accounts`;
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=work_in_progress");
+        break;
       case 'excluded_accounts':
         value = accountsData.filter(a => a.reportability_status === 'excluded').length;
         icon = <AlertTriangle className="w-6 h-6 text-slate-600" />;

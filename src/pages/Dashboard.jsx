@@ -122,6 +122,7 @@ export default function Dashboard() {
   const rfiEntities = entities.filter(e => e.rfi_status === "reporting_fi");
   const reportableAccounts = accounts.filter(a => a.reportability_status === "reportable");
   const pendingAccounts = accounts.filter(a => a.reportability_status === "pending_review");
+  const wipAccounts = accounts.filter(a => a.reportability_status === "work_in_progress");
   const currentYear = new Date().getFullYear();
   const currentYearReports = reports.filter(r => r.reporting_year === currentYear.toString());
 
@@ -442,6 +443,15 @@ export default function Dashboard() {
               subtitle={`Year ${currentYear}`}
               icon={FileCheck}
               color="#8b5cf6"
+            />
+          </Link>
+          <Link to={createPageUrl("Accounts") + "?status=work_in_progress"} className="no-underline">
+            <MetricCard
+              title="Work in Progress"
+              value={wipAccounts.length}
+              subtitle="Accounts under active review"
+              icon={Clock}
+              color="#f59e0b"
             />
           </Link>
         </div>
