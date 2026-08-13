@@ -740,7 +740,7 @@ export default function AccountsPage() {
           </div>
 
           <TabsContent value="accounts" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Card className="border-0 shadow-lg">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -797,6 +797,22 @@ export default function AccountsPage() {
                       <p className="text-xs text-slate-600">Non-Reportable</p>
                       <p className="text-2xl font-bold text-slate-900">
                         {accessibleAccounts.filter(a => a.reportability_status === "non_reportable").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600">Work in Progress</p>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {accessibleAccounts.filter(a => a.reportability_status === "work_in_progress").length}
                       </p>
                     </div>
                   </div>
