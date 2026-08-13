@@ -293,7 +293,7 @@ export default function Dashboard() {
 
           {/* Custom Dashboard Widgets */}
           <div className="grid grid-cols-12 gap-4">
-            {customDashboard.layout.map((widget) => (
+            {[...customDashboard.layout].sort((a, b) => (a.position?.y ?? 0) - (b.position?.y ?? 0) || (a.position?.x ?? 0) - (b.position?.x ?? 0)).map((widget) => (
               <div
                 key={widget.widget_id}
                 className="h-full"
