@@ -217,6 +217,13 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
         if (!subDescription) subDescription = `${accountsData.length} total accounts`;
         drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=excluded");
         break;
+      case 'work_in_progress_accounts':
+        value = accountsData.filter(a => a.reportability_status === 'work_in_progress').length;
+        icon = <Activity className="w-6 h-6 text-purple-600" />;
+        iconBgColor = 'bg-purple-100';
+        if (!subDescription) subDescription = 'Classification in progress';
+        drilldownUrl = withEntityFilter(createPageUrl("Accounts") + "?status=work_in_progress");
+        break;
       case 'classified_entities':
         value = entitiesData.filter(e => e.rfi_status !== 'pending_classification').length;
         icon = <CheckCircle className="w-6 h-6 text-green-600" />;
@@ -365,10 +372,14 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
       const reportable = accountsData.filter(a => a.reportability_status === 'reportable').length;
       const nonReportable = accountsData.filter(a => a.reportability_status === 'non_reportable').length;
       const pending = accountsData.filter(a => a.reportability_status === 'pending_review').length;
+      const wip = accountsData.filter(a => a.reportability_status === 'work_in_progress').length;
+      const excluded = accountsData.filter(a => a.reportability_status === 'excluded').length;
       chartData = [
         { name: 'Reportable', value: reportable },
         { name: 'Non-Reportable', value: nonReportable },
-        { name: 'Pending', value: pending }
+        { name: 'Pending', value: pending },
+        { name: 'Work in Progress', value: wip },
+        { name: 'Excluded', value: excluded }
       ].filter(d => d.value > 0);
     } else if (dataSource === 'entity_classification') {
       const reporting = entitiesData.filter(e => e.rfi_status === 'reporting_fi').length;
@@ -711,6 +722,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
     const nonReportable = accountsData.filter(a => a.reportability_status === 'non_reportable').length;
     const pending = accountsData.filter(a => a.reportability_status === 'pending_review').length;
     const excluded = accountsData.filter(a => a.reportability_status === 'excluded').length;
+    const wip = accountsData.filter(a => a.reportability_status === 'work_in_progress').length;
 
     return (
       <Card>
@@ -718,7 +730,7 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
           <CardTitle className="text-base">{widget.title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="p-3 bg-amber-50 rounded-lg">
               <p className="text-2xl font-bold text-amber-700">{reportable}</p>
               <p className="text-xs text-amber-600">Reportable</p>
@@ -731,7 +743,11 @@ export default function WidgetPreview({ widget, tenantId, selectedEntityId, acce
               <p className="text-2xl font-bold text-blue-700">{pending}</p>
               <p className="text-xs text-blue-600">Pending Review</p>
             </div>
-            <div className="p-3 bg-slate-50 rounded-lg">
+            <div className="p-3 bg-purple-50 rounded-lg">
+              <p className="text-2xl font-bold text-purple-700">{wip}</p>
+              <p className="text-xs text-purple-600">Work in Progress</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg col-span-2">
               <p className="text-2xl font-bold text-slate-700">{excluded}</p>
               <p className="text-xs text-slate-600">Excluded</p>
             </div>
