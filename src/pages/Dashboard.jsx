@@ -461,15 +461,6 @@ export default function Dashboard() {
               color="#f59e0b"
             />
           </Link>
-          <Link to={createPageUrl("Accounts") + "?status=work_in_progress"} className="no-underline">
-            <MetricCard
-              title="Work in Progress"
-              value={wipAccounts.length}
-              subtitle="Classification in progress"
-              icon={Loader2}
-              color="#8b5cf6"
-            />
-          </Link>
           <Link to={createPageUrl("Accounts") + "?status=excluded"} className="no-underline">
             <MetricCard
               title="Excluded Accounts"
@@ -477,6 +468,19 @@ export default function Dashboard() {
               subtitle={`${accounts.length} total accounts`}
               icon={XCircle}
               color="#ef4444"
+            />
+          </Link>
+        </div>
+
+        {/* Work in Progress — above Entity Classification Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link to={createPageUrl("Accounts") + "?status=work_in_progress"} className="no-underline">
+            <MetricCard
+              title="Work in Progress"
+              value={wipAccounts.length}
+              subtitle="Classification in progress"
+              icon={Loader2}
+              color="#8b5cf6"
             />
           </Link>
         </div>
