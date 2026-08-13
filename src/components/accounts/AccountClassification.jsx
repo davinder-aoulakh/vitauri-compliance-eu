@@ -1484,16 +1484,7 @@ export default function AccountClassification({ account, entities, onComplete, o
             <GitBranch className="w-4 h-4 mr-1" />
             Flowchart
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
-            className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-            title="Edit Account Details"
-          >
-            <Pencil className="w-4 h-4 mr-1" />
-            Edit Account
-          </Button>
+
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">Step {currentStepNumber}</p>
@@ -1525,6 +1516,17 @@ export default function AccountClassification({ account, entities, onComplete, o
                 introFields={workflow.workflow_introduction_fields}
                 mappedEntityData={latestAccountData || account}
               />
+              <div className="pt-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
+                  className={`text-xs h-7 px-2 ${isEntityWorkflow ? "text-purple-700 hover:bg-purple-100" : "text-blue-700 hover:bg-blue-100"}`}
+                >
+                  <Pencil className="w-3 h-3 mr-1" />
+                  Edit Account Details
+                </Button>
+              </div>
             </div>
           </AlertDescription>
         </Alert>
@@ -1537,6 +1539,17 @@ export default function AccountClassification({ account, entities, onComplete, o
               <Users className="w-4 h-4 text-purple-600" />
               <AlertDescription className="text-sm text-purple-900">
                 <strong>Entity Account:</strong> This workflow determines if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
+                <div className="mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
+                    className="text-xs h-7 px-2 text-purple-700 hover:bg-purple-100"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" />
+                    Edit Account Details
+                  </Button>
+                </div>
               </AlertDescription>
             </>
           ) : (
@@ -1547,6 +1560,17 @@ export default function AccountClassification({ account, entities, onComplete, o
                 {account?.is_pre_existing !== undefined && (
                   <span className="block mt-1">Account Type: <strong>{account.is_pre_existing ? "Pre-existing (before 2018)" : "New (2018+)"}</strong></span>
                 )}
+                <div className="mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
+                    className="text-xs h-7 px-2 text-blue-700 hover:bg-blue-100"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" />
+                    Edit Account Details
+                  </Button>
+                </div>
               </AlertDescription>
             </>
           )}
