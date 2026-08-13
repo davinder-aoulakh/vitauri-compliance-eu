@@ -1503,10 +1503,19 @@ export default function AccountClassification({ account, entities, onComplete, o
 
       {/* Introduction */}
       {workflow.display_workflow_introduction && (
-        <Alert className={isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}>
+        <Alert className={`relative ${isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
           <Info className={`w-4 h-4 ${isEntityWorkflow ? "text-purple-600" : "text-blue-600"}`} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
+            className={`absolute top-2 right-2 text-xs h-7 px-2 ${isEntityWorkflow ? "text-purple-700 hover:bg-purple-100" : "text-blue-700 hover:bg-blue-100"}`}
+          >
+            <Pencil className="w-3 h-3 mr-1" />
+            Edit Account
+          </Button>
           <AlertDescription>
-            <div className="space-y-2">
+            <div className="space-y-2 pr-28">
               {workflow.workflow_introduction_text && (
                 <p className={`text-sm font-medium ${isEntityWorkflow ? "text-purple-900" : "text-blue-900"}`}>
                   {workflow.workflow_introduction_text}
@@ -1516,61 +1525,37 @@ export default function AccountClassification({ account, entities, onComplete, o
                 introFields={workflow.workflow_introduction_fields}
                 mappedEntityData={latestAccountData || account}
               />
-              <div className="pt-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
-                  className={`text-xs h-7 px-2 ${isEntityWorkflow ? "text-purple-700 hover:bg-purple-100" : "text-blue-700 hover:bg-blue-100"}`}
-                >
-                  <Pencil className="w-3 h-3 mr-1" />
-                  Edit Account Details
-                </Button>
-              </div>
             </div>
           </AlertDescription>
         </Alert>
       )}
 
       {!workflow.display_workflow_introduction && (
-        <Alert className={isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}>
+        <Alert className={`relative ${isEntityWorkflow ? "bg-purple-50 border-purple-200" : "bg-blue-50 border-blue-200"}`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
+            className={`absolute top-2 right-2 text-xs h-7 px-2 ${isEntityWorkflow ? "text-purple-700 hover:bg-purple-100" : "text-blue-700 hover:bg-blue-100"}`}
+          >
+            <Pencil className="w-3 h-3 mr-1" />
+            Edit Account
+          </Button>
           {isEntityWorkflow ? (
             <>
               <Users className="w-4 h-4 text-purple-600" />
-              <AlertDescription className="text-sm text-purple-900">
+              <AlertDescription className="text-sm text-purple-900 pr-28">
                 <strong>Entity Account:</strong> This workflow determines if the entity is a Financial Institution, Active NFE, or Passive NFE requiring controlling persons identification.
-                <div className="mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
-                    className="text-xs h-7 px-2 text-purple-700 hover:bg-purple-100"
-                  >
-                    <Pencil className="w-3 h-3 mr-1" />
-                    Edit Account Details
-                  </Button>
-                </div>
               </AlertDescription>
             </>
           ) : (
             <>
               <Info className="w-4 h-4 text-blue-600" />
-              <AlertDescription className="text-sm text-blue-900">
+              <AlertDescription className="text-sm text-blue-900 pr-28">
                 <strong>Individual Account:</strong> This workflow follows CRS due diligence procedures for individual accounts.
                 {account?.is_pre_existing !== undefined && (
                   <span className="block mt-1">Account Type: <strong>{account.is_pre_existing ? "Pre-existing (before 2018)" : "New (2018+)"}</strong></span>
                 )}
-                <div className="mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setAccountEditError(null); setShowEditAccount(true); }}
-                    className="text-xs h-7 px-2 text-blue-700 hover:bg-blue-100"
-                  >
-                    <Pencil className="w-3 h-3 mr-1" />
-                    Edit Account Details
-                  </Button>
-                </div>
               </AlertDescription>
             </>
           )}
