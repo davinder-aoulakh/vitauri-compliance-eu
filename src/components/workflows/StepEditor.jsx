@@ -451,6 +451,45 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
         </div>
       )}
 
+      {editedStep.question_type === "info" && (
+        <div className="p-4 border-2 border-blue-100 rounded-lg bg-blue-50/30 space-y-4">
+          <div className="flex items-start gap-2 text-xs text-slate-600 bg-white p-3 rounded border border-blue-200">
+            <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <p><strong>Info Step:</strong> Displays information to the user. Optionally set a result status and post-classification action.</p>
+          </div>
+          <div>
+            <Label htmlFor="info_result_status" className="text-sm">Result Status (Optional)</Label>
+            <Select value={editedStep.result_status || ""} onValueChange={(value) => handleChange("result_status", value)}>
+              <SelectTrigger className="mt-1.5"><SelectValue placeholder="No status change..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>No Status Change</SelectItem>
+                <SelectItem value="reportable">Reportable</SelectItem>
+                <SelectItem value="non_reportable">Non-Reportable</SelectItem>
+                <SelectItem value="pending_review">Pending Review</SelectItem>
+                <SelectItem value="excluded">Excluded</SelectItem>
+                <SelectItem value="work_in_progress">Work in Progress</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="info_result_description" className="text-sm">Result Description (Optional)</Label>
+            <Textarea id="info_result_description" value={editedStep.result_description || ""} onChange={(e) => handleChange("result_description", e.target.value)} rows={2} className="mt-1.5" placeholder="Describe the outcome shown to the user..." />
+          </div>
+          <div>
+            <Label htmlFor="info_result_action" className="text-sm">Post-Classification Action (Optional)</Label>
+            <Select value={editedStep.result_action || ""} onValueChange={(value) => handleChange("result_action", value)}>
+              <SelectTrigger className="mt-1.5"><SelectValue placeholder="No action (just continue)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>No Action</SelectItem>
+                <SelectItem value="manage_controlling_persons">Open Controlling Person Manager</SelectItem>
+                <SelectItem value="manual_report_total">Manual Report Total</SelectItem>
+                <SelectItem value="report_per_beneficiary">Report Per Beneficiary</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
       {editedStep.question_type === "file_upload" && (
         <div className="p-4 border-2 border-indigo-100 rounded-lg bg-indigo-50/30">
           <div className="flex items-center gap-2 mb-3">
