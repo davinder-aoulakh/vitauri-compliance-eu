@@ -907,19 +907,23 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
           </p>
         )}
 
-        {editedStep.question_type === 'yes_no' && editedStep.mapped_field?.entity_type && editedStep.mapped_field?.field_name && (
-          <div className="mt-4 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg space-y-3">
+      </div>
+
+      {/* Smart Pre-fill Rules - available for all yes_no steps, independent of mapped field */}
+      {editedStep.question_type === 'yes_no' && (
+        <div className="border-t pt-4">
+          <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg space-y-3">
             <Label className="text-xs font-semibold text-emerald-800 flex items-center gap-2"><Sparkles className="w-4 h-4" />Smart Pre-fill Rules</Label>
             {(() => {
-              const selectedMappedField = filteredMappedFields.find(f => f.value === editedStep.mapped_field.field_name);
+              const hasMappedField = !!(editedStep.mapped_field?.entity_type && editedStep.mapped_field?.field_name);
+              const selectedMappedField = hasMappedField ? filteredMappedFields.find(f => f.value === editedStep.mapped_field.field_name) : null;
               const isCountryField = selectedMappedField?.isCountry;
-              const dropdownOptions = getSuggestedValuesForField(editedStep.mapped_field.entity_type, editedStep.mapped_field.field_name, referencedData);
+              const dropdownOptions = hasMappedField ? getSuggestedValuesForField(editedStep.mapped_field.entity_type, editedStep.mapped_field.field_name, referencedData) : null;
               const prefillType = editedStep.mapped_field?.prefill_config?.prefill_type;
 
-              // Get numeric fields for computed comparison
               const numericFields = (() => {
                 let schema;
-                switch (editedStep.mapped_field.entity_type) {
+                switch (editedStep.mapped_field?.entity_type) {
                   case "Account": schema = ACCOUNT_FIELDS_SCHEMA; break;
                   case "Entity": schema = ENTITY_FIELDS_SCHEMA; break;
                   default: schema = ACCOUNT_FIELDS_SCHEMA;
@@ -931,25 +935,9 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                 if (!value) {
                   handleMappedFieldChange("prefill_config", null);
                 } else if (value === 'computed_comparison') {
-                  handleMappedFieldChange("prefill_config", {
-                    prefill_type: 'computed_comparison',
-                    field_one: '',
-                    computation_operator: 'add',
-                    field_two: '',
-                    comparison_operator: 'greater_than',
-                    threshold_value: 0,
-                    prefill_if_true: true
-                  });
+                  handleMappedFieldChange("prefill_config", { prefill_type: 'computed_comparison', field_one: '', computation_operator: 'add', field_two: '', comparison_operator: 'greater_than', threshold_value: 0, prefill_if_true: true });
                 } else if (value === 'date_difference') {
-                  handleMappedFieldChange("prefill_config", {
-                    prefill_type: 'date_difference',
-                    source_step_id: '',
-                    source_subfield_id: '',
-                    anchor_date_type: 'current_date',
-                    comparison_operator: 'greater_than',
-                    threshold_days: 90,
-                    prefill_if_true: true
-                  });
+                  handleMappedFieldChange("prefill_config", { prefill_type: 'date_difference', source_step_id: '', source_subfield_id: '', anchor_date_type: 'current_date', comparison_operator: 'greater_than', threshold_days: 90, prefill_if_true: true });
                 } else {
                   handleMappedFieldChange("prefill_config", { prefill_type: value, match_values: [] });
                 }
@@ -988,24 +976,20 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                   )}
 
                   {prefillType === "date_difference" && (() => {
-                    // Only show prior date-typed steps and their date subfields
                     const currentStepIndex = allSteps.findIndex(s => s.step_id === editedStep.step_id);
                     const dateStepSources = [];
                     allSteps.forEach((s, idx) => {
                       if (idx >= currentStepIndex) return;
-                      if (s.question_type === 'date_input') {
-                        dateStepSources.push({ value: s.step_id, label: `${s.step_title} (date)` });
-                      }
+                      if (s.question_type === 'date_input') dateStepSources.push({ value: s.step_id, label: `${s.step_title} (date)` });
                       if (s.question_type === 'multi_field_input' && s.multi_fields?.length > 0) {
                         s.multi_fields.filter(mf => mf.field_type === 'date').forEach(mf => {
                           dateStepSources.push({ value: `${s.step_id}||${mf.field_id}`, label: `${s.step_title} → ${mf.display_label}` });
                         });
                       }
                     });
-                    const cfg = editedStep.mapped_field.prefill_config || {};
+                    const cfg = editedStep.mapped_field?.prefill_config || {};
                     const updateDateDiffConfig = (key, value) => {
-                      const current = editedStep.mapped_field.prefill_config || {};
-                      // Handle composite value for multi_field subfields: "stepId||subfieldId"
+                      const current = editedStep.mapped_field?.prefill_config || {};
                       if (key === 'source_step_id') {
                         if (value.includes('||')) {
                           const [stepId, subfieldId] = value.split('||');
@@ -1017,9 +1001,7 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                       }
                       handleMappedFieldChange("prefill_config", { ...current, [key]: value });
                     };
-                    const sourceValue = cfg.source_subfield_id
-                      ? `${cfg.source_step_id}||${cfg.source_subfield_id}`
-                      : (cfg.source_step_id || '');
+                    const sourceValue = cfg.source_subfield_id ? `${cfg.source_step_id}||${cfg.source_subfield_id}` : (cfg.source_step_id || '');
                     return (
                       <div className="space-y-3 p-3 bg-white rounded border border-emerald-300">
                         <p className="text-xs text-slate-600 font-medium">Compare: days between today and a date answered in a previous step</p>
@@ -1030,8 +1012,7 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                             <SelectContent>
                               {dateStepSources.length === 0
                                 ? <div className="p-2 text-xs text-slate-400 italic">No prior date steps found</div>
-                                : dateStepSources.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)
-                              }
+                                : dateStepSources.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1074,16 +1055,14 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <Label className="text-xs">Field 1</Label>
-                          <Select value={editedStep.mapped_field.prefill_config?.field_one || ""} onValueChange={(v) => updateComputedConfig('field_one', v)}>
+                          <Select value={editedStep.mapped_field?.prefill_config?.field_one || ""} onValueChange={(v) => updateComputedConfig('field_one', v)}>
                             <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent>
-                              {numericFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-                            </SelectContent>
+                            <SelectContent>{numericFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
                           <Label className="text-xs">Operation</Label>
-                          <Select value={editedStep.mapped_field.prefill_config?.computation_operator || "add"} onValueChange={(v) => updateComputedConfig('computation_operator', v)}>
+                          <Select value={editedStep.mapped_field?.prefill_config?.computation_operator || "add"} onValueChange={(v) => updateComputedConfig('computation_operator', v)}>
                             <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="add">Add (+)</SelectItem>
@@ -1095,18 +1074,16 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </div>
                         <div>
                           <Label className="text-xs">Field 2</Label>
-                          <Select value={editedStep.mapped_field.prefill_config?.field_two || ""} onValueChange={(v) => updateComputedConfig('field_two', v)}>
+                          <Select value={editedStep.mapped_field?.prefill_config?.field_two || ""} onValueChange={(v) => updateComputedConfig('field_two', v)}>
                             <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent>
-                              {numericFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-                            </SelectContent>
+                            <SelectContent>{numericFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">Comparison</Label>
-                          <Select value={editedStep.mapped_field.prefill_config?.comparison_operator || "greater_than"} onValueChange={(v) => updateComputedConfig('comparison_operator', v)}>
+                          <Select value={editedStep.mapped_field?.prefill_config?.comparison_operator || "greater_than"} onValueChange={(v) => updateComputedConfig('comparison_operator', v)}>
                             <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="greater_than">Greater Than (&gt;)</SelectItem>
@@ -1120,12 +1097,12 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </div>
                         <div>
                           <Label className="text-xs">Threshold Value</Label>
-                          <Input type="number" value={editedStep.mapped_field.prefill_config?.threshold_value ?? 0} onChange={(e) => updateComputedConfig('threshold_value', Number(e.target.value))} className="h-8 text-xs mt-1" />
+                          <Input type="number" value={editedStep.mapped_field?.prefill_config?.threshold_value ?? 0} onChange={(e) => updateComputedConfig('threshold_value', Number(e.target.value))} className="h-8 text-xs mt-1" />
                         </div>
                       </div>
                       <div>
                         <Label className="text-xs">When condition is TRUE, pre-fill answer as:</Label>
-                        <Select value={String(editedStep.mapped_field.prefill_config?.prefill_if_true !== false)} onValueChange={(v) => updateComputedConfig('prefill_if_true', v === 'true')}>
+                        <Select value={String(editedStep.mapped_field?.prefill_config?.prefill_if_true !== false)} onValueChange={(v) => updateComputedConfig('prefill_if_true', v === 'true')}>
                           <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="true">YES (condition true → pre-fill YES)</SelectItem>
@@ -1139,8 +1116,8 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
               );
             })()}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-4 border-t">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
