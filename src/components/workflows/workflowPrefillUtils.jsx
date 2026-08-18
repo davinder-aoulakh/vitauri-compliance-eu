@@ -1,6 +1,49 @@
 import { base44 } from "@/api/base44Client";
 
 /**
+ * Evaluates date_difference prefill config against accumulated step answers.
+ * Returns 'YES', 'NO', or null (if source date is missing/invalid).
+ */
+export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
+  if (!cfg || !cfg.source_step_id) return null;
+  if (!cfg.comparison_operator) return null;
+  if (cfg.threshold_days === undefined || cfg.threshold_days === null) return null;
+
+  // Resolve the source date value from step answers
+  let rawDate = stepAnswers[cfg.source_step_id];
+
+  // If it's a multi_field_input, drill into the subfield
+  if (cfg.source_subfield_id && rawDate && typeof rawDate === 'object') {
+    rawDate = rawDate[cfg.source_subfield_id];
+  }
+
+  if (!rawDate || typeof rawDate !== 'string') return null;
+
+  // Normalise ISO datetime to date-only
+  const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+  const sourceDate = new Date(datePart);
+  if (isNaN(sourceDate.getTime())) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  sourceDate.setHours(0, 0, 0, 0);
+
+  const dayMs = 1000 * 60 * 60 * 24;
+  const daysDiff = Math.floor((today - sourceDate) / dayMs);
+  const threshold = Number(cfg.threshold_days) || 0;
+
+  const condMet = {
+    greater_than: daysDiff > threshold,
+    less_than: daysDiff < threshold,
+    equals: daysDiff === threshold,
+    greater_than_or_equal: daysDiff >= threshold,
+    less_than_or_equal: daysDiff <= threshold,
+  }[cfg.comparison_operator] ?? false;
+
+  return (condMet === (cfg.prefill_if_true !== false)) ? 'YES' : 'NO';
+};
+
+/**
  * Evaluates computed_comparison prefill config against entity data.
  */
 export const evaluateComputedComparison = (cfg, entityData) => {
@@ -20,7 +63,7 @@ export const evaluateComputedComparison = (cfg, entityData) => {
 /**
  * Computes initial prefill answers for all workflow steps given entity data.
  */
-export const computePrefillAnswers = async (workflow, entityData, entityType) => {
+export const computePrefillAnswers = async (workflow, entityData, entityType, stepAnswers = {}) => {
   const initialAnswers = {};
   console.log(`[computePrefillAnswers] entityType=${entityType}, checking ${workflow.steps.length} steps`);
   for (const step of workflow.steps) {
@@ -56,6 +99,12 @@ export const computePrefillAnswers = async (workflow, entityData, entityType) =>
         } else {
           initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
         }
+      } else if (prefillType === 'date_difference') {
+        const result = evaluateDateDifference(step.mapped_field.prefill_config, stepAnswers);
+        if (result !== null) {
+          initialAnswers[step.step_id] = result;
+        }
+        // null = source date not yet answered, leave step editable
       } else if (prefillType === 'computed_comparison') {
         let result = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
 

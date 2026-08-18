@@ -26,7 +26,7 @@ import MultiFieldRenderer from "./MultiFieldRenderer";
 import CountrySelect from "../shared/CountrySelect";
 import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
-import { computePrefillAnswers } from "./workflowPrefillUtils";
+import { computePrefillAnswers, evaluateDateDifference } from "./workflowPrefillUtils";
 import { resolveRequestedDate, validateDateReceived } from "./workflowValidationUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
@@ -84,14 +84,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         setMappedEntityId(id);
 
         // Prefill from primary entity (Account or Entity)
-        const primaryPrefill = await computePrefillAnswers(workflow, entityData, entityType);
+        // Pass empty stepAnswers here — on initial load no steps have been answered yet.
+        // date_difference prefills will be computed dynamically as steps are answered.
+        const primaryPrefill = await computePrefillAnswers(workflow, entityData, entityType, {});
 
         // If primary is Account, also prefill from the related Entity (e.g. fi_type mapped to Entity)
         let secondaryPrefill = {};
         if (accountId && entityData.entity_id) {
           const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
           if (entityRecords[0]) {
-            secondaryPrefill = await computePrefillAnswers(workflow, entityRecords[0], "Entity");
+            secondaryPrefill = await computePrefillAnswers(workflow, entityRecords[0], "Entity", {});
             // Check if the RFI entity is Investment Entity Type A
             const rfiTypeA = entityRecords[0].fi_type === 'investment_entity_type_a' || entityRecords[0].fi_type === 'type_a';
             setIsRfiTypeA(rfiTypeA);
@@ -546,6 +548,23 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
     }
     setCurrentStepIndex(nextIndex);
+
+    // After navigating, check if the destination step has a date_difference prefill
+    // and if the source date is now available — apply it dynamically.
+    const destStep = workflow.steps[nextIndex];
+    if (
+      destStep?.question_type === 'yes_no' &&
+      destStep?.mapped_field?.prefill_config?.prefill_type === 'date_difference'
+    ) {
+      setAnswers(prev => {
+        const result = evaluateDateDifference(destStep.mapped_field.prefill_config, prev);
+        if (result !== null) {
+          setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
+          return { ...prev, [destStep.step_id]: result };
+        }
+        return prev;
+      });
+    }
   };
 
   const handleBack = () => {
