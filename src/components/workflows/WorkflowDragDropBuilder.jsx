@@ -512,19 +512,21 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
 
       {/* Step Editor Dialog */}
       <Dialog open={showStepEditor} onOpenChange={setShowStepEditor}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
+        <DialogContent className="max-w-3xl flex flex-col p-0" style={{maxHeight: '95vh'}} onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
             <DialogTitle>Edit Step: {selectedStep?.step_title}</DialogTitle>
           </DialogHeader>
-          {selectedStep && (
-            <StepEditor
-              key={`step-editor-${selectedStep.step_id}`}
-              step={steps.find(s => s.step_id === selectedStep.step_id) || selectedStep}
-              allSteps={steps}
-              onUpdate={handleUpdateStep}
-              onClose={() => setShowStepEditor(false)}
-            />
-          )}
+          <div className="overflow-y-auto flex-1 px-6 py-4">
+            {selectedStep && (
+              <StepEditor
+                key={`step-editor-${selectedStep.step_id}`}
+                step={steps.find(s => s.step_id === selectedStep.step_id) || selectedStep}
+                allSteps={steps}
+                onUpdate={handleUpdateStep}
+                onClose={() => setShowStepEditor(false)}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
