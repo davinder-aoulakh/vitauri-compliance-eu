@@ -552,23 +552,30 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         });
       }
     }
-    // Before rendering the destination step, apply date_difference prefill synchronously
-    // so the answer and lock are in place before the step is shown to the user.
+    // Before rendering the destination step, apply date_difference prefill.
+    // Compute result using current answers snapshot, then apply both state updates
+    // directly (not inside a functional updater) to avoid side-effect-in-updater issues.
     const destStep = workflow.steps[nextIndex];
     if (
       destStep?.question_type === 'yes_no' &&
       destStep?.mapped_field?.prefill_config?.prefill_type === 'date_difference'
     ) {
+      // Use the answers ref/current snapshot — we call setAnswers(prev) to read latest state
       setAnswers(prev => {
         const result = evaluateDateDifference(destStep.mapped_field.prefill_config, prev);
+        console.log(`[DATE_DIFF PREFILL] step="${destStep.step_title}" result=${result}`);
         if (result !== null) {
-          if (destStep.mapped_field?.read_only !== false) {
-            setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
-          }
           return { ...prev, [destStep.step_id]: result };
         }
         return prev;
       });
+      // Compute lock separately using the current answers snapshot passed to this call
+      // We always lock when result is non-null and read_only !== false
+      const prefillResult = evaluateDateDifference(destStep.mapped_field.prefill_config, answers);
+      console.log(`[DATE_DIFF PREFILL] lock check result=${prefillResult} read_only=${destStep.mapped_field?.read_only}`);
+      if (prefillResult !== null && destStep.mapped_field?.read_only !== false) {
+        setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
+      }
     }
 
     setCurrentStepIndex(nextIndex);
