@@ -885,15 +885,17 @@
               },
               "prefill_config": {
                 "type": "object",
-                "description": "Configuration for intelligent pre-filling of Yes/No questions based on mapped field values",
+                "description": "Configuration for intelligent pre-filling of Yes/No questions based on mapped field values or computed logic",
                 "properties": {
                   "prefill_type": {
                     "type": "string",
                     "enum": [
                       "enum_match",
-                      "country_crs"
+                      "country_crs",
+                      "date_difference",
+                      "computed_comparison"
                     ],
-                    "description": "Type of pre-fill logic: enum_match for dropdown value matching, country_crs for CRS country checking"
+                    "description": "Type of pre-fill logic"
                   },
                   "match_values": {
                     "type": "array",
@@ -901,6 +903,60 @@
                       "type": "string"
                     },
                     "description": "For enum_match: array of dropdown values that should trigger YES pre-fill"
+                  },
+                  "source_step_id": {
+                    "type": "string",
+                    "description": "For date_difference: the step_id of the prior date_input step to use as the date source"
+                  },
+                  "source_subfield_id": {
+                    "type": "string",
+                    "description": "For date_difference: if the source is a multi_field_input sub-field, the field_id within that step"
+                  },
+                  "anchor_date_type": {
+                    "type": "string",
+                    "description": "For date_difference: what to compare the source date against (e.g., 'current_date')"
+                  },
+                  "comparison_operator": {
+                    "type": "string",
+                    "enum": [
+                      "greater_than",
+                      "less_than",
+                      "equals",
+                      "greater_than_or_equal",
+                      "less_than_or_equal",
+                      "not_equals"
+                    ],
+                    "description": "For date_difference and computed_comparison: how to compare the computed value against the threshold"
+                  },
+                  "threshold_days": {
+                    "type": "number",
+                    "description": "For date_difference: number of days to compare against"
+                  },
+                  "prefill_if_true": {
+                    "type": "boolean",
+                    "description": "For date_difference and computed_comparison: when true, pre-fill YES on condition match; when false, pre-fill NO"
+                  },
+                  "field_one": {
+                    "type": "string",
+                    "description": "For computed_comparison: first numeric field from the entity schema"
+                  },
+                  "field_two": {
+                    "type": "string",
+                    "description": "For computed_comparison: second numeric field from the entity schema"
+                  },
+                  "computation_operator": {
+                    "type": "string",
+                    "enum": [
+                      "add",
+                      "subtract",
+                      "multiply",
+                      "divide"
+                    ],
+                    "description": "For computed_comparison: arithmetic operation to apply between field_one and field_two"
+                  },
+                  "threshold_value": {
+                    "type": "number",
+                    "description": "For computed_comparison: numeric threshold to compare the computed result against"
                   }
                 }
               }
