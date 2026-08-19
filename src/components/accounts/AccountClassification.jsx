@@ -38,7 +38,7 @@ import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/workflowConditionUtils";
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
-import { computePrefillAnswers } from "../workflows/workflowPrefillUtils";
+import { computePrefillAnswers, evaluateDateDifference } from "../workflows/workflowPrefillUtils";
 import { resolveRequestedDate, validateDateReceived } from "../workflows/workflowValidationUtils";
 import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
@@ -627,6 +627,21 @@ export default function AccountClassification({ account, entities, onComplete, o
           setDateReceivedValue("");
           setMultiFieldValues({});
         }
+
+        // Apply date_difference smart prefill when navigating to the destination step
+        const destStep = steps[nextIndex];
+        const destPrefillCfg = destStep?.prefill_config || destStep?.mapped_field?.prefill_config;
+        if (destStep?.question_type === 'yes_no' && destPrefillCfg?.prefill_type === 'date_difference') {
+          const prefillResult = evaluateDateDifference(destPrefillCfg, newAnswers);
+          console.log(`[DATE_DIFF PREFILL] AccountClassification step="${destStep.step_title}" result=${prefillResult}`);
+          if (prefillResult !== null) {
+            setAnswers(prev => ({ ...prev, [destStep.step_id]: prefillResult }));
+            if (destStep?.mapped_field?.read_only !== false) {
+              setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
+            }
+          }
+        }
+
         setCurrentStepIndex(nextIndex);
         return;
       }
