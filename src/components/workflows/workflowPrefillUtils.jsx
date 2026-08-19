@@ -17,12 +17,15 @@ export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
     rawDate = rawDate[cfg.source_subfield_id];
   }
 
-  if (!rawDate || typeof rawDate !== 'string') return null;
+  // If source date is missing/invalid, force condition to false and return the appropriate prefill answer
+  const condFalseResult = (false === (cfg.prefill_if_true !== false)) ? 'YES' : 'NO';
+
+  if (!rawDate || typeof rawDate !== 'string') return condFalseResult;
 
   // Normalise ISO datetime to date-only
   const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
   const sourceDate = new Date(datePart);
-  if (isNaN(sourceDate.getTime())) return null;
+  if (isNaN(sourceDate.getTime())) return condFalseResult;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
