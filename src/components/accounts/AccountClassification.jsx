@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock, Save, Pencil } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock, Save, Pencil, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -1377,6 +1377,7 @@ export default function AccountClassification({ account, entities, onComplete, o
       : deriveStatus(finalStep);
     const isReportable = summaryStatus === 'reportable';
     const isPending = summaryStatus === 'pending_review';
+    const isWorkInProgress = summaryStatus === 'work_in_progress';
 
     // Build previous answers rows for summary — use answerHistory for iteration-correct display
     const summaryIterCounters = {};
@@ -1427,19 +1428,19 @@ export default function AccountClassification({ account, entities, onComplete, o
     return (
       <div className="space-y-6" data-form-type="other" autoComplete="off" data-ms-editor="false">
         <div className="text-center">
-          <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${isReportable ? 'bg-amber-100' : isPending ? 'bg-blue-100' : 'bg-green-100'}`}>
-            {isReportable ? <AlertCircle className="w-10 h-10 text-amber-600" /> : isPending ? <Info className="w-10 h-10 text-blue-600" /> : <CheckCircle2 className="w-10 h-10 text-green-600" />}
+          <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${isReportable ? 'bg-amber-100' : isPending ? 'bg-blue-100' : isWorkInProgress ? 'bg-red-100' : 'bg-green-100'}`}>
+            {isReportable ? <AlertCircle className="w-10 h-10 text-amber-600" /> : isPending ? <Info className="w-10 h-10 text-blue-600" /> : isWorkInProgress ? <Clock className="w-10 h-10 text-red-600" /> : <CheckCircle2 className="w-10 h-10 text-green-600" />}
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Classification Complete</h2>
           <p className="text-slate-600">Review your answers and confirm the classification</p>
         </div>
 
-        <Card className={`border-2 ${isReportable ? 'bg-amber-50 border-amber-200' : isPending ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
+        <Card className={`border-2 ${isReportable ? 'bg-amber-50 border-amber-200' : isPending ? 'bg-blue-50 border-blue-200' : isWorkInProgress ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
           <CardContent className="p-6 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">Status:</span>
-              <Badge className={`text-sm ${isReportable ? 'bg-amber-600 text-white' : isPending ? 'bg-blue-600 text-white' : 'bg-slate-500 text-white'}`}>
-                {isReportable ? 'Reportable' : isPending ? 'Pending Review' : 'Non-Reportable'}
+              <Badge variant="outline" className={`text-sm border ${isReportable ? 'bg-amber-600 text-white border-amber-600' : isPending ? 'bg-blue-600 text-white border-blue-600' : isWorkInProgress ? 'bg-red-100 text-red-800 border-red-200' : 'bg-slate-500 text-white border-slate-500'}`}>
+                {isReportable ? 'Reportable' : isPending ? 'Pending Review' : isWorkInProgress ? 'Work in progress' : 'Non-Reportable'}
               </Badge>
             </div>
             {(() => {
