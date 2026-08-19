@@ -556,25 +556,21 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     // Compute result using current answers snapshot, then apply both state updates
     // directly (not inside a functional updater) to avoid side-effect-in-updater issues.
     const destStep = workflow.steps[nextIndex];
+    // Support prefill_config at step level OR nested under mapped_field
+    const destPrefillCfg = destStep?.prefill_config || destStep?.mapped_field?.prefill_config;
     if (
       destStep?.question_type === 'yes_no' &&
-      destStep?.mapped_field?.prefill_config?.prefill_type === 'date_difference'
+      destPrefillCfg?.prefill_type === 'date_difference'
     ) {
-      // Use the answers ref/current snapshot — we call setAnswers(prev) to read latest state
-      setAnswers(prev => {
-        const result = evaluateDateDifference(destStep.mapped_field.prefill_config, prev);
-        console.log(`[DATE_DIFF PREFILL] step="${destStep.step_title}" result=${result}`);
-        if (result !== null) {
-          return { ...prev, [destStep.step_id]: result };
+      const destMappedField = destStep?.mapped_field;
+      // Compute result eagerly from current answers snapshot
+      const prefillResult = evaluateDateDifference(destPrefillCfg, answers);
+      console.log(`[DATE_DIFF PREFILL] step="${destStep.step_title}" result=${prefillResult} cfg=`, destPrefillCfg);
+      if (prefillResult !== null) {
+        setAnswers(prev => ({ ...prev, [destStep.step_id]: prefillResult }));
+        if (destMappedField?.read_only !== false) {
+          setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
         }
-        return prev;
-      });
-      // Compute lock separately using the current answers snapshot passed to this call
-      // We always lock when result is non-null and read_only !== false
-      const prefillResult = evaluateDateDifference(destStep.mapped_field.prefill_config, answers);
-      console.log(`[DATE_DIFF PREFILL] lock check result=${prefillResult} read_only=${destStep.mapped_field?.read_only}`);
-      if (prefillResult !== null && destStep.mapped_field?.read_only !== false) {
-        setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
       }
     }
 
