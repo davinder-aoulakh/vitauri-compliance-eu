@@ -552,10 +552,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         });
       }
     }
-    setCurrentStepIndex(nextIndex);
-
-    // After navigating, check if the destination step has a date_difference prefill
-    // and if the source date is now available — apply it dynamically.
+    // Before rendering the destination step, apply date_difference prefill synchronously
+    // so the answer and lock are in place before the step is shown to the user.
     const destStep = workflow.steps[nextIndex];
     if (
       destStep?.question_type === 'yes_no' &&
@@ -572,6 +570,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         return prev;
       });
     }
+
+    setCurrentStepIndex(nextIndex);
   };
 
   const handleBack = () => {
