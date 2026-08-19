@@ -82,7 +82,10 @@ export const computePrefillAnswers = async (workflow, entityData, entityType, st
     const resolvedFieldName = (fieldName === 'fi_type' && entityType === 'Account') ? 'type_of_financial_institution' : fieldName;
     const fieldValue = entityData[resolvedFieldName] ?? entityData[fieldName];
     console.log(`[computePrefillAnswers] step "${step.step_title}" fieldName="${fieldName}" fieldValue="${fieldValue}" question_type="${step.question_type}"`);
-    if (fieldValue === undefined || fieldValue === null || fieldValue === "") { console.log(`[computePrefillAnswers] Skipping - field value is empty`); continue; }
+
+    // date_difference prefill reads from stepAnswers, not the entity field — don't skip it when fieldValue is empty
+    const isDateDifferenceStep = step.question_type === 'yes_no' && step.mapped_field.prefill_config?.prefill_type === 'date_difference';
+    if (!isDateDifferenceStep && (fieldValue === undefined || fieldValue === null || fieldValue === "")) { console.log(`[computePrefillAnswers] Skipping - field value is empty`); continue; }
 
     if (step.question_type === 'yes_no' && step.mapped_field.prefill_config) {
       const prefillType = step.mapped_field.prefill_config.prefill_type;
