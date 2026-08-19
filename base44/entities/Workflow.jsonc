@@ -883,6 +883,11 @@
               "field_name": {
                 "type": "string"
               },
+              "read_only": {
+                "type": "boolean",
+                "default": true,
+                "description": "When true (default), the prefilled answer is locked and the user cannot change it. Set to false to allow the user to edit the prefilled answer."
+              },
               "prefill_config": {
                 "type": "object",
                 "description": "Configuration for intelligent pre-filling of Yes/No questions based on mapped field values or computed logic",

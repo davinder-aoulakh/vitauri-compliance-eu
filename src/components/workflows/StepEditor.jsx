@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, Save, Settings, Copy, Link as LinkIcon, HelpCircle, Zap, Sparkles, Info } from "lucide-react";
+import { Plus, Trash2, Save, Settings, Copy, Link as LinkIcon, HelpCircle, Zap, Sparkles, Info, Lock } from "lucide-react";
 import MultiFieldEditor from "./MultiFieldEditor";
 import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
 import MultiChoiceRoutingBuilder from "./MultiChoiceRoutingBuilder";
@@ -948,8 +948,8 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
 
       </div>
 
-      {/* Smart Pre-fill Rules - available for all yes_no steps, independent of mapped field */}
-      {editedStep.question_type === 'yes_no' && (
+      {/* Smart Pre-fill Rules - available for yes_no and single_choice steps */}
+      {(editedStep.question_type === 'yes_no' || editedStep.question_type === 'single_choice') && (
         <div className="border-t pt-4">
           <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg space-y-3">
             <Label className="text-xs font-semibold text-emerald-800 flex items-center gap-2"><Sparkles className="w-4 h-4" />Smart Pre-fill Rules</Label>
@@ -959,6 +959,7 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
               const isCountryField = selectedMappedField?.isCountry;
               const dropdownOptions = hasMappedField ? getSuggestedValuesForField(editedStep.mapped_field.entity_type, editedStep.mapped_field.field_name, referencedData) : null;
               const prefillType = editedStep.mapped_field?.prefill_config?.prefill_type;
+              const readOnly = editedStep.mapped_field?.read_only !== false; // default true
 
               const numericFields = (() => {
                 let schema;
@@ -970,7 +971,35 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                 return schema.filter(f => f.type === 'number');
               })();
 
+              // For single_choice: show only the Read Only checkbox (no prefill-type selector)
+              if (editedStep.question_type === 'single_choice') {
+                return (
+                  <div className="space-y-3">
+                    <p className="text-xs text-emerald-700">
+                      When a Target Field is mapped, the answer will be prefilled from the mapped field value automatically.
+                    </p>
+                    <div className={`flex items-center gap-2 pt-1 ${!hasMappedField ? 'opacity-50' : ''}`}>
+                      <Checkbox
+                        id="single-choice-readonly"
+                        checked={readOnly}
+                        disabled={!hasMappedField}
+                        onCheckedChange={(checked) => handleMappedFieldChange("read_only", checked)}
+                      />
+                      <Label htmlFor="single-choice-readonly" className={`text-xs flex items-center gap-1.5 ${hasMappedField ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                        <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                        Read Only — lock the prefilled answer so the user cannot change it
+                      </Label>
+                    </div>
+                    {!hasMappedField && (
+                      <p className="text-xs text-slate-400 italic">Set a Target Field above to enable Read Only.</p>
+                    )}
+                  </div>
+                );
+              }
+
               const handlePrefillTypeChange = (value) => {
+                // Preserve existing read_only when changing prefill type
+                const existingReadOnly = editedStep.mapped_field?.read_only;
                 if (!value) {
                   handleMappedFieldChange("prefill_config", null);
                 } else if (value === 'computed_comparison') {
@@ -979,6 +1008,10 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                   handleMappedFieldChange("prefill_config", { prefill_type: 'date_difference', source_step_id: '', source_subfield_id: '', anchor_date_type: 'current_date', comparison_operator: 'greater_than', threshold_days: 90, prefill_if_true: true });
                 } else {
                   handleMappedFieldChange("prefill_config", { prefill_type: value, match_values: [] });
+                }
+                // Re-apply read_only after prefill_config change (it lives on mapped_field, not prefill_config)
+                if (existingReadOnly !== undefined) {
+                  setTimeout(() => handleMappedFieldChange("read_only", existingReadOnly), 0);
                 }
               };
 
@@ -1150,6 +1183,23 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                         </Select>
                       </div>
                     </div>
+                  )}
+
+                  {/* Read Only checkbox — shown for yes_no when a prefill rule is selected */}
+                  <div className={`flex items-center gap-2 pt-2 border-t border-emerald-200 ${!prefillType ? 'opacity-50' : ''}`}>
+                    <Checkbox
+                      id="yes-no-readonly"
+                      checked={readOnly}
+                      disabled={!prefillType}
+                      onCheckedChange={(checked) => handleMappedFieldChange("read_only", checked)}
+                    />
+                    <Label htmlFor="yes-no-readonly" className={`text-xs flex items-center gap-1.5 ${prefillType ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                      <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                      Read Only — lock the prefilled answer so the user cannot change it
+                    </Label>
+                  </div>
+                  {!prefillType && (
+                    <p className="text-xs text-slate-400 italic">Select a Pre-fill Rule above to enable Read Only.</p>
                   )}
                 </div>
               );

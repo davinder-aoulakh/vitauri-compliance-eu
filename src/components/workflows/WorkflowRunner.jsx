@@ -102,9 +102,14 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
         const mergedPrefill = { ...primaryPrefill, ...secondaryPrefill };
         setAnswers(prev => ({ ...prev, ...mergedPrefill }));
-        // Lock steps that have a non-empty prefilled value
+        // Lock steps that have a non-empty prefilled value AND read_only !== false
         const lockable = Object.entries(mergedPrefill)
-          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+          .filter(([k, v]) => {
+            if (v === null || v === undefined || v === '') return false;
+            const stepId = k.includes('__iter') ? k.split('__iter')[0] : k;
+            const step = workflow.steps.find(s => s.step_id === stepId);
+            return step?.mapped_field?.read_only !== false;
+          })
           .map(([k]) => k);
         setPrefilledSteps(new Set(lockable));
       }
@@ -559,7 +564,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       setAnswers(prev => {
         const result = evaluateDateDifference(destStep.mapped_field.prefill_config, prev);
         if (result !== null) {
-          setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
+          if (destStep.mapped_field?.read_only !== false) {
+            setPrefilledSteps(ps => new Set([...ps, destStep.step_id]));
+          }
           return { ...prev, [destStep.step_id]: result };
         }
         return prev;
