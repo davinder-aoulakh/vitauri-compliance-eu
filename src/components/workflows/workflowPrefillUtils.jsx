@@ -5,9 +5,21 @@ import { base44 } from "@/api/base44Client";
  * Returns 'YES', 'NO', or null (if source date is missing/invalid).
  */
 export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
-  if (!cfg || !cfg.source_step_id) return null;
-  if (!cfg.comparison_operator) return null;
-  if (cfg.threshold_days === undefined || cfg.threshold_days === null) return null;
+  if (!cfg) return null;
+  console.log('[evaluateDateDifference] cfg:', JSON.stringify(cfg));
+  // If config is incomplete, default to NO (condition false = source missing)
+  if (!cfg.source_step_id) {
+    console.warn('[evaluateDateDifference] missing source_step_id — returning NO');
+    return 'NO';
+  }
+  if (!cfg.comparison_operator) {
+    console.warn('[evaluateDateDifference] missing comparison_operator — returning NO');
+    return 'NO';
+  }
+  if (cfg.threshold_days === undefined || cfg.threshold_days === null) {
+    console.warn('[evaluateDateDifference] missing threshold_days — returning NO');
+    return 'NO';
+  }
 
   // Resolve the source date value from step answers
   let rawDate = stepAnswers[cfg.source_step_id];

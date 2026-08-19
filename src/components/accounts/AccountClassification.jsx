@@ -633,7 +633,7 @@ export default function AccountClassification({ account, entities, onComplete, o
         const destPrefillCfg = destStep?.prefill_config || destStep?.mapped_field?.prefill_config;
         if (destStep?.question_type === 'yes_no' && destPrefillCfg?.prefill_type === 'date_difference') {
           const prefillResult = evaluateDateDifference(destPrefillCfg, newAnswers);
-          console.log(`[DATE_DIFF PREFILL] AccountClassification step="${destStep.step_title}" result=${prefillResult}`);
+          console.log(`[DATE_DIFF PREFILL] AccountClassification step="${destStep.step_title}" cfg=`, JSON.stringify(destPrefillCfg), `source_answer=`, newAnswers[destPrefillCfg?.source_step_id], `result=${prefillResult}`);
           if (prefillResult !== null) {
             setAnswers(prev => ({ ...prev, [destStep.step_id]: prefillResult }));
             if (destStep?.mapped_field?.read_only !== false) {
