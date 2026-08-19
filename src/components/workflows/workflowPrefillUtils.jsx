@@ -12,14 +12,10 @@ export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
     console.warn('[evaluateDateDifference] missing source_step_id — returning NO');
     return 'NO';
   }
-  if (!cfg.comparison_operator) {
-    console.warn('[evaluateDateDifference] missing comparison_operator — returning NO');
-    return 'NO';
-  }
-  if (cfg.threshold_days === undefined || cfg.threshold_days === null) {
-    console.warn('[evaluateDateDifference] missing threshold_days — returning NO');
-    return 'NO';
-  }
+  // Apply defaults when operator/threshold are missing but a source_step_id is configured.
+  // Default rule: source date > 90 days ago → YES (most common compliance use-case).
+  const effectiveOperator = cfg.comparison_operator || 'greater_than';
+  const effectiveThreshold = (cfg.threshold_days !== undefined && cfg.threshold_days !== null) ? cfg.threshold_days : 90;
 
   // Resolve the source date value from step answers
   let rawDate = stepAnswers[cfg.source_step_id];
@@ -45,7 +41,7 @@ export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
 
   const dayMs = 1000 * 60 * 60 * 24;
   const daysDiff = Math.floor((today - sourceDate) / dayMs);
-  const threshold = Number(cfg.threshold_days) || 0;
+  const threshold = Number(effectiveThreshold);
 
   const condMet = {
     greater_than: daysDiff > threshold,
@@ -53,9 +49,11 @@ export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
     equals: daysDiff === threshold,
     greater_than_or_equal: daysDiff >= threshold,
     less_than_or_equal: daysDiff <= threshold,
-  }[cfg.comparison_operator] ?? false;
+  }[effectiveOperator] ?? false;
 
-  return (condMet === (cfg.prefill_if_true !== false)) ? 'YES' : 'NO';
+  // prefill_if_true=null means "YES when condition is met" (same as true)
+  const prefillIfTrue = cfg.prefill_if_true !== false;
+  return (condMet === prefillIfTrue) ? 'YES' : 'NO';
 };
 
 /**
