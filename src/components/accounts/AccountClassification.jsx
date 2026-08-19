@@ -630,7 +630,11 @@ export default function AccountClassification({ account, entities, onComplete, o
 
         // Apply date_difference smart prefill when navigating to the destination step
         const destStep = steps[nextIndex];
-        const destPrefillCfg = destStep?.prefill_config || destStep?.mapped_field?.prefill_config;
+        // Merge both locations: step-level prefill_config may have comparison_operator/threshold_days
+        // while mapped_field.prefill_config may have source_step_id/source_subfield_id, or vice versa.
+        const destPrefillCfg = (destStep?.prefill_config || destStep?.mapped_field?.prefill_config)
+          ? { ...(destStep?.mapped_field?.prefill_config || {}), ...(destStep?.prefill_config || {}) }
+          : null;
         if (destStep?.question_type === 'yes_no' && destPrefillCfg?.prefill_type === 'date_difference') {
           const prefillResult = evaluateDateDifference(destPrefillCfg, newAnswers);
           console.log(`[DATE_DIFF PREFILL] AccountClassification step="${destStep.step_title}" cfg=`, JSON.stringify(destPrefillCfg), `source_answer=`, newAnswers[destPrefillCfg?.source_step_id], `result=${prefillResult}`);
