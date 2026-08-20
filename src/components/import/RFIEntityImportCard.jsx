@@ -115,13 +115,17 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
 
     // Fetch country and currency data for Referenced Data sheet
     const [crsCountries, currencyRecords] = await Promise.all([
-      base44.entities.CrsCountryInfo.list("-country_name", 300),
+      base44.entities.CrsCountryInfo.list("country_name", 500),
       base44.entities.ReferencedData.filter({ entity_name: "Global", field_name: "currency" }, "order", 300),
     ]);
-    const countryData = crsCountries
-      .map(c => ({ name: c.country_name, code: c.country_code }))
-      .filter(c => c.name && c.code)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const seen = new Map();
+    crsCountries.forEach(c => {
+      if (c.country_name && c.country_code) {
+        const key = c.country_name.toLowerCase();
+        if (!seen.has(key)) seen.set(key, { name: c.country_name, code: c.country_code });
+      }
+    });
+    const countryData = Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
     const refDataRows = countryData.length;
     const currencyCodes = currencyRecords
       .sort((a, b) => (a.order || 0) - (b.order || 0))
