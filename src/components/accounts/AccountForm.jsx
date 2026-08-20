@@ -171,6 +171,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   }, [isFiduciaryTrustLocked, formData.entity_id]);
 
+  // Prefill account_dormant_at_reporting_date from Account Status
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      account_dormant_at_reporting_date: formData.status === "dormant"
+    }));
+  }, [formData.status]);
+
   // Handle "Same as Original Address" checkbox
   useEffect(() => {
     if (isCurrentAddressSameAsOriginal) {
@@ -1578,6 +1586,9 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                     <Label htmlFor="dormant_no" className="font-normal cursor-pointer">No</Label>
                   </div>
                 </RadioGroup>
+                <p className="text-xs text-slate-500 mt-1">
+                  Prefilled from Account Status — you can override this value
+                </p>
               </div>
 
               <div>
