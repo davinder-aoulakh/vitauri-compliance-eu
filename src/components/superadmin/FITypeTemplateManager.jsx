@@ -1098,7 +1098,7 @@ function getDefaultColumns(config) {
     { header: "Entity Classification", key: "entity_classification", width: 26, required: false, note: "financial_institution | active_nfe | passive_nfe | not_applicable", validation_values: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"], example_value: "not_applicable" },
     { header: "Entity Managed by Fiduciary Trust", key: "entity_managed_by_fiduciary_trust", width: 32, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Entity Managed by Asset Manager", key: "entity_managed_by_asset_manager", width: 30, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
-    { header: "Gross Income from Financial Assets", key: "gross_income_from_financial_assets", width: 32, required: false, note: "true | false — whether entity derives gross income from financial assets", validation_values: ["true", "false"], example_value: "false" },
+    { header: "Gross Income from Financial Assets (>50% Passive)", key: "gross_income_from_financial_assets", width: 38, required: false, note: "true | false — whether the entity derives gross income from financial assets; used in the 50% passive-income test for P-NFE classification", validation_values: ["true", "false"], example_value: "false" },
     { header: "Non-Reportable Exception Type", key: "non_reportable_exception_type", width: 44, required: false,
       note: "S3-1 gate — select the applicable exception or 'None of the above'",
       validation_values: [
