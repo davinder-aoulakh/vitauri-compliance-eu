@@ -219,7 +219,7 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
  */
 export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSingleConditionFn) => {
   if (logic?.condition_groups && logic.condition_groups.length > 0) {
-    console.log('\n🔷🔷🔷 [CONDITION GROUPS] Starting evaluation...');
+    console.log('\n🔷🔷🔷 [CONDITION GROUPS] Starting evaluation (fall-through model)...');
     console.log('  Total Groups:', logic.condition_groups.length);
 
     for (let i = 0; i < logic.condition_groups.length; i++) {
@@ -261,16 +261,29 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       console.log(`  → True Step: ${group.true_step} | False Step: ${group.false_step}`);
 
       if (groupResult) {
-        console.log(`  ✅ Group matched - routing to true_step: ${group.true_step}`);
-        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-        return group.true_step;
+        if (group.true_step) {
+          console.log(`  ✅ Group ${i + 1} TRUE → routing to: ${group.true_step}`);
+          console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
+          return group.true_step;
+        }
+        console.log(`  ↪️ Group ${i + 1} TRUE but no true_step set — falling through to next group`);
+      } else {
+        if (group.false_step) {
+          console.log(`  ❌ Group ${i + 1} FALSE → routing to: ${group.false_step}`);
+          console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
+          return group.false_step;
+        }
+        console.log(`  ↪️ Group ${i + 1} FALSE but no false_step set — falling through to next group`);
       }
     }
 
-    // No groups were TRUE - use last group's false_step as fallback
-    const lastGroup = logic.condition_groups[logic.condition_groups.length - 1];
-    const fallbackStep = lastGroup?.false_step || logic.overall_false_step;
-    console.log(`  ❌ No TRUE groups - fallback step: ${fallbackStep}`);
+    // All groups fell through — use overall_false_step or logic fallback
+    const fallbackStep = logic.overall_false_step || logic.else_step || null;
+    if (fallbackStep) {
+      console.log(`  ⬇️ All groups fell through — overall fallback step: ${fallbackStep}`);
+    } else {
+      console.error(`  🚨 Condition groups: no destination resolved — all groups fell through with no overall_false_step set`);
+    }
     console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
     return fallbackStep;
   }

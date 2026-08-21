@@ -90,8 +90,7 @@ export default function ConditionGroupsBuilder({
       <Alert className="bg-blue-50 border-blue-200">
         <Info className="w-4 h-4 text-blue-600" />
         <AlertDescription className="text-xs text-blue-900">
-          <strong>Condition Groups:</strong> Create multiple groups of conditions, each with its own logic and branching. 
-          For example: "(Cond1 AND Cond2) OR (Cond3 AND Cond4)" - each group can have separate true/false paths.
+          <strong>Condition Groups (fall-through model):</strong> Groups are evaluated in order. The first group whose TRUE or FALSE destination is set to a concrete step decides the routing immediately. Set a destination to <strong>"None (Use Overall Logic)"</strong> to defer that branch to the next group. If no group decides, the <strong>Overall FALSE</strong> destination is used as the final fallback.
         </AlertDescription>
       </Alert>
 
