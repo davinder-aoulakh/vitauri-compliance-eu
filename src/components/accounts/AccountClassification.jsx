@@ -672,12 +672,15 @@ export default function AccountClassification({ account, entities, onComplete, o
             const cnt = answer.length;
             switch (cond.count_operator) {
               case '=': met = cnt === cond.count_value; break;
+              case '!=': met = cnt !== cond.count_value; break;
               case '>': met = cnt > cond.count_value; break;
               case '<': met = cnt < cond.count_value; break;
               case '>=': met = cnt >= cond.count_value; break;
               case '<=': met = cnt <= cond.count_value; break;
               default: met = false;
             }
+          } else if (cond.condition_type === 'field_comparison') {
+            met = await evalSingleCondition(cond, allAnswers);
           }
           groupMatches = group.group_operator === 'AND' ? groupMatches && met : groupMatches || met;
         }
