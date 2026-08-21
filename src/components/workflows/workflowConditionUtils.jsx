@@ -247,9 +247,19 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
         continue;
       }
 
-      let groupResult = group.group_operator === 'AND' ? true : false;
+      // Condition 1 is the "gate" — if it fails, this group is not applicable for
+      // the user's current selection, so skip the entire group (fall through to next).
+      console.log(`  [Gate check: Condition 1/${group.conditions.length}]`);
+      const gateConditionMet = await evaluateSingleConditionFn(group.conditions[0]);
+      if (!gateConditionMet) {
+        console.log(`  ↪️ Group ${i + 1} gate (Condition 1) FAILED — skipping group, moving to next`);
+        continue;
+      }
+      console.log(`  ✅ Group ${i + 1} gate passed — evaluating remaining conditions`);
 
-      for (let j = 0; j < group.conditions.length; j++) {
+      // Gate passed — now evaluate remaining conditions to get full group result
+      let groupResult = true; // gate already passed
+      for (let j = 1; j < group.conditions.length; j++) {
         const condition = group.conditions[j];
         console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
         const conditionMet = await evaluateSingleConditionFn(condition);
@@ -262,12 +272,9 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
             break;
           }
         } else {
-          groupResult = groupResult || conditionMet;
-          console.log(`    OR logic: groupResult = ${groupResult}`);
-          if (groupResult) {
-            console.log('    ✅ OR succeeded, breaking early');
-            break;
-          }
+          // For OR: gate passed means we already have one true — overall is true
+          groupResult = true;
+          break;
         }
       }
 

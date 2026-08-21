@@ -90,7 +90,7 @@ export default function ConditionGroupsBuilder({
       <Alert className="bg-blue-50 border-blue-200">
         <Info className="w-4 h-4 text-blue-600" />
         <AlertDescription className="text-xs text-blue-900">
-          <strong>Condition Groups (fall-through model):</strong> Groups are evaluated in order. The first group whose TRUE or FALSE destination is set to a concrete step decides the routing immediately. Set a destination to <strong>"None (Use Overall Logic)"</strong> to defer that branch to the next group. If no group decides, the <strong>Overall FALSE</strong> destination is used as the final fallback.
+          <strong>Condition Groups (gate model):</strong> Groups are evaluated in order. <strong>Condition 1 in each group is the gate</strong> — if it fails, the whole group is skipped and the next group is tried. When the gate passes, remaining conditions are evaluated: TRUE routes to the group's TRUE step, FALSE routes to the group's FALSE step. If no group matches, the <strong>Overall FALSE</strong> destination is used.
         </AlertDescription>
       </Alert>
 
