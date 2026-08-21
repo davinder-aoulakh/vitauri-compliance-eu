@@ -45,15 +45,29 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
   }
 
   const normalizeBoolean = (val) => {
-    if (val === 'YES') return 'true';
-    if (val === 'NO') return 'false';
     if (val === true) return 'true';
     if (val === false) return 'false';
     return val;
   };
 
-  fieldValue = normalizeBoolean(fieldValue);
-  comparisonValue = normalizeBoolean(comparisonValue);
+  // Only normalize YES/NO strings when BOTH sides are YES/NO (i.e. a boolean yes_no comparison)
+  // If the field value is a multi-choice option like OPT1, do NOT coerce either side
+  const isYesNoComparison =
+    (fieldValue === 'YES' || fieldValue === 'NO' || fieldValue === true || fieldValue === false) &&
+    (comparisonValue === 'YES' || comparisonValue === 'NO' || comparisonValue === true || comparisonValue === false);
+
+  if (isYesNoComparison) {
+    const yesNoNormalize = (val) => {
+      if (val === 'YES' || val === true) return 'true';
+      if (val === 'NO' || val === false) return 'false';
+      return val;
+    };
+    fieldValue = yesNoNormalize(fieldValue);
+    comparisonValue = yesNoNormalize(comparisonValue);
+  } else {
+    fieldValue = normalizeBoolean(fieldValue);
+    comparisonValue = normalizeBoolean(comparisonValue);
+  }
 
   console.log('  Field Value (after normalize):', fieldValue);
   console.log('  Comparison Value (after normalize):', comparisonValue);
