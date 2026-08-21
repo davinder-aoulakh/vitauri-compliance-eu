@@ -105,7 +105,7 @@ export const computePrefillAnswers = async (workflow, entityData, entityType, st
           initialAnswers[step.step_id] = (crsCountries.length > 0 && crsCountries[0].is_crs_country === true) ? 'YES' : 'NO';
         } catch (e) { /* skip */ }
       } else if (prefillType === 'enum_match') {
-        const matchValues = step.mapped_field.prefill_config.match_values || [];
+        let matchValues = step.mapped_field.prefill_config.match_values || [];
         // Special case: is_pre_existing=true means the account IS pre-existing.
         // The workflow YES option = "New account", NO option = "Pre-existing account".
         // So is_pre_existing=true → prefill 'NO' (pre-existing path).
@@ -113,6 +113,12 @@ export const computePrefillAnswers = async (workflow, entityData, entityType, st
         if (fieldName === 'is_pre_existing') {
           initialAnswers[step.step_id] = fieldValue === true ? 'YES' : 'NO';
         } else {
+          // Defensive guard: for boolean fields, 'false' should NEVER be in match_values
+          // because that means "field is false → prefill YES" which is always wrong.
+          // match_values should only contain the values that should trigger YES.
+          if (typeof fieldValue === 'boolean') {
+            matchValues = matchValues.filter(v => v !== 'false');
+          }
           initialAnswers[step.step_id] = matchValues.includes(String(fieldValue)) ? 'YES' : 'NO';
         }
       } else if (prefillType === 'date_difference') {
