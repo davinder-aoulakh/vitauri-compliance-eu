@@ -258,24 +258,25 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
       console.log(`  ✅ Group ${i + 1} gate passed — evaluating remaining conditions`);
 
       // Gate passed — now evaluate remaining conditions to get full group result
-      let groupResult = true; // gate already passed
-      for (let j = 1; j < group.conditions.length; j++) {
-        const condition = group.conditions[j];
-        console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
-        const conditionMet = await evaluateSingleConditionFn(condition);
-
-        if (group.group_operator === 'AND') {
+      // AND operator: all remaining conditions must also pass
+      // OR operator: gate already passed = group is true (gate counts as one TRUE in OR)
+      let groupResult = true; // gate already passed (counts as 1 true condition)
+      if (group.group_operator === 'AND') {
+        for (let j = 1; j < group.conditions.length; j++) {
+          const condition = group.conditions[j];
+          console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
+          const conditionMet = await evaluateSingleConditionFn(condition);
           groupResult = groupResult && conditionMet;
           console.log(`    AND logic: groupResult = ${groupResult}`);
           if (!groupResult) {
             console.log('    ❌ AND failed, breaking early');
             break;
           }
-        } else {
-          // For OR: gate passed means we already have one true — overall is true
-          groupResult = true;
-          break;
         }
+      } else {
+        // OR: gate already TRUE → remaining conditions don't matter, group is true
+        // (If gate passed, we know at least one condition is true)
+        console.log(`    OR logic: gate passed → group result = true`);
       }
 
       console.log(`  🎯 Group ${i + 1} Final Result: ${groupResult}`);
