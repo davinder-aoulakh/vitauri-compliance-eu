@@ -185,25 +185,25 @@ export default function AccountClassification({ account, entities, onComplete, o
       const allAccountReportabilityWorkflows = workflows.filter(w => w.workflow_type === 'account_reportability');
       const allCandidates = allAccountReportabilityWorkflows.length ? allAccountReportabilityWorkflows : workflows;
 
-      // Split by whether the workflow name indicates entity vs individual
-      const entityWorkflows = allCandidates.filter(w => w.workflow_name?.toLowerCase().includes('entity'));
-      const individualWorkflows = allCandidates.filter(w => !w.workflow_name?.toLowerCase().includes('entity'));
+      // Split by whether the workflow name indicates entity vs individual.
+      // Dormant workflows are intentionally excluded from the candidate pool here —
+      // they are handled by the explicit dormant override below (lines ~230-240),
+      // which searches allCandidates and fires only when status === 'dormant'.
+      // Including them in the candidate pool caused them to match active entity
+      // accounts via trigger evaluation.
+      const entityWorkflows = allCandidates.filter(w =>
+        w.workflow_name?.toLowerCase().includes('entity') &&
+        !w.workflow_name?.toLowerCase().includes('dormant')
+      );
+      const individualWorkflows = allCandidates.filter(w =>
+        !w.workflow_name?.toLowerCase().includes('entity') &&
+        !w.workflow_name?.toLowerCase().includes('dormant')
+      );
 
-      // Dormant workflows apply to all account holder types — always include them in
-      // whichever pool is used so their trigger conditions are properly evaluated.
-      const dormantWorkflows = allCandidates.filter(w => w.workflow_name?.toLowerCase().includes('dormant'));
-
-      // Only evaluate workflows relevant to this account_holder_type, but always
-      // include dormant-named workflows so they can be matched by trigger evaluation.
-      const basePool = holderType === 'entity'
+      // Only evaluate workflows relevant to this account_holder_type
+      const candidateWorkflows = holderType === 'entity'
         ? (entityWorkflows.length ? entityWorkflows : allCandidates)
         : (individualWorkflows.length ? individualWorkflows : allCandidates);
-      // Deduplicate: merge dormant workflows into the base pool by id
-      const basePoolIds = new Set(basePool.map(w => w.id));
-      const candidateWorkflows = [
-        ...basePool,
-        ...dormantWorkflows.filter(w => !basePoolIds.has(w.id)),
-      ];
 
       const mergedData = { ...latestAccount, ...(entityRecord || {}) };
       // Evaluate against ALL event types and collect all matches with their priorities.
