@@ -189,10 +189,21 @@ export default function AccountClassification({ account, entities, onComplete, o
       const entityWorkflows = allCandidates.filter(w => w.workflow_name?.toLowerCase().includes('entity'));
       const individualWorkflows = allCandidates.filter(w => !w.workflow_name?.toLowerCase().includes('entity'));
 
-      // Only evaluate workflows relevant to this account_holder_type
-      const candidateWorkflows = holderType === 'entity'
+      // Dormant workflows apply to all account holder types — always include them in
+      // whichever pool is used so their trigger conditions are properly evaluated.
+      const dormantWorkflows = allCandidates.filter(w => w.workflow_name?.toLowerCase().includes('dormant'));
+
+      // Only evaluate workflows relevant to this account_holder_type, but always
+      // include dormant-named workflows so they can be matched by trigger evaluation.
+      const basePool = holderType === 'entity'
         ? (entityWorkflows.length ? entityWorkflows : allCandidates)
         : (individualWorkflows.length ? individualWorkflows : allCandidates);
+      // Deduplicate: merge dormant workflows into the base pool by id
+      const basePoolIds = new Set(basePool.map(w => w.id));
+      const candidateWorkflows = [
+        ...basePool,
+        ...dormantWorkflows.filter(w => !basePoolIds.has(w.id)),
+      ];
 
       const mergedData = { ...latestAccount, ...(entityRecord || {}) };
       // Evaluate against ALL event types and collect all matches with their priorities.
@@ -220,7 +231,9 @@ export default function AccountClassification({ account, entities, onComplete, o
       // (it may not be caught by trigger conditions if the status field name differs)
       let chosenWorkflow = matched[0];
       if (latestAccount.status === 'dormant' || latestAccount.account_dormant_at_reporting_date === true) {
-        const dormantWorkflow = candidateWorkflows.find(w =>
+        // Search allCandidates (unfiltered) so the dormant workflow is always found
+        // regardless of holder-type-based candidate pool filtering.
+        const dormantWorkflow = allCandidates.find(w =>
           w.workflow_name?.toLowerCase().includes('dormant')
         );
         if (dormantWorkflow) chosenWorkflow = dormantWorkflow;
