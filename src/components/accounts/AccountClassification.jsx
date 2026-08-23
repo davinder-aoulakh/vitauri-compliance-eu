@@ -559,11 +559,19 @@ export default function AccountClassification({ account, entities, onComplete, o
     const newAnswers = { ...answers, [currentNodeId]: currentAnswer };
     setAnswers(newAnswers);
 
-    // Push this answer into the per-step history array so loop iterations are preserved
-    setAnswerHistory(prev => ({
-      ...prev,
-      [currentNodeId]: [...(prev[currentNodeId] || []), currentAnswer],
-    }));
+    // Overwrite at the correct iteration index (mirrors WorkflowRunner.jsx pattern).
+    // expectedIdx is computed from the CURRENT history (before setHistory below),
+    // so back-then-forward gives expectedIdx=0 → overwrites the stale entry at [0]
+    // rather than appending a new entry that PreviousAnswers would never read.
+    // Genuine forward-only loop iterations still grow the array: first visit → [0],
+    // second visit → [0, 1], etc.
+    const expectedIdx = history.filter(id => id === currentNodeId).length;
+    setAnswerHistory(prev => {
+      const existing = prev[currentNodeId] || [];
+      const updated = [...existing];
+      updated[expectedIdx] = currentAnswer;
+      return { ...prev, [currentNodeId]: updated };
+    });
 
     // Handle address saving
     if (currentNode.question_type === 'address_input' && currentAnswer && account?.id) {
