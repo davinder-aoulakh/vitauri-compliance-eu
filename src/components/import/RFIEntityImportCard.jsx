@@ -1565,15 +1565,65 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
             await base44.entities.Account.update(existing.id, record);
             savedAccountId = existing.id;
             updated.push({ row: i + 2, name: recordName });
+
+            // ── CP UPSERT for existing accounts ──────────────────────────────
+            // Build a match key: first_name + last_name + date_of_birth + control_type
+            // All normalized to lowercase/trimmed so casing/whitespace don't cause false duplicates
+            const normKey = (cp) => [
+              (cp.first_name || "").toLowerCase().trim(),
+              (cp.last_name  || "").toLowerCase().trim(),
+              cp.date_of_birth ? String(cp.date_of_birth).trim() : "",
+              (cp.control_type || "").toLowerCase().trim(),
+            ].join("|");
+
+            // Fetch existing CPs for this account once
+            const existingCPs = await base44.entities.ControllingPerson.filter({ account_id: savedAccountId });
+            // Build a mutable working set keyed by match-key → existing CP record
+            const existingCPMap = new Map();
+            existingCPs.forEach(ecp => existingCPMap.set(normKey(ecp), ecp));
+
+            for (const cp of controllingPersons) {
+              const key = normKey(cp);
+              if (existingCPMap.has(key)) {
+                // Matched — update in place, merging: file values overwrite, but keep existing
+                // non-empty values for fields the file left blank
+                const existingCP = existingCPMap.get(key);
+                const merged = { ...cp, account_id: savedAccountId };
+                // Preserve existing non-empty fields where the file provides blank
+                Object.keys(existingCP).forEach(field => {
+                  if (field === "id" || field === "created_date" || field === "updated_date" || field === "created_by_id") return;
+                  const fileVal = merged[field];
+                  const existVal = existingCP[field];
+                  // If file value is blank/null/empty and existing has a real value, keep existing
+                  if ((fileVal === null || fileVal === undefined || fileVal === "") && existVal != null && existVal !== "") {
+                    merged[field] = existVal;
+                  }
+                });
+                await base44.entities.ControllingPerson.update(existingCP.id, merged);
+                existingCPMap.delete(key); // mark as matched so it won't be deleted
+              } else {
+                // No match — create as a genuinely new CP
+                await base44.entities.ControllingPerson.create({ ...cp, account_id: savedAccountId });
+              }
+            }
+
+            // Any CPs still in the map were NOT in the import file → delete them
+            // (import file is source of truth for this account's CP set)
+            for (const [, unmatched] of existingCPMap) {
+              await base44.entities.ControllingPerson.delete(unmatched.id);
+            }
+            // ─────────────────────────────────────────────────────────────────
+
           } else {
             const newRecord = await base44.entities.Account.create(record);
             savedAccountId = newRecord.id;
             try { await base44.functions.invoke("autoClassifyAccount", { accountId: newRecord.id, event_type: "created" }); } catch (e) { }
             imported.push({ row: i + 2, name: recordName });
-          }
-          // Create controlling person records linked to this account
-          for (const cp of controllingPersons) {
-            await base44.entities.ControllingPerson.create({ ...cp, account_id: savedAccountId });
+
+            // New account — create all CPs directly (no existing CPs to reconcile)
+            for (const cp of controllingPersons) {
+              await base44.entities.ControllingPerson.create({ ...cp, account_id: savedAccountId });
+            }
           }
         } catch (err) {
           failed.push({ row: i + 2, name: `Row ${i + 2}`, error: err.message, type: "database" });
