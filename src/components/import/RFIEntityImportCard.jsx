@@ -1614,6 +1614,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
             }
             // ─────────────────────────────────────────────────────────────────
 
+            // Sync the has_unclassified_controlling_persons flag on the account
+            if (controllingPersons.length > 0) {
+              try { await base44.functions.invoke("syncAccountControllingPersons", { accountId: savedAccountId }); } catch (e) { }
+            }
+
           } else {
             const newRecord = await base44.entities.Account.create(record);
             savedAccountId = newRecord.id;
@@ -1623,6 +1628,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
             // New account — create all CPs directly (no existing CPs to reconcile)
             for (const cp of controllingPersons) {
               await base44.entities.ControllingPerson.create({ ...cp, account_id: savedAccountId });
+            }
+
+            // Sync the has_unclassified_controlling_persons flag on the new account
+            if (controllingPersons.length > 0) {
+              try { await base44.functions.invoke("syncAccountControllingPersons", { accountId: savedAccountId }); } catch (e) { }
             }
           }
         } catch (err) {
