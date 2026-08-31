@@ -74,6 +74,7 @@ import AccountExport from "../components/accounts/AccountExport";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
 import { Save } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -115,6 +116,7 @@ export default function AccountsPage() {
 
   const tourConfig = getTourByPage("Accounts");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Draft map for "Continue Classification" button
   const accountDraftMap = useClassificationDraftMap(user?.tenant_id, "Account");
@@ -1243,8 +1245,7 @@ export default function AccountsPage() {
               queryClient.invalidateQueries(["classification-drafts-bulk"]);
             } catch (_) {}
             // --- existing completion logic below ---
-            const shouldRedirect = data._redirectToControllingPersons;
-            const { _redirectToControllingPersons, ...cleanData } = data;
+            const { _redirectToControllingPersons, _redirectToBeneficiaries, _manualReportTotal, ...cleanData } = data;
             const accountId = selectedAccount.id;
 
             // Update the account (skip hooks to avoid auto-classification and workflow checks)
@@ -1295,7 +1296,7 @@ export default function AccountsPage() {
 
             setShowClassification(false);
 
-            if (shouldRedirect) {
+            if (_redirectToControllingPersons) {
               await queryClient.invalidateQueries(['accounts']);
               await queryClient.invalidateQueries(['controlling-persons']);
               setTimeout(() => {
@@ -1303,6 +1304,19 @@ export default function AccountsPage() {
                 setSelectedAccount(refreshedAccount || selectedAccount);
                 setShowControllingPersons(true);
               }, 200);
+            } else if (_redirectToBeneficiaries) {
+              await queryClient.invalidateQueries(['accounts']);
+              setTimeout(() => {
+                const refreshedAccount = queryClient.getQueryData(['accounts', user?.tenant_id])?.find(a => a.id === accountId);
+                setSelectedAccount(refreshedAccount || selectedAccount);
+                setShowBeneficiaries(true);
+              }, 200);
+            } else if (_manualReportTotal) {
+              toast({
+                title: "Manual Reporting Required",
+                description: "This account requires manual reporting of the total account value. Please prepare the report accordingly.",
+              });
+              setSelectedAccount(null);
             } else {
               setSelectedAccount(null);
             }

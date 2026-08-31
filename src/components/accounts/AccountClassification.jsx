@@ -941,15 +941,14 @@ export default function AccountClassification({ account, entities, onComplete, o
       classification_answers: visitedAnswers,
     };
 
-    // Check if we need to redirect to controlling persons
-    const hasControllingPersonStep = steps.some(s => s.question_type === 'controlling_person_input');
-    const resultStatus = finalStep?.result_status;
-    const entityClassification = (latestAccountData || account)?.entity_classification;
-    const shouldRedirect = hasControllingPersonStep || entityClassification === 'passive_nfe';
+    // Derive post-classification action from the final step's result_action (config-driven only)
+    const resultAction = finalStep?.result_action || null;
 
     const completionData = {
       ...classificationData,
-      _redirectToControllingPersons: shouldRedirect,
+      _redirectToControllingPersons: resultAction === 'manage_controlling_persons',
+      _redirectToBeneficiaries: resultAction === 'report_per_beneficiary',
+      _manualReportTotal: resultAction === 'manual_report_total',
     };
 
     setLoading(false);
