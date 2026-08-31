@@ -373,6 +373,8 @@ export default function AccountClassification({ account, entities, onComplete, o
       const newlyResynced = [];
       setAnswers(prev => {
         const updated = { ...prev };
+
+        // Pass A: overwrite steps that were auto-prefilled and have a new value
         for (const stepId of lockableStepIds) {
           if (prefilledSteps.has(stepId) && prefillMap[stepId] !== undefined) {
             if (JSON.stringify(prev[stepId]) !== JSON.stringify(prefillMap[stepId])) {
@@ -381,7 +383,8 @@ export default function AccountClassification({ account, entities, onComplete, o
             updated[stepId] = prefillMap[stepId];
           }
         }
-        // Also seed new prefillable steps that were previously empty
+
+        // Pass B: seed new prefillable steps that were previously empty
         for (const stepId of lockableStepIds) {
           if (!prefilledSteps.has(stepId) && prefillMap[stepId] !== undefined) {
             if (prev[stepId] === undefined || prev[stepId] === null || prev[stepId] === "") {
@@ -390,6 +393,22 @@ export default function AccountClassification({ account, entities, onComplete, o
             }
           }
         }
+
+        // Pass C: clear stale prefilled answers whose source field was cleared on the account.
+        // When a previously-prefilled step is no longer in lockableStepIds (because its mapped
+        // field now has an empty value), the old answer must be wiped so the dropdown resets
+        // to the placeholder. Only auto-prefilled steps are cleared — manually-entered answers
+        // (steps NOT in prefilledSteps) are left untouched.
+        for (const stepId of prefilledSteps) {
+          if (!lockableStepIds.includes(stepId) && updated[stepId] !== undefined) {
+            delete updated[stepId];
+            // Mark as resynced so the banner informs the user the answer was reset
+            if (!newlyResynced.includes(stepId)) {
+              newlyResynced.push(stepId);
+            }
+          }
+        }
+
         return updated;
       });
       setResyncedSteps(newlyResynced);
