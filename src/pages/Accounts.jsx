@@ -751,7 +751,7 @@ export default function AccountsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Total Accounts</p>
-                      <p className="text-2xl font-bold text-slate-900">{accessibleAccounts.length}</p>
+                      <p className="text-2xl font-bold text-slate-900">{filteredAccounts.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -766,7 +766,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Reportable</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accessibleAccounts.filter(a => a.reportability_status === "reportable").length}
+                        {filteredAccounts.filter(a => a.reportability_status === "reportable").length}
                       </p>
                     </div>
                   </div>
@@ -782,7 +782,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Pending Review</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accessibleAccounts.filter(a => a.reportability_status === "pending_review").length}
+                        {filteredAccounts.filter(a => a.reportability_status === "pending_review").length}
                       </p>
                     </div>
                   </div>
@@ -798,7 +798,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Non-Reportable</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accessibleAccounts.filter(a => a.reportability_status === "non_reportable").length}
+                        {filteredAccounts.filter(a => a.reportability_status === "non_reportable").length}
                       </p>
                     </div>
                   </div>
@@ -814,7 +814,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs text-slate-600">Work in Progress</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {accessibleAccounts.filter(a => a.reportability_status === "work_in_progress").length}
+                        {filteredAccounts.filter(a => a.reportability_status === "work_in_progress").length}
                       </p>
                     </div>
                   </div>
@@ -925,8 +925,8 @@ export default function AccountsPage() {
                       Accounts ({filteredAccounts.length})
                     </CardTitle>
                     <CardDescription>
-                      {accessibleAccounts.filter(a => a.reportability_status === "reportable").length} Reportable, {" "}
-                      {accessibleAccounts.filter(a => a.reportability_status === "pending_review").length} Pending Review
+                      {filteredAccounts.filter(a => a.reportability_status === "reportable").length} Reportable, {" "}
+                      {filteredAccounts.filter(a => a.reportability_status === "pending_review").length} Pending Review
                     </CardDescription>
                   </div>
                 </div>
