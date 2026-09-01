@@ -6,34 +6,63 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, Eye, Edit, Trash2, Plus, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { Shield, Eye, Edit, Trash2, Plus, Save, CheckCircle2, Info } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// Roles shown in the UI
 const ROLES = [
-  { value: 'tenant_admin', label: 'Administrator', color: 'bg-blue-100 text-blue-800' },
-  { value: 'tenant_supervisor', label: 'Supervisor', color: 'bg-purple-100 text-purple-800' },
-  { value: 'tenant_user', label: 'User', color: 'bg-green-100 text-green-800' }
+  { value: 'tenant_admin',      label: 'Administrator', color: 'bg-blue-100 text-blue-800' },
+  { value: 'tenant_supervisor', label: 'Supervisor',    color: 'bg-purple-100 text-purple-800' },
+  { value: 'tenant_user',       label: 'User',          color: 'bg-green-100 text-green-800' },
 ];
 
-const RESOURCES = [
-  { value: 'Account', label: 'Accounts', icon: Eye },
-  { value: 'Entity', label: 'Entities', icon: Shield },
-  { value: 'Report', label: 'Reports', icon: CheckCircle2 },
-  { value: 'User', label: 'User Management', icon: Shield },
-  { value: 'Dashboard', label: 'Dashboards', icon: Eye },
-  { value: 'Settings', label: 'Settings', icon: Edit }
+// All resources (admin + supervisor see all 6)
+const ALL_RESOURCES = [
+  { value: 'Account',   label: 'Accounts',        icon: Eye },
+  { value: 'Entity',    label: 'Entities',         icon: Shield },
+  { value: 'Report',    label: 'Reports',          icon: CheckCircle2 },
+  { value: 'Dashboard', label: 'Dashboards',       icon: Eye },
+  { value: 'User',      label: 'User Management',  icon: Shield },
+  { value: 'Settings',  label: 'Settings',         icon: Edit },
 ];
 
+// tenant_user only sees these 4 resources
+const USER_VISIBLE_RESOURCES = ['Account', 'Entity', 'Report', 'Dashboard'];
+
+// Default values used when no DB record exists
 const DEFAULT_VALUES = {
-  tenant_admin:     { can_view: true,  can_create: true,  can_edit: true,  can_delete: true  },
-  tenant_supervisor:{ can_view: true,  can_create: true,  can_edit: true,  can_delete: true  },
-  tenant_user:      { can_view: false, can_create: false, can_edit: false, can_delete: false },
+  tenant_admin:      { can_view: true,  can_create: true,  can_edit: true,  can_delete: true  },
+  tenant_supervisor: { can_view: true,  can_create: true,  can_edit: true,  can_delete: true  },
 };
+
+// View-only defaults for tenant_user (the 4 visible resources)
+const USER_RESOURCE_DEFAULTS = {
+  Account:   { can_view: true, can_create: false, can_edit: false, can_delete: false },
+  Entity:    { can_view: true, can_create: false, can_edit: false, can_delete: false },
+  Report:    { can_view: true, can_create: false, can_edit: false, can_delete: false },
+  Dashboard: { can_view: true, can_create: false, can_edit: false, can_delete: false },
+};
+
+const PERMISSION_TYPES = [
+  { key: 'can_view',   label: 'View',   icon: Eye,    color: 'text-blue-600'  },
+  { key: 'can_create', label: 'Create', icon: Plus,   color: 'text-green-600' },
+  { key: 'can_edit',   label: 'Edit',   icon: Edit,   color: 'text-amber-600' },
+  { key: 'can_delete', label: 'Delete', icon: Trash2, color: 'text-red-600'   },
+];
+
+/** Returns the resource list to show for a given role */
+function getResourcesForRole(roleValue) {
+  if (roleValue === 'tenant_user') {
+    return ALL_RESOURCES.filter(r => USER_VISIBLE_RESOURCES.includes(r.value));
+  }
+  return ALL_RESOURCES;
+}
 
 export default function RolePermissionsManager({ tenant }) {
   const queryClient = useQueryClient();
   const [hasChanges, setHasChanges] = useState(false);
   const [localPermissions, setLocalPermissions] = useState({});
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const { data: permissions = [], isLoading } = useQuery({
     queryKey: ['role-permissions', tenant?.id],
@@ -41,7 +70,7 @@ export default function RolePermissionsManager({ tenant }) {
       if (!tenant?.id) return [];
       return await base44.entities.RolePermission.filter({ tenant_id: tenant.id });
     },
-    enabled: !!tenant?.id
+    enabled: !!tenant?.id,
   });
 
   useEffect(() => {
@@ -54,25 +83,21 @@ export default function RolePermissionsManager({ tenant }) {
         can_create: p.can_create,
         can_edit: p.can_edit,
         can_delete: p.can_delete,
-        id: p.id
+        id: p.id,
       };
     });
 
-    // Pre-populate toggles for roles/resources that have no DB record yet:
-    // - tenant_admin: all ON (display only — admins always have full access)
-    // - tenant_supervisor: all ON by default
-    // - tenant_user: all OFF by default (deny by default)
-    const defaultValues = {
-      tenant_admin: { can_view: true, can_create: true, can_edit: true, can_delete: true },
-      tenant_supervisor: { can_view: true, can_create: true, can_edit: true, can_delete: true },
-      tenant_user: { can_view: false, can_create: false, can_edit: false, can_delete: false },
-    };
-
+    // Pre-populate missing entries with role/resource-appropriate defaults
     ROLES.forEach(role => {
-      RESOURCES.forEach(resource => {
+      const resources = getResourcesForRole(role.value);
+      resources.forEach(resource => {
         const key = `${role.value}___${resource.value}`;
         if (!permMap[key]) {
-          permMap[key] = { ...DEFAULT_VALUES[role.value] };
+          if (role.value === 'tenant_user') {
+            permMap[key] = { ...USER_RESOURCE_DEFAULTS[resource.value] };
+          } else {
+            permMap[key] = { ...DEFAULT_VALUES[role.value] };
+          }
         }
       });
     });
@@ -83,25 +108,25 @@ export default function RolePermissionsManager({ tenant }) {
   const savePermissionsMutation = useMutation({
     mutationFn: async (updates) => {
       const promises = [];
-      
       for (const [key, perms] of Object.entries(updates)) {
-        // Key format: "roleName___resourceType" — use triple underscore separator to avoid splitting role names like "tenant_admin"
         const sepIdx = key.indexOf('___');
         const role_name = key.substring(0, sepIdx);
         const resource_type = key.substring(sepIdx + 3);
-        
+
+        // Only save resources that are displayed for this role
+        const visibleResources = getResourcesForRole(role_name).map(r => r.value);
+        if (!visibleResources.includes(resource_type)) continue;
+
         if (perms.id) {
-          // Update existing
           promises.push(
             base44.entities.RolePermission.update(perms.id, {
               can_view: perms.can_view,
               can_create: perms.can_create,
               can_edit: perms.can_edit,
-              can_delete: perms.can_delete
+              can_delete: perms.can_delete,
             })
           );
         } else {
-          // Create new
           promises.push(
             base44.entities.RolePermission.create({
               tenant_id: tenant.id,
@@ -110,39 +135,32 @@ export default function RolePermissionsManager({ tenant }) {
               can_view: perms.can_view,
               can_create: perms.can_create,
               can_edit: perms.can_edit,
-              can_delete: perms.can_delete
+              can_delete: perms.can_delete,
             })
           );
         }
       }
-      
       return await Promise.all(promises);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['role-permissions']);
       setHasChanges(false);
-      alert('Role permissions updated successfully!');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     },
     onError: (error) => {
       console.error('Error saving permissions:', error);
       alert('Failed to save permissions: ' + error.message);
-    }
+    },
   });
 
   const handlePermissionChange = (role, resource, permission, value) => {
     const key = `${role}___${resource}`;
     setLocalPermissions(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key],
-        [permission]: value
-      }
+      [key]: { ...prev[key], [permission]: value },
     }));
     setHasChanges(true);
-  };
-
-  const handleSave = () => {
-    savePermissionsMutation.mutate(localPermissions);
   };
 
   const getPermission = (role, resource, permission) => {
@@ -150,21 +168,11 @@ export default function RolePermissionsManager({ tenant }) {
     return localPermissions[key]?.[permission] || false;
   };
 
-  const roles = ROLES;
-  const resources = RESOURCES;
-
-  const permissionTypes = [
-    { key: 'can_view', label: 'View', icon: Eye, color: 'text-blue-600' },
-    { key: 'can_create', label: 'Create', icon: Plus, color: 'text-green-600' },
-    { key: 'can_edit', label: 'Edit', icon: Edit, color: 'text-amber-600' },
-    { key: 'can_delete', label: 'Delete', icon: Trash2, color: 'text-red-600' }
-  ];
-
   if (isLoading) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
         </CardContent>
       </Card>
     );
@@ -185,16 +193,17 @@ export default function RolePermissionsManager({ tenant }) {
           </div>
           {hasChanges && (
             <Button
-              onClick={handleSave}
+              onClick={() => savePermissionsMutation.mutate(localPermissions)}
               disabled={savePermissionsMutation.isPending}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               <Save className="w-4 h-4 mr-2" />
-              Save Changes
+              {savePermissionsMutation.isPending ? "Saving…" : "Save Changes"}
             </Button>
           )}
         </div>
       </CardHeader>
+
       <CardContent className="p-6">
         {hasChanges && (
           <Alert className="mb-6 bg-amber-50 border-amber-200">
@@ -203,10 +212,18 @@ export default function RolePermissionsManager({ tenant }) {
             </AlertDescription>
           </Alert>
         )}
+        {saveSuccess && (
+          <Alert className="mb-6 bg-green-50 border-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              Role permissions saved successfully.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="tenant_admin" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            {roles.map(role => (
+            {ROLES.map(role => (
               <TabsTrigger key={role.value} value={role.value}>
                 <Badge variant="outline" className={`${role.color} border-0`}>
                   {role.label}
@@ -215,67 +232,84 @@ export default function RolePermissionsManager({ tenant }) {
             ))}
           </TabsList>
 
-          {roles.map(role => (
-            <TabsContent key={role.value} value={role.value} className="mt-6">
-              {role.value === 'tenant_admin' && (
-                <Alert className="mb-4 bg-blue-50 border-blue-200">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    Administrators always have <strong>full access</strong> to all resources. These toggles are shown for reference only and do not restrict admin users.
-                  </AlertDescription>
-                </Alert>
-              )}
-              <div className="space-y-4">
-                {resources.map(resource => {
-                  const ResourceIcon = resource.icon;
-                  return (
-                    <Card key={resource.value} className="border-slate-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <ResourceIcon className="w-4 h-4 text-slate-600" />
-                          {resource.label}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {permissionTypes.map(perm => {
-                            const PermIcon = perm.icon;
-                            const isEnabled = getPermission(role.value, resource.value, perm.key);
-                            return (
-                              <div
-                                key={perm.key}
-                                className="flex items-center justify-between p-3 rounded-lg border bg-slate-50"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <PermIcon className={`w-4 h-4 ${perm.color}`} />
-                                  <span className="text-sm font-medium text-slate-700">
-                                    {perm.label}
-                                  </span>
+          {ROLES.map(role => {
+            const resources = getResourcesForRole(role.value);
+            return (
+              <TabsContent key={role.value} value={role.value} className="mt-6">
+                {/* Role-specific info banners */}
+                {role.value === 'tenant_admin' && (
+                  <Alert className="mb-4 bg-blue-50 border-blue-200">
+                    <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Administrators always have <strong>full access</strong> to all resources.
+                      These toggles are shown for reference only and do not restrict admin users.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {role.value === 'tenant_user' && (
+                  <Alert className="mb-4 bg-slate-50 border-slate-200">
+                    <Info className="h-4 w-4 text-slate-600" />
+                    <AlertDescription className="text-slate-700">
+                      Regular users have <strong>view-only access</strong> to core resources by default.
+                      <strong> User Management</strong> and <strong>Settings</strong> are not accessible to this role.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-4">
+                  {resources.map(resource => {
+                    const ResourceIcon = resource.icon;
+                    const isAdminRole = role.value === 'tenant_admin';
+                    return (
+                      <Card key={resource.value} className="border-slate-200">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ResourceIcon className="w-4 h-4 text-slate-600" />
+                            {resource.label}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {PERMISSION_TYPES.map(perm => {
+                              const PermIcon = perm.icon;
+                              const isEnabled = getPermission(role.value, resource.value, perm.key);
+                              return (
+                                <div
+                                  key={perm.key}
+                                  className="flex items-center justify-between p-3 rounded-lg border bg-slate-50"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <PermIcon className={`w-4 h-4 ${perm.color}`} />
+                                    <span className="text-sm font-medium text-slate-700">
+                                      {perm.label}
+                                    </span>
+                                  </div>
+                                  <Switch
+                                    checked={isEnabled}
+                                    disabled={isAdminRole}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(role.value, resource.value, perm.key, checked)
+                                    }
+                                  />
                                 </div>
-                                <Switch
-                                  checked={isEnabled}
-                                  onCheckedChange={(checked) =>
-                                    handlePermissionChange(role.value, resource.value, perm.key, checked)
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </TabsContent>
-          ))}
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+            );
+          })}
         </Tabs>
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-900">
             <strong>Note:</strong> These permissions control what Supervisors and Users can see and do.
             <strong> Administrators always have full access</strong> regardless of these settings.
-            Changes take effect immediately for all users of that role.
+            Changes take effect immediately for all users of that role upon next page load.
           </p>
         </div>
       </CardContent>
