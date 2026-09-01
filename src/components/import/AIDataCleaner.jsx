@@ -353,27 +353,15 @@ Return JSON:
     const lower = String(str).toLowerCase().trim();
     if (lower === 'true' || lower === 'false') return true; // skip validation, let boolean pass silently
     
-    // Accept YYYY-MM-DD format (target format)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      const date = new Date(str);
+    // Accept DD/MM/YYYY format only (standard input format)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+      const [dd, mm, yyyy] = str.split('/');
+      const date = new Date(`${yyyy}-${mm}-${dd}`);
       return !isNaN(date.getTime());
     }
     
-    // Reject other formats (need conversion)
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-      return false; // DD/MM/YYYY needs conversion
-    }
-    
-    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
-      return false; // DD-MM-YYYY needs conversion
-    }
-    
-    // Numeric-only values (Excel serial dates) — not a valid date string
-    if (/^\d+$/.test(str)) return false;
-    
-    // Try parsing as standard date
-    const date = new Date(str);
-    return !isNaN(date.getTime());
+    // All other formats (YYYY-MM-DD, DD-MM-YYYY, Excel serials, free text) are invalid
+    return false;
   };
 
   const isValidEmail = (str) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
@@ -418,55 +406,49 @@ Return JSON:
         return issue?.normalizedValue || normalizeFIType(value) || value;
       case 'whitespace':
         return value?.trim() || '';
-      case 'invalid_date':
-        // Try to parse and standardize date from various formats
+      case 'invalid_date': {
+        // Convert any non-DD/MM/YYYY format to DD/MM/YYYY
         if (!value) return value;
         
         // Boolean strings in date fields — treat as empty
         const valLower = String(value).toLowerCase().trim();
         if (valLower === 'true' || valLower === 'false') return '';
         
-        // Excel serial date number (e.g., 28347)
+        // Excel serial date number (e.g., 28347) → DD/MM/YYYY
         if (/^\d+$/.test(value)) {
           const serial = parseInt(value, 10);
           if (serial > 1000 && serial < 100000) {
-            // Excel serial: days since 1900-01-01 (with Lotus 1-2-3 bug correction)
             const excelEpoch = new Date(1899, 11, 30);
             const d = new Date(excelEpoch.getTime() + serial * 86400000);
             if (!isNaN(d.getTime())) {
-              const yr = d.getFullYear();
-              const mo = String(d.getMonth() + 1).padStart(2, '0');
-              const dy = String(d.getDate()).padStart(2, '0');
-              return `${yr}-${mo}-${dy}`;
+              return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
             }
           }
           return '';
         }
         
-        // Check for DD/MM/YYYY format
-        const ddmmyyyyMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if (ddmmyyyyMatch) {
-          const [, day, month, year] = ddmmyyyyMatch;
-          return `${year}-${month}-${day}`;
+        // YYYY-MM-DD → DD/MM/YYYY
+        const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoMatch) {
+          const [, year, month, day] = isoMatch;
+          return `${day}/${month}/${year}`;
         }
         
-        // Check for DD-MM-YYYY format
-        const ddmmyyyyDashMatch = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-        if (ddmmyyyyDashMatch) {
-          const [, day, month, year] = ddmmyyyyDashMatch;
-          return `${year}-${month}-${day}`;
+        // DD-MM-YYYY → DD/MM/YYYY
+        const dashMatch = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (dashMatch) {
+          const [, day, month, year] = dashMatch;
+          return `${day}/${month}/${year}`;
         }
         
-        // Try parsing as standard date
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
+        // Fallback: try JS Date parsing → DD/MM/YYYY
+        const d = new Date(value);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
         }
         
         return value;
+      }
       case 'invalid_boolean':
         const lower = String(value).toLowerCase().trim();
         if (['yes', 'y', '1', 'true'].includes(lower)) return 'true';

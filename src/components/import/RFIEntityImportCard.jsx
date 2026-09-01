@@ -26,7 +26,7 @@ const STEPS = [
 const FIELD_GUIDE = [
   { col: "Account Number", format: "Text", required: true, notes: "Unique account identifier per entity" },
   { col: "Account Number Type", format: "See dropdown", required: false, notes: "IBAN | Bank account number (non-IBAN) | ISIN | etc." },
-  { col: "Account Opening Date", format: "YYYY-MM-DD", required: true, notes: "e.g. 2020-01-15" },
+  { col: "Account Opening Date", format: "DD/MM/YYYY", required: true, notes: "e.g. 15/01/2020" },
   { col: "Account Type", format: "See FI Type", required: true, notes: "Valid types depend on FI Type" },
   { col: "Account Holder Type", format: "individual | entity", required: true, notes: "" },
   { col: "First Name", format: "Text", required: false, notes: "Required for individuals" },
@@ -35,7 +35,7 @@ const FIELD_GUIDE = [
   { col: "Name Prefix", format: "Text", required: false, notes: "e.g. Mr, Mrs, Dr" },
   { col: "Title", format: "Text", required: false, notes: "Optional title for individuals" },
   { col: "Account Holder Name", format: "Text", required: false, notes: "Required for entity holders" },
-  { col: "Date of Birth", format: "YYYY-MM-DD", required: false, notes: "Required for individuals" },
+  { col: "Date of Birth", format: "DD/MM/YYYY", required: false, notes: "Required for individuals" },
   { col: "Place of Birth", format: "Country name", required: false, notes: "" },
   { col: "Is Recalcitrant", format: "true | false", required: false, notes: "Individual account holders only" },
   { col: "Pre-existing Account", format: "true | false", required: false, notes: "" },
@@ -572,6 +572,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       "Dropdown columns have a pick-list. Click the cell and choose from the dropdown — do not type freehand text in dropdown columns or the import will reject the row.",
       "The * symbol in a column header means the field is mandatory. The import will fail if these are blank.",
       "Delete unused rows before uploading. Do not leave blank rows between data rows — they stop the parser.",
+      "All date fields must use DD/MM/YYYY format (e.g. 15/01/2020). Any other format (including YYYY-MM-DD) will be flagged in the Data Cleaning step.",
       "Do not rename column headers or change their order — the import parser matches by exact header text.",
       "For Controlling Persons: expand CP2/CP3/CP4 sections only if the entity has more than 1/2/3 controlling persons.",
       "For Treasury Center entities: set Entity Classification = financial_institution and expand the Treasury Center section to fill the 5 criteria fields.",
@@ -758,6 +759,29 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     }
 
+    // ── Date cell validation: enforce DD/MM/YYYY on all date columns ──────────
+    const DATE_FIELD_KEYS = new Set([
+      "account_creation_date", "date_of_birth", "date_of_incorporation",
+      "self_cert_request_date", "self_cert_date",
+      ...([1,2,3,4].flatMap(n => [
+        `cp${n}_date_of_birth`, `cp${n}_self_cert_request_date`, `cp${n}_self_cert_date`,
+      ])),
+    ]);
+
+    columns.forEach((col, colIdx) => {
+      if (!DATE_FIELD_KEYS.has(col.key)) return;
+      const excelColLetter = colLetter(colIdx + 1);
+      for (let row = 3; row <= 503; row++) {
+        dataSheet.getCell(row, colIdx + 1).dataValidation = {
+          type: "custom", allowBlank: true,
+          formulae: [`AND(LEN(${excelColLetter}${row})=10,MID(${excelColLetter}${row},3,1)="/",MID(${excelColLetter}${row},6,1)="/")`],
+          showErrorMessage: true, errorStyle: "stop",
+          errorTitle: "Invalid date format",
+          error: "Please enter the date in DD/MM/YYYY format, e.g. 15/01/2020",
+        };
+      }
+    });
+
     // ── Conditional Formatting: Grey out fields based on Account Holder Type
     const ahtColIdx = colIndexMap["account_holder_type"];
     if (ahtColIdx) {
@@ -911,7 +935,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       CODE_TO_NAME_KEY_GUIDE[`cp${n}_tax2_country_code`] = true;
     }
     const inferDataType = (col) => {
-      if (col.note?.includes("YYYY-MM-DD") || col.key?.includes("date")) return "Date";
+      if (col.note?.includes("DD/MM/YYYY") || col.note?.includes("YYYY-MM-DD") || col.key?.includes("date")) return "Date";
       if (col.validation_values?.includes("true") && col.validation_values?.includes("false")) return "Boolean";
       if (col.note?.includes("Number") || col.key?.includes("value") || col.key?.includes("payment")) return "Number";
       if (col.note?.includes("email") || col.key?.includes("email")) return "Email";
@@ -1351,7 +1375,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           if (v && typeof v === "object" && v.formula) v = v.result ?? "";
           else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
-          else if (v instanceof Date) v = v.toISOString().split("T")[0];
+          else if (v instanceof Date) {
+            const dd = String(v.getDate()).padStart(2,'0');
+            const mm = String(v.getMonth()+1).padStart(2,'0');
+            const yyyy = v.getFullYear();
+            v = `${dd}/${mm}/${yyyy}`;
+          }
           values.push(v == null ? "" : String(v));
         });
         rows.push(values);
@@ -1420,6 +1449,17 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   ]);
 
   const parseBool = (v) => ["true", "yes", "1", "y"].includes(String(v).toLowerCase().trim());
+
+  // Convert DD/MM/YYYY (import standard) → ISO YYYY-MM-DD for database storage
+  const toISODate = (v) => {
+    if (!v) return null;
+    const s = String(v).trim();
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    // If already ISO (edge case), pass through
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    return null;
+  };
 
   const convertToAccount = (row) => {
     const account = { tenant_id: tenant.id, entity_id: entity.id, reportability_status: "pending_review", status: "active" };
@@ -1496,13 +1536,16 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         account["self_certification_request_date"] = parseBool(value) ? (account["self_certification_request_date"] || new Date().toISOString().split("T")[0]) : null;
         return;
       }
-      if (targetField === "self_cert_request_date") { account["self_certification_request_date"] = value; return; }
+      if (targetField === "self_cert_request_date") { account["self_certification_request_date"] = toISODate(value); return; }
       if (targetField === "self_cert_obtained") { account["self_certification_obtained"] = parseBool(value); return; }
-      if (targetField === "self_cert_date") { account["self_certification_date"] = value; return; }
+      if (targetField === "self_cert_date") { account["self_certification_date"] = toISODate(value); return; }
       if (targetField === "self_certification_overdue") { account["self_certification_overdue"] = parseBool(value); return; }
       if (targetField === "account_number_type") { account["account_number_type"] = value; return; }
       if (targetField === "middle_name") { account["middle_name"] = value; return; }
       if (targetField === "name_prefix") { account["name_prefix"] = value; return; }
+      if (targetField === "account_creation_date") { account["account_creation_date"] = toISODate(value) || value; return; }
+      if (targetField === "date_of_birth") { account["date_of_birth"] = toISODate(value) || null; return; }
+      if (targetField === "date_of_incorporation") { account["date_of_incorporation"] = toISODate(value) || null; return; }
       if (targetField === "is_recalcitrant") { account["is_recalcitrant"] = parseBool(value); return; }
       if (targetField === "gross_income_50_passive") { account["gross_income_50_passive"] = parseBool(value); return; }
 
@@ -1585,12 +1628,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     if (cp.tax1_country) tax_residencies.push({ country: cp.tax1_country, country_code: cp.tax1_country_code || "", tin: tin1 });
     if (cp.tax2_country) tax_residencies.push({ country: cp.tax2_country, country_code: cp.tax2_country_code || "", tin: tin2 });
 
-    // Clean date fields — skip boolean strings
+    // Clean date fields — convert DD/MM/YYYY → ISO, skip boolean strings
     const cleanDate = (v) => {
       if (!v) return null;
       const s = String(v).toLowerCase().trim();
       if (s === "true" || s === "false" || s === "") return null;
-      return v;
+      return toISODate(v) || null;
     };
 
     const cpRecord = {

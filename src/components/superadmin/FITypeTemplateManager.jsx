@@ -493,7 +493,7 @@ export default function FITypeTemplateManager() {
 
     const notes = [
       ["Required fields", "Columns marked with * are mandatory. Dark blue headers indicate required fields."],
-      ["Date format", "All dates must be in YYYY-MM-DD format (e.g. 2024-01-15)."],
+      ["Date format", "All dates must be in DD/MM/YYYY format (e.g. 15/01/2024). Any other format will be rejected."],
       ["Boolean fields", 'Enter true or false (lowercase) for all boolean fields.'],
       ["Country fields", "Select country names from the dropdown. Country codes are auto-filled by formula."],
       ["Auto-filled columns", "Columns with a light blue background are formula-driven — do not edit them."],
@@ -873,7 +873,7 @@ export default function FITypeTemplateManager() {
 
 // ── Helper: infer a human-readable data type label from the column definition ──
 function inferDataType(col) {
-  if (col.note?.includes("YYYY-MM-DD") || col.key?.includes("date")) return "Date";
+  if (col.note?.includes("DD/MM/YYYY") || col.note?.includes("YYYY-MM-DD") || col.key?.includes("date")) return "Date";
   if (col.validation_values?.includes("true") && col.validation_values?.includes("false")) return "Boolean";
   if (col.note?.includes("Number") || col.key?.includes("value") || col.key?.includes("payment") || col.key?.includes("year_end")) return "Number";
   if (col.note?.includes("email") || col.key?.includes("email")) return "Email";
@@ -1021,13 +1021,13 @@ function cpColumns(n) {
     { header: `${label} Last Name`, key: `${p}_last_name`, width: 22, required: false, note: `Last name of controlling person ${n}`, validation_values: null, example_value: n === 1 ? "Doe" : "" },
     { header: `${label} Control Type`, key: `${p}_control_type`, width: 36, required: false, note: "Select the type of control exercised by this controlling person", validation_values: CP_CONTROL_TYPES, example_value: n === 1 ? "legal_person_ownership" : "" },
     { header: `${label} Ownership %`, key: `${p}_ownership_percentage`, width: 20, required: false, note: "Number 0–100. Sum across all CPs for one account must not exceed 100%.", validation_values: null, example_value: n === 1 ? "50" : "" },
-    { header: `${label} Date of Birth`, key: `${p}_date_of_birth`, width: 20, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: n === 1 ? "1970-03-22" : "" },
+    { header: `${label} Date of Birth`, key: `${p}_date_of_birth`, width: 20, required: false, note: "DD/MM/YYYY", validation_values: null, example_value: n === 1 ? "22/03/1970" : "" },
     { header: `${label} Country of Birth`, key: `${p}_place_of_birth`, width: 22, required: false, note: "Country name", validation_values: null, example_value: n === 1 ? "United Kingdom" : "" },
     { header: `${label} Country of Birth Code`, key: `${p}_place_of_birth_code`, width: 22, required: false, note: "Auto-filled from country name", validation_values: null, example_value: n === 1 ? "GB" : "" },
     { header: `${label} Self Certification Requested`, key: `${p}_self_cert_requested`, width: 28, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "" },
-    { header: `${label} Self Certification Request Date`, key: `${p}_self_cert_request_date`, width: 30, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: "" },
+    { header: `${label} Self Certification Request Date`, key: `${p}_self_cert_request_date`, width: 30, required: false, note: "DD/MM/YYYY", validation_values: null, example_value: "" },
     { header: `${label} Self Certification Obtained`, key: `${p}_self_cert_obtained`, width: 28, required: false, note: "true | false", validation_values: ["true", "false"], example_value: n === 1 ? "true" : "" },
-    { header: `${label} Self Certification Receipt Date`, key: `${p}_self_cert_date`, width: 30, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: n === 1 ? "2024-01-15" : "" },
+    { header: `${label} Self Certification Receipt Date`, key: `${p}_self_cert_date`, width: 30, required: false, note: "DD/MM/YYYY", validation_values: null, example_value: n === 1 ? "15/01/2024" : "" },
     { header: `${label} Current Address - Street`, key: `${p}_street`, width: 26, required: false, note: "", validation_values: null, example_value: n === 1 ? "45 Queen St" : "" },
     { header: `${label} Current Address - City`, key: `${p}_city`, width: 20, required: false, note: "", validation_values: null, example_value: n === 1 ? "Sydney" : "" },
     { header: `${label} Current Address - State`, key: `${p}_state`, width: 20, required: false, note: "", validation_values: null, example_value: "" },
@@ -1051,7 +1051,7 @@ function getDefaultColumns(config) {
     { header: "Entity Name (auto-ref)", key: "entity_name_ref", width: 28, required: false, note: "Auto-populated — do not edit", validation_values: null, example_value: "" },
     { header: "Account Number", key: "account_number", width: 22, required: true, note: "Unique account identifier", validation_values: null, example_value: "ACC-001" },
     { header: "Account Number Type", key: "account_number_type", width: 32, required: false, note: "IBAN | Bank account number (non-IBAN) | ISIN | Securities account number (non-ISIN) | Other account identifier | No account number exists", validation_values: ACCOUNT_NUMBER_TYPES, example_value: "IBAN" },
-    { header: "Account Opening Date", key: "account_creation_date", width: 24, required: true, note: "Format: YYYY-MM-DD e.g. 2020-01-15", validation_values: null, example_value: "2020-01-15" },
+    { header: "Account Opening Date", key: "account_creation_date", width: 24, required: true, note: "Format: DD/MM/YYYY e.g. 15/01/2020", validation_values: null, example_value: "15/01/2020" },
     { header: "Account Type", key: "account_type", width: 26, required: true, note: config.accountTypeNote, validation_values: config.allowedAccountTypes, example_value: config.exampleAccountType },
     { header: "Account Holder Type", key: "account_holder_type", width: 24, required: true, note: "individual | entity", validation_values: ["individual", "entity"], example_value: "individual" },
     { header: "First Name", key: "first_name", width: 22, required: false, note: "Required for individuals", validation_values: null, example_value: "John" },
@@ -1062,10 +1062,10 @@ function getDefaultColumns(config) {
     { header: "Type of Financial Institution", key: "type_of_financial_institution", width: 30, required: false, note: "If account holder is an FI", validation_values: FI_INSTITUTION_TYPES, example_value: "" },
     { header: "Type of Entity", key: "account_holder_entity_type", width: 30, required: false, note: "Legal entity type", validation_values: ENTITY_TYPES, example_value: "" },
     { header: "Account Holder Name (Entity)", key: "account_holder_name", width: 30, required: false, note: "Required if Account Holder Type = entity", validation_values: null, example_value: "" },
-    { header: "Date of Incorporation", key: "date_of_incorporation", width: 24, required: false, note: "YYYY-MM-DD. For entity account holders", validation_values: null, example_value: "" },
+    { header: "Date of Incorporation", key: "date_of_incorporation", width: 24, required: false, note: "DD/MM/YYYY. For entity account holders", validation_values: null, example_value: "" },
     { header: "Country of Incorporation", key: "country_of_incorporation", width: 26, required: false, note: "For entity account holders", validation_values: null, example_value: "" },
     { header: "Country of Incorporation Code", key: "country_of_incorporation_code", width: 28, required: false, note: "Auto-filled from country name", validation_values: null, example_value: "" },
-    { header: "Date of Birth", key: "date_of_birth", width: 20, required: false, note: "YYYY-MM-DD. For individual account holders", validation_values: null, example_value: "1980-01-15" },
+    { header: "Date of Birth", key: "date_of_birth", width: 20, required: false, note: "DD/MM/YYYY. For individual account holders", validation_values: null, example_value: "15/01/1980" },
     { header: "Place of Birth", key: "place_of_birth", width: 22, required: false, note: "Country of birth — for individual account holders", validation_values: null, example_value: "United States" },
     { header: "Pre-existing Account", key: "is_pre_existing", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Is Recalcitrant", key: "is_recalcitrant", width: 22, required: false, note: "true | false — individual holders only", validation_values: ["true", "false"], example_value: "false" },
@@ -1127,9 +1127,9 @@ function getDefaultColumns(config) {
     { header: "US Person Indicator", key: "us_person_indic", width: 22, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
     { header: "Self Certification Overdue (90+ days)", key: "self_certification_overdue", width: 34, required: false, note: "true | false — set true if 90 days have passed since self-cert request with no response", validation_values: ["true", "false"], example_value: "false" },
     { header: "Account Holder Self Certification Requested", key: "self_cert_requested", width: 36, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
-    { header: "Account Holder Self Certification Request Date", key: "self_cert_request_date", width: 38, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: "" },
+    { header: "Account Holder Self Certification Request Date", key: "self_cert_request_date", width: 38, required: false, note: "DD/MM/YYYY", validation_values: null, example_value: "" },
     { header: "Account Holder Self Certification Obtained", key: "self_cert_obtained", width: 34, required: false, note: "true | false", validation_values: ["true", "false"], example_value: "false" },
-    { header: "Account Holder Self Certification Receipt Date", key: "self_cert_date", width: 38, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: "" },
+    { header: "Account Holder Self Certification Receipt Date", key: "self_cert_date", width: 38, required: false, note: "DD/MM/YYYY", validation_values: null, example_value: "" },
     { header: "Account Holder Tax Residency 1 - Country", key: "tax1_country", width: 32, required: false, note: "Country name", validation_values: null, example_value: "United States" },
     { header: "Account Holder Tax Residency 1 - Country Code", key: "tax1_country_code", width: 34, required: false, note: "Auto-filled from country name", validation_values: null, example_value: "" },
     { header: "Account Holder Tax Residency 1 - TIN", key: "tax1_tin", width: 28, required: false, note: "Tax identification number", validation_values: null, example_value: "123-45-6789" },
