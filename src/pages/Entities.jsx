@@ -138,12 +138,15 @@ export default function EntitiesPage() {
     }
   };
 
+  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
+  const { can } = usePermissions(user, tenant);
+
   const { data: entities = [], isLoading } = useQuery({
     queryKey: ['entities', user?.tenant_id],
     queryFn: () => user?.tenant_id 
       ? base44.entities.Entity.filter({ tenant_id: user.tenant_id })
       : [],
-    enabled: !!user?.tenant_id
+    enabled: !!user?.tenant_id && (isAdmin || can('Entity', 'view'))
   });
 
   // Fetch referenced data for labels
@@ -168,9 +171,6 @@ export default function EntitiesPage() {
       : [],
     enabled: !!selectedEntity?.id && showHistory
   });
-
-  const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
-  const { can } = usePermissions(user, tenant);
 
   const { data: userEntityAccess = [] } = useQuery({
     queryKey: ['user-entity-access', user?.id],
@@ -286,6 +286,18 @@ export default function EntitiesPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin && !can('Entity', 'view')) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 flex items-center justify-center p-6">
+        <div className="text-center">
+          <XCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Restricted</h2>
+          <p className="text-slate-600">You don't have permission to view RFI Entities. Please contact your administrator.</p>
+        </div>
       </div>
     );
   }
