@@ -472,7 +472,8 @@ export default function AccountsPage() {
   };
 
   const handleManageControllingPersons = (account) => {
-    setSelectedAccount(account);
+    const latestAccount = accounts.find(a => a.id === account.id) || account;
+    setSelectedAccount(latestAccount);
     setShowControllingPersons(true);
   };
 
@@ -1338,14 +1339,14 @@ export default function AccountsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showControllingPersons} onOpenChange={setShowControllingPersons}>
+      <Dialog open={showControllingPersons && !!selectedAccount} onOpenChange={(open) => { if (!open) { setShowControllingPersons(false); } }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               Controlling Persons: {selectedAccount?.account_holder_name}
             </DialogTitle>
           </DialogHeader>
-          <ControllingPersonsList account={selectedAccount} />
+          {selectedAccount && <ControllingPersonsList account={selectedAccount} />}
         </DialogContent>
       </Dialog>
 
