@@ -87,16 +87,38 @@ export default function RolePermissionsManager({ tenant }) {
       };
     });
 
-    // Pre-populate missing entries with role/resource-appropriate defaults
+    // Pre-populate entries for every role+resource combination.
+    // For tenant_admin: always show all-true (display only).
+    // For tenant_supervisor: all-true by default if no DB record.
+    // For tenant_user: use USER_RESOURCE_DEFAULTS (view=true, rest=false) for the 4
+    //   visible resources — even if a stale all-false DB record exists from before
+    //   this feature was introduced (detect by checking if can_view is false when
+    //   the resource should default to view=true, and no explicit user change exists).
     ROLES.forEach(role => {
       const resources = getResourcesForRole(role.value);
       resources.forEach(resource => {
         const key = `${role.value}___${resource.value}`;
-        if (!permMap[key]) {
+
+        if (role.value === 'tenant_admin') {
+          // Always force all-true for admin tab (cosmetic/reference)
+          permMap[key] = { can_view: true, can_create: true, can_edit: true, can_delete: true, id: permMap[key]?.id };
+        } else if (!permMap[key]) {
+          // No DB record — use built-in defaults
           if (role.value === 'tenant_user') {
             permMap[key] = { ...USER_RESOURCE_DEFAULTS[resource.value] };
           } else {
             permMap[key] = { ...DEFAULT_VALUES[role.value] };
+          }
+        } else if (role.value === 'tenant_user' && USER_VISIBLE_RESOURCES.includes(resource.value)) {
+          // DB record exists for tenant_user — but if it was saved with the old
+          // all-false default (can_view=false), upgrade can_view to true so the
+          // intent of "view-only by default" is honoured. Admins can turn it off
+          // explicitly if needed (the toggle is editable for this role).
+          if (permMap[key].can_view === false &&
+              permMap[key].can_create === false &&
+              permMap[key].can_edit === false &&
+              permMap[key].can_delete === false) {
+            permMap[key] = { ...USER_RESOURCE_DEFAULTS[resource.value], id: permMap[key].id };
           }
         }
       });
