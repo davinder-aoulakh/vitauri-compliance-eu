@@ -710,6 +710,54 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     }
 
+    // ── Ownership % per-cell validation + red/green conditional formatting ──
+    const OWNERSHIP_PCT_KEYS = new Set([1,2,3,4].map(n => `cp${n}_ownership_percentage`));
+    const cpOwnIdxList = [1,2,3,4].map(n => colIndexMap[`cp${n}_ownership_percentage`]).filter(Boolean);
+
+    if (cpOwnIdxList.length > 0) {
+      // Add note to first CP ownership header explaining the rule
+      const firstOwnHeaderCell = dataSheet.getCell(1, cpOwnIdxList[0]);
+      firstOwnHeaderCell.note = {
+        texts: [{ text: "ℹ️ Ownership % Rule: Sum of CP1–CP4 for each row must not exceed 100%. Cells turn red if total exceeds 100%, green if exactly 100%." }]
+      };
+
+      // Per-cell AND validation: value ≥ 0 AND sum of all 4 CP ownership cells ≤ 100
+      for (let row = 3; row <= 503; row++) {
+        const allCPSumParts = cpOwnIdxList.map(ci => `IFERROR(${colLetter(ci)}${row},0)`).join(",");
+        cpOwnIdxList.forEach(ci => {
+          const thisCellRef = `${colLetter(ci)}${row}`;
+          dataSheet.getCell(row, ci).dataValidation = {
+            type: "custom", allowBlank: true,
+            formulae: [`AND(${thisCellRef}>=0,SUM(${allCPSumParts})<=100)`],
+            showErrorMessage: true, errorStyle: "stop",
+            errorTitle: "Ownership % exceeds remaining",
+            error: "Enter a value up to the remaining ownership % for this account. The total across all controlling persons must not exceed 100%. Lower another controlling person first if you need more room.",
+          };
+        });
+      }
+
+      // Conditional formatting: red if sum > 100, green if sum = 100
+      const sumParts = cpOwnIdxList.map(ci => `IFERROR(${colLetter(ci)}3,0)`).join("+");
+      cpOwnIdxList.forEach(ci => {
+        const colRef = colLetter(ci);
+        dataSheet.addConditionalFormatting({
+          ref: `${colRef}3:${colRef}503`,
+          rules: [
+            {
+              type: "expression", priority: 1,
+              formulae: [`(${sumParts})>100`],
+              style: { fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } }, font: { color: { argb: "FFB91C1C" }, bold: true } },
+            },
+            {
+              type: "expression", priority: 2,
+              formulae: [`(${sumParts})=100`],
+              style: { fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } }, font: { color: { argb: "FF065F46" } } },
+            },
+          ],
+        });
+      });
+    }
+
     // ── Conditional Formatting: Grey out fields based on Account Holder Type
     const ahtColIdx = colIndexMap["account_holder_type"];
     if (ahtColIdx) {
@@ -1088,6 +1136,10 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       activeCell:  "C3",
     }];
 
+    // ── Export sheet: build column index map (offset +2 for Entity ID + Entity Name)
+    const exportColIndexMap = {};
+    exportColumns.forEach((col, i) => { exportColIndexMap[col.key] = i + 3; }); // 1-based
+
     // Fetch existing accounts for this entity
     const existingAccounts = await base44.entities.Account.filter({ entity_id: entity.id });
 
@@ -1159,6 +1211,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (cpField === "tax2_country") rowData[k] = cp.tax_residencies?.[1]?.country || "";
           else if (cpField === "tax2_country_code") rowData[k] = cp.tax_residencies?.[1]?.country_code || "";
           else if (cpField === "tin2") rowData[k] = cp.tax_residencies?.[1]?.tin || "";
+          else if (cpField === "control_type") rowData[k] = cp.control_type || "";
+          else if (cpField === "ownership_percentage") rowData[k] = cp.ownership_percentage != null ? String(cp.ownership_percentage) : "";
           else rowData[k] = "";
         }
         // Boolean fields
@@ -1178,6 +1232,54 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         cell.alignment = { vertical: "top" };
       });
     });
+
+    // ── Export sheet: ownership % validation + red/green CF ──
+    const expCpOwnIdxList = [1,2,3,4].map(n => exportColIndexMap[`cp${n}_ownership_percentage`]).filter(Boolean);
+    if (expCpOwnIdxList.length > 0) {
+      const bufferEnd = Math.max(existingAccounts.length + 2, 3) + 100;
+
+      // Add note to first CP ownership header on export sheet
+      const firstExpOwnHeader = exportSheet.getCell(1, expCpOwnIdxList[0]);
+      firstExpOwnHeader.note = {
+        texts: [{ text: "ℹ️ Ownership % Rule: Sum of CP1–CP4 for each row must not exceed 100%. Cells turn red if total exceeds 100%, green if exactly 100%." }]
+      };
+
+      // Per-cell validation
+      for (let row = 3; row <= bufferEnd; row++) {
+        const allCPSumParts = expCpOwnIdxList.map(ci => `IFERROR(${colLetter(ci)}${row},0)`).join(",");
+        expCpOwnIdxList.forEach(ci => {
+          const thisCellRef = `${colLetter(ci)}${row}`;
+          exportSheet.getCell(row, ci).dataValidation = {
+            type: "custom", allowBlank: true,
+            formulae: [`AND(${thisCellRef}>=0,SUM(${allCPSumParts})<=100)`],
+            showErrorMessage: true, errorStyle: "stop",
+            errorTitle: "Ownership % exceeds remaining",
+            error: "Enter a value up to the remaining ownership % for this account. The total across all controlling persons must not exceed 100%.",
+          };
+        });
+      }
+
+      // Conditional formatting
+      const expSumParts = expCpOwnIdxList.map(ci => `IFERROR(${colLetter(ci)}3,0)`).join("+");
+      expCpOwnIdxList.forEach(ci => {
+        const colRef = colLetter(ci);
+        exportSheet.addConditionalFormatting({
+          ref: `${colRef}3:${colRef}${bufferEnd}`,
+          rules: [
+            {
+              type: "expression", priority: 1,
+              formulae: [`(${expSumParts})>100`],
+              style: { fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } }, font: { color: { argb: "FFB91C1C" }, bold: true } },
+            },
+            {
+              type: "expression", priority: 2,
+              formulae: [`(${expSumParts})=100`],
+              style: { fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } }, font: { color: { argb: "FF065F46" } } },
+            },
+          ],
+        });
+      });
+    }
 
     // Add a note if no accounts yet
     if (existingAccounts.length === 0) {
@@ -1554,6 +1656,19 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           const { account: record, controllingPersons } = convertToAccount(rowData);
           const recordName = record.account_holder_name || `Row ${i + 2}`;
           const validationErrors = validateRecord(record);
+
+          // Cross-CP ownership % validation — total must not exceed 100
+          if (controllingPersons.length > 0) {
+            const totalOwn = controllingPersons.reduce(
+              (sum, cp) => sum + (parseFloat(cp.ownership_percentage) || 0), 0
+            );
+            if (totalOwn > 100) {
+              validationErrors.push(
+                `Total ownership (${Math.round(totalOwn * 100) / 100}%) exceeds 100% across controlling persons`
+              );
+            }
+          }
+
           if (validationErrors.length > 0) {
             failed.push({ row: i + 2, name: recordName, error: validationErrors.join("; "), type: "validation" });
             setProgress(Math.round(((i + 1) / dataToImport.length) * 100));

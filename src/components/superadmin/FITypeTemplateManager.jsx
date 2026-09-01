@@ -1019,6 +1019,8 @@ function cpColumns(n) {
   return [
     { header: `${label} First Name`, key: `${p}_first_name`, width: 22, required: false, note: `First name of controlling person ${n}`, validation_values: null, example_value: n === 1 ? "Jane" : "" },
     { header: `${label} Last Name`, key: `${p}_last_name`, width: 22, required: false, note: `Last name of controlling person ${n}`, validation_values: null, example_value: n === 1 ? "Doe" : "" },
+    { header: `${label} Control Type`, key: `${p}_control_type`, width: 36, required: false, note: "Select the type of control exercised by this controlling person", validation_values: CP_CONTROL_TYPES, example_value: n === 1 ? "legal_person_ownership" : "" },
+    { header: `${label} Ownership %`, key: `${p}_ownership_percentage`, width: 20, required: false, note: "Number 0–100. Sum across all CPs for one account must not exceed 100%.", validation_values: null, example_value: n === 1 ? "50" : "" },
     { header: `${label} Date of Birth`, key: `${p}_date_of_birth`, width: 20, required: false, note: "YYYY-MM-DD", validation_values: null, example_value: n === 1 ? "1970-03-22" : "" },
     { header: `${label} Country of Birth`, key: `${p}_place_of_birth`, width: 22, required: false, note: "Country name", validation_values: null, example_value: n === 1 ? "United Kingdom" : "" },
     { header: `${label} Country of Birth Code`, key: `${p}_place_of_birth_code`, width: 22, required: false, note: "Auto-filled from country name", validation_values: null, example_value: n === 1 ? "GB" : "" },

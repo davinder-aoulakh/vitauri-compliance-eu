@@ -40,6 +40,7 @@ function buildCPFields(count) {
       { name: `${p}_tax2_country_code`,      label: `${lbl} Tax Residency 2 Country Code` },
       { name: `${p}_tax2_tin`,               label: `${lbl} Tax Residency 2 TIN` },
       { name: `${p}_control_type`,           label: `${lbl} Control Type` },
+      { name: `${p}_ownership_percentage`,   label: `${lbl} Ownership %` },
       { name: `${p}_self_cert_obtained`,     label: `${lbl} Self Cert Obtained` },
       { name: `${p}_self_cert_date`,         label: `${lbl} Self Cert Date` },
       { name: `${p}_self_cert_requested`,    label: `${lbl} Self Cert Requested` },
@@ -274,12 +275,21 @@ const CP_FIELD_MAP = {
   'self certification requested': 'self_cert_requested',
   'self certification request date':'self_cert_request_date',
   'control type':                 'control_type',
+  'ownership %':                  'ownership_percentage',
+  'ownership percentage':         'ownership_percentage',
+  'ownership':                    'ownership_percentage',
 };
 for (let n = 1; n <= 4; n++) {
   Object.entries(CP_FIELD_MAP).forEach(([suffix, fieldSuffix]) => {
     INSTANT_RULES[`controlling person ${n} ${suffix}`]   = `cp${n}_${fieldSuffix}`;
     INSTANT_RULES[`controlling person ${n} - ${suffix}`] = `cp${n}_${fieldSuffix}`;
   });
+  // Explicit safety rules for ownership % header variants
+  INSTANT_RULES[`controlling person ${n} ownership %`]          = `cp${n}_ownership_percentage`;
+  INSTANT_RULES[`controlling person ${n} ownership percentage`]  = `cp${n}_ownership_percentage`;
+  INSTANT_RULES[`controlling person ${n} - ownership %`]        = `cp${n}_ownership_percentage`;
+  INSTANT_RULES[`controlling person ${n} control type`]         = `cp${n}_control_type`;
+  INSTANT_RULES[`controlling person ${n} - control type`]       = `cp${n}_control_type`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
