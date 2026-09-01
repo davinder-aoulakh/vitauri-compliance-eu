@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { auditLog } from "@/components/utils/auditLogger";
@@ -293,10 +294,21 @@ export default function EntitiesPage() {
   if (!isAdmin && !can('Entity', 'view')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 flex items-center justify-center p-6">
-        <div className="text-center">
-          <XCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Restricted</h2>
-          <p className="text-slate-600">You don't have permission to view RFI Entities. Please contact your administrator.</p>
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-5">
+            <Building2 className="w-10 h-10 text-slate-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Not Available</h2>
+          <p className="text-slate-500 mb-6">
+            RFI Entities is not part of your current access profile. Please contact your administrator if you need access.
+          </p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-medium shadow"
+            style={{ background: `linear-gradient(135deg, ${tenant?.branding?.primary_color || "#464feb"} 0%, ${tenant?.branding?.primary_color || "#464feb"}dd 100%)` }}
+          >
+            Go to Dashboard
+          </Link>
         </div>
       </div>
     );

@@ -109,18 +109,8 @@ export default function RolePermissionsManager({ tenant }) {
           } else {
             permMap[key] = { ...DEFAULT_VALUES[role.value] };
           }
-        } else if (role.value === 'tenant_user' && USER_VISIBLE_RESOURCES.includes(resource.value)) {
-          // DB record exists for tenant_user — but if it was saved with the old
-          // all-false default (can_view=false), upgrade can_view to true so the
-          // intent of "view-only by default" is honoured. Admins can turn it off
-          // explicitly if needed (the toggle is editable for this role).
-          if (permMap[key].can_view === false &&
-              permMap[key].can_create === false &&
-              permMap[key].can_edit === false &&
-              permMap[key].can_delete === false) {
-            permMap[key] = { ...USER_RESOURCE_DEFAULTS[resource.value], id: permMap[key].id };
-          }
         }
+        // If a DB record exists for tenant_user, use it as-is — the admin explicitly saved it.
       });
     });
 
