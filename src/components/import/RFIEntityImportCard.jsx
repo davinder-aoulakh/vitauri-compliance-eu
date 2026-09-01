@@ -1214,15 +1214,15 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           if (!cp) { rowData[k] = ""; return; }
           if (cpField === "first_name") rowData[k] = cp.first_name || "";
           else if (cpField === "last_name") rowData[k] = cp.last_name || "";
-          else if (cpField === "date_of_birth") rowData[k] = cp.date_of_birth || "";
+          else if (cpField === "date_of_birth") rowData[k] = isoToDDMMYYYY(cp.date_of_birth);
           else if (cpField === "place_of_birth") rowData[k] = cp.place_of_birth || "";
           else if (cpField === "place_of_birth_code") rowData[k] = cp.place_of_birth_code || "";
           else if (cpField === "country_of_residence") rowData[k] = cp.country_of_residence || "";
           else if (cpField === "country_of_residence_code") rowData[k] = cp.country_of_residence_code || "";
           else if (cpField === "self_cert_obtained") rowData[k] = cp.self_certification_obtained != null ? String(cp.self_certification_obtained) : "";
-          else if (cpField === "self_cert_date") rowData[k] = cp.self_certification_receipt_date || "";
+          else if (cpField === "self_cert_date") rowData[k] = isoToDDMMYYYY(cp.self_certification_receipt_date);
           else if (cpField === "self_cert_requested") rowData[k] = cp.self_certification_request_date ? "true" : "false";
-          else if (cpField === "self_cert_request_date") rowData[k] = cp.self_certification_request_date || "";
+          else if (cpField === "self_cert_request_date") rowData[k] = isoToDDMMYYYY(cp.self_certification_request_date);
           else if (cpField === "street") rowData[k] = cp.address?.street || "";
           else if (cpField === "city") rowData[k] = cp.address?.city || "";
           else if (cpField === "state") rowData[k] = cp.address?.state || "";
@@ -1238,6 +1238,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (cpField === "control_type") rowData[k] = cp.control_type || "";
           else if (cpField === "ownership_percentage") rowData[k] = cp.ownership_percentage != null ? String(cp.ownership_percentage) : "";
           else rowData[k] = "";
+        }
+        // Date-only fields — convert ISO YYYY-MM-DD → DD/MM/YYYY for re-import compatibility
+        else if (["account_creation_date","date_of_birth","date_of_incorporation",
+                  "self_certification_date","self_certification_request_date"].includes(k)) {
+          rowData[k] = isoToDDMMYYYY(acc[k]);
         }
         // Boolean fields
         else if (typeof acc[k] === "boolean") rowData[k] = String(acc[k]);
@@ -1321,6 +1326,15 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     a.click();
     window.URL.revokeObjectURL(url);
     a.remove();
+  };
+
+  // Convert ISO YYYY-MM-DD (stored in DB) → DD/MM/YYYY for Export sheet display
+  const isoToDDMMYYYY = (v) => {
+    if (!v) return "";
+    const s = String(v).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return s; // already formatted or unknown — return as-is
   };
 
   const parseCSVLine = (line) => {

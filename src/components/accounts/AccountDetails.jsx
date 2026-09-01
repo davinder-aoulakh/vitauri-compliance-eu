@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import AccountAuditLog from "./AccountAuditLog";
 
-// Format date/datetime in AST (UTC-4) for accurate auditing
+// Format a true timestamp (has time component) in AST (UTC-4) for accurate auditing
 const formatAST = (value, includeTime = true) => {
   if (!value) return "—";
   const d = new Date(value);
@@ -33,6 +33,21 @@ const formatAST = (value, includeTime = true) => {
     ? { timeZone: 'America/Puerto_Rico', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }
     : { timeZone: 'America/Puerto_Rico', year: 'numeric', month: 'long', day: 'numeric' };
   return new Intl.DateTimeFormat('en-US', opts).format(d) + (includeTime ? ' AST' : '');
+};
+
+// Format a date-only field (YYYY-MM-DD stored in DB) without any timezone conversion.
+// Prevents the "previous day at 8pm" bug caused by new Date("YYYY-MM-DD") parsing as midnight UTC.
+const formatDateOnly = (value) => {
+  if (!value) return "—";
+  const s = String(value).trim();
+  // Parse YYYY-MM-DD parts directly to avoid UTC-midnight interpretation
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return `${parseInt(m[3], 10)} ${months[parseInt(m[2], 10) - 1]} ${m[1]}`;
+  }
+  // Fallback: already formatted or unrecognised — return as-is
+  return s;
 };
 
 const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
@@ -178,7 +193,7 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Account Opening Date"
-              value={formatAST(account.account_creation_date)}
+              value={formatDateOnly(account.account_creation_date)}
             />
             <InfoRow
               icon={CreditCard}
@@ -199,7 +214,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={formatAST(account.date_of_birth)}
+                value={formatDateOnly(account.date_of_birth)}
               />
             )}
             {entity && (
@@ -478,7 +493,7 @@ export default function AccountDetails({ account, entity }) {
               <InfoRow
                 icon={Calendar}
                 label="Date of birth of the account holder"
-                value={formatAST(account.date_of_birth)}
+                value={formatDateOnly(account.date_of_birth)}
               />
               <InfoRow
                 icon={Globe}
@@ -520,7 +535,7 @@ export default function AccountDetails({ account, entity }) {
             <InfoRow
               icon={Calendar}
               label="Certification Date"
-              value={formatAST(account.self_certification_date)}
+              value={formatDateOnly(account.self_certification_date)}
             />
           )}
           {account.indicia_found && account.indicia_found.length > 0 && (
@@ -565,7 +580,7 @@ export default function AccountDetails({ account, entity }) {
                       <p className="font-semibold text-slate-900">{beneficiary.full_name}</p>
                       {beneficiary.date_of_birth && (
                         <p className="text-xs text-slate-600">
-                          DOB: {formatAST(beneficiary.date_of_birth)}
+                          DOB: {formatDateOnly(beneficiary.date_of_birth)}
                         </p>
                       )}
                       {beneficiary.address?.country && (
