@@ -1336,7 +1336,8 @@ export default function AccountClassification({ account, entities, onComplete, o
           steps,
           answers,
           answerHistory,
-          latestAccountData || account
+          latestAccountData || account,
+          history.filter(id => id === currentNodeId).length
         );
         return (
           <MultiFieldRenderer

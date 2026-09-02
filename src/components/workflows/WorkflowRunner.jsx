@@ -1728,8 +1728,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           currentStep,
           workflow.steps,
           answers,
-          null,
-          mappedEntityData
+          answerHistory,
+          mappedEntityData,
+          history.filter(id => id === currentStep.step_id).length
         );
         return (
           <MultiFieldRenderer

@@ -171,28 +171,38 @@ export const isSelfCertRequestStep = (step) => {
  *
  * For the very first request there are no prior answers, so all mins are undefined.
  *
- * @param {Object} step               - Current multi_field_input step definition
- * @param {Array}  allSteps           - All workflow step definitions
- * @param {Object} answers            - Current answers map (WorkflowRunner path)
- * @param {Object} answerHistory      - Per-step history (AccountClassification path)
- * @param {Object|null} accountData   - Account or ControllingPerson entity record
- * @returns {Object}                  - { [field_id]: "YYYY-MM-DD" | undefined }
+ * @param {Object} step                    - Current multi_field_input step definition
+ * @param {Array}  allSteps                - All workflow step definitions
+ * @param {Object} answers                 - Current answers map (WorkflowRunner path)
+ * @param {Object} answerHistory           - Per-step history (AccountClassification path)
+ * @param {Object|null} accountData        - Account or ControllingPerson entity record
+ * @param {number} currentIterationIndex   - 0-based index of the CURRENT visit to this step
+ *                                           (= history.filter(id => id === step.step_id).length)
+ * @returns {Object}                       - { [field_id]: "YYYY-MM-DD" | undefined }
  */
-export const computeSelfCertFieldMinDates = (step, allSteps, answers, answerHistory, accountData) => {
+export const computeSelfCertFieldMinDates = (step, allSteps, answers, answerHistory, accountData, currentIterationIndex = 0) => {
   if (!isSelfCertRequestStep(step)) return {};
 
-  // Build answers excluding the CURRENT step so we look at prior requests only
+  // ── WorkflowRunner path (answers uses __iter keys) ──────────────────────────
+  // Only remove the CURRENT iteration's key; keep all prior __iter keys intact.
   const answersWithoutCurrentStep = { ...answers };
-  delete answersWithoutCurrentStep[step.step_id];
-  // Also exclude any iteration keys for the current step
-  Object.keys(answersWithoutCurrentStep).forEach(k => {
-    if (k.startsWith(`${step.step_id}__iter`)) delete answersWithoutCurrentStep[k];
-  });
+  const currentAnswerKey = currentIterationIndex > 0
+    ? `${step.step_id}__iter${currentIterationIndex}`
+    : step.step_id;
+  delete answersWithoutCurrentStep[currentAnswerKey];
 
-  // For answerHistory path, also exclude current step's entries
+  // ── AccountClassification path (answerHistory[stepId] = array of iterations) ─
+  // Slice to keep ONLY prior iterations (indices 0 … currentIterationIndex-1).
+  // This way, iteration N sees the date from iteration N-1 as the minimum,
+  // and doesn't accidentally see its own in-progress (unsaved) value.
   const historyWithoutCurrentStep = answerHistory ? { ...answerHistory } : null;
-  if (historyWithoutCurrentStep) {
-    delete historyWithoutCurrentStep[step.step_id];
+  if (historyWithoutCurrentStep && Array.isArray(historyWithoutCurrentStep[step.step_id])) {
+    const priorIterations = historyWithoutCurrentStep[step.step_id].slice(0, currentIterationIndex);
+    if (priorIterations.length > 0) {
+      historyWithoutCurrentStep[step.step_id] = priorIterations;
+    } else {
+      delete historyWithoutCurrentStep[step.step_id];
+    }
   }
 
   const latestRequestedDate = resolveRequestedDate(
