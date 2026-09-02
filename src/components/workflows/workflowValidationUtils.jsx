@@ -148,6 +148,73 @@ export const validateDateReceived = (dateReceived, requestedDate) => {
 };
 
 /**
+ * Returns true if a workflow step is a self-certification request step.
+ * Matches titles containing "request" AND ("self" OR "cert") — avoids false
+ * matches like "Request death certificate".
+ *
+ * @param {Object} step - Workflow step definition
+ * @returns {boolean}
+ */
+export const isSelfCertRequestStep = (step) => {
+  const title = (step?.step_title || '').toLowerCase();
+  return (
+    title.includes('request') &&
+    (title.includes('self') || title.includes('cert')) &&
+    step.question_type === 'multi_field_input'
+  );
+};
+
+/**
+ * Computes a fieldMinDates map for a self-cert request step's date sub-fields.
+ * The min is the latest previously-requested date (from prior answers/history),
+ * so the date picker disables dates before that value.
+ *
+ * For the very first request there are no prior answers, so all mins are undefined.
+ *
+ * @param {Object} step               - Current multi_field_input step definition
+ * @param {Array}  allSteps           - All workflow step definitions
+ * @param {Object} answers            - Current answers map (WorkflowRunner path)
+ * @param {Object} answerHistory      - Per-step history (AccountClassification path)
+ * @param {Object|null} accountData   - Account or ControllingPerson entity record
+ * @returns {Object}                  - { [field_id]: "YYYY-MM-DD" | undefined }
+ */
+export const computeSelfCertFieldMinDates = (step, allSteps, answers, answerHistory, accountData) => {
+  if (!isSelfCertRequestStep(step)) return {};
+
+  // Build answers excluding the CURRENT step so we look at prior requests only
+  const answersWithoutCurrentStep = { ...answers };
+  delete answersWithoutCurrentStep[step.step_id];
+  // Also exclude any iteration keys for the current step
+  Object.keys(answersWithoutCurrentStep).forEach(k => {
+    if (k.startsWith(`${step.step_id}__iter`)) delete answersWithoutCurrentStep[k];
+  });
+
+  // For answerHistory path, also exclude current step's entries
+  const historyWithoutCurrentStep = answerHistory ? { ...answerHistory } : null;
+  if (historyWithoutCurrentStep) {
+    delete historyWithoutCurrentStep[step.step_id];
+  }
+
+  const latestRequestedDate = resolveRequestedDate(
+    allSteps,
+    answersWithoutCurrentStep,
+    historyWithoutCurrentStep,
+    accountData
+  );
+
+  if (!latestRequestedDate) return {}; // First request — no min
+
+  // Apply the min to all date sub-fields in this step
+  const map = {};
+  (step.multi_fields || []).forEach(field => {
+    if (field.field_type === 'date') {
+      map[field.field_id] = latestRequestedDate;
+    }
+  });
+  return map;
+};
+
+/**
  * Check if a field should be visible based on conditional visibility rules
  */
 export const isFieldVisible = (field, currentValues) => {

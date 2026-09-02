@@ -39,7 +39,7 @@ import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
 import { computePrefillAnswers, evaluateDateDifference } from "../workflows/workflowPrefillUtils";
-import { resolveRequestedDate, validateDateReceived } from "../workflows/workflowValidationUtils";
+import { resolveRequestedDate, validateDateReceived, computeSelfCertFieldMinDates } from "../workflows/workflowValidationUtils";
 import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
 import PreviousAnswers from "./PreviousAnswers";
@@ -1330,15 +1330,24 @@ export default function AccountClassification({ account, entities, onComplete, o
           />
         );
 
-      case 'multi_field_input':
+      case 'multi_field_input': {
+        const selfCertMinDates = computeSelfCertFieldMinDates(
+          currentNode,
+          steps,
+          answers,
+          answerHistory,
+          latestAccountData || account
+        );
         return (
           <MultiFieldRenderer
             fields={currentNode.multi_fields || []}
             values={multiFieldValues}
             onChange={setMultiFieldValues}
             errors={{}}
+            fieldMinDates={selfCertMinDates}
           />
         );
+      }
 
       case 'info':
         return null;

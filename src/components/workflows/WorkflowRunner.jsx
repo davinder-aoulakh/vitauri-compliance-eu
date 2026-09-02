@@ -27,7 +27,7 @@ import CountrySelect from "../shared/CountrySelect";
 import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
 import { computePrefillAnswers, evaluateDateDifference } from "./workflowPrefillUtils";
-import { resolveRequestedDate, validateDateReceived } from "./workflowValidationUtils";
+import { resolveRequestedDate, validateDateReceived, computeSelfCertFieldMinDates } from "./workflowValidationUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
@@ -1722,18 +1722,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           />
         );
 
-      case 'multi_field_input':
+      case 'multi_field_input': {
         const multiFieldAnswer = answer || {};
-        const multiFieldErrors = {};
-        
+        const selfCertMinDates = computeSelfCertFieldMinDates(
+          currentStep,
+          workflow.steps,
+          answers,
+          null,
+          mappedEntityData
+        );
         return (
           <MultiFieldRenderer
             fields={currentStep.multi_fields || []}
             values={multiFieldAnswer}
             onChange={(newValues) => handleAnswer(currentStep.step_id, newValues)}
-            errors={multiFieldErrors}
+            errors={{}}
+            fieldMinDates={selfCertMinDates}
           />
         );
+      }
 
       case 'info':
         return null;

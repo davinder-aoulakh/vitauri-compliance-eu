@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 
-export default function MultiFieldRenderer({ fields = [], values = {}, onChange, errors = {} }) {
+export default function MultiFieldRenderer({ fields = [], values = {}, onChange, errors = {}, fieldMinDates = {} }) {
   const [referencedDataCache, setReferencedDataCache] = useState({});
 
   // Collect all unique referenced_data_keys
@@ -117,16 +117,20 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
           />
         );
 
-      case "date":
+      case "date": {
+        const today = new Date().toISOString().split('T')[0];
+        const minDate = fieldMinDates[field.field_id] || undefined;
         return (
           <Input
             type="date"
             value={value || ""}
-            max={new Date().toISOString().split('T')[0]}
+            max={today}
+            min={minDate}
             onChange={(e) => handleFieldChange(field.field_id, e.target.value)}
             className={error ? "border-red-500" : ""}
           />
         );
+      }
 
       case "boolean":
         return (
