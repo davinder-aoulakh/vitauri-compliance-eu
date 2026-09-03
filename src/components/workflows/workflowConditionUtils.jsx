@@ -44,29 +44,32 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
     console.log('  Comparison Value (after field_reference lookup):', comparisonValue);
   }
 
-  const normalizeBoolean = (val) => {
-    if (val === true) return 'true';
-    if (val === false) return 'false';
+  const isBooleanLike = (val) => {
+    if (val === true || val === false) return true;
+    if (typeof val === 'string') {
+      const lower = val.toLowerCase();
+      return lower === 'yes' || lower === 'no' || lower === 'true' || lower === 'false';
+    }
+    return false;
+  };
+
+  const normalizeBooleanLike = (val) => {
+    if (val === true || (typeof val === 'string' && val.toLowerCase() === 'yes') || (typeof val === 'string' && val.toLowerCase() === 'true')) return 'true';
+    if (val === false || (typeof val === 'string' && val.toLowerCase() === 'no') || (typeof val === 'string' && val.toLowerCase() === 'false')) return 'false';
     return val;
   };
 
-  // Only normalize YES/NO strings when BOTH sides are YES/NO (i.e. a boolean yes_no comparison)
+  // Only normalize when BOTH sides are boolean-like (YES/NO/true/false as strings or booleans)
   // If the field value is a multi-choice option like OPT1, do NOT coerce either side
-  const isYesNoComparison =
-    (fieldValue === 'YES' || fieldValue === 'NO' || fieldValue === true || fieldValue === false) &&
-    (comparisonValue === 'YES' || comparisonValue === 'NO' || comparisonValue === true || comparisonValue === false);
+  const isYesNoComparison = isBooleanLike(fieldValue) && isBooleanLike(comparisonValue);
 
   if (isYesNoComparison) {
-    const yesNoNormalize = (val) => {
-      if (val === 'YES' || val === true) return 'true';
-      if (val === 'NO' || val === false) return 'false';
-      return val;
-    };
-    fieldValue = yesNoNormalize(fieldValue);
-    comparisonValue = yesNoNormalize(comparisonValue);
+    fieldValue = normalizeBooleanLike(fieldValue);
+    comparisonValue = normalizeBooleanLike(comparisonValue);
   } else {
-    fieldValue = normalizeBoolean(fieldValue);
-    comparisonValue = normalizeBoolean(comparisonValue);
+    // Fallback: still normalize raw booleans and string 'true'/'false' so edge cases work
+    fieldValue = normalizeBooleanLike(fieldValue);
+    comparisonValue = normalizeBooleanLike(comparisonValue);
   }
 
   console.log('  Field Value (after normalize):', fieldValue);
@@ -143,6 +146,8 @@ export const evaluateSingleCondition = async (condition, getFieldValue, crsCount
         console.log(`  [!= with country] "${fieldValue}" (${normalizedField}) !== "${comparisonValue}" (${normalizedComparison}) = ${conditionMet}`);
       } else {
         conditionMet = String(fieldValue || '').toLowerCase() !== String(comparisonValue || '').toLowerCase();
+        // Note: normalizeBooleanLike was already applied above to both sides before the switch,
+        // so 'NO'→'false' and 'false'→'false' are already normalized at this point.
       }
       break;
     case "in":

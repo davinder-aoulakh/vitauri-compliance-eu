@@ -67,8 +67,23 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
           return false;
         })();
       } else {
-        if (typeof resolvedAnswer === 'boolean' && typeof comparisonValue === 'string') {
-          met = resolvedAnswer === (comparisonValue === 'true');
+        // Check if both sides are boolean-like (YES/NO/true/false as strings or actual booleans)
+        // This handles the case where a yes_no answer is 'YES'/'NO' but the condition value is 'true'/'false'
+        const isBoolLike = (v) => {
+          if (v === true || v === false) return true;
+          if (typeof v === 'string') { const l = v.toLowerCase(); return l === 'yes' || l === 'no' || l === 'true' || l === 'false'; }
+          return false;
+        };
+        const normBool = (v) => {
+          if (v === true || (typeof v === 'string' && (v.toLowerCase() === 'yes' || v.toLowerCase() === 'true'))) return 'true';
+          if (v === false || (typeof v === 'string' && (v.toLowerCase() === 'no' || v.toLowerCase() === 'false'))) return 'false';
+          return v;
+        };
+        if (isBoolLike(resolvedAnswer) && isBoolLike(comparisonValue)) {
+          const nf = normBool(resolvedAnswer);
+          const nc = normBool(comparisonValue);
+          met = nf === nc;
+          console.log(`    [= OPERATOR] Boolean-like comparison: "${resolvedAnswer}"→"${nf}" === "${comparisonValue}"→"${nc}" = ${met}`);
         } else {
           let normalizedField = String(resolvedAnswer || '').trim().toLowerCase();
           let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
@@ -113,8 +128,21 @@ export const evaluateSingleCondition = async (condition, getFieldValue, allAnswe
           return false;
         })();
       } else {
-        if (typeof resolvedAnswer === 'boolean' && typeof comparisonValue === 'string') {
-          met = resolvedAnswer !== (comparisonValue === 'true');
+        const isBoolLikeNe = (v) => {
+          if (v === true || v === false) return true;
+          if (typeof v === 'string') { const l = v.toLowerCase(); return l === 'yes' || l === 'no' || l === 'true' || l === 'false'; }
+          return false;
+        };
+        const normBoolNe = (v) => {
+          if (v === true || (typeof v === 'string' && (v.toLowerCase() === 'yes' || v.toLowerCase() === 'true'))) return 'true';
+          if (v === false || (typeof v === 'string' && (v.toLowerCase() === 'no' || v.toLowerCase() === 'false'))) return 'false';
+          return v;
+        };
+        if (isBoolLikeNe(resolvedAnswer) && isBoolLikeNe(comparisonValue)) {
+          const nf = normBoolNe(resolvedAnswer);
+          const nc = normBoolNe(comparisonValue);
+          met = nf !== nc;
+          console.log(`    [!= OPERATOR] Boolean-like comparison: "${resolvedAnswer}"→"${nf}" !== "${comparisonValue}"→"${nc}" = ${met}`);
         } else {
           let normalizedField = String(resolvedAnswer || '').trim().toLowerCase();
           let normalizedComparison = String(comparisonValue || '').trim().toLowerCase();
