@@ -295,12 +295,15 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
         }
         console.log(`  ↪️ Group ${i + 1} TRUE but no true_step set — falling through to next group`);
       } else {
-        if (group.false_step) {
-          console.log(`  ❌ Group ${i + 1} FALSE → routing to: ${group.false_step}`);
+        // FALSE: fall through to the next group so subsequent groups can match.
+        // Only use this group's false_step if there are no more groups after this one.
+        const isLastGroup = i === logic.condition_groups.length - 1;
+        if (isLastGroup && group.false_step) {
+          console.log(`  ❌ Group ${i + 1} FALSE (last group) → routing to false_step: ${group.false_step}`);
           console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
           return group.false_step;
         }
-        console.log(`  ↪️ Group ${i + 1} FALSE but no false_step set — falling through to next group`);
+        console.log(`  ↪️ Group ${i + 1} FALSE — falling through to next group`);
       }
     }
 
