@@ -252,51 +252,48 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
         continue;
       }
 
-      // Evaluate ALL conditions in this group to determine group result
+      // Step 1: Evaluate Condition 1 (gate) — if false, skip this group entirely
+      console.log(`  [Gate: Condition 1/${group.conditions.length}]`);
+      const gateMet = await evaluateSingleConditionFn(group.conditions[0]);
+      if (!gateMet) {
+        console.log(`  ↪️ Group ${i + 1} gate (Condition 1) FALSE — skipping group, moving to next`);
+        continue;
+      }
+      console.log(`  ✅ Group ${i + 1} gate passed — evaluating remaining conditions`);
+
+      // Step 2: Gate passed — evaluate remaining conditions using the group's operator
       let groupResult = true;
-      if (group.group_operator === 'AND') {
-        for (let j = 0; j < group.conditions.length; j++) {
-          const condition = group.conditions[j];
-          console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
-          const conditionMet = await evaluateSingleConditionFn(condition);
-          groupResult = groupResult && conditionMet;
-          console.log(`    AND logic: groupResult = ${groupResult}`);
-          if (!groupResult) {
-            console.log('    ❌ AND failed, breaking early');
-            break;
+      if (group.conditions.length > 1) {
+        if (group.group_operator === 'AND') {
+          for (let j = 1; j < group.conditions.length; j++) {
+            const condition = group.conditions[j];
+            console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
+            const conditionMet = await evaluateSingleConditionFn(condition);
+            groupResult = groupResult && conditionMet;
+            console.log(`    AND logic: groupResult = ${groupResult}`);
+            if (!groupResult) {
+              console.log('    ❌ AND failed, breaking early');
+              break;
+            }
           }
-        }
-      } else {
-        // OR: group is true if ANY condition is true
-        groupResult = false;
-        for (let j = 0; j < group.conditions.length; j++) {
-          const condition = group.conditions[j];
-          console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
-          const conditionMet = await evaluateSingleConditionFn(condition);
-          if (conditionMet) {
-            groupResult = true;
-            console.log(`    OR logic: condition true → group result = true`);
-            break;
-          }
+        } else {
+          // OR: gate already true = group is true (at least one condition passed)
+          console.log(`    OR logic: gate passed → group result = true`);
+          groupResult = true;
         }
       }
 
       console.log(`  🎯 Group ${i + 1} Final Result: ${groupResult}`);
       console.log(`  → True Step: ${group.true_step} | False Step: ${group.false_step}`);
 
-      if (groupResult) {
-        // Group is TRUE — route using this group's true_step or false_step
-        const destination = group.true_step || group.false_step;
-        if (destination) {
-          console.log(`  ✅ Group ${i + 1} TRUE → routing to true_step: ${destination}`);
-          console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-          return destination;
-        }
-        console.log(`  ↪️ Group ${i + 1} TRUE but no true_step set — falling through to next group`);
-      } else {
-        // Group is FALSE — fall through to next group regardless of false_step
-        console.log(`  ↪️ Group ${i + 1} FALSE — falling through to next group`);
+      // Gate passed — this group owns the routing, stop evaluating further groups
+      const destination = groupResult ? group.true_step : group.false_step;
+      if (destination) {
+        console.log(`  ${groupResult ? '✅' : '❌'} Group ${i + 1} ${groupResult ? 'TRUE' : 'FALSE'} → routing to: ${destination}`);
+        console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
+        return destination;
       }
+      console.log(`  ⚠️ Group ${i + 1} gate passed but no destination step set — falling through`);
     }
 
     // All groups fell through (all were FALSE) — use last group's false_step, then overall fallback
