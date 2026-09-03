@@ -252,22 +252,10 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
         continue;
       }
 
-      // Condition 1 is the "gate" — if it fails, this group is not applicable for
-      // the user's current selection, so skip the entire group (fall through to next).
-      console.log(`  [Gate check: Condition 1/${group.conditions.length}]`);
-      const gateConditionMet = await evaluateSingleConditionFn(group.conditions[0]);
-      if (!gateConditionMet) {
-        console.log(`  ↪️ Group ${i + 1} gate (Condition 1) FAILED — skipping group, moving to next`);
-        continue;
-      }
-      console.log(`  ✅ Group ${i + 1} gate passed — evaluating remaining conditions`);
-
-      // Gate passed — now evaluate remaining conditions to get full group result
-      // AND operator: all remaining conditions must also pass
-      // OR operator: gate already passed = group is true (gate counts as one TRUE in OR)
-      let groupResult = true; // gate already passed (counts as 1 true condition)
+      // Evaluate ALL conditions in this group to determine group result
+      let groupResult = true;
       if (group.group_operator === 'AND') {
-        for (let j = 1; j < group.conditions.length; j++) {
+        for (let j = 0; j < group.conditions.length; j++) {
           const condition = group.conditions[j];
           console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
           const conditionMet = await evaluateSingleConditionFn(condition);
@@ -279,40 +267,45 @@ export const evaluateConditionalLogic = async (logic, currentAnswers, evaluateSi
           }
         }
       } else {
-        // OR: gate already TRUE → remaining conditions don't matter, group is true
-        // (If gate passed, we know at least one condition is true)
-        console.log(`    OR logic: gate passed → group result = true`);
+        // OR: group is true if ANY condition is true
+        groupResult = false;
+        for (let j = 0; j < group.conditions.length; j++) {
+          const condition = group.conditions[j];
+          console.log(`  [Condition ${j + 1}/${group.conditions.length}]`);
+          const conditionMet = await evaluateSingleConditionFn(condition);
+          if (conditionMet) {
+            groupResult = true;
+            console.log(`    OR logic: condition true → group result = true`);
+            break;
+          }
+        }
       }
 
       console.log(`  🎯 Group ${i + 1} Final Result: ${groupResult}`);
       console.log(`  → True Step: ${group.true_step} | False Step: ${group.false_step}`);
 
       if (groupResult) {
-        if (group.true_step) {
-          console.log(`  ✅ Group ${i + 1} TRUE → routing to: ${group.true_step}`);
+        // Group is TRUE — route using this group's true_step or false_step
+        const destination = group.true_step || group.false_step;
+        if (destination) {
+          console.log(`  ✅ Group ${i + 1} TRUE → routing to true_step: ${destination}`);
           console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-          return group.true_step;
+          return destination;
         }
         console.log(`  ↪️ Group ${i + 1} TRUE but no true_step set — falling through to next group`);
       } else {
-        // FALSE: fall through to the next group so subsequent groups can match.
-        // Only use this group's false_step if there are no more groups after this one.
-        const isLastGroup = i === logic.condition_groups.length - 1;
-        if (isLastGroup && group.false_step) {
-          console.log(`  ❌ Group ${i + 1} FALSE (last group) → routing to false_step: ${group.false_step}`);
-          console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
-          return group.false_step;
-        }
+        // Group is FALSE — fall through to next group regardless of false_step
         console.log(`  ↪️ Group ${i + 1} FALSE — falling through to next group`);
       }
     }
 
-    // All groups fell through — use overall_false_step or logic fallback
-    const fallbackStep = logic.overall_false_step || logic.else_step || null;
+    // All groups fell through (all were FALSE) — use last group's false_step, then overall fallback
+    const lastGroup = logic.condition_groups[logic.condition_groups.length - 1];
+    const fallbackStep = lastGroup?.false_step || logic.overall_false_step || logic.else_step || null;
     if (fallbackStep) {
-      console.log(`  ⬇️ All groups fell through — overall fallback step: ${fallbackStep}`);
+      console.log(`  ⬇️ All groups FALSE — fallback step: ${fallbackStep}`);
     } else {
-      console.error(`  🚨 Condition groups: no destination resolved — all groups fell through with no overall_false_step set`);
+      console.error(`  🚨 Condition groups: no destination resolved — all groups were FALSE with no false_step set`);
     }
     console.log('🔷🔷🔷 [CONDITION GROUPS] Complete\n');
     return fallbackStep;
