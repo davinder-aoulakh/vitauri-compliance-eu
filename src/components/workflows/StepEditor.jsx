@@ -33,12 +33,12 @@ const getQuestionFieldType = (questionType) => {
 const ACCOUNT_FIELDS_SCHEMA = [
   // Core Account Fields
   { value: "account_number", label: "Account Number", type: "string" },
-  { value: "account_number_type", label: "Account Number Type", type: "enum" },
+  { value: "account_number_type", label: "Account Number Type", type: "enum", enum: ["IBAN", "Bank account number (non-IBAN)", "ISIN", "Securities account number (non-ISIN)", "Other account identifier", "No account number exists"] },
   { value: "account_creation_date", label: "Account Creation Date", type: "date" },
-  { value: "account_type", label: "Account Type", type: "enum" },
-  { value: "status", label: "Status", type: "enum" },
+  { value: "account_type", label: "Account Type", type: "enum", enum: ["depository", "custodial", "equity_debt_interest", "cash_value_insurance", "annuity"] },
+  { value: "status", label: "Status", type: "enum", enum: ["active", "closed", "dormant"] },
   // Account Holder Identity
-  { value: "account_holder_type", label: "Account Holder Type", type: "enum" },
+  { value: "account_holder_type", label: "Account Holder Type", type: "enum", enum: ["individual", "entity"] },
   { value: "account_holder_name", label: "Account Holder Name", type: "string" },
   { value: "account_holder_entity_type", label: "Account Holder Entity Type", type: "string" },
   { value: "first_name", label: "First Name", type: "string" },
@@ -76,12 +76,12 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "gross_income_from_financial_assets", label: "Gross Income From Financial Assets", type: "boolean" },
   { value: "gross_income_50_passive", label: "Gross Income 50% Passive", type: "boolean" },
   // CRS Classification
-  { value: "type_of_financial_institution", label: "Type of Financial Institution", type: "enum" },
-  { value: "entity_classification", label: "Entity Classification", type: "enum" },
-  { value: "crs_entity_classification", label: "CRS Entity Classification", type: "enum" },
-  { value: "fatca_entity_classification", label: "FATCA Entity Classification", type: "enum" },
-  { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type", type: "enum" },
-  { value: "potential_exception_type", label: "Potential Exception Type", type: "enum" },
+  { value: "type_of_financial_institution", label: "Type of Financial Institution", type: "enum", enum: ["custodial_institution", "depository_institution", "investment_entity_type_a", "investment_entity_type_b", "specified_insurance_company"] },
+  { value: "entity_classification", label: "Entity Classification", type: "enum", enum: ["financial_institution", "active_nfe", "passive_nfe", "not_applicable"] },
+  { value: "crs_entity_classification", label: "CRS Entity Classification", type: "enum", enum: ["CRS101", "CRS102", "CRS103"] },
+  { value: "fatca_entity_classification", label: "FATCA Entity Classification", type: "enum", enum: ["FATCA101", "FATCA102", "FATCA103", "FATCA104", "FATCA105"] },
+  { value: "non_reportable_exception_type", label: "Non-Reportable Exception Type", type: "enum", enum: ["inheritance_estate", "escrow_court_decree", "qualifying_pension", "overdraft_deposit", "pre_existing_dormant_below_1k", "publicly_traded", "purely_domestic", "international_organization", "liquidation_dissolution", "none"] },
+  { value: "potential_exception_type", label: "Potential Exception Type", type: "enum", enum: ["None", "DGA", "Foundation", "STAK", "HoldCo", "TreasuryCtr", "RealEstateFund"] },
   // Treasury Centre Fields
   { value: "treasury_activities_operational", label: "Treasury Activities Operational", type: "boolean" },
   { value: "treasury_part_of_nonfinancial_group", label: "Treasury Part of Non-Financial Group", type: "boolean" },
@@ -114,7 +114,7 @@ const ACCOUNT_FIELDS_SCHEMA = [
   { value: "gross_payments_currency", label: "Gross Payments Currency", type: "string" },
   { value: "reporting_year", label: "Reporting Year", type: "string" },
   // Reportability
-  { value: "reportability_status", label: "Reportability Status", type: "enum" },
+  { value: "reportability_status", label: "Reportability Status", type: "enum", enum: ["pending_review", "reportable", "non_reportable", "excluded", "work_in_progress"] },
   { value: "reportability_reason", label: "Reportability Reason", type: "string" },
   { value: "needs_reclassification", label: "Needs Reclassification", type: "boolean" },
   // US Indicia / FATCA
@@ -187,7 +187,7 @@ const BENEFICIARY_FIELDS_SCHEMA = [
   { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
   { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true },
   { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
-  { value: "reportability_status", label: "Reportability Status", type: "enum" },
+  { value: "reportability_status", label: "Reportability Status", type: "enum", enum: ["pending_review", "reportable", "non_reportable", "excluded", "work_in_progress"] },
   { value: "reportability_reason", label: "Reportability Reason", type: "string" }
 ];
 
