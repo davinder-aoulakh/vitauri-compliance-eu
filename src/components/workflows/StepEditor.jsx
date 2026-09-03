@@ -201,7 +201,7 @@ const getFieldsForEntity = (entityType) => {
     default: schema = ACCOUNT_FIELDS_SCHEMA;
   }
   return schema.reduce((acc, field) => {
-    acc[field.value] = { label: field.label, type: field.type };
+    acc[field.value] = { label: field.label, type: field.type, ...(field.enum ? { enum: field.enum } : {}) };
     return acc;
   }, {});
 };
