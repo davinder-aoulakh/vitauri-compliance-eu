@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Circle, Diamond, Square, Plus, Trash2, Save, Settings, Copy, Link as LinkIcon, ChevronRight, Target, Sparkles } from "lucide-react";
+import { Circle, Diamond, Square, Plus, Trash2, Save, Settings, Copy, Link as LinkIcon, ChevronRight, Target, Sparkles, Search, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -134,6 +134,17 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
   const [selectedStep, setSelectedStep] = useState(null);
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [showCopyStepsDialog, setShowCopyStepsDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSteps = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return steps;
+    return steps.filter(step => {
+      const fields = [step.step_title, step.question_text, step.help_text];
+      if (fields.some(f => f && String(f).toLowerCase().includes(q))) return true;
+      return (step.options || []).some(opt => opt.label && String(opt.label).toLowerCase().includes(q));
+    });
+  }, [steps, searchQuery]);
   const [workflowName, setWorkflowName] = useState(workflow?.workflow_name || "");
   const [workflowType, setWorkflowType] = useState(workflow?.workflow_type || "custom");
   const [displayIntro, setDisplayIntro] = useState(workflow?.display_workflow_introduction || false);
@@ -434,7 +445,24 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
             <div className="col-span-9">
               <Card className="border-0 shadow-lg">
                 <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-transparent">
-                  <CardTitle className="text-lg">Workflow Steps ({steps.length})</CardTitle>
+                  <div className="flex items-center justify-between gap-4">
+                    <CardTitle className="text-lg whitespace-nowrap">Workflow Steps ({steps.length})</CardTitle>
+                    <div className="relative max-w-xs w-full">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search steps…"
+                        className="w-full pl-9 pr-8 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-slate-400"
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-6">
                   {steps.length === 0 ? (
@@ -443,9 +471,16 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                       <h3 className="text-lg font-semibold text-slate-900 mb-2">No Steps Yet</h3>
                       <p className="text-slate-600 mb-6">Start building your workflow by adding steps from the palette</p>
                     </div>
+                  ) : filteredSteps.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Search className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">No steps match your search</h3>
+                      <p className="text-slate-600">Try a different keyword or <button className="text-indigo-600 underline" onClick={() => setSearchQuery("")}>clear the search</button></p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
-                      {steps.map((step, index) => {
+                      {filteredSteps.map((step) => {
+                        const index = steps.indexOf(step);
                         const nodeType = nodeTypes.find(nt =>
                           step.step_title?.includes(nt.label) ||
                           (step.options?.length > 0 && nt.id === "decision") ||
