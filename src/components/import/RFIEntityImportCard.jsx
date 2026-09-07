@@ -126,8 +126,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     // does not touch stored data, the manual form, or the import logic.
     const ENTITY_TYPE_DISPLAY_MAP = {};
     entityTypeRefRecords.forEach(r => {
-      const value = r.data?.value;
-      const label = r.data?.label;
+      const value = r.value;
+      const label = r.label;
       if (value && label) ENTITY_TYPE_DISPLAY_MAP[String(value).toLowerCase().trim()] = label;
     });
     // Fallback: full descriptive strings already used by the import template map to themselves
