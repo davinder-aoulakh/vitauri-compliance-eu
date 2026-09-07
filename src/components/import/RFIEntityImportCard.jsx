@@ -1189,21 +1189,21 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         else if (k === "ah_original_state") rowData[k] = acc.account_holder_address?.state || "";
         else if (k === "ah_original_postal_code") rowData[k] = acc.account_holder_address?.postal_code || "";
         else if (k === "ah_original_country") rowData[k] = acc.account_holder_address?.country || "";
-        else if (k === "ah_original_country_code") rowData[k] = acc.account_holder_address?.country_code || "";
+        else if (k === "ah_original_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
         else if (k === "ah_current_street") rowData[k] = acc.current_address?.street || "";
         else if (k === "ah_current_city") rowData[k] = acc.current_address?.city || "";
         else if (k === "ah_current_state") rowData[k] = acc.current_address?.state || "";
         else if (k === "ah_current_postal_code") rowData[k] = acc.current_address?.postal_code || "";
         else if (k === "ah_current_country") rowData[k] = acc.current_address?.country || "";
-        else if (k === "ah_current_country_code") rowData[k] = acc.current_address?.country_code || "";
+        else if (k === "ah_current_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
         else if (k === "ah_country_of_residence") rowData[k] = acc.country_of_residence || "";
-        else if (k === "ah_country_of_residence_code") rowData[k] = "";
+        else if (k === "ah_country_of_residence_code") rowData[k] = ""; // filled by VLOOKUP formula below
         // Tax residencies
         else if (k === "tax1_country") rowData[k] = acc.tax_residencies?.[0]?.country || "";
-        else if (k === "tax1_country_code") rowData[k] = acc.tax_residencies?.[0]?.country_code || "";
+        else if (k === "tax1_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
         else if (k === "tax1_tin") rowData[k] = acc.tax_residencies?.[0]?.tin || "";
         else if (k === "tax2_country") rowData[k] = acc.tax_residencies?.[1]?.country || "";
-        else if (k === "tax2_country_code") rowData[k] = acc.tax_residencies?.[1]?.country_code || "";
+        else if (k === "tax2_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
         else if (k === "tax2_tin") rowData[k] = acc.tax_residencies?.[1]?.tin || "";
         // Controlling persons
         else if (/^cp(\d)_(.+)$/.test(k)) {
@@ -1216,9 +1216,9 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (cpField === "last_name") rowData[k] = cp.last_name || "";
           else if (cpField === "date_of_birth") rowData[k] = isoToDDMMYYYY(cp.date_of_birth);
           else if (cpField === "place_of_birth") rowData[k] = cp.place_of_birth || "";
-          else if (cpField === "place_of_birth_code") rowData[k] = cp.place_of_birth_code || "";
+          else if (cpField === "place_of_birth_code") rowData[k] = ""; // filled by VLOOKUP formula below
           else if (cpField === "country_of_residence") rowData[k] = cp.country_of_residence || "";
-          else if (cpField === "country_of_residence_code") rowData[k] = cp.country_of_residence_code || "";
+          else if (cpField === "country_of_residence_code") rowData[k] = ""; // filled by VLOOKUP formula below
           else if (cpField === "self_cert_obtained") rowData[k] = cp.self_certification_obtained != null ? String(cp.self_certification_obtained) : "";
           else if (cpField === "self_cert_date") rowData[k] = isoToDDMMYYYY(cp.self_certification_receipt_date);
           else if (cpField === "self_cert_requested") rowData[k] = cp.self_certification_request_date ? "true" : "false";
@@ -1228,12 +1228,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (cpField === "state") rowData[k] = cp.address?.state || "";
           else if (cpField === "postal_code") rowData[k] = cp.address?.postal_code || "";
           else if (cpField === "address_country") rowData[k] = cp.address?.country || "";
-          else if (cpField === "address_country_code") rowData[k] = cp.address?.country_code || "";
+          else if (cpField === "address_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
           else if (cpField === "tax1_country") rowData[k] = cp.tax_residencies?.[0]?.country || "";
-          else if (cpField === "tax1_country_code") rowData[k] = cp.tax_residencies?.[0]?.country_code || "";
+          else if (cpField === "tax1_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
           else if (cpField === "tin") rowData[k] = cp.tax_residencies?.[0]?.tin || "";
           else if (cpField === "tax2_country") rowData[k] = cp.tax_residencies?.[1]?.country || "";
-          else if (cpField === "tax2_country_code") rowData[k] = cp.tax_residencies?.[1]?.country_code || "";
+          else if (cpField === "tax2_country_code") rowData[k] = ""; // filled by VLOOKUP formula below
           else if (cpField === "tin2") rowData[k] = cp.tax_residencies?.[1]?.tin || "";
           else if (cpField === "control_type") rowData[k] = cp.control_type || "";
           else if (cpField === "ownership_percentage") rowData[k] = cp.ownership_percentage != null ? String(cp.ownership_percentage) : "";
@@ -1244,6 +1244,8 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
                   "self_certification_date","self_certification_request_date"].includes(k)) {
           rowData[k] = isoToDDMMYYYY(acc[k]);
         }
+        // Country of incorporation code — filled by VLOOKUP formula below
+        else if (k === "country_of_incorporation_code") rowData[k] = "";
         // Boolean fields
         else if (typeof acc[k] === "boolean") rowData[k] = String(acc[k]);
         // Direct mapping
@@ -1259,6 +1261,16 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         };
         cell.font      = { size: 9 };
         cell.alignment = { vertical: "top" };
+      });
+
+      // Country code columns — live VLOOKUP formula against Referenced Data, same pattern as Accounts Data sheet
+      Object.entries(CODE_TO_NAME_KEY).forEach(([codeKey, nameKey]) => {
+        const codeColIdx = exportColIndexMap[codeKey];
+        const nameColIdx = exportColIndexMap[nameKey];
+        if (!codeColIdx || !nameColIdx) return;
+        const cell = exportSheet.getCell(row.number, codeColIdx);
+        cell.value = { formula: `IFERROR(VLOOKUP(${colLetter(nameColIdx)}${row.number},'Referenced Data'!$A$2:$B$${refDataRows + 1},2,FALSE),"")` };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
       });
     });
 
