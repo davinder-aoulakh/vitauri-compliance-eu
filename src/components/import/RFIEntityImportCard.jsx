@@ -114,10 +114,42 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
     workbook.created = new Date();
 
     // Fetch country and currency data for Referenced Data sheet
-    const [crsCountries, currencyRecords] = await Promise.all([
+    const [crsCountries, currencyRecords, entityTypeRefRecords] = await Promise.all([
       base44.entities.CrsCountryInfo.list("country_name", 500),
       base44.entities.ReferencedData.filter({ entity_name: "Global", field_name: "currency" }, "order", 300),
+      base44.entities.ReferencedData.filter({ entity_name: "Account", field_name: "account_holder_entity_type" }, "order", 100),
     ]);
+
+    // Build a canonical short-code/full-string -> full descriptive label map for the
+    // "Type of Entity" export column, so manually-created accounts (short code stored)
+    // and imported accounts (full string stored) both display the full label. Export-only —
+    // does not touch stored data, the manual form, or the import logic.
+    const ENTITY_TYPE_DISPLAY_MAP = {};
+    entityTypeRefRecords.forEach(r => {
+      const value = r.data?.value;
+      const label = r.data?.label;
+      if (value && label) ENTITY_TYPE_DISPLAY_MAP[String(value).toLowerCase().trim()] = label;
+    });
+    // Fallback: full descriptive strings already used by the import template map to themselves
+    [
+      "Naamloze Vennootschap (N.V.) (Limited Liability Company)",
+      "Besloten Vennootschap (B.V.) (Private Limited Liability Company)",
+      "N.V. or B.V. acting with one 100% shareholder/director (100% DGA)",
+      "Stichting (Foundation) or other Non-Profit Organization",
+      "Stichting Particulier Fonds (SPF) (Private Foundation)",
+      "Stichting Administratiekantoor (STAK)",
+      "Curaçao Trust Arrangement",
+      "Holding Company",
+      "Treasury Center",
+      "Partnership",
+      "Real Estate Fund",
+      "Vereniging met rechtspersoonlijkheid (Association with corporate capacity)",
+      "Cooperatie (Cooperation)",
+      "Onderlinge Waarborgmaatschappij (Mutual Guarantee Company)",
+    ].forEach(label => {
+      const key = label.toLowerCase().trim();
+      if (!ENTITY_TYPE_DISPLAY_MAP[key]) ENTITY_TYPE_DISPLAY_MAP[key] = label;
+    });
     const seen = new Map();
     crsCountries.forEach(c => {
       if (c.country_name && c.country_code) {
@@ -1246,6 +1278,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         }
         // Country of incorporation code — filled by VLOOKUP formula below
         else if (k === "country_of_incorporation_code") rowData[k] = "";
+        // Type of Entity — reverse-lookup short code or full string to the canonical full descriptive label
+        else if (k === "account_holder_entity_type") {
+          const stored = acc[k];
+          if (!stored) rowData[k] = "";
+          else rowData[k] = ENTITY_TYPE_DISPLAY_MAP[String(stored).toLowerCase().trim()] ?? stored;
+        }
         // Boolean fields
         else if (typeof acc[k] === "boolean") rowData[k] = String(acc[k]);
         // Direct mapping
