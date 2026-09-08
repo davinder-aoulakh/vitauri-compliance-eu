@@ -48,67 +48,6 @@ import AccountForm from "./AccountForm";
 import DraftSyncWarningBanner from "./DraftSyncWarningBanner";
 import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS } from "@/lib/classificationEvaluator";
 
-// ─── AUTOFILL DEBUG LOGGER ───────────────────────────────────────────────────
-// Watches for DOM mutations that add address-like inputs, and logs every
-// focusin / change on any input so we can see what Edge is reacting to.
-// Remove this block once the root cause is identified.
-if (typeof window !== 'undefined' && !window.__crsAutofillDebugInstalled) {
-  window.__crsAutofillDebugInstalled = true;
-
-  // 1. MutationObserver: log whenever a new <input> appears in the DOM
-  const mo = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      for (const node of m.addedNodes) {
-        if (node.nodeType !== 1) continue;
-        const inputs = node.matches?.('input') ? [node] : [...(node.querySelectorAll?.('input') || [])];
-        inputs.forEach(inp => {
-          console.log('[CRS-AUTOFILL] New input added to DOM:', {
-            name: inp.name,
-            id: inp.id,
-            type: inp.type,
-            autoComplete: inp.autocomplete,
-            readOnly: inp.readOnly,
-            hidden: inp.hidden,
-            offsetParent: inp.offsetParent,
-            parentHTML: inp.parentElement?.outerHTML?.substring(0, 200),
-          });
-        });
-      }
-    }
-  });
-  mo.observe(document.body, { childList: true, subtree: true });
-
-  // 2. Log every focusin on an input (tells us which field Edge focused)
-  document.addEventListener('focusin', (e) => {
-    if (e.target.tagName === 'INPUT') {
-      console.log('[CRS-AUTOFILL] Input focused:', {
-        name: e.target.name,
-        id: e.target.id,
-        type: e.target.type,
-        autoComplete: e.target.autocomplete,
-        value: e.target.value?.substring(0, 30),
-        readOnly: e.target.readOnly,
-      });
-    }
-  }, true);
-
-  // 3. Log every change/input event (tells us if Edge wrote a value)
-  document.addEventListener('change', (e) => {
-    if (e.target.tagName === 'INPUT') {
-      console.log('[CRS-AUTOFILL] Input changed:', {
-        name: e.target.name,
-        id: e.target.id,
-        type: e.target.type,
-        autoComplete: e.target.autocomplete,
-        value: e.target.value?.substring(0, 30),
-      });
-    }
-  }, true);
-
-  console.log('[CRS-AUTOFILL] Debug logger installed.');
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function AccountClassification({ account, entities, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
@@ -460,21 +399,6 @@ export default function AccountClassification({ account, entities, onComplete, o
   const currentNode = steps[currentStepIndex];
   const currentNodeId = currentNode?.step_id;
 
-  // Log every step change so we know which step was active when Edge prompted
-  useEffect(() => {
-    if (!currentNode) return;
-    console.log('[CRS-AUTOFILL] Step changed:', {
-      stepIndex: currentStepIndex,
-      stepId: currentNode.step_id,
-      stepTitle: currentNode.step_title,
-      questionType: currentNode.question_type,
-      inputsInDOM: document.querySelectorAll('input').length,
-      inputDetails: [...document.querySelectorAll('input')].map(i => ({
-        name: i.name, type: i.type, autoComplete: i.autocomplete, readOnly: i.readOnly,
-      })),
-    });
-  }, [currentStepIndex]);
-
   const stepMap = steps.reduce((acc, s) => { acc[s.step_id] = s; return acc; }, {});
 
   // Fetch ReferencedData options for single_choice steps that use referenced_data_key
@@ -677,7 +601,6 @@ export default function AccountClassification({ account, entities, onComplete, o
           : null;
         if (destStep?.question_type === 'yes_no' && destPrefillCfg?.prefill_type === 'date_difference') {
           const prefillResult = evaluateDateDifference(destPrefillCfg, newAnswers);
-          console.log(`[DATE_DIFF PREFILL] AccountClassification step="${destStep.step_title}" cfg=`, JSON.stringify(destPrefillCfg), `source_answer=`, newAnswers[destPrefillCfg?.source_step_id], `result=${prefillResult}`);
           if (prefillResult !== null) {
             setAnswers(prev => ({ ...prev, [destStep.step_id]: prefillResult }));
             if (destStep?.mapped_field?.read_only !== false) {
@@ -775,8 +698,9 @@ export default function AccountClassification({ account, entities, onComplete, o
     return null;
   };
 
-  const executeAction = async (action, allAnswers) => {
-    let targetId = account?.id;
+  // Resolves the field/value to update for an action, or null if its condition isn't met.
+  // Does NOT perform the update itself — callers batch/parallelize the actual writes.
+  const resolveActionUpdate = (action, allAnswers) => {
     let valueToUpdate = action.value_source === 'static_value' ? action.value
       : action.value_source === 'from_step_answer' ? allAnswers[action.value]
       : null;
@@ -790,12 +714,20 @@ export default function AccountClassification({ account, entities, onComplete, o
       const fieldVal = allAnswers[action.condition.field];
       const condMet = action.condition.operator === '=' ? fieldVal === action.condition.value
         : action.condition.operator === '!=' ? fieldVal !== action.condition.value : false;
-      if (!condMet) return;
+      if (!condMet) return null;
     }
 
-    if (action.target_entity_type === 'Account' && targetId) {
-      await base44.entities.Account.update(targetId, { [action.field_to_update]: valueToUpdate });
-      const updated = await base44.entities.Account.filter({ id: targetId });
+    if (action.target_entity_type === 'Account') {
+      return { [action.field_to_update]: valueToUpdate };
+    }
+    return null;
+  };
+
+  const executeAction = async (action, allAnswers) => {
+    const update = resolveActionUpdate(action, allAnswers);
+    if (update && account?.id) {
+      await base44.entities.Account.update(account.id, update);
+      const updated = await base44.entities.Account.filter({ id: account.id });
       if (updated[0]) setLatestAccountData(updated[0]);
     }
   };
@@ -821,17 +753,23 @@ export default function AccountClassification({ account, entities, onComplete, o
     setLoading(true);
     const allSteps = completedPath.length > 0 ? completedPath : [...history, currentNodeId];
 
+    // Collect all independent Account field updates from this completion pass into
+    // a single merged object, then write them with as few round-trips as possible.
+    let mergedAccountUpdate = {};
+
+    // 1. after_workflow post-completion actions
     for (const stepId of allSteps) {
       const step = stepMap[stepId];
       if (step?.post_completion_actions) {
         const afterWorkflow = step.post_completion_actions.filter(a => a.execution_timing === 'after_workflow');
         for (const action of afterWorkflow) {
-          await executeAction(action, answers);
+          const update = resolveActionUpdate(action, answers);
+          if (update) mergedAccountUpdate = { ...mergedAccountUpdate, ...update };
         }
       }
     }
 
-    // Persist self-certification file upload from workflow steps
+    // 2. Persist self-certification file upload from workflow steps
     const fileUploadSteps = allSteps
       .map(stepId => ({ stepId, step: stepMap[stepId] }))
       .filter(({ step }) => step?.question_type === 'file_upload');
@@ -845,7 +783,9 @@ export default function AccountClassification({ account, entities, onComplete, o
           const me = await base44.auth.me();
           uploaderEmail = me?.email || '';
           uploaderName = me?.display_name || me?.full_name || '';
-        } catch (_) {}
+        } catch (err) {
+          console.error('Error fetching current user for document upload:', err);
+        }
 
         const today = new Date().toISOString().split('T')[0];
         const newDoc = {
@@ -859,24 +799,20 @@ export default function AccountClassification({ account, entities, onComplete, o
           notes: 'Uploaded via account classification workflow',
         };
 
-        const currentDocs = (latestAccountData || account)?.documents || [];
+        const currentDocs = (mergedAccountUpdate.documents || (latestAccountData || account)?.documents || []);
         const alreadyExists = currentDocs.some(d => d.document_url === fileAnswer.file_url);
         const updatedDocs = alreadyExists ? currentDocs : [...currentDocs, newDoc];
 
-        await base44.entities.Account.update(account.id, {
+        mergedAccountUpdate = {
+          ...mergedAccountUpdate,
           self_certification_obtained: true,
           self_certification_date: fileAnswer.date_received || today,
           documents: updatedDocs,
-        });
-
-        const refreshed = await base44.entities.Account.filter({ id: account.id });
-        if (refreshed[0]) setLatestAccountData(refreshed[0]);
+        };
       }
     }
 
-    // --- FI TYPE → Account.type_of_financial_institution propagation ---
-    // Find any step in the completed path whose mapped_field.field_name is 'fi_type'
-    // and propagate the selected value to Account.type_of_financial_institution.
+    // 3. FI TYPE → Account.type_of_financial_institution propagation
     const FI_TYPE_VALUE_MAP = {
       'depository_institution': 'depository_institution',
       'custodial_institution': 'custodial_institution',
@@ -891,23 +827,25 @@ export default function AccountClassification({ account, entities, onComplete, o
       for (const stepId of allSteps) {
         const step = stepMap[stepId];
         if (!step) continue;
-        // Match steps mapped to either 'fi_type' (Entity field) or 'type_of_financial_institution' (Account field)
         const isFiTypeStep = step.mapped_field?.field_name === 'fi_type' || step.mapped_field?.field_name === 'type_of_financial_institution';
         if (isFiTypeStep) {
           const rawAnswer = answers[stepId];
           if (rawAnswer && rawAnswer !== 'none') {
             const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
-            await base44.entities.Account.update(account.id, {
-              type_of_financial_institution: mappedFiType,
-            });
-            const refreshed = await base44.entities.Account.filter({ id: account.id });
-            if (refreshed[0]) setLatestAccountData(refreshed[0]);
+            mergedAccountUpdate = { ...mergedAccountUpdate, type_of_financial_institution: mappedFiType };
           }
           break;
         }
       }
     }
-    // --- End FI type propagation ---
+
+    // 4. Write the merged update once and refresh state once.
+    if (account?.id && Object.keys(mergedAccountUpdate).length > 0) {
+      await base44.entities.Account.update(account.id, mergedAccountUpdate);
+      const refreshed = await base44.entities.Account.filter({ id: account.id });
+      if (refreshed[0]) setLatestAccountData(refreshed[0]);
+    }
+    // --- End completion updates ---
 
     // Build result data
     const finalStep = steps.find(s => s.step_id === allSteps[allSteps.length - 1]);

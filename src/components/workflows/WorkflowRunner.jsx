@@ -295,11 +295,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         currentStep.conditional_logic?.multi_choice_routing_groups && 
         currentStep.conditional_logic.multi_choice_routing_groups.length > 0 && 
         Array.isArray(answer)) {
-      console.log('🔀 [MULTI-CHOICE ROUTING GROUPS]');
-      console.log('   Selected options:', answer);
-      
       for (const group of currentStep.conditional_logic.multi_choice_routing_groups) {
-        console.log(`   📋 Evaluating group: ${group.group_name || group.group_id}`);
         let groupMatches = group.group_operator === 'AND';
         
         for (const condition of group.conditions) {
@@ -307,7 +303,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           
           if (condition.condition_type === 'selected_options') {
             conditionMet = answer.some(selectedOpt => condition.option_values?.includes(selectedOpt));
-            console.log(`      - Selected options check: ${conditionMet}`);
           } else if (condition.condition_type === 'selection_count') {
             const count = answer.length;
             switch (condition.count_operator) {
@@ -318,10 +313,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
               case '>=': conditionMet = count >= condition.count_value; break;
               case '<=': conditionMet = count <= condition.count_value; break;
             }
-            console.log(`      - Selection count check (${count} ${condition.count_operator} ${condition.count_value}): ${conditionMet}`);
           } else if (condition.condition_type === 'field_comparison') {
             conditionMet = await evaluateSingleCondition(condition, answers);
-            console.log(`      - Field comparison: ${conditionMet}`);
           }
           
           if (group.group_operator === 'AND') {
@@ -334,7 +327,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         }
         
         if (groupMatches) {
-          console.log(`   ✅ Group matched! Navigating to: ${group.next_step}`);
           const nextIndex = workflow.steps.findIndex(s => s.step_id === group.next_step);
           if (nextIndex !== -1) {
             navigateToStep(nextIndex, group.next_step);
@@ -344,10 +336,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       }
       
       // If no groups matched, check for false_step on last group or use default
-      console.log('   ⚠️ No routing groups matched');
       const lastGroup = currentStep.conditional_logic.multi_choice_routing_groups[currentStep.conditional_logic.multi_choice_routing_groups.length - 1];
       if (lastGroup?.false_step) {
-        console.log(`   → Using last group's false_step: ${lastGroup.false_step}`);
         const nextIndex = workflow.steps.findIndex(s => s.step_id === lastGroup.false_step);
         if (nextIndex !== -1) {
           navigateToStep(nextIndex, lastGroup.false_step);
@@ -355,7 +345,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         }
       }
       if (currentStep.conditional_logic.multi_choice_default_step) {
-        console.log(`   → Using default step: ${currentStep.conditional_logic.multi_choice_default_step}`);
         const nextIndex = workflow.steps.findIndex(s => s.step_id === currentStep.conditional_logic.multi_choice_default_step);
         if (nextIndex !== -1) {
           navigateToStep(nextIndex, currentStep.conditional_logic.multi_choice_default_step);
@@ -368,61 +357,32 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         currentStep.conditional_logic?.option_values && 
         currentStep.conditional_logic.option_values.length > 0 && 
         Array.isArray(answer)) {
-      console.log('🔍 [MULTI-CHOICE OPTION-BASED BRANCHING]');
-      console.log('   Selected options:', answer);
-      console.log('   Checking against option_values:', currentStep.conditional_logic.option_values);
       const matchFound = answer.some(selectedOpt => currentStep.conditional_logic.option_values.includes(selectedOpt));
       const nextStepId = matchFound 
         ? currentStep.conditional_logic.option_values_next_step 
         : currentStep.conditional_logic.option_values_else_step;
       
-      console.log(`   ✅ Match found: ${matchFound}, Next step: ${nextStepId}`);
-      
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
-        console.log(`   🎯 Looking for step "${nextStepId}" -> found at index: ${nextIndex}`);
         if (nextIndex !== -1) {
-          console.log(`   ➡️  Navigating to step index ${nextIndex + 1}: "${workflow.steps[nextIndex].step_title}"`);
           navigateToStep(nextIndex, nextStepId);
           return;
         } else {
-          console.error(`   ❌ ERROR: Next step "${nextStepId}" NOT FOUND in workflow!`);
+          console.error(`Next step "${nextStepId}" NOT FOUND in workflow!`);
         }
-      } else {
-        console.log('   ⚠️  No next step defined, continuing to other branching logic...');
       }
     }
-    
 
-    
-    // WORKAROUND: Check if selection count config exists even if flag is false
+    // Selection count branching (also applies if config exists even when the flag wasn't set)
     if (currentStep.question_type === 'multiple_choice' && 
         Array.isArray(answer) &&
         currentStep.conditional_logic?.selection_count_value !== undefined &&
         currentStep.conditional_logic?.selection_count_value !== null &&
         (currentStep.conditional_logic?.selection_count_next_step || currentStep.conditional_logic?.selection_count_else_step)) {
       
-      if (!currentStep.conditional_logic?.use_selection_count) {
-        console.log('   ⚠️ WARNING: use_selection_count is FALSE but selection count config exists!');
-        console.log('   ⚠️ This workflow may have been saved before the flag was automatically set.');
-        console.log('   ⚠️ APPLYING WORKAROUND: Proceeding with selection count logic anyway...');
-      }
-      console.log('   🔢 [MULTI-CHOICE COUNT-BASED BRANCHING ACTIVE - WORKAROUND MODE]');
-      console.log('   Full conditional_logic:', JSON.stringify(currentStep.conditional_logic, null, 2));
-      console.log('   use_selection_count flag (ignored):', currentStep.conditional_logic?.use_selection_count);
-      console.log('   selection_count_next_step:', currentStep.conditional_logic?.selection_count_next_step);
-      console.log('   selection_count_else_step:', currentStep.conditional_logic?.selection_count_else_step);
-      console.log('   Current answer array:', answer);
-      console.log('   Current answer length:', answer.length);
-      
       const selectionCount = answer.length;
-      console.log('   ✅ PROCEEDING WITH COUNT-BASED BRANCHING (config exists, ignoring flag)');
       const targetCount = currentStep.conditional_logic.selection_count_value || 0;
       const operator = currentStep.conditional_logic.selection_count_operator || '=';
-      
-      console.log(`   📊 Selection count: ${selectionCount}`);
-      console.log(`   🎯 Target count: ${targetCount}`);
-      console.log(`   🔧 Operator: "${operator}"`);
       
       let conditionMet = false;
       switch (operator) {
@@ -451,39 +411,25 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           conditionMet = selectionCount <= targetCount;
           break;
         default:
-          console.error(`   ❌ Unknown operator: "${operator}"`);
+          console.error(`Unknown selection count operator: "${operator}"`);
       }
-      
-      console.log(`   ${conditionMet ? '✅' : '❌'} Condition met: ${conditionMet} (${selectionCount} ${operator} ${targetCount})`);
       
       const nextStepId = conditionMet 
         ? currentStep.conditional_logic.selection_count_next_step 
         : currentStep.conditional_logic.selection_count_else_step;
       
-      console.log(`   📍 Next step ID: "${nextStepId}" (${conditionMet ? 'TRUE path' : 'FALSE path'})`);
-      console.log(`   🔍 selection_count_next_step: "${currentStep.conditional_logic.selection_count_next_step}"`);
-      console.log(`   🔍 selection_count_else_step: "${currentStep.conditional_logic.selection_count_else_step}"`);
-      
       if (nextStepId) {
         const nextIndex = workflow.steps.findIndex(s => s.step_id === nextStepId);
-        console.log(`   🎯 Looking for step "${nextStepId}" in workflow -> found at index: ${nextIndex}`);
         if (nextIndex !== -1) {
-          const nextStepTitle = workflow.steps[nextIndex].step_title;
-          console.log(`   ➡️  SUCCESS: Navigating to step index ${nextIndex + 1}: "${nextStepTitle}"`);
           navigateToStep(nextIndex, nextStepId);
           return;
         } else {
-          console.error(`   ❌ ERROR: Next step "${nextStepId}" NOT FOUND in workflow steps!`);
-          console.error(`   📋 Available step IDs:`, workflow.steps.map(s => s.step_id));
+          console.error(`Next step "${nextStepId}" NOT FOUND in workflow steps!`);
         }
-      } else {
-        console.warn(`   ⚠️  WARNING: No next step defined for count-based branching!`);
       }
     }
     
     if (currentStep.conditional_logic) {
-
-      
       const nextStepId = await evaluateConditionalLogic(currentStep.conditional_logic, answer, answers);
       
       if (nextStepId) {
@@ -493,8 +439,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           return;
         }
       }
-    } else {
-      console.log('ℹ️ No conditional_logic on this step, skipping to option-based navigation');
     }
 
     if (currentStep.question_type === 'yes_no' || currentStep.question_type === 'single_choice') {
@@ -565,7 +509,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       const destMappedField = destStep?.mapped_field;
       // Compute result eagerly from current answers snapshot
       const prefillResult = evaluateDateDifference(destPrefillCfg, answers);
-      console.log(`[DATE_DIFF PREFILL] step="${destStep.step_title}" result=${prefillResult} cfg=`, destPrefillCfg);
       if (prefillResult !== null) {
         setAnswers(prev => ({ ...prev, [destStep.step_id]: prefillResult }));
         if (destMappedField?.read_only !== false) {
@@ -604,364 +547,147 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     return await evalConditionalLogic(logic, currentAnswer, allAnswers, getFieldValue, workflow);
   };
 
-  const executePostCompletionActions = async (actions) => {
-    if (!actions || actions.length === 0) {
-      console.log('[POST-COMPLETION ACTIONS] No actions to execute');
-      return;
-    }
+  // Resolves an action's target + value, and runs its DB write (without the interim
+  // refresh/setState — callers batch that once after all actions settle).
+  const runPostCompletionAction = async (action, index) => {
+    try {
+      let targetEntityId = null;
+      const targetEntityType = action.target_entity_type;
 
-  
-
-    for (let i = 0; i < actions.length; i++) {
-      const action = actions[i];
-      console.log(`\n📌 ========== ACTION ${i + 1}/${actions.length} START ==========`);
-      console.log(`[ACTION ${i + 1}] Full action object:`, JSON.stringify(action, null, 2));
-      console.log(`[ACTION ${i + 1}] Target Entity Type: ${action.target_entity_type}`);
-      console.log(`[ACTION ${i + 1}] Field to Update: ${action.field_to_update}`);
-      console.log(`[ACTION ${i + 1}] Value Source: ${action.value_source}`);
-      console.log(`[ACTION ${i + 1}] Value: ${action.value}`);
-      console.log(`[ACTION ${i + 1}] Execution Timing: ${action.execution_timing}`);
-      
-      try {
-        let targetEntityId = null;
-        let targetEntityType = action.target_entity_type;
-
-        console.log(`\n[ACTION ${i + 1}] 🔍 Determining Target Entity ID...`);
-        console.log(`[ACTION ${i + 1}]    Target Entity Type: ${targetEntityType}`);
-        console.log(`[ACTION ${i + 1}]    Available - accountId: ${accountId}`);
-        console.log(`[ACTION ${i + 1}]    Available - entityId: ${entityId}`);
-        console.log(`[ACTION ${i + 1}]    Available - initialData.account:`, initialData?.account);
-        console.log(`[ACTION ${i + 1}]    Available - initialData.entity:`, initialData?.entity);
-        console.log(`[ACTION ${i + 1}]    Available - initialData.controlling_person:`, initialData?.controlling_person);
-        console.log(`[ACTION ${i + 1}]    Available - initialData.controllingPersonId:`, initialData?.controllingPersonId);
-
-        if (targetEntityType === "Account") {
-          // Try accountId prop first, then fall back to initialData.account.id
-          if (accountId) {
-            targetEntityId = accountId;
-            console.log(`[ACTION ${i + 1}]    ✅ Using Account ID from prop: ${targetEntityId}`);
-          } else if (initialData?.account?.id) {
-            targetEntityId = initialData.account.id;
-            console.log(`[ACTION ${i + 1}]    ✅ Using Account ID from initialData.account.id: ${targetEntityId}`);
-          } else {
-            console.error(`[ACTION ${i + 1}]    ❌ No Account ID found (neither accountId prop nor initialData.account.id)`);
-          }
-        } else if (targetEntityType === "Entity") {
-          // Try entityId prop first, then fall back to initialData.entity.id
-          if (entityId) {
-            targetEntityId = entityId;
-            console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID from prop: ${targetEntityId}`);
-          } else if (initialData?.entity?.id) {
-            targetEntityId = initialData.entity.id;
-            console.log(`[ACTION ${i + 1}]    ✅ Using Entity ID from initialData.entity.id: ${targetEntityId}`);
-          } else {
-            console.error(`[ACTION ${i + 1}]    ❌ No Entity ID found (neither entityId prop nor initialData.entity.id)`);
-          }
-        } else if (targetEntityType === "ControllingPerson") {
-          // For ControllingPerson, we need to get the ID from the workflow answer
-          console.log(`[ACTION ${i + 1}]    ℹ️  ControllingPerson target detected - searching for ID...`);
-          console.log(`[ACTION ${i + 1}]    All workflow answers:`, JSON.stringify(answers, null, 2));
-          
-          // Look for controlling_person_input step answer
-          const cpInputStep = workflow.steps.find(s => s.question_type === 'controlling_person_input');
-          console.log(`[ACTION ${i + 1}]    controlling_person_input step found:`, !!cpInputStep);
-          
-          if (cpInputStep) {
-            const cpAnswer = answers[cpInputStep.step_id];
-            console.log(`[ACTION ${i + 1}]    controlling_person_input step ID: ${cpInputStep.step_id}`);
-            console.log(`[ACTION ${i + 1}]    controlling_person_input answer:`, JSON.stringify(cpAnswer, null, 2));
-            
-            if (cpAnswer?.savedPersons && cpAnswer.savedPersons.length > 0) {
-              // Get the most recently added controlling person
-              const latestPerson = cpAnswer.savedPersons[cpAnswer.savedPersons.length - 1];
-              targetEntityId = latestPerson.id;
-              console.log(`[ACTION ${i + 1}]    ✅ Using ControllingPerson ID from savedPersons (latest): ${targetEntityId}`);
-              console.log(`[ACTION ${i + 1}]    Latest person object:`, JSON.stringify(latestPerson, null, 2));
-            } else {
-              console.warn(`[ACTION ${i + 1}]    ⚠️  No saved controlling persons found in controlling_person_input answer`);
-            }
-          } else {
-            console.log(`[ACTION ${i + 1}]    No controlling_person_input step - checking initialData...`);
-            
-            // Try to get from initialData if passed
-            if (initialData?.controllingPersonId) {
-              targetEntityId = initialData.controllingPersonId;
-              console.log(`[ACTION ${i + 1}]    ✅ Using ControllingPerson ID from initialData.controllingPersonId: ${targetEntityId}`);
-            } else if (initialData?.controlling_person?.id) {
-              targetEntityId = initialData.controlling_person.id;
-              console.log(`[ACTION ${i + 1}]    ✅ Using ControllingPerson ID from initialData.controlling_person.id: ${targetEntityId}`);
-            } else {
-              console.warn(`[ACTION ${i + 1}]    ❌ No controlling_person_input step AND no initialData with controlling person ID`);
-              console.warn(`[ACTION ${i + 1}]    initialData keys:`, Object.keys(initialData || {}));
-            }
-          }
-        }
-
-        console.log(`\n[ACTION ${i + 1}] 🎯 Target Entity Resolution:`);
-        console.log(`[ACTION ${i + 1}]    targetEntityType: ${targetEntityType}`);
-        console.log(`[ACTION ${i + 1}]    targetEntityId: ${targetEntityId}`);
-
-        if (!targetEntityId || !targetEntityType) {
-          console.error(`\n[ACTION ${i + 1}] ❌❌❌ CRITICAL ERROR: No valid target entity found ❌❌❌`);
-          console.error(`[ACTION ${i + 1}] targetEntityType: ${targetEntityType}`);
-          console.error(`[ACTION ${i + 1}] targetEntityId: ${targetEntityId}`);
-          console.error(`[ACTION ${i + 1}] This action will be SKIPPED`);
-          console.error(`========== ACTION ${i + 1} FAILED (NO TARGET) ==========\n`);
-          continue;
-        }
-
-        console.log(`[ACTION ${i + 1}] ✅✅✅ Target identified successfully: ${targetEntityType} (ID: ${targetEntityId})`);
-
-
-        console.log(`\n[ACTION ${i + 1}] 💰 Determining Value to Update...`);
-        console.log(`[ACTION ${i + 1}]    Value Source: ${action.value_source}`);
-        console.log(`[ACTION ${i + 1}]    Raw Value from action: ${action.value}`);
-        console.log(`[ACTION ${i + 1}]    Field to Update: ${action.field_to_update}`);
-        
-        let valueToUpdate = null;
-        
-        if (action.value_source === "static_value") {
-          valueToUpdate = action.value;
-          
-          // Convert string booleans to actual booleans for boolean fields
-          if (valueToUpdate === 'true') {
-            valueToUpdate = true;
-            console.log(`[ACTION ${i + 1}]    🔄 Converted string 'true' to boolean true`);
-          } else if (valueToUpdate === 'false') {
-            valueToUpdate = false;
-            console.log(`[ACTION ${i + 1}]    🔄 Converted string 'false' to boolean false`);
-          }
-          
-          console.log(`[ACTION ${i + 1}]    ✅ Using static value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
-        } else if (action.value_source === "from_step_answer") {
-          const sourceStepId = action.value;
-          // Use the most recent answer for this step (last occurrence)
-          const allKeys = Object.keys(answers);
-          const matchingKeys = allKeys.filter(k => k === sourceStepId || k.startsWith(`${sourceStepId}__iter`));
-          const latestKey = matchingKeys.length > 0 ? matchingKeys[matchingKeys.length - 1] : sourceStepId;
-          valueToUpdate = answers[latestKey];
-          console.log(`[ACTION ${i + 1}]    📝 From step answer (step ID: ${sourceStepId})`);
-          console.log(`[ACTION ${i + 1}]    Raw answer value: ${valueToUpdate}`);
-          
-          if (valueToUpdate === 'YES') {
-            valueToUpdate = true;
-            console.log(`[ACTION ${i + 1}]    🔄 Converted 'YES' string to boolean true`);
-          }
-          if (valueToUpdate === 'NO') {
-            valueToUpdate = false;
-            console.log(`[ACTION ${i + 1}]    🔄 Converted 'NO' string to boolean false`);
-          }
-          
-          console.log(`[ACTION ${i + 1}]    ✅ Final value from step answer: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
-        } else if (action.value_source === "from_workflow_outcome") {
-          const resultStep = workflow.steps.find(s => s.question_type === 'result');
-          valueToUpdate = resultStep?.result_description || action.value;
-          console.log(`[ACTION ${i + 1}]    📊 From workflow outcome: ${valueToUpdate}`);
+      if (targetEntityType === "Account") {
+        targetEntityId = accountId || initialData?.account?.id || null;
+      } else if (targetEntityType === "Entity") {
+        targetEntityId = entityId || initialData?.entity?.id || null;
+      } else if (targetEntityType === "ControllingPerson") {
+        const cpInputStep = workflow.steps.find(s => s.question_type === 'controlling_person_input');
+        const cpAnswer = cpInputStep ? answers[cpInputStep.step_id] : null;
+        if (cpAnswer?.savedPersons?.length > 0) {
+          targetEntityId = cpAnswer.savedPersons[cpAnswer.savedPersons.length - 1].id;
         } else {
-          console.warn(`[ACTION ${i + 1}]    ⚠️ Unknown value source: ${action.value_source}`);
+          targetEntityId = initialData?.controllingPersonId || initialData?.controlling_person?.id || null;
         }
-        
-        console.log(`[ACTION ${i + 1}] 💰 Final value to update: "${valueToUpdate}" (type: ${typeof valueToUpdate})`);
-
-
-        if (action.condition) {
-          console.log(`   📋 Evaluating condition:`, action.condition);
-          const conditionField = action.condition.field;
-          const conditionOperator = action.condition.operator;
-          const conditionValue = action.condition.value;
-          
-          const fieldValue = answers[conditionField];
-          console.log(`   Condition: ${conditionField} (value: ${fieldValue}) ${conditionOperator} ${conditionValue}`);
-          
-          let conditionMet = false;
-          switch (conditionOperator) {
-            case '=':
-              conditionMet = fieldValue === conditionValue;
-              break;
-            case '!=':
-              conditionMet = fieldValue !== conditionValue;
-              break;
-            case 'contains':
-              conditionMet = String(fieldValue || '').includes(String(conditionValue));
-              break;
-            case 'in':
-              conditionMet = String(conditionValue).split(',').map(v => v.trim()).includes(String(fieldValue));
-              break;
-            case 'not_in':
-              conditionMet = !String(conditionValue).split(',').map(v => v.trim()).includes(String(fieldValue));
-              break;
-            default:
-              conditionMet = false;
-          }
-          
-          console.log(`   Condition result: ${conditionMet ? '✅ MET' : '❌ NOT MET'}`);
-          
-          if (!conditionMet) {
-            console.log(`   ⏭️  Skipping action due to unmet condition`);
-            continue;
-          }
-        }
-
-
-        const fieldToUpdate = action.field_to_update;
-        const updateData = { [fieldToUpdate]: valueToUpdate };
-
-        console.log(`\n[ACTION ${i + 1}] 🔄 Preparing Database Update:`);
-        console.log(`[ACTION ${i + 1}]    Entity Type: ${targetEntityType}`);
-        console.log(`[ACTION ${i + 1}]    Entity ID: ${targetEntityId}`);
-        console.log(`[ACTION ${i + 1}]    Field to Update: ${fieldToUpdate}`);
-        console.log(`[ACTION ${i + 1}]    Value: ${valueToUpdate} (type: ${typeof valueToUpdate})`);
-        console.log(`[ACTION ${i + 1}]    Update Object:`, JSON.stringify(updateData, null, 2));
-
-        if (targetEntityType === "Account") {
-          console.log(`\n[ACTION ${i + 1}] 🚀 Executing Account.update...`);
-          console.log(`[ACTION ${i + 1}]    Account ID: ${targetEntityId}`);
-          console.log(`[ACTION ${i + 1}]    Update data:`, JSON.stringify(updateData, null, 2));
-          
-          await base44.entities.Account.update(targetEntityId, updateData);
-          
-          console.log(`[ACTION ${i + 1}] ✅✅✅ Account.${fieldToUpdate} updated to "${valueToUpdate}" successfully!`);
-          
-          const updatedAccounts = await base44.entities.Account.filter({ id: targetEntityId });
-          if (updatedAccounts[0]) {
-            console.log(`[ACTION ${i + 1}]    Updated account ${fieldToUpdate}:`, updatedAccounts[0][fieldToUpdate]);
-            setMappedEntityData(updatedAccounts[0]);
-            console.log(`[ACTION ${i + 1}]    🔄 Refreshed account data in state`);
-          }
-        } else if (targetEntityType === "Entity") {
-          console.log(`\n[ACTION ${i + 1}] 🚀 Executing Entity.update...`);
-          console.log(`[ACTION ${i + 1}]    Entity ID: ${targetEntityId}`);
-          console.log(`[ACTION ${i + 1}]    Update data:`, JSON.stringify(updateData, null, 2));
-          
-          await base44.entities.Entity.update(targetEntityId, updateData);
-          
-          console.log(`[ACTION ${i + 1}] ✅✅✅ Entity.${fieldToUpdate} updated to "${valueToUpdate}" successfully!`);
-          
-          const updatedEntities = await base44.entities.Entity.filter({ id: targetEntityId });
-          if (updatedEntities[0]) {
-            console.log(`[ACTION ${i + 1}]    Updated entity ${fieldToUpdate}:`, updatedEntities[0][fieldToUpdate]);
-            setMappedEntityData(updatedEntities[0]);
-            console.log(`[ACTION ${i + 1}]    🔄 Refreshed entity data in state`);
-          }
-        } else if (targetEntityType === "ControllingPerson") {
-          console.log(`\n[ACTION ${i + 1}] 🚀 Executing ControllingPerson.update...`);
-          console.log(`[ACTION ${i + 1}]    ControllingPerson ID: ${targetEntityId}`);
-          console.log(`[ACTION ${i + 1}]    Update data:`, JSON.stringify(updateData, null, 2));
-          
-          await base44.entities.ControllingPerson.update(targetEntityId, updateData);
-          
-          console.log(`[ACTION ${i + 1}] ✅✅✅ ControllingPerson.${fieldToUpdate} updated to "${valueToUpdate}" successfully!`);
-          
-          // Verify the update
-          const updatedPersons = await base44.entities.ControllingPerson.filter({ id: targetEntityId });
-          if (updatedPersons[0]) {
-            console.log(`[ACTION ${i + 1}]    Verification - Updated controlling person ${fieldToUpdate}:`, updatedPersons[0][fieldToUpdate]);
-            console.log(`[ACTION ${i + 1}]    Full updated person:`, JSON.stringify(updatedPersons[0], null, 2));
-          }
-          
-          // If account is associated, sync the account
-          // Try to get accountId from multiple sources
-          const syncAccountId = accountId || 
-                                 initialData?.account?.id || 
-                                 initialData?.controlling_person?.account_id ||
-                                 updatedPersons[0]?.account_id;
-          
-          console.log(`\n[ACTION ${i + 1}]    🔍 Looking for account to sync...`);
-          console.log(`[ACTION ${i + 1}]       accountId prop: ${accountId}`);
-          console.log(`[ACTION ${i + 1}]       initialData.account.id: ${initialData?.account?.id}`);
-          console.log(`[ACTION ${i + 1}]       initialData.controlling_person.account_id: ${initialData?.controlling_person?.account_id}`);
-          console.log(`[ACTION ${i + 1}]       Updated person's account_id: ${updatedPersons[0]?.account_id}`);
-          console.log(`[ACTION ${i + 1}]       Final syncAccountId: ${syncAccountId}`);
-          
-          if (syncAccountId) {
-            console.log(`\n[ACTION ${i + 1}]    🔄 Syncing account controlling persons count...`);
-            console.log(`[ACTION ${i + 1}]    Account ID to sync: ${syncAccountId}`);
-            try {
-              await base44.functions.invoke('syncAccountControllingPersons', { accountId: syncAccountId });
-              console.log(`[ACTION ${i + 1}]    ✅ Account sync completed successfully`);
-              
-              const updatedAccounts = await base44.entities.Account.filter({ id: syncAccountId });
-              if (updatedAccounts[0]) {
-                console.log(`[ACTION ${i + 1}]    Synced account reportability_status:`, updatedAccounts[0].reportability_status);
-                console.log(`[ACTION ${i + 1}]    Synced account controlling_persons_count:`, updatedAccounts[0].controlling_persons_count);
-                console.log(`[ACTION ${i + 1}]    Synced account has_unclassified_controlling_persons:`, updatedAccounts[0].has_unclassified_controlling_persons);
-                setMappedEntityData(updatedAccounts[0]);
-                console.log(`[ACTION ${i + 1}]    🔄 Refreshed account data in state`);
-              }
-            } catch (syncError) {
-              console.error(`[ACTION ${i + 1}]    ❌ Account sync failed:`, syncError);
-              console.error(`[ACTION ${i + 1}]    Error details:`, syncError.message);
-            }
-          } else {
-            console.warn(`[ACTION ${i + 1}]    ⚠️ No accountId found from any source, skipping account sync`);
-          }
-        }
-        
-        console.log(`\n[ACTION ${i + 1}] ✅ ========== ACTION ${i + 1} COMPLETED SUCCESSFULLY ==========\n`);
-
-      } catch (error) {
-        console.error(`\n[ACTION ${i + 1}] ❌❌❌ EXCEPTION THROWN ❌❌❌`);
-        console.error(`[ACTION ${i + 1}] Error message:`, error.message);
-        console.error(`[ACTION ${i + 1}] Error stack:`, error.stack);
-        console.error(`[ACTION ${i + 1}] Full error object:`, error);
-        console.error(`[ACTION ${i + 1}] Action that failed:`, JSON.stringify(action, null, 2));
-        console.error(`[ACTION ${i + 1}] ========== ACTION ${i + 1} FAILED ==========\n`);
       }
+
+      if (!targetEntityId || !targetEntityType) {
+        console.error(`Post-completion action ${index + 1} skipped: no valid target entity (${targetEntityType})`);
+        return;
+      }
+
+      let valueToUpdate = null;
+      if (action.value_source === "static_value") {
+        valueToUpdate = action.value;
+        if (valueToUpdate === 'true') valueToUpdate = true;
+        else if (valueToUpdate === 'false') valueToUpdate = false;
+      } else if (action.value_source === "from_step_answer") {
+        const sourceStepId = action.value;
+        const allKeys = Object.keys(answers);
+        const matchingKeys = allKeys.filter(k => k === sourceStepId || k.startsWith(`${sourceStepId}__iter`));
+        const latestKey = matchingKeys.length > 0 ? matchingKeys[matchingKeys.length - 1] : sourceStepId;
+        valueToUpdate = answers[latestKey];
+        if (valueToUpdate === 'YES') valueToUpdate = true;
+        if (valueToUpdate === 'NO') valueToUpdate = false;
+      } else if (action.value_source === "from_workflow_outcome") {
+        const resultStep = workflow.steps.find(s => s.question_type === 'result');
+        valueToUpdate = resultStep?.result_description || action.value;
+      }
+
+      if (action.condition) {
+        const fieldValue = answers[action.condition.field];
+        const conditionValue = action.condition.value;
+        let conditionMet = false;
+        switch (action.condition.operator) {
+          case '=': conditionMet = fieldValue === conditionValue; break;
+          case '!=': conditionMet = fieldValue !== conditionValue; break;
+          case 'contains': conditionMet = String(fieldValue || '').includes(String(conditionValue)); break;
+          case 'in': conditionMet = String(conditionValue).split(',').map(v => v.trim()).includes(String(fieldValue)); break;
+          case 'not_in': conditionMet = !String(conditionValue).split(',').map(v => v.trim()).includes(String(fieldValue)); break;
+          default: conditionMet = false;
+        }
+        if (!conditionMet) return;
+      }
+
+      const updateData = { [action.field_to_update]: valueToUpdate };
+
+      if (targetEntityType === "Account") {
+        await base44.entities.Account.update(targetEntityId, updateData);
+        return { type: "Account", id: targetEntityId };
+      } else if (targetEntityType === "Entity") {
+        await base44.entities.Entity.update(targetEntityId, updateData);
+        return { type: "Entity", id: targetEntityId };
+      } else if (targetEntityType === "ControllingPerson") {
+        await base44.entities.ControllingPerson.update(targetEntityId, updateData);
+        const syncAccountId = accountId || initialData?.account?.id || initialData?.controlling_person?.account_id;
+        if (syncAccountId) {
+          try {
+            // Sequential dependency: sync must run after the ControllingPerson write above.
+            await base44.functions.invoke('syncAccountControllingPersons', { accountId: syncAccountId });
+          } catch (syncError) {
+            console.error(`Account sync failed for ControllingPerson action ${index + 1}:`, syncError);
+          }
+          return { type: "Account", id: syncAccountId };
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error(`Post-completion action ${index + 1} failed:`, error);
+      return null;
     }
-    
-  
+  };
+
+  const executePostCompletionActions = async (actions) => {
+    if (!actions || actions.length === 0) return;
+
+    // Independent actions run in parallel; each returns which record it touched
+    // so we can do a single consolidated refresh afterwards.
+    const results = await Promise.all(actions.map((action, i) => runPostCompletionAction(action, i)));
+
+    const touchedAccountId = results.find(r => r?.type === "Account")?.id;
+    const touchedEntityId = results.find(r => r?.type === "Entity")?.id;
+
+    if (touchedAccountId) {
+      const updatedAccounts = await base44.entities.Account.filter({ id: touchedAccountId });
+      if (updatedAccounts[0]) setMappedEntityData(updatedAccounts[0]);
+    } else if (touchedEntityId) {
+      const updatedEntities = await base44.entities.Entity.filter({ id: touchedEntityId });
+      if (updatedEntities[0]) setMappedEntityData(updatedEntities[0]);
+    }
   };
 
   const isActionNode = (step) => {
     if (!step) return false;
-    
-    console.log(`\n🔍 [isActionNode] Checking step: "${step.step_title}"`);
-    console.log(`   Question Type: ${step.question_type}`);
-    console.log(`   Has conditional_logic:`, !!step.conditional_logic);
-    console.log(`   Full conditional_logic:`, JSON.stringify(step.conditional_logic, null, 2));
 
     // Input types with default_next_step are NOT action nodes (they have a next step to go to)
     const inputTypes = ["text_input", "number_input", "date_input", "file_upload", "multi_field_input", "address_input", "beneficiary_input", "controlling_person_input"];
     if (inputTypes.includes(step.question_type)) {
-      console.log(`   ✓ Is input type: ${step.question_type}`);
       if (step.default_next_step) {
-        console.log(`   ✓ Has default_next_step: ${step.default_next_step} → NOT action node`);
         return false;
       }
-      console.log(`   ✓ Is input type without default_next_step → NOT action node`);
       return false;
     }
 
     // Check for condition groups
     if (step.conditional_logic?.condition_groups?.length > 0) {
-      console.log(`   ✓ Has condition_groups (${step.conditional_logic.condition_groups.length} groups) → NOT action node`);
       return false;
     }
 
     // Check for routing groups
     if (step.conditional_logic?.multi_choice_routing_groups?.length > 0) {
-      console.log(`   ✓ Has multi_choice_routing_groups (${step.conditional_logic.multi_choice_routing_groups.length} groups) → NOT action node`);
       return false;
     }
 
     // Check for selection count branching
     if (step.question_type === "multiple_choice") {
       if (step.conditional_logic?.selection_count_next_step || step.conditional_logic?.selection_count_else_step) {
-        console.log(`   ✓ Has selection count branching → NOT action node`);
         return false;
       }
     }
 
     // Check for option-based branching
-    console.log(`   Checking options: ${step.options?.length || 0} options`);
     if (!step.options || step.options.length === 0) {
-      console.log(`   → No options → IS action node`);
       return true;
     }
 
     const hasOptionNextSteps = step.options.some(opt => opt.next_step);
-    console.log(`   Options have next_step:`, hasOptionNextSteps);
-    console.log(`   → Final result: ${!hasOptionNextSteps ? 'IS action node' : 'NOT action node'}`);
     return !hasOptionNextSteps;
   };
 
@@ -969,44 +695,26 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
     setLoading(true);
     
       const allStepsInPath = completedPath.length > 0 ? completedPath : [...history, currentStep.step_id];
-    
+
+    // Collect all applicable post-completion actions across every step in the path,
+    // then execute them together in one parallelized batch instead of per-step sequential calls.
+    const allActionsToExecute = [];
     for (const stepId of allStepsInPath) {
       const step = workflow.steps.find(s => s.step_id === stepId);
-      console.log(`\n  📋 Checking step: "${step?.step_title}" (${stepId})`);
-      console.log(`     Step type: ${step?.question_type}`);
-      console.log(`     Has post_completion_actions:`, !!step?.post_completion_actions);
-      console.log(`     Number of actions:`, step?.post_completion_actions?.length || 0);
-      
       if (step?.post_completion_actions && step.post_completion_actions.length > 0) {
-        console.log(`     All actions for this step:`, JSON.stringify(step.post_completion_actions, null, 2));
-        
-        // For result/summary steps, also execute "after_step" actions when completing
         const isResultStep = step.question_type === "result" || stepId === currentStep.step_id;
-        
         const actionsToExecute = step.post_completion_actions.filter(action => {
           if (action.execution_timing === "after_workflow") return true;
-          // Also execute after_step actions if this is a result step and we're completing from it
           if (action.execution_timing === "after_step" && isResultStep && stepId === currentStep.step_id) return true;
           return false;
         });
-        
-        console.log(`     Is result/final step: ${isResultStep}`);
-        console.log(`     After filtering: ${actionsToExecute.length} action(s) to execute`);
-        
-        if (actionsToExecute.length > 0) {
-          console.log(`\n  🚀 Executing ${actionsToExecute.length} action(s) from step: ${step.step_title}`);
-          console.log(`     Actions to execute:`, JSON.stringify(actionsToExecute, null, 2));
-          await executePostCompletionActions(actionsToExecute);
-        } else {
-          console.log(`     ⚠️ No applicable actions found for completion`);
-        }
-      } else {
-        console.log(`     ℹ️ No post_completion_actions defined for this step`);
+        allActionsToExecute.push(...actionsToExecute);
       }
     }
-    
-  
-    
+    if (allActionsToExecute.length > 0) {
+      await executePostCompletionActions(allActionsToExecute);
+    }
+
     const completionData = Object.entries(answers).map(([stepKey, answer]) => {
       const stepId = stepKey.includes('__iter') ? stepKey.split('__iter')[0] : stepKey;
       const step = workflow.steps.find(s => s.step_id === stepId);
@@ -1072,10 +780,7 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
 
           if (rawAnswer && rawAnswer !== 'none') {
             const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
-            console.log(`[FI TYPE PROPAGATION] Step "${step.step_title}" answer: "${rawAnswer}" → Account.type_of_financial_institution = "${mappedFiType}"`);
             updates['type_of_financial_institution'] = mappedFiType;
-          } else if (rawAnswer === 'none') {
-            console.log(`[FI TYPE PROPAGATION] "None of the above" selected — skipping type_of_financial_institution update`);
           }
           break; // Only process the first matching step
         }
