@@ -802,9 +802,15 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
 
     columns.forEach((col, colIdx) => {
       if (!DATE_FIELD_KEYS.has(col.key)) return;
+      // Force the column to Text format so Excel never auto-converts a typed
+      // DD/MM/YYYY string (e.g. 05/09/2020) into its own locale date serial,
+      // which is what caused day/month to swap on import.
+      dataSheet.getColumn(colIdx + 1).numFmt = "@";
       const excelColLetter = colLetter(colIdx + 1);
       for (let row = 3; row <= 503; row++) {
-        dataSheet.getCell(row, colIdx + 1).dataValidation = {
+        const cell = dataSheet.getCell(row, colIdx + 1);
+        cell.numFmt = "@";
+        cell.dataValidation = {
           type: "custom", allowBlank: true,
           formulae: [`AND(LEN(${excelColLetter}${row})=10,MID(${excelColLetter}${row},3,1)="/",MID(${excelColLetter}${row},6,1)="/")`],
           showErrorMessage: true, errorStyle: "stop",
@@ -1276,6 +1282,13 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
                   "self_certification_date","self_certification_request_date"].includes(k)) {
           rowData[k] = isoToDDMMYYYY(acc[k]);
         }
+        // Account-holder self-certification columns — key names in the template (self_cert_*)
+        // differ from the Account entity's field names (self_certification_*), so they need
+        // explicit mapping or they export blank.
+        else if (k === "self_cert_obtained") rowData[k] = acc.self_certification_obtained != null ? String(acc.self_certification_obtained) : "";
+        else if (k === "self_cert_date") rowData[k] = isoToDDMMYYYY(acc.self_certification_date);
+        else if (k === "self_cert_request_date") rowData[k] = isoToDDMMYYYY(acc.self_certification_request_date);
+        else if (k === "self_cert_requested") rowData[k] = acc.self_certification_request_date ? "true" : "false";
         // Country of incorporation code — filled by VLOOKUP formula below
         else if (k === "country_of_incorporation_code") rowData[k] = "";
         // Type of Entity — reverse-lookup short code or full string to the canonical full descriptive label
@@ -1440,9 +1453,12 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
           else if (v instanceof Date) {
-            const dd = String(v.getDate()).padStart(2,'0');
-            const mm = String(v.getMonth()+1).padStart(2,'0');
-            const yyyy = v.getFullYear();
+            // Use UTC getters — ExcelJS/Excel date serials are stored as UTC midnight,
+            // and local getters can roll the date back/forward a day depending on the
+            // browser's timezone, which silently corrupts the day/month value.
+            const dd = String(v.getUTCDate()).padStart(2,'0');
+            const mm = String(v.getUTCMonth()+1).padStart(2,'0');
+            const yyyy = v.getUTCFullYear();
             v = `${dd}/${mm}/${yyyy}`;
           }
           values.push(v == null ? "" : String(v));
