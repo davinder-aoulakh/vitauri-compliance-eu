@@ -70,7 +70,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   const [uploadedFileUrl, setUploadedFileUrl] = useState(null);
   const [dbTemplate, setDbTemplate] = useState(null);
   const [templateLoaded, setTemplateLoaded] = useState(false);
-  const [excelDateWarnings, setExcelDateWarnings] = useState([]);
 
   const ftConfig = getFiTypeConfig(entity.fi_type);
 
@@ -1378,6 +1377,29 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       });
     }
 
+    // ── Export sheet: same Text format + ISTEXT date validation as Accounts Data ──
+    // Without this, opening the exported file in Excel can re-convert the DD/MM/YYYY
+    // text values back into date serials, corrupting them the moment the user re-imports.
+    exportColumns.forEach((col) => {
+      if (!DATE_FIELD_KEYS.has(col.key)) return;
+      const expColIdx = exportColIndexMap[col.key];
+      if (!expColIdx) return;
+      exportSheet.getColumn(expColIdx).numFmt = "@";
+      const expColLetter = colLetter(expColIdx);
+      const bufferEnd = Math.max(existingAccounts.length + 2, 3) + 100;
+      for (let row = 3; row <= bufferEnd; row++) {
+        const cell = exportSheet.getCell(row, expColIdx);
+        cell.numFmt = "@";
+        cell.dataValidation = {
+          type: "custom", allowBlank: true,
+          formulae: [`AND(ISTEXT(${expColLetter}${row}),LEN(${expColLetter}${row})=10,MID(${expColLetter}${row},3,1)="/",MID(${expColLetter}${row},6,1)="/")`],
+          showErrorMessage: true, errorStyle: "stop",
+          errorTitle: "Invalid date format",
+          error: "Please keep this date as literal text in DD/MM/YYYY format, e.g. 15/01/2020.",
+        };
+      }
+    });
+
     // Add a note if no accounts yet
     if (existingAccounts.length === 0) {
       const noteRow = exportSheet.addRow({ entity_id: "No existing accounts found for this entity." });
@@ -1449,11 +1471,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       await workbook.xlsx.load(await selectedFile.arrayBuffer());
       const sheet = workbook.worksheets.find(s => s.name.toLowerCase().includes("data")) || workbook.worksheets[0];
       const rows = [];
-      // Layer 2 safety net: track every cell where Excel auto-converted a typed/pasted value
-      // into a date serial. This is the only place we can still detect the swap — once a serial
-      // exists, the day/month may already have been flipped, so we surface it as a warning
-      // for the user to verify in the Data Cleaning step, rather than silently importing it.
-      const serialDateCells = [];
       sheet.eachRow({ includeEmpty: false }, (row) => {
         const values = [];
         row.eachCell({ includeEmpty: true }, cell => {
@@ -1463,14 +1480,14 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
           else if (v instanceof Date) {
-            // Use UTC getters — ExcelJS/Excel date serials are stored as UTC midnight,
-            // and local getters can roll the date back/forward a day depending on the
-            // browser's timezone, which silently corrupts the day/month value.
+            // Residual serial from an older template — convert silently using UTC getters
+            // (ExcelJS/Excel date serials are stored as UTC midnight, so UTC getters avoid
+            // a timezone-based off-by-one-day shift). The template's ISTEXT() validation
+            // now prevents new serials from being entered at all.
             const dd = String(v.getUTCDate()).padStart(2,'0');
             const mm = String(v.getUTCMonth()+1).padStart(2,'0');
             const yyyy = v.getUTCFullYear();
             v = `${dd}/${mm}/${yyyy}`;
-            serialDateCells.push({ rowNumber: row.number, colIndex: cell.col, value: v });
           }
           values.push(v == null ? "" : String(v));
         });
@@ -1493,20 +1510,7 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         headers.forEach((h, i) => { row[h] = values[i] || ""; });
         return row;
       });
-
-      // Layer 2: only flag serials that landed in a column whose header mentions "date" —
-      // this is where an Excel auto-conversion means the user's intended day/month may be wrong.
-      const dateWarnings = serialDateCells
-        .filter(c => c.rowNumber > 2)
-        .map(c => ({
-          row: c.rowNumber - 2,
-          column: (headers[c.colIndex - 1] || `Column ${c.colIndex}`).replace(" *", ""),
-          value: c.value,
-        }))
-        .filter(w => w.column.toLowerCase().includes("date"));
-      setExcelDateWarnings(dateWarnings);
     } else {
-      setExcelDateWarnings([]);
       const text = await selectedFile.text();
       const lines = text.split("\n").filter(line => line.trim());
       if (lines.length < 2) { setErrors(["File must have at least a header row and one data row"]); return; }
@@ -1915,7 +1919,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
   const resetFlow = () => {
     setCurrentStep(0); setFile(null); setCsvHeaders([]); setCsvData([]);
     setMappings({}); setCleanedData(null); setResults(null); setErrors([]);
-    setExcelDateWarnings([]);
   };
 
   const fiTypeLabel = effectiveConfig.label;
@@ -2049,26 +2052,6 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
               <Button variant="outline" size="sm" onClick={() => setCurrentStep(1)}>
                 <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Back
               </Button>
-              {excelDateWarnings.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="w-4 h-4" />
-                  <AlertDescription>
-                    <p className="font-semibold mb-1">
-                      Excel auto-converted {excelDateWarnings.length} date value{excelDateWarnings.length > 1 ? "s" : ""} — day/month may be swapped. Please verify these before importing:
-                    </p>
-                    <div className="max-h-32 overflow-y-auto space-y-0.5">
-                      {excelDateWarnings.slice(0, 10).map((w, i) => (
-                        <div key={i} className="text-xs">
-                          Row {w.row}, "{w.column}": now reads <strong>{w.value}</strong> — confirm this is the date you intended.
-                        </div>
-                      ))}
-                      {excelDateWarnings.length > 10 && (
-                        <div className="text-xs">...and {excelDateWarnings.length - 10} more</div>
-                      )}
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
               <AIDataCleaner
                 data={csvData}
                 mappings={mappings}
