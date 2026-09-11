@@ -1295,14 +1295,16 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
         else if (k === "self_cert_requested") rowData[k] = acc.self_certification_request_date ? "true" : "false";
         // Country of incorporation code — filled by VLOOKUP formula below
         else if (k === "country_of_incorporation_code") rowData[k] = "";
+        // Year-end currency — template key differs from the Account schema field name
+        else if (k === "year_end_currency") rowData[k] = acc.year_end_cash_value_currency || "";
         // Type of Entity — reverse-lookup short code or full string to the canonical full descriptive label
         else if (k === "account_holder_entity_type") {
           const stored = acc[k];
           if (!stored) rowData[k] = "";
           else rowData[k] = ENTITY_TYPE_DISPLAY_MAP[String(stored).toLowerCase().trim()] ?? stored;
         }
-        // Boolean fields
-        else if (typeof acc[k] === "boolean") rowData[k] = String(acc[k]);
+        // Boolean fields — treat null/undefined as false so known boolean columns never export blank
+        else if (BOOL_FIELDS.has(k)) rowData[k] = acc[k] === true ? "true" : "false";
         // Direct mapping
         else rowData[k] = acc[k] != null ? String(acc[k]) : "";
       });
