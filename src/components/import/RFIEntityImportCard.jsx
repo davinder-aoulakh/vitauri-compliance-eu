@@ -1480,13 +1480,23 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
           else if (v instanceof Date) {
-            // Residual serial from an older template — convert silently using UTC getters
+            // Residual serial from an older template — convert using UTC getters
             // (ExcelJS/Excel date serials are stored as UTC midnight, so UTC getters avoid
             // a timezone-based off-by-one-day shift). The template's ISTEXT() validation
-            // now prevents new serials from being entered at all.
-            const dd = String(v.getUTCDate()).padStart(2,'0');
-            const mm = String(v.getUTCMonth()+1).padStart(2,'0');
+            // now prevents new serials from being entered at all, but if the user pasted a
+            // date (bypassing validation), Excel auto-converted it using MM/DD locale rules,
+            // silently swapping day/month whenever both are <=12. Undo that swap here: if
+            // both values could be a valid day AND a valid month, swap them back to recover
+            // the user's intended DD/MM order. If day > 12, Excel could only have parsed it
+            // correctly as DD/MM (day >12 can never be a valid month), so leave it as-is.
+            let dayNum = v.getUTCDate();
+            let monthNum = v.getUTCMonth() + 1;
             const yyyy = v.getUTCFullYear();
+            if (dayNum <= 12 && monthNum <= 12) {
+              [dayNum, monthNum] = [monthNum, dayNum];
+            }
+            const dd = String(dayNum).padStart(2,'0');
+            const mm = String(monthNum).padStart(2,'0');
             v = `${dd}/${mm}/${yyyy}`;
           }
           values.push(v == null ? "" : String(v));

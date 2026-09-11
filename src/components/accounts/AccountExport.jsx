@@ -93,6 +93,15 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
       headerRow.height = 28;
       sheet.views = [{ state: "frozen", ySplit: 1 }];
 
+      // Force date columns to Text format so Excel cannot auto-convert these ISO
+      // YYYY-MM-DD strings into date serials when the file is opened, which would
+      // create display ambiguity if the file is later re-imported.
+      const dateColumnKeys = ["account_creation_date", "self_certification_date", "date_of_birth"];
+      dateColumnKeys.forEach((key) => {
+        const colIdx = columns.findIndex(c => c.key === key) + 1;
+        if (colIdx > 0) sheet.getColumn(colIdx).numFmt = "@";
+      });
+
       filteredAccounts.forEach(a => {
         const tax1 = a.tax_residencies?.[0] || {};
         const tax2 = a.tax_residencies?.[1] || {};
