@@ -15,17 +15,8 @@ import {
   Globe,
   History
 } from "lucide-react";
-// Format date in AST (UTC-4) for accurate auditing
-const formatAST = (value, includeTime = false) => {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return String(value);
-  const opts = includeTime
-    ? { timeZone: 'America/Puerto_Rico', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }
-    : { timeZone: 'America/Puerto_Rico', year: 'numeric', month: 'long', day: 'numeric' };
-  return new Intl.DateTimeFormat('en-US', opts).format(d) + (includeTime ? ' AST' : '');
-};
 import EntityAuditLog from "./EntityAuditLog";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 
 export default function EntityDetails({ entity }) {
   const [showAuditLog, setShowAuditLog] = useState(false);
@@ -228,7 +219,7 @@ export default function EntityDetails({ entity }) {
             {entity.classification_completed_date && (
               <InfoRow 
                 label="Classification Completed" 
-                value={formatAST(entity.classification_completed_date)}
+                value={formatDateDDMMYYYY(entity.classification_completed_date)}
                 icon={Calendar}
               />
             )}

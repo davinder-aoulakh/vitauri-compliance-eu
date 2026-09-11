@@ -26,6 +26,7 @@ import BeneficiaryManager from "./BeneficiaryManager";
 import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 import VoiceFormAssistant from "../ai/VoiceFormAssistant";
+import { formatDateTimeDDMMYYYY } from "@/lib/dateUtils";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
@@ -507,7 +508,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 <Info className="w-4 h-4 text-slate-500" />
                 <span className="text-slate-600">Account Created:</span>
                 <span className="font-medium text-slate-900">
-                  {new Date(account.created_date).toLocaleDateString()} at {new Date(account.created_date).toLocaleTimeString()}
+                  {formatDateTimeDDMMYYYY(account.created_date)}
                 </span>
               </div>
             </div>

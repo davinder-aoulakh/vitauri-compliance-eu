@@ -15,9 +15,9 @@ import {
   FileText,
   History
 } from "lucide-react";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import ControllingPersonAuditLog from "./ControllingPersonAuditLog";
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from "@/lib/dateUtils";
 
 const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
   <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
@@ -133,7 +133,7 @@ export default function ControllingPersonDetails({ controllingPerson, account })
               <InfoRow
                 icon={Calendar}
                 label="Date of Birth"
-                value={format(new Date(controllingPerson.date_of_birth.replace(/-/g, '/')), 'MMMM d, yyyy')}
+                value={formatDateDDMMYYYY(controllingPerson.date_of_birth)}
               />
             )}
             <InfoRow
@@ -275,14 +275,14 @@ export default function ControllingPersonDetails({ controllingPerson, account })
             <InfoRow
               icon={Calendar}
               label="Created"
-              value={format(new Date(controllingPerson.created_date), 'MMM d, yyyy h:mm a')}
+              value={formatDateTimeDDMMYYYY(controllingPerson.created_date)}
             />
           )}
           {controllingPerson.updated_date && (
             <InfoRow
               icon={Calendar}
               label="Last Updated"
-              value={format(new Date(controllingPerson.updated_date), 'MMM d, yyyy h:mm a')}
+              value={formatDateTimeDDMMYYYY(controllingPerson.updated_date)}
             />
           )}
           {controllingPerson.created_by && (
