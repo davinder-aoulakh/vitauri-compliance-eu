@@ -415,15 +415,13 @@ Return JSON:
         if (valLower === 'true' || valLower === 'false') return '';
         
         // Excel serial date number (e.g., 28347) → DD/MM/YYYY
-        // Use UTC epoch + UTC getters — Excel serials represent UTC midnight, so local
-        // getters can shift the day by one depending on the browser's timezone.
         if (/^\d+$/.test(value)) {
           const serial = parseInt(value, 10);
           if (serial > 1000 && serial < 100000) {
-            const excelEpochUTC = Date.UTC(1899, 11, 30);
-            const d = new Date(excelEpochUTC + serial * 86400000);
+            const excelEpoch = new Date(1899, 11, 30);
+            const d = new Date(excelEpoch.getTime() + serial * 86400000);
             if (!isNaN(d.getTime())) {
-              return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+              return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
             }
           }
           return '';
@@ -443,10 +441,10 @@ Return JSON:
           return `${day}/${month}/${year}`;
         }
         
-        // Fallback: try JS Date parsing → DD/MM/YYYY, using UTC getters to avoid timezone shifts
+        // Fallback: try JS Date parsing → DD/MM/YYYY
         const d = new Date(value);
         if (!isNaN(d.getTime())) {
-          return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+          return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
         }
         
         return value;
