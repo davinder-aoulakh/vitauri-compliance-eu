@@ -1493,35 +1493,30 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       await workbook.xlsx.load(await selectedFile.arrayBuffer());
       const sheet = workbook.worksheets.find(s => s.name.toLowerCase().includes("data")) || workbook.worksheets[0];
       const rows = [];
-      const dateConversionErrors = [];
       sheet.eachRow({ includeEmpty: false }, (row) => {
         const values = [];
         row.eachCell({ includeEmpty: true }, cell => {
           let v = cell.value;
-          const colIdx = values.length; // 0-based column index, matches header row position
           // Skip formula results (VLOOKUP auto-fill cells) — treat as empty
           if (v && typeof v === "object" && v.formula) v = v.result ?? "";
           else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
           else if (v instanceof Date) {
             // The template's Text format + ISTEXT() validation should prevent Excel from ever
-            // converting a typed DD/MM/YYYY value into a date serial. If a Date object still
-            // reaches us here, validation was bypassed (e.g. a direct paste). We deliberately do
-            // NOT guess and swap day/month — that heuristic previously corrupted valid dates.
-            // Instead, flag it as a hard error so the user re-enters it as literal text and re-uploads.
-            const headerName = rows[0]?.[colIdx] || `column ${colIdx + 1}`;
-            dateConversionErrors.push(`Row ${row.number}: "${headerName}" was auto-converted to a date by Excel — please re-enter it as literal text in DD/MM/YYYY format and re-upload.`);
-            v = "";
+            // converting a typed DD/MM/YYYY value into a date serial, but Excel can still do this
+            // on certain pastes/locale settings. Rather than blocking the import or guessing/swapping
+            // day and month (which previously corrupted valid dates), pass the value through exactly
+            // as Excel resolved it — using UTC getters so no timezone shift changes the calendar day.
+            const dd = String(v.getUTCDate()).padStart(2, "0");
+            const mm = String(v.getUTCMonth() + 1).padStart(2, "0");
+            const yyyy = v.getUTCFullYear();
+            v = `${dd}/${mm}/${yyyy}`;
           }
           values.push(v == null ? "" : String(v));
         });
         rows.push(values);
       });
       if (rows.length < 3) { setErrors(["No data rows found in the Excel file"]); return; }
-      if (dateConversionErrors.length > 0) {
-        setErrors(dateConversionErrors);
-        return;
-      }
       headers = rows[0];
       // Row index 1 is the section guide band — skip it, data starts at index 2
       // Filter out rows where the key identifier columns (account number, account holder type) are all empty
