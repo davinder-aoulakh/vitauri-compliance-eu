@@ -870,13 +870,24 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           });
           // Only apply blocking custom validation if no dropdown already assigned
           if (!COL_DROPDOWN_SECTION[col.key] && !COUNTRY_NAME_KEYS.has(col.key)) {
+            const isDateField = DATE_FIELD_KEYS.has(col.key);
             for (let r = 3; r <= 503; r++) {
+              const cellRef = `${excelColLetter}${r}`;
+              const typeCheck = `$${ahtLetter}${r}<>"entity"`;
+              // Merge the ISTEXT date-format check into the same formula for date columns
+              // so this AHT-based validation does not overwrite (and lose) the ISTEXT
+              // protection applied earlier — both rules must hold in a single formula.
+              const formula = isDateField
+                ? `AND(ISTEXT(${cellRef}),LEN(${cellRef})=10,MID(${cellRef},3,1)="/",MID(${cellRef},6,1)="/",${typeCheck})`
+                : typeCheck;
               dataSheet.getCell(r, colIdx + 1).dataValidation = {
                 type: "custom", allowBlank: true,
-                formulae: [`$${ahtLetter}${r}<>"entity"`],
+                formulae: [formula],
                 showErrorMessage: true, errorStyle: "stop",
-                errorTitle: "Not applicable",
-                error: `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
+                errorTitle: isDateField ? "Invalid date or not applicable" : "Not applicable",
+                error: isDateField
+                  ? `Enter this date as literal DD/MM/YYYY text (e.g. 15/01/2020). This field is also only applicable when Account Holder Type is "individual".`
+                  : `This field is only for Individual account holders. Set Account Holder Type to "individual" to enter a value here.`,
               };
             }
           }
@@ -888,13 +899,24 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
           });
           // Only apply blocking custom validation if no dropdown already assigned
           if (!COL_DROPDOWN_SECTION[col.key] && !COUNTRY_NAME_KEYS.has(col.key)) {
+            const isDateField = DATE_FIELD_KEYS.has(col.key);
             for (let r = 3; r <= 503; r++) {
+              const cellRef = `${excelColLetter}${r}`;
+              const typeCheck = `$${ahtLetter}${r}<>"individual"`;
+              // Merge the ISTEXT date-format check into the same formula for date columns
+              // (date_of_incorporation and CP date fields) so this AHT-based validation does
+              // not overwrite the ISTEXT protection applied earlier.
+              const formula = isDateField
+                ? `AND(ISTEXT(${cellRef}),LEN(${cellRef})=10,MID(${cellRef},3,1)="/",MID(${cellRef},6,1)="/",${typeCheck})`
+                : typeCheck;
               dataSheet.getCell(r, colIdx + 1).dataValidation = {
                 type: "custom", allowBlank: true,
-                formulae: [`$${ahtLetter}${r}<>"individual"`],
+                formulae: [formula],
                 showErrorMessage: true, errorStyle: "stop",
-                errorTitle: "Not applicable",
-                error: `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
+                errorTitle: isDateField ? "Invalid date or not applicable" : "Not applicable",
+                error: isDateField
+                  ? `Enter this date as literal DD/MM/YYYY text (e.g. 15/01/2020). This field is also only applicable when Account Holder Type is "entity".`
+                  : `This field is only for Entity account holders. Set Account Holder Type to "entity" to enter a value here.`,
               };
             }
           }
@@ -1471,39 +1493,35 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       await workbook.xlsx.load(await selectedFile.arrayBuffer());
       const sheet = workbook.worksheets.find(s => s.name.toLowerCase().includes("data")) || workbook.worksheets[0];
       const rows = [];
+      const dateConversionErrors = [];
       sheet.eachRow({ includeEmpty: false }, (row) => {
         const values = [];
         row.eachCell({ includeEmpty: true }, cell => {
           let v = cell.value;
+          const colIdx = values.length; // 0-based column index, matches header row position
           // Skip formula results (VLOOKUP auto-fill cells) — treat as empty
           if (v && typeof v === "object" && v.formula) v = v.result ?? "";
           else if (v && typeof v === "object" && v.richText) v = v.richText.map(r => r.text).join("");
           else if (v && typeof v === "object" && v.text) v = v.text;
           else if (v instanceof Date) {
-            // Residual serial from an older template — convert using UTC getters
-            // (ExcelJS/Excel date serials are stored as UTC midnight, so UTC getters avoid
-            // a timezone-based off-by-one-day shift). The template's ISTEXT() validation
-            // now prevents new serials from being entered at all, but if the user pasted a
-            // date (bypassing validation), Excel auto-converted it using MM/DD locale rules,
-            // silently swapping day/month whenever both are <=12. Undo that swap here: if
-            // both values could be a valid day AND a valid month, swap them back to recover
-            // the user's intended DD/MM order. If day > 12, Excel could only have parsed it
-            // correctly as DD/MM (day >12 can never be a valid month), so leave it as-is.
-            let dayNum = v.getUTCDate();
-            let monthNum = v.getUTCMonth() + 1;
-            const yyyy = v.getUTCFullYear();
-            if (dayNum <= 12 && monthNum <= 12) {
-              [dayNum, monthNum] = [monthNum, dayNum];
-            }
-            const dd = String(dayNum).padStart(2,'0');
-            const mm = String(monthNum).padStart(2,'0');
-            v = `${dd}/${mm}/${yyyy}`;
+            // The template's Text format + ISTEXT() validation should prevent Excel from ever
+            // converting a typed DD/MM/YYYY value into a date serial. If a Date object still
+            // reaches us here, validation was bypassed (e.g. a direct paste). We deliberately do
+            // NOT guess and swap day/month — that heuristic previously corrupted valid dates.
+            // Instead, flag it as a hard error so the user re-enters it as literal text and re-uploads.
+            const headerName = rows[0]?.[colIdx] || `column ${colIdx + 1}`;
+            dateConversionErrors.push(`Row ${row.number}: "${headerName}" was auto-converted to a date by Excel — please re-enter it as literal text in DD/MM/YYYY format and re-upload.`);
+            v = "";
           }
           values.push(v == null ? "" : String(v));
         });
         rows.push(values);
       });
       if (rows.length < 3) { setErrors(["No data rows found in the Excel file"]); return; }
+      if (dateConversionErrors.length > 0) {
+        setErrors(dateConversionErrors);
+        return;
+      }
       headers = rows[0];
       // Row index 1 is the section guide band — skip it, data starts at index 2
       // Filter out rows where the key identifier columns (account number, account holder type) are all empty
