@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FileCheck, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { toDisplayDate } from "@/lib/dateUtils";
 
 /**
  * Formats a raw answer value into a human-readable string.
@@ -23,7 +24,7 @@ function formatAnswer(ans, step, getStepOptions) {
     // file_upload: show filename + date received if available
     if (ans.file_name) {
       return ans.date_received
-        ? `${ans.file_name} (Received: ${ans.date_received})`
+        ? `${ans.file_name} (Received: ${toDisplayDate(ans.date_received)})`
         : ans.file_name;
     }
     if (step.question_type === 'address_input') {
@@ -57,6 +58,7 @@ function formatAnswer(ans, step, getStepOptions) {
   if (matched) return matched.label;
   if (ans === 'YES') return 'Yes';
   if (ans === 'NO') return 'No';
+  if (typeof ans === 'string' && /^\d{4}-\d{2}-\d{2}/.test(ans)) return toDisplayDate(ans);
   return String(ans);
 }
 

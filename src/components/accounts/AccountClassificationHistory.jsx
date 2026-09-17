@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, Clock, AlertTriangle, Users } from "lucide-react";
-import { format } from "date-fns";
+import { toDisplayDateTime } from "@/lib/dateUtils";
 
 export default function AccountClassificationHistory({ history, account }) {
   // Fetch controlling persons for this account
@@ -226,10 +226,10 @@ export default function AccountClassificationHistory({ history, account }) {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
-                      {format(new Date(record.classification_date), 'MMMM d, yyyy')}
+                      {toDisplayDateTime(record.classification_date)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      at {format(new Date(record.classification_date), 'h:mm a')} by {record.performed_by}
+                      by {record.performed_by}
                     </p>
                   </div>
                   <div className="text-right">

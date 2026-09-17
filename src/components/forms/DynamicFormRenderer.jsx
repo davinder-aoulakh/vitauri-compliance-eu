@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaxResidencyManager from "../accounts/TaxResidencyManager";
 import DocumentUpload from "../accounts/DocumentUpload";
 import VoiceFormAssistant from "../ai/VoiceFormAssistant";
+import DateInput from "@/components/ui/date-input";
 
 export default function DynamicFormRenderer({ 
   entityType, 
@@ -491,11 +492,10 @@ export default function DynamicFormRenderer({
             <Label htmlFor={field.field_name}>
               {field.display_label} {isRequired && "*"}
             </Label>
-            <Input
+            <DateInput
               id={field.field_name}
-              type="date"
               value={value}
-              onChange={(e) => handleChange(field.field_name, e.target.value)}
+              onChange={(iso) => handleChange(field.field_name, iso || "")}
               required={isRequired}
               className={`mt-1.5 ${fieldErrors ? 'border-red-500' : ''}`}
             />

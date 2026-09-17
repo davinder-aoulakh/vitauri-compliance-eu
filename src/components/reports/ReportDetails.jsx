@@ -11,6 +11,7 @@ import {
   Users,
   DollarSign
 } from "lucide-react";
+import { toDisplayDate, toDisplayDateTime } from "@/lib/dateUtils";
 
 const InfoRow = ({ icon: Icon, label, value, badge }) => (
   <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
@@ -102,13 +103,13 @@ export default function ReportDetails({ report, entity }) {
             <InfoRow
               icon={Calendar}
               label="Report Created"
-              value={new Date(report.created_date).toLocaleDateString()}
+              value={toDisplayDateTime(report.created_date)}
             />
             {report.submission_date && (
               <InfoRow
                 icon={Calendar}
                 label="Submitted"
-                value={new Date(report.submission_date.replace(/-/g, '/')).toLocaleDateString()}
+                value={toDisplayDate(report.submission_date)}
               />
             )}
             {report.submission_reference && (
@@ -205,7 +206,7 @@ export default function ReportDetails({ report, entity }) {
             )}
             {report.validation_results.validated_date && (
               <p className="text-xs text-slate-600 mt-3">
-                Validated: {new Date(report.validation_results.validated_date).toLocaleString()}
+                Validated: {toDisplayDateTime(report.validation_results.validated_date)}
               </p>
             )}
           </CardContent>
@@ -312,7 +313,7 @@ export default function ReportDetails({ report, entity }) {
             <div>
               <p className="text-xs text-slate-700">Received:</p>
               <p className="text-sm text-slate-900">
-                {new Date(report.notification_details.last_notification_date).toLocaleString()}
+                {toDisplayDateTime(report.notification_details.last_notification_date)}
               </p>
             </div>
           </CardContent>

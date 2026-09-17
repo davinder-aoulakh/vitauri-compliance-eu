@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, Clock, Globe } from "lucide-react";
-import { format } from "date-fns";
+import { toDisplayDate, toDisplayDateTime } from "@/lib/dateUtils";
 
 export default function ControllingPersonClassificationHistory({ controllingPerson }) {
   const { data: history = [], isLoading } = useQuery({
@@ -139,7 +139,7 @@ export default function ControllingPersonClassificationHistory({ controllingPers
               )}
               {controllingPerson.classification_date && (
                 <p className="text-xs text-slate-500">
-                  Classified on {format(new Date(controllingPerson.classification_date), 'MMMM d, yyyy')}
+                  Classified on {toDisplayDateTime(controllingPerson.classification_date)}
                   {controllingPerson.classified_by ? ` by ${controllingPerson.classified_by}` : ''}
                 </p>
               )}
@@ -214,10 +214,10 @@ export default function ControllingPersonClassificationHistory({ controllingPers
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
-                      {format(new Date(record.classification_date), 'MMMM d, yyyy')}
+                      {toDisplayDateTime(record.classification_date)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      at {format(new Date(record.classification_date), 'h:mm a')} by {record.performed_by}
+                      by {record.performed_by}
                     </p>
                   </div>
                   <div className="text-right">

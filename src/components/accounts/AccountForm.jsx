@@ -27,6 +27,7 @@ import SmartDocumentParser from "../ai/SmartDocumentParser";
 import AIFormAssistant from "../ai/AIFormAssistant";
 import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 import { formatDateTimeDDMMYYYY } from "@/lib/dateUtils";
+import DateInput from "@/components/ui/date-input";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
@@ -613,11 +614,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               <Label htmlFor="account_creation_date" className="text-slate-700">
                 Account Opening Date <span className="text-red-600">*</span>
               </Label>
-              <Input
+              <DateInput
                 id="account_creation_date"
-                type="date"
                 value={formData.account_creation_date}
-                onChange={(e) => handleChange("account_creation_date", e.target.value)}
+                onChange={(iso) => handleChange("account_creation_date", iso || "")}
                 required
                 className={`mt-1.5 ${submitted && !formData.account_creation_date ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
@@ -721,11 +721,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="date_of_incorporation" className="text-slate-700">Date of Incorporation</Label>
-                  <Input
+                  <DateInput
                     id="date_of_incorporation"
-                    type="date"
                     value={formData.date_of_incorporation}
-                    onChange={(e) => handleChange("date_of_incorporation", e.target.value)}
+                    onChange={(iso) => handleChange("date_of_incorporation", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -851,11 +850,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                   <Label htmlFor="date_of_birth" className="text-slate-700">
                     Date of Birth
                   </Label>
-                  <Input
+                  <DateInput
                     id="date_of_birth"
-                    type="date"
                     value={formData.date_of_birth}
-                    onChange={(e) => handleChange("date_of_birth", e.target.value)}
+                    onChange={(iso) => handleChange("date_of_birth", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -1333,11 +1331,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="death_certificate_requested_date">Date Death Certificate Requested</Label>
-                  <Input
+                  <DateInput
                     id="death_certificate_requested_date"
-                    type="date"
                     value={formData.death_certificate_requested_date}
-                    onChange={(e) => handleChange("death_certificate_requested_date", e.target.value)}
+                    onChange={(iso) => handleChange("death_certificate_requested_date", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -1362,11 +1359,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="death_certificate_received_date">Date Death Certificate Received</Label>
-                  <Input
+                  <DateInput
                     id="death_certificate_received_date"
-                    type="date"
                     value={formData.death_certificate_received_date}
-                    onChange={(e) => handleChange("death_certificate_received_date", e.target.value)}
+                    onChange={(iso) => handleChange("death_certificate_received_date", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -1391,11 +1387,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="will_or_inheritance_requested_date">Date Will/Inheritance Requested</Label>
-                  <Input
+                  <DateInput
                     id="will_or_inheritance_requested_date"
-                    type="date"
                     value={formData.will_or_inheritance_requested_date}
-                    onChange={(e) => handleChange("will_or_inheritance_requested_date", e.target.value)}
+                    onChange={(iso) => handleChange("will_or_inheritance_requested_date", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -1420,11 +1415,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="will_or_inheritance_received_date">Date Will/Inheritance Received</Label>
-                  <Input
+                  <DateInput
                     id="will_or_inheritance_received_date"
-                    type="date"
                     value={formData.will_or_inheritance_received_date}
-                    onChange={(e) => handleChange("will_or_inheritance_received_date", e.target.value)}
+                    onChange={(iso) => handleChange("will_or_inheritance_received_date", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -1449,11 +1443,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
                 <div>
                   <Label htmlFor="legacy_settlement_date">Settlement Date of Legacy</Label>
-                  <Input
+                  <DateInput
                     id="legacy_settlement_date"
-                    type="date"
                     value={formData.legacy_settlement_date}
-                    onChange={(e) => handleChange("legacy_settlement_date", e.target.value)}
+                    onChange={(iso) => handleChange("legacy_settlement_date", iso || "")}
                     className="mt-1.5"
                   />
                 </div>
@@ -1744,11 +1737,10 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="self_certification_request_date">Request Date</Label>
-                <Input
+                <DateInput
                   id="self_certification_request_date"
-                  type="date"
                   value={formData.self_certification_request_date}
-                  onChange={(e) => handleChange("self_certification_request_date", e.target.value)}
+                  onChange={(iso) => handleChange("self_certification_request_date", iso || "")}
                   className="mt-1.5"
                 />
                 <p className="text-xs text-slate-500 mt-1">

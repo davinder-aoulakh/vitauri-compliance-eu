@@ -1286,6 +1286,10 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
                   "self_certification_date","self_certification_request_date"].includes(k)) {
           rowData[k] = isoToDDMMYYYY(acc[k]);
         }
+        // Financial column key names in the template (year_end_currency) differ from the
+        // Account entity's field name (year_end_cash_value_currency) — explicit mapping
+        // needed or this exports blank.
+        else if (k === "year_end_currency") rowData[k] = acc.year_end_cash_value_currency || "";
         // Account-holder self-certification columns — key names in the template (self_cert_*)
         // differ from the Account entity's field names (self_certification_*), so they need
         // explicit mapping or they export blank.

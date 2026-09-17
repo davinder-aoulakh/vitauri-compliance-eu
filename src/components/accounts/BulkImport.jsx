@@ -59,13 +59,13 @@ function StepIndicator({ currentStep }) {
 function FieldGuide() {
   const [open, setOpen] = useState(true);
   const fields = [
-    { name: "Account Creation Date", format: "YYYY-MM-DD", required: false, note: "e.g. 2017-06-15" },
+    { name: "Account Creation Date", format: "DD/MM/YYYY", required: false, note: "e.g. 15/06/2017" },
     { name: "Entity ID", format: "Text (UUID)", required: true, note: "Copy from the Entity ID column in the template" },
     { name: "Account Number", format: "Text", required: true, note: "Unique per entity" },
     { name: "Account Type", format: "Enum", required: true, note: "depository | custodial | equity_debt_interest | cash_value_insurance | annuity" },
     { name: "Account Holder Type", format: "Enum", required: true, note: "individual | entity" },
     { name: "Account Holder Name", format: "Text", required: true, note: "Full legal name" },
-    { name: "Date of Birth", format: "YYYY-MM-DD", required: "Individual only", note: "Required for individual account holders" },
+    { name: "Date of Birth", format: "DD/MM/YYYY", required: "Individual only", note: "Required for individual account holders" },
     { name: "Place of Birth", format: "Text", required: false, note: "Country name" },
     { name: "Pre-existing Account", format: "true / false", required: false, note: "Was account opened before Jan 1 2018?" },
     { name: "Account Holder Alive", format: "true / false", required: false, note: "For individual accounts" },
@@ -198,9 +198,9 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
     // Build example rows using real entity IDs if available
     const exampleRows = selectedEntities.slice(0, 3).map((entity, i) => {
       const examples = [
-        `2017-06-15,${entity.id},ACC-00${i+1},depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,`,
-        `2019-03-22,${entity.id},ACC-00${i+4},custodial,individual,Jane Doe,1990-03-22,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890`,
-        `2020-01-10,${entity.id},ACC-00${i+7},depository,entity,ABC Corp,,,false,,false,789 Corp Blvd,Tokyo,,100-0001,Japan,789 Corp Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,,,,,,,,,,,false,false,true,Japan,1234567890,,`,
+        `15/06/2017,${entity.id},ACC-00${i+1},depository,individual,John Smith,15/06/1985,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,`,
+        `22/03/2019,${entity.id},ACC-00${i+4},custodial,individual,Jane Doe,22/03/1990,United Kingdom,true,true,false,456 Oak Ave,London,,SW1A 1AA,United Kingdom,456 Oak Ave,London,,SW1A 1AA,United Kingdom,United Kingdom,jane@example.com,+442075551234,75000,GBP,10000,GBP,2024,false,false,,false,,,false,,false,,,,,United Kingdom,AB123456C,France,1234567890`,
+        `10/01/2020,${entity.id},ACC-00${i+7},depository,entity,ABC Corp,,,false,,false,789 Corp Blvd,Tokyo,,100-0001,Japan,789 Corp Blvd,Tokyo,,100-0001,Japan,Japan,contact@abc.jp,+81312345678,1000000,JPY,50000,JPY,2024,,,,,,,,,,,false,false,true,Japan,1234567890,,`,
       ];
       return examples[i % 3];
     });
@@ -208,7 +208,7 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
     // Fallback if no entities
     if (exampleRows.length === 0) {
       exampleRows.push(
-        `2017-06-15,PASTE_ENTITY_ID_HERE,ACC-001,depository,individual,John Smith,1985-06-15,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,`
+        `15/06/2017,PASTE_ENTITY_ID_HERE,ACC-001,depository,individual,John Smith,15/06/1985,United States,false,true,false,123 Main St,New York,NY,10001,United States,123 Main St,New York,NY,10001,United States,United States,john@example.com,+12125551234,50000,USD,5000,USD,2024,false,false,,false,,,false,,false,,,,,United States,123-45-6789,,`
       );
     }
 
@@ -228,10 +228,20 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   };
 
   // ── Parsers & validators ───────────────────────────────────────────────────
+  // Accepts DD/MM/YYYY (import standard). Converts to ISO YYYY-MM-DD for storage.
+  const toISODate = (d) => {
+    if (!d) return null;
+    const s = String(d).trim();
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // already ISO — pass through
+    return null;
+  };
   const isValidDate = (d) => {
     if (!d) return false;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
-    return !isNaN(new Date(d));
+    const iso = toISODate(d);
+    if (!iso) return false;
+    return !isNaN(new Date(iso));
   };
   const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
@@ -277,7 +287,7 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
     }
 
     if (row.date_of_birth && !isValidDate(row.date_of_birth)) {
-      errors.push({ row: rowNum, field: "Date of Birth", msg: `"${row.date_of_birth}" is not a valid date — use YYYY-MM-DD` });
+      errors.push({ row: rowNum, field: "Date of Birth", msg: `"${row.date_of_birth}" is not a valid date — use DD/MM/YYYY` });
     }
 
     if (row.current_email && !isValidEmail(row.current_email)) {
@@ -315,13 +325,13 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
       tenant_id: tenant.id,
       entity_id: row.entity_id,
       account_number: row.account_number,
-      account_creation_date: row.account_creation_date || null,
+      account_creation_date: toISODate(row.account_creation_date) || null,
       account_type: row.account_type,
       account_holder_type: row.account_holder_type,
       account_holder_name: row.account_holder_name,
       first_name: row.account_holder_name?.split(' ')[0] || '',
       last_name: row.account_holder_name?.split(' ').slice(1).join(' ') || '',
-      date_of_birth: row.date_of_birth || null,
+      date_of_birth: toISODate(row.date_of_birth) || null,
       place_of_birth: row.place_of_birth || null,
       is_pre_existing: toBool(row.is_pre_existing),
       account_holder_is_alive: row.account_holder_type === 'individual' ? !toBool(row.account_holder_is_alive === '' ? 'false' : (row.account_holder_is_alive === 'false' || row.account_holder_is_alive === '0' || row.account_holder_is_alive === 'no' ? 'true' : 'false')) : undefined,
@@ -336,15 +346,15 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
       reporting_year: row.reporting_year || new Date().getFullYear().toString(),
       account_holder_deceased_during_period: toBool(row.account_holder_deceased_during_period),
       death_certificate_requested: toBool(row.death_certificate_requested),
-      death_certificate_requested_date: row.death_certificate_requested_date || null,
+      death_certificate_requested_date: toISODate(row.death_certificate_requested_date),
       death_certificate_received: toBool(row.death_certificate_received),
-      death_certificate_received_date: row.death_certificate_received_date || null,
+      death_certificate_received_date: toISODate(row.death_certificate_received_date),
       will_or_inheritance_requested: toBool(row.will_or_inheritance_requested),
-      will_or_inheritance_requested_date: row.will_or_inheritance_requested_date || null,
+      will_or_inheritance_requested_date: toISODate(row.will_or_inheritance_requested_date),
       will_or_inheritance_received: toBool(row.will_or_inheritance_received),
-      will_or_inheritance_received_date: row.will_or_inheritance_received_date || null,
+      will_or_inheritance_received_date: toISODate(row.will_or_inheritance_received_date),
       legacy_of_deceased_settled: toBool(row.legacy_of_deceased_settled),
-      legacy_settlement_date: row.legacy_settlement_date || null,
+      legacy_settlement_date: toISODate(row.legacy_settlement_date),
       entity_managed_by_fiduciary_trust: toBool(row.entity_managed_by_fiduciary_trust),
       entity_managed_by_asset_manager: toBool(row.entity_managed_by_asset_manager),
       gross_income_from_financial_assets: toBool(row.gross_income_from_financial_assets),

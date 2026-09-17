@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import DateInput from "@/components/ui/date-input";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -135,11 +136,10 @@ export default function SubmissionTracker({ report, onUpdate }) {
 
             <div>
               <Label htmlFor="submission_date">Submission Date</Label>
-              <Input
+              <DateInput
                 id="submission_date"
-                type="date"
                 value={formData.submission_date}
-                onChange={(e) => setFormData({ ...formData, submission_date: e.target.value })}
+                onChange={(iso) => setFormData({ ...formData, submission_date: iso || "" })}
                 className="mt-1.5"
               />
             </div>

@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   AlertTriangle
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
+import { toDisplayDateTime } from "@/lib/dateUtils";
 
 const RETENTION_OPTIONS = [
   { label: "30 days", value: 30 },
@@ -220,7 +221,7 @@ export default function BackupHistoryPanel() {
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-indigo-400">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {backup.exported_at ? format(new Date(backup.exported_at), "MMM d, yyyy h:mm a") : "—"}
+                            {backup.exported_at ? toDisplayDateTime(backup.exported_at) : "—"}
                           </span>
                           {backup.total_records !== undefined && (
                             <span>{backup.total_records.toLocaleString()} records</span>

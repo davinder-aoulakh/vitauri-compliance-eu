@@ -28,7 +28,7 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
-import { format } from "date-fns";
+import { toDisplayDateTime } from "@/lib/dateUtils";
 
 export default function DocumentsManager({ documents = [], onDocumentsChange, legacyDocument }) {
   const [uploading, setUploading] = useState(false);
@@ -326,7 +326,7 @@ export default function DocumentsManager({ documents = [], onDocumentsChange, le
                                   <Calendar className="w-3 h-3" />
                                   <span>
                                     {doc.upload_date 
-                                      ? format(new Date(doc.upload_date), "MMM d, yyyy 'at' h:mm a")
+                                      ? toDisplayDateTime(doc.upload_date)
                                       : "Unknown date"}
                                   </span>
                                 </div>

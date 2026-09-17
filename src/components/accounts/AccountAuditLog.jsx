@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Loader2
 } from "lucide-react";
+import { toDisplayDate, toDisplayDateTime } from "@/lib/dateUtils";
 
 const actionIcons = {
   account_created: Plus,
@@ -94,7 +95,7 @@ const formatValue = (value) => {
   }
   // Format dates
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-    return new Date(value).toLocaleDateString();
+    return toDisplayDate(value);
   }
   return String(value).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 };
@@ -215,7 +216,7 @@ export default function AccountAuditLog({ account }) {
                             <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
                               <Calendar className="w-3 h-3" />
                               <span>
-                                {new Date(log.timestamp || log.created_date).toLocaleString()}
+                                {toDisplayDateTime(log.timestamp || log.created_date)}
                               </span>
                             </div>
 

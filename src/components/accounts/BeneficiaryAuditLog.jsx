@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { format } from "date-fns";
+import { toDisplayDateTime } from "@/lib/dateUtils";
 
 export default function BeneficiaryAuditLog({ beneficiary }) {
   const [expandedLogs, setExpandedLogs] = React.useState(new Set());
@@ -69,7 +69,7 @@ export default function BeneficiaryAuditLog({ beneficiary }) {
                     {log.action_type?.replace(/_/g, ' ')}
                   </Badge>
                   <span className="text-xs text-slate-500">
-                    {format(new Date(log.timestamp), 'MMM d, yyyy h:mm a')}
+                    {toDisplayDateTime(log.timestamp)}
                   </span>
                 </div>
                 <p className="text-sm text-slate-600">

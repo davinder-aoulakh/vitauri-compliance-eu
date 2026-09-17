@@ -20,6 +20,7 @@ import {
   GitCompare
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toDisplayDateTime } from "@/lib/dateUtils";
 
 export default function ReportVersionHistory({ report }) {
   const [expandedLog, setExpandedLog] = useState(null);
@@ -136,7 +137,6 @@ export default function ReportVersionHistory({ report }) {
         <div className="space-y-3">
           {auditLogs.map((log, index) => {
             const isExpanded = expandedLog === log.id;
-            const timestamp = new Date(log.timestamp || log.created_date);
             
             return (
               <Card 
@@ -170,7 +170,7 @@ export default function ReportVersionHistory({ report }) {
                           <span>{log.actor_email}</span>
                           <span>•</span>
                           <Clock className="w-3 h-3" />
-                          <span>{timestamp.toLocaleString()}</span>
+                          <span>{toDisplayDateTime(log.timestamp || log.created_date)}</span>
                         </div>
                       </div>
                     </div>

@@ -13,6 +13,7 @@ import { XCircle, Save, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CountrySelect from "../shared/CountrySelect";
 import VoiceFormAssistant from "@/components/ai/VoiceFormAssistant";
+import DateInput from "@/components/ui/date-input";
 
 export default function ControllingPersonForm({ controllingPerson, account, onSubmit, onCancel, remainingOwnership = 100 }) {
   const [ownershipError, setOwnershipError] = useState("");
@@ -152,11 +153,10 @@ export default function ControllingPersonForm({ controllingPerson, account, onSu
 
           <div>
             <Label htmlFor="date_of_birth">Date of Birth *</Label>
-            <Input
+            <DateInput
               id="date_of_birth"
-              type="date"
               value={formData.date_of_birth}
-              onChange={(e) => handleChange("date_of_birth", e.target.value)}
+              onChange={(iso) => handleChange("date_of_birth", iso || "")}
               required
               className="mt-1.5"
             />
