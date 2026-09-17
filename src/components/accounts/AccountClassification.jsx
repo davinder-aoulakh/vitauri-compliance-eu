@@ -47,6 +47,8 @@ import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import AccountForm from "./AccountForm";
 import DraftSyncWarningBanner from "./DraftSyncWarningBanner";
 import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS } from "@/lib/classificationEvaluator";
+import { toDisplayDate } from "@/lib/dateUtils";
+import DateInput from "@/components/ui/date-input";
 
 export default function AccountClassification({ account, entities, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
@@ -1014,11 +1016,10 @@ export default function AccountClassification({ account, entities, onComplete, o
 
       case 'date_input':
         return (
-          <Input
-            type="date"
+          <DateInput
             value={selectedValue || ""}
             max={new Date().toISOString().split('T')[0]}
-            onChange={e => setSelectedValue(e.target.value)}
+            onChange={(iso) => setSelectedValue(iso || "")}
           />
         );
 
@@ -1084,17 +1085,16 @@ export default function AccountClassification({ account, entities, onComplete, o
                   const { error: dateError } = validateDateReceived(dateReceivedValue, reqDate);
                   return (
                     <>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={dateReceivedValue}
                         max={today}
                         min={reqDate || undefined}
-                        onChange={e => setDateReceivedValue(e.target.value)}
+                        onChange={(iso) => setDateReceivedValue(iso || "")}
                         className={`mt-1.5 ${dateError ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
                       />
                       {reqDate && (
                         <p className="text-xs text-slate-500 mt-1">
-                          Self-certification was requested on: <strong>{reqDate}</strong>
+                          Self-certification was requested on: <strong>{toDisplayDate(reqDate)}</strong>
                         </p>
                       )}
                       {dateError && (
@@ -1401,7 +1401,7 @@ export default function AccountClassification({ account, entities, onComplete, o
         }
         else if (typeof ans === 'object') {
           if (ans.file_name) {
-            displayAnswer = ans.date_received ? `${ans.file_name} (Received: ${ans.date_received})` : ans.file_name;
+            displayAnswer = ans.date_received ? `${ans.file_name} (Received: ${toDisplayDate(ans.date_received)})` : ans.file_name;
           } else {
             displayAnswer = JSON.stringify(ans);
           }

@@ -46,7 +46,10 @@ function formatAnswer(ans, step, getStepOptions) {
       .map(([k, v]) => {
         const fieldDef = fields.find(f => f.field_id === k);
         const label = fieldDef?.display_label || k;
-        const val = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
+        let val;
+        if (typeof v === 'boolean') val = v ? 'Yes' : 'No';
+        else if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) val = toDisplayDate(v);
+        else val = String(v);
         return `${label}: ${val}`;
       });
     return pairs.join(' | ') || null;

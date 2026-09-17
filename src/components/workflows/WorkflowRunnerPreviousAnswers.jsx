@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FileCheck, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { toDisplayDate } from "@/lib/dateUtils";
 
 /**
  * Formats a raw answer value into a human-readable string for WorkflowRunner.
@@ -19,6 +20,7 @@ function formatAnswer(ans, step) {
     if (matched) return matched.label;
     if (ans === 'YES') return 'Yes';
     if (ans === 'NO') return 'No';
+    if (/^\d{4}-\d{2}-\d{2}/.test(ans)) return toDisplayDate(ans);
     return ans;
   }
 
@@ -38,13 +40,13 @@ function formatAnswer(ans, step) {
       const firstName = ans.files[0]?.name || 'file';
       const extra = ans.files.length > 1 ? ` (+${ans.files.length - 1} more)` : '';
       return ans.date_received
-        ? `${firstName}${extra} (Received: ${ans.date_received})`
+        ? `${firstName}${extra} (Received: ${toDisplayDate(ans.date_received)})`
         : `${firstName}${extra}`;
     }
     // file_upload: AccountClassification stores as { file_name, file_url, date_received }
     if (ans.file_name) {
       return ans.date_received
-        ? `${ans.file_name} (Received: ${ans.date_received})`
+        ? `${ans.file_name} (Received: ${toDisplayDate(ans.date_received)})`
         : ans.file_name;
     }
     // address_input
@@ -76,6 +78,8 @@ function formatAnswer(ans, step) {
           val = 'Yes';
         } else if (v === 'NO' || v === 'false') {
           val = 'No';
+        } else if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+          val = toDisplayDate(v);
         } else {
           const subOpts = fieldDef?.options || [];
           const subMatched = subOpts.find(o => o.value === v);
