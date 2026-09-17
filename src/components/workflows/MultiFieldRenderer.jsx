@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
+import DateInput from "@/components/ui/date-input";
 
 export default function MultiFieldRenderer({ fields = [], values = {}, onChange, errors = {}, fieldMinDates = {} }) {
   const [referencedDataCache, setReferencedDataCache] = useState({});
@@ -121,12 +122,11 @@ export default function MultiFieldRenderer({ fields = [], values = {}, onChange,
         const today = new Date().toISOString().split('T')[0];
         const minDate = fieldMinDates[field.field_id] || undefined;
         return (
-          <Input
-            type="date"
+          <DateInput
             value={value || ""}
             max={today}
             min={minDate}
-            onChange={(e) => handleFieldChange(field.field_id, e.target.value)}
+            onChange={(iso) => handleFieldChange(field.field_id, iso || "")}
             className={error ? "border-red-500" : ""}
           />
         );

@@ -93,14 +93,38 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
       headerRow.height = 28;
       sheet.views = [{ state: "frozen", ySplit: 1 }];
 
-      // Force date columns to Text format so Excel cannot auto-convert these ISO
-      // YYYY-MM-DD strings into date serials when the file is opened, which would
+      // Force date columns to Text format so Excel cannot auto-convert these
+      // DD/MM/YYYY strings into date serials when the file is opened, which would
       // create display ambiguity if the file is later re-imported.
       const dateColumnKeys = ["account_creation_date", "self_certification_date", "date_of_birth"];
+      const dateColIndexes = {};
       dateColumnKeys.forEach((key) => {
         const colIdx = columns.findIndex(c => c.key === key) + 1;
-        if (colIdx > 0) sheet.getColumn(colIdx).numFmt = "@";
+        if (colIdx > 0) {
+          dateColIndexes[key] = colIdx;
+          sheet.getColumn(colIdx).numFmt = "@";
+        }
       });
+
+      // Convert ISO YYYY-MM-DD (stored in DB) -> DD/MM/YYYY for export display,
+      // via regex only (no Date object) to avoid timezone shifts.
+      const isoToDDMMYYYY = (v) => {
+        if (!v) return "";
+        const s = String(v).trim();
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+        return s;
+      };
+
+      const colLetter = (idx) => {
+        let letter = "";
+        while (idx > 0) {
+          const rem = (idx - 1) % 26;
+          letter = String.fromCharCode(65 + rem) + letter;
+          idx = Math.floor((idx - 1) / 26);
+        }
+        return letter;
+      };
 
       filteredAccounts.forEach(a => {
         const tax1 = a.tax_residencies?.[0] || {};
@@ -112,7 +136,7 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
           first_name: a.first_name || "",
           last_name: a.last_name || "",
           account_type: a.account_type || "",
-          account_creation_date: a.account_creation_date || "",
+          account_creation_date: isoToDDMMYYYY(a.account_creation_date),
           entity_name: entityMap[a.entity_id] || "",
           reportability_status: a.reportability_status || "",
           year_end_cash_value: a.year_end_cash_value || "",
@@ -125,14 +149,14 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
           tax2_country: tax2.country || "",
           tax2_tin: tax2.tin || "",
           self_certification_obtained: a.self_certification_obtained != null ? String(a.self_certification_obtained) : "",
-          self_certification_date: a.self_certification_date || "",
+          self_certification_date: isoToDDMMYYYY(a.self_certification_date),
           country_of_residence: a.country_of_residence || "",
           current_email: a.current_email || "",
           current_phone: a.current_phone || "",
           status: a.status || "",
           us_person_indic: a.us_person_indic != null ? String(a.us_person_indic) : "",
           entity_classification: a.entity_classification || "",
-          date_of_birth: a.date_of_birth || "",
+          date_of_birth: isoToDDMMYYYY(a.date_of_birth),
           place_of_birth: a.place_of_birth || "",
           is_pre_existing: a.is_pre_existing != null ? String(a.is_pre_existing) : "",
         });
@@ -147,6 +171,21 @@ export default function AccountExport({ accounts, entities, accessibleEntityIds,
         const bg = colors[a.reportability_status] || "FFFFFFFF";
         row.eachCell(cell => {
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+        });
+
+        // Enforce DD/MM/YYYY as literal text on each date cell so re-opening or
+        // re-importing this file doesn't let Excel auto-convert it into a date serial.
+        Object.entries(dateColIndexes).forEach(([, colIdx]) => {
+          const cell = row.getCell(colIdx);
+          cell.numFmt = "@";
+          const letter = colLetter(colIdx);
+          cell.dataValidation = {
+            type: "custom", allowBlank: true,
+            formulae: [`AND(ISTEXT(${letter}${row.number}),LEN(${letter}${row.number})=10,MID(${letter}${row.number},3,1)="/",MID(${letter}${row.number},6,1)="/")`],
+            showErrorMessage: true, errorStyle: "stop",
+            errorTitle: "Invalid date format",
+            error: "Please enter the date as literal text in DD/MM/YYYY format, e.g. 15/01/2020.",
+          };
         });
       });
 

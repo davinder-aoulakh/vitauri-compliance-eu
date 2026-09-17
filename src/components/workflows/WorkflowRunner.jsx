@@ -28,9 +28,11 @@ import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
 import { computePrefillAnswers, evaluateDateDifference } from "./workflowPrefillUtils";
 import { resolveRequestedDate, validateDateReceived, computeSelfCertFieldMinDates } from "./workflowValidationUtils";
+import { toDisplayDate } from "@/lib/dateUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
+import DateInput from "@/components/ui/date-input";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
@@ -973,12 +975,11 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
         }
         
         return (
-          <Input
+          <DateInput
             key={`${currentStep.step_id}-${dateValue}`}
-            type="date"
             value={dateValue}
             max={new Date().toISOString().split('T')[0]}
-            onChange={(e) => handleAnswer(currentStep.step_id, e.target.value)}
+            onChange={(iso) => handleAnswer(currentStep.step_id, iso || "")}
           />
         );
 
@@ -1152,17 +1153,16 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                   const { error: dateError } = validateDateReceived(dateReceived, reqDate);
                   return (
                     <>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={dateReceived}
                         max={today}
                         min={reqDate || undefined}
-                        onChange={(e) => handleDateReceivedChange(e.target.value)}
+                        onChange={(iso) => handleDateReceivedChange(iso || "")}
                         className={`mt-1.5 ${dateError ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
                       />
                       {reqDate && (
                         <p className="text-xs text-slate-500 mt-1">
-                          Self-certification was requested on: <strong>{reqDate}</strong>
+                          Self-certification was requested on: <strong>{toDisplayDate(reqDate)}</strong>
                         </p>
                       )}
                       {dateError && (
