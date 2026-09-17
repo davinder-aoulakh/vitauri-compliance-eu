@@ -119,8 +119,10 @@ export default function DateInput({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end">
           <Calendar
+            key={open ? (isoToLocalDate(value) || new Date()).toISOString() : "closed"}
             mode="single"
             selected={isoToLocalDate(value)}
+            defaultMonth={isoToLocalDate(value) || new Date()}
             onSelect={handleCalendarSelect}
             disabled={(date) => (minDate && date < minDate) || (maxDate && date > maxDate)}
             initialFocus
