@@ -4,6 +4,7 @@ import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 function Calendar({
   className,
@@ -66,16 +67,26 @@ function Calendar({
         IconRight: ({ className, ...props }) => (
           <ChevronRight className={cn("h-4 w-4", className)} {...props} />
         ),
-        Dropdown: ({ value, onChange, children, className: ddClassName, ...rest }) => (
-          <select
-            value={value}
-            onChange={onChange}
-            className="bg-white border border-input rounded-md text-sm font-medium px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
-            {...rest}
-          >
-            {children}
-          </select>
-        ),
+        Dropdown: ({ value, onChange, children }) => {
+          const options = React.Children.toArray(children);
+          return (
+            <Select
+              value={String(value)}
+              onValueChange={(val) => onChange({ target: { value: val } })}
+            >
+              <SelectTrigger className="h-8 w-auto min-w-[88px] px-2 text-sm font-medium gap-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {options.map((option) => (
+                  <SelectItem key={option.props.value} value={String(option.props.value)}>
+                    {option.props.children}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        },
       }}
       {...props} />)
   );
