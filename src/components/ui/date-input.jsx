@@ -90,6 +90,9 @@ export default function DateInput({
 
   const minDate = isoToLocalDate(min);
   const maxDate = isoToLocalDate(max);
+  const currentYear = new Date().getFullYear();
+  const fromYear = minDate ? minDate.getFullYear() : 1900;
+  const toYear = maxDate ? maxDate.getFullYear() : currentYear + 1;
 
   return (
     <div className={cn("relative flex items-center", className)}>
@@ -125,6 +128,9 @@ export default function DateInput({
             defaultMonth={isoToLocalDate(value) || new Date()}
             onSelect={handleCalendarSelect}
             disabled={(date) => (minDate && date < minDate) || (maxDate && date > maxDate)}
+            captionLayout="dropdown"
+            fromYear={fromYear}
+            toYear={toYear}
             initialFocus
           />
         </PopoverContent>
