@@ -624,7 +624,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
 
 
       {/* Controlling Person Form Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={(open) => { setShowForm(open); if (!open) setSelectedPerson(null); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
