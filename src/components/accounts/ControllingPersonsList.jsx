@@ -27,7 +27,7 @@ import ControllingPersonDetails from "./ControllingPersonDetails";
 import ControllingPersonClassificationHistory from "./ControllingPersonClassificationHistory";
 import ControllingPersonBulkUpdateForm from "./ControllingPersonBulkUpdateForm";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format } from "date-fns";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
 
 export default function ControllingPersonsList({ account, onUpdateCount }) {
@@ -521,7 +521,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-slate-700">
-                          {(() => { try { return person.date_of_birth ? format(new Date(person.date_of_birth.replace(/-/g, '/')), 'MMM d, yyyy') : '—'; } catch { return person.date_of_birth || '—'; } })()}
+                          {formatDateDDMMYYYY(person.date_of_birth)}
                         </span>
                       </TableCell>
                       <TableCell>
