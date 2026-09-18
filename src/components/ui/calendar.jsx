@@ -53,8 +53,7 @@ function Calendar({
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
-        caption_dropdowns: "flex justify-center gap-1",
-        dropdown: "bg-white border border-input rounded-md text-sm px-1 py-1 focus:outline-none focus:ring-1 focus:ring-ring",
+        caption_dropdowns: "flex justify-center gap-2",
         dropdown_month: "relative",
         dropdown_year: "relative",
         vhidden: "hidden",
@@ -66,6 +65,16 @@ function Calendar({
         ),
         IconRight: ({ className, ...props }) => (
           <ChevronRight className={cn("h-4 w-4", className)} {...props} />
+        ),
+        Dropdown: ({ value, onChange, children, className: ddClassName, ...rest }) => (
+          <select
+            value={value}
+            onChange={onChange}
+            className="bg-white border border-input rounded-md text-sm font-medium px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+            {...rest}
+          >
+            {children}
+          </select>
         ),
       }}
       {...props} />)
