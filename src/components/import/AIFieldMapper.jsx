@@ -210,6 +210,7 @@ const INSTANT_RULES = {
   'entity managed by fiduciary trust':  'entity_managed_by_fiduciary_trust',
   'entity managed by asset manager':    'entity_managed_by_asset_manager',
   'gross income from financial assets': 'gross_income_from_financial_assets',
+  'gross income from financial assets (>50% passive)': 'gross_income_from_financial_assets',
   '50% passive income (gross income)':  'gross_income_50_passive',
   'non-reportable exception type':      'non_reportable_exception_type',
   // Treasury
