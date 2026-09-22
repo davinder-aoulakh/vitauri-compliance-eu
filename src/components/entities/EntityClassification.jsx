@@ -20,6 +20,7 @@ import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
+import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
 
 export default function EntityClassification({ entity, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentNodeId, setCurrentNodeId] = useState(initialDraftState?.lastStepId ?? null);
@@ -1074,13 +1075,8 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
     if (currentNode.question_type === "multiple_choice") {
       const selectedArray = Array.isArray(selectedValue) ? selectedValue : [];
       
-      const handleCheckboxChange = (optionValue, checked) => {
-        let newSelection;
-        if (checked) {
-          newSelection = [...selectedArray, optionValue];
-        } else {
-          newSelection = selectedArray.filter(v => v !== optionValue);
-        }
+      const handleCheckboxChange = (option) => {
+        const newSelection = toggleMultiChoiceValue(selectedArray, option, currentNode.options);
         setSelectedValue(newSelection);
       };
       
@@ -1090,12 +1086,12 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
             <div 
               key={option.value}
               className="flex items-start space-x-3 p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
-              onClick={() => handleCheckboxChange(option.value, !selectedArray.includes(option.value))}
+              onClick={() => handleCheckboxChange(option)}
             >
               <Checkbox
                 id={option.value}
                 checked={selectedArray.includes(option.value)}
-                onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
+                onCheckedChange={() => handleCheckboxChange(option)}
                 className="mt-0.5"
               />
               <Label 

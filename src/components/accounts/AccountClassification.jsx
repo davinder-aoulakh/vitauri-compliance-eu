@@ -49,6 +49,7 @@ import DraftSyncWarningBanner from "./DraftSyncWarningBanner";
 import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS } from "@/lib/classificationEvaluator";
 import { toDisplayDate } from "@/lib/dateUtils";
 import DateInput from "@/components/ui/date-input";
+import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
 
 export default function AccountClassification({ account, entities, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
@@ -979,7 +980,7 @@ export default function AccountClassification({ account, entities, onComplete, o
                   key={opt.value}
                   className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${isSel ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`}
                   onClick={() => {
-                    const newVals = isSel ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
+                    const newVals = toggleMultiChoiceValue(selected, opt, currentNode.options);
                     setSelectedValue(newVals);
                     setAnswers(p => ({ ...p, [currentNodeId]: newVals }));
                   }}

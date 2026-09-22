@@ -33,6 +33,7 @@ import WorkflowIntroFields from "./WorkflowIntroFields";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
 import DateInput from "@/components/ui/date-input";
+import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
@@ -909,10 +910,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
                     e.preventDefault();
                     e.stopPropagation();
                     
-                            const newValues = isSelected
-                      ? selectedOptions.filter(v => v !== option.value)
-                      : [...selectedOptions, option.value];
-                    
+                    const newValues = toggleMultiChoiceValue(selectedOptions, option, currentStep.options);
+
                     handleAnswer(currentStep.step_id, newValues);
                   }}
                 >
