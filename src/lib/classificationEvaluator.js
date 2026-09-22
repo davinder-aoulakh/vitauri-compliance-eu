@@ -168,11 +168,20 @@ export const resolveFiTypeUpdate = (steps, answers) => {
 };
 
 const ENTITY_FI_TYPE_VALUE_MAP = {
+  // Current workflow option codes (frm_select_fi_type step)
+  'OPT1': 'custodial_institution',
+  'OPT2': 'depository_institution',
+  'OPT3': 'investment_entity',
+  'OPT4': 'investment_entity',
+  'OPT5': 'specified_insurance_company',
+  'OPT6': 'not_applicable',
+  // Legacy option codes
   '1': 'custodial_institution',
   '2': 'depository_institution',
   '3a': 'investment_entity',
   '3b': 'investment_entity',
   '4': 'specified_insurance_company',
+  // Legacy full label strings
   'Custodial Institution': 'custodial_institution',
   'Depository Institution': 'depository_institution',
   'Investment Entity (3a)': 'investment_entity',
