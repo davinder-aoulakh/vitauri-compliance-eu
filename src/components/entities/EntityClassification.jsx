@@ -1486,16 +1486,11 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
               size="lg"
               className="border-amber-300 text-amber-700 hover:bg-amber-50"
               onClick={async () => {
-                // FI type propagation to Entity — skip if the step is prefilled/locked
-                const fiUpdate = resolveEntityFiTypeUpdate(workflow.steps, answers);
-                const fiTypeStep = workflow.steps.find(s => s.step_id === 'frm_select_fi_type' || s.mapped_field?.field_name === 'fi_type');
-                if (fiUpdate && entity?.id && !(fiTypeStep && prefilledSteps.has(fiTypeStep.step_id))) {
-                  try {
-                    await base44.entities.Entity.update(entity.id, fiUpdate);
-                  } catch (err) {
-                    console.error('FI type propagation on Save & Exit failed:', err);
-                  }
-                }
+                // Run the current step's post-completion actions (same mechanism "Next" uses)
+                // so fields like Entity.fi_type get the exact same value/label regardless of
+                // whether the user exits here or continues to full completion.
+                const mergedAnswers = { ...answers, [currentNodeId]: selectedValue };
+                await executePostCompletionActions(currentNode, mergedAnswers);
                 onSaveAndExit({
                   answers: { ...answers, [currentNodeId]: selectedValue },
                   history,
