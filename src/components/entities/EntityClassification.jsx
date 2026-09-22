@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
+import { resolveEntityFiTypeUpdate } from "@/lib/classificationEvaluator";
 
 export default function EntityClassification({ entity, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentNodeId, setCurrentNodeId] = useState(initialDraftState?.lastStepId ?? null);
@@ -932,25 +933,8 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
       
       // Only determine fi_type if it wasn't already set by post-completion actions
       if (!updatedEntity?.fi_type || updatedEntity.fi_type === "not_applicable") {
-        const fiTypeValue = finalAnswers.frm_select_fi_type;
-        
-        const fiTypeMap = {
-          "1": "custodial_institution",
-          "2": "depository_institution",
-          "3a": "investment_entity",
-          "3b": "investment_entity",
-          "4": "specified_insurance_company"
-        };
-        
-        const fiTypeLabelMap = {
-          "Custodial Institution": "custodial_institution",
-          "Depository Institution": "depository_institution",
-          "Investment Entity (3a)": "investment_entity",
-          "Investment Entity (3b)": "investment_entity",
-          "Specified Insurance Company": "specified_insurance_company"
-        };
-        
-        fi_type = fiTypeMap[fiTypeValue] || fiTypeLabelMap[fiTypeValue] || "not_applicable";
+        const fiUpdate = resolveEntityFiTypeUpdate(workflow.steps, finalAnswers);
+        if (fiUpdate) fi_type = fiUpdate.fi_type;
       }
     }
 
@@ -1501,15 +1485,27 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
               variant="outline"
               size="lg"
               className="border-amber-300 text-amber-700 hover:bg-amber-50"
-              onClick={() => onSaveAndExit({
-                answers: { ...answers, [currentNodeId]: selectedValue },
-                history,
-                answerHistory: {},
-                lastStepId: currentNodeId,
-                workflowId: workflow?.id,
-                workflowName: workflow?.workflow_name,
-                lockedSteps: [...prefilledSteps],
-              })}
+              onClick={async () => {
+                // FI type propagation to Entity — skip if the step is prefilled/locked
+                const fiUpdate = resolveEntityFiTypeUpdate(workflow.steps, answers);
+                const fiTypeStep = workflow.steps.find(s => s.step_id === 'frm_select_fi_type' || s.mapped_field?.field_name === 'fi_type');
+                if (fiUpdate && entity?.id && !(fiTypeStep && prefilledSteps.has(fiTypeStep.step_id))) {
+                  try {
+                    await base44.entities.Entity.update(entity.id, fiUpdate);
+                  } catch (err) {
+                    console.error('FI type propagation on Save & Exit failed:', err);
+                  }
+                }
+                onSaveAndExit({
+                  answers: { ...answers, [currentNodeId]: selectedValue },
+                  history,
+                  answerHistory: {},
+                  lastStepId: currentNodeId,
+                  workflowId: workflow?.id,
+                  workflowName: workflow?.workflow_name,
+                  lockedSteps: [...prefilledSteps],
+                });
+              }}
             >
               <Save className="w-4 h-4 mr-2" />
               Save & Exit

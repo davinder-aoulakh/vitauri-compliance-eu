@@ -140,6 +140,61 @@ export const findAffectedSteps = (steps, visitedHistory, beforeData, afterData) 
   });
 };
 
+// ─── FI Type Propagation ────────────────────────────────────────────────────────
+
+const FI_TYPE_VALUE_MAP = {
+  'depository_institution': 'depository_institution',
+  'custodial_institution': 'custodial_institution',
+  'type_a': 'investment_entity_type_a',
+  'type_b': 'investment_entity_type_b',
+  'investment_entity_type_a': 'investment_entity_type_a',
+  'investment_entity_type_b': 'investment_entity_type_b',
+  'specified_insurance_company': 'specified_insurance_company',
+};
+
+/**
+ * Resolves the Account.type_of_financial_institution update from a workflow's
+ * FI type step answer, or null if no update is warranted.
+ */
+export const resolveFiTypeUpdate = (steps, answers) => {
+  const fiTypeStep = (steps || []).find(
+    s => s.mapped_field?.field_name === 'fi_type' || s.mapped_field?.field_name === 'type_of_financial_institution'
+  );
+  if (!fiTypeStep) return null;
+  const rawAnswer = answers?.[fiTypeStep.step_id];
+  if (!rawAnswer || rawAnswer === 'none') return null;
+  const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
+  return { type_of_financial_institution: mappedFiType };
+};
+
+const ENTITY_FI_TYPE_VALUE_MAP = {
+  '1': 'custodial_institution',
+  '2': 'depository_institution',
+  '3a': 'investment_entity',
+  '3b': 'investment_entity',
+  '4': 'specified_insurance_company',
+  'Custodial Institution': 'custodial_institution',
+  'Depository Institution': 'depository_institution',
+  'Investment Entity (3a)': 'investment_entity',
+  'Investment Entity (3b)': 'investment_entity',
+  'Specified Insurance Company': 'specified_insurance_company',
+};
+
+/**
+ * Resolves the Entity.fi_type update from a workflow's FI type step answer,
+ * or null if no update is warranted.
+ */
+export const resolveEntityFiTypeUpdate = (steps, answers) => {
+  const fiTypeStep = (steps || []).find(
+    s => s.step_id === 'frm_select_fi_type' || s.mapped_field?.field_name === 'fi_type'
+  );
+  if (!fiTypeStep) return null;
+  const rawAnswer = answers?.[fiTypeStep.step_id];
+  if (!rawAnswer || rawAnswer === 'none' || rawAnswer === 'not_applicable') return null;
+  const mappedFiType = ENTITY_FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
+  return { fi_type: mappedFiType };
+};
+
 // ─── Audit Logging ─────────────────────────────────────────────────────────────
 
 export const auditAccountEditDuringClassification = async ({

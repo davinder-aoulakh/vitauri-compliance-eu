@@ -46,7 +46,7 @@ import PreviousAnswers from "./PreviousAnswers";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import AccountForm from "./AccountForm";
 import DraftSyncWarningBanner from "./DraftSyncWarningBanner";
-import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS } from "@/lib/classificationEvaluator";
+import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS, resolveFiTypeUpdate } from "@/lib/classificationEvaluator";
 import { toDisplayDate } from "@/lib/dateUtils";
 import DateInput from "@/components/ui/date-input";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
@@ -816,30 +816,9 @@ export default function AccountClassification({ account, entities, onComplete, o
     }
 
     // 3. FI TYPE → Account.type_of_financial_institution propagation
-    const FI_TYPE_VALUE_MAP = {
-      'depository_institution': 'depository_institution',
-      'custodial_institution': 'custodial_institution',
-      'type_a': 'investment_entity_type_a',
-      'type_b': 'investment_entity_type_b',
-      'investment_entity_type_a': 'investment_entity_type_a',
-      'investment_entity_type_b': 'investment_entity_type_b',
-      'specified_insurance_company': 'specified_insurance_company',
-    };
-
     if (account?.id) {
-      for (const stepId of allSteps) {
-        const step = stepMap[stepId];
-        if (!step) continue;
-        const isFiTypeStep = step.mapped_field?.field_name === 'fi_type' || step.mapped_field?.field_name === 'type_of_financial_institution';
-        if (isFiTypeStep) {
-          const rawAnswer = answers[stepId];
-          if (rawAnswer && rawAnswer !== 'none') {
-            const mappedFiType = FI_TYPE_VALUE_MAP[rawAnswer] || rawAnswer;
-            mergedAccountUpdate = { ...mergedAccountUpdate, type_of_financial_institution: mappedFiType };
-          }
-          break;
-        }
-      }
+      const fiUpdate = resolveFiTypeUpdate(steps, answers);
+      if (fiUpdate) mergedAccountUpdate = { ...mergedAccountUpdate, ...fiUpdate };
     }
 
     // 4. Write the merged update once and refresh state once.
@@ -1585,6 +1564,17 @@ export default function AccountClassification({ account, entities, onComplete, o
           onSaveNow={async () => {
             setIsSavingDraft(true);
             try {
+              const fiUpdate = resolveFiTypeUpdate(steps, answers);
+              const fiTypeStep = steps.find(s => s.mapped_field?.field_name === 'fi_type' || s.mapped_field?.field_name === 'type_of_financial_institution');
+              if (fiUpdate && account?.id && !(fiTypeStep && prefilledSteps.has(fiTypeStep.step_id))) {
+                try {
+                  await base44.entities.Account.update(account.id, fiUpdate);
+                  const refreshed = await base44.entities.Account.filter({ id: account.id });
+                  if (refreshed[0]) setLatestAccountData(refreshed[0]);
+                } catch (err) {
+                  console.error('FI type propagation on Save Now failed:', err);
+                }
+              }
               if (onSaveAndExit) {
                 await onSaveAndExit({
                   answers,
@@ -1717,7 +1707,18 @@ export default function AccountClassification({ account, entities, onComplete, o
               variant="outline"
               size="lg"
               className="border-amber-300 text-amber-700 hover:bg-amber-50"
-              onClick={() => {
+              onClick={async () => {
+                const fiUpdate = resolveFiTypeUpdate(steps, answers);
+                const fiTypeStep = steps.find(s => s.mapped_field?.field_name === 'fi_type' || s.mapped_field?.field_name === 'type_of_financial_institution');
+                if (fiUpdate && account?.id && !(fiTypeStep && prefilledSteps.has(fiTypeStep.step_id))) {
+                  try {
+                    await base44.entities.Account.update(account.id, fiUpdate);
+                    const refreshed = await base44.entities.Account.filter({ id: account.id });
+                    if (refreshed[0]) setLatestAccountData(refreshed[0]);
+                  } catch (err) {
+                    console.error('FI type propagation on Save & Exit failed:', err);
+                  }
+                }
                 setIsDirty(false);
                 setResyncedSteps([]);
                 onSaveAndExit({
