@@ -199,6 +199,16 @@ export default function AccountsPage() {
     enabled: !!selectedAccount?.id && showHistory
   });
 
+  const { data: tenantClassificationHistory = [] } = useQuery({
+    queryKey: ['account-classification-history-tenant', user?.tenant_id],
+    queryFn: () => user?.tenant_id
+      ? base44.entities.AccountClassificationHistory.filter({ tenant_id: user.tenant_id })
+      : [],
+    enabled: !!user?.tenant_id
+  });
+
+  const classifiedAccountIds = new Set(tenantClassificationHistory.map(h => h.account_id));
+
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
   const { can } = usePermissions(user, tenant);
 
@@ -1004,7 +1014,7 @@ export default function AccountsPage() {
                                           Cert Overdue
                                         </Badge>
                                       )}
-                                      {account.has_unclassified_controlling_persons && account.entity_classification !== 'active_nfe' && (
+                                      {account.has_unclassified_controlling_persons && account.entity_classification !== 'active_nfe' && account.reportability_status !== 'pending_review' && classifiedAccountIds.has(account.id) && (
                                         <Badge className="bg-orange-100 text-orange-800 border-orange-300 text-xs">
                                           <Users className="w-3 h-3 mr-1" />
                                           Classify CPs
