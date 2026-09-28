@@ -28,6 +28,7 @@ import AIFormAssistant from "../ai/AIFormAssistant";
 import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 import { formatDateTimeDDMMYYYY } from "@/lib/dateUtils";
 import DateInput from "@/components/ui/date-input";
+import { detectIndicia } from "@/lib/indiciaUtils";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
@@ -214,26 +215,6 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
 
     setDetectedChanges(changes);
   }, [formData, initialData, account, tenant]);
-
-  const detectIndicia = (accountData, tenantJurisdiction) => {
-    const indicia = [];
-
-    // Foreign address
-    if (accountData.account_holder_address?.country && 
-        accountData.account_holder_address.country !== tenantJurisdiction) {
-      indicia.push('foreign_address');
-    }
-
-    // Foreign tax residency
-    const hasForeignTaxResidency = accountData.tax_residencies?.some(
-      r => r.country && r.country !== tenantJurisdiction
-    );
-    if (hasForeignTaxResidency) {
-      indicia.push('foreign_tax_residency');
-    }
-
-    return indicia;
-  };
 
   const handleDocumentsChange = (newDocuments) => {
     // Check if any self-certification document exists

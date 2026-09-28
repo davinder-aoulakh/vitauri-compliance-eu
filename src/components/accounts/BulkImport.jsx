@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { auditLog } from "../utils/auditLogger";
+import { detectIndicia } from "@/lib/indiciaUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -370,13 +371,12 @@ export default function BulkImport({ tenant, entities, onComplete, onCancel }) {
   };
 
   const autoClassifyAccount = (accountData) => {
-    const hasForeignTaxResidency = accountData.tax_residencies.some(r => r.country && r.country !== tenant.jurisdiction);
-    const hasForeignAddress = accountData.account_holder_address?.country && accountData.account_holder_address.country !== tenant.jurisdiction;
-    const autoIndicia = [];
-    if (hasForeignAddress) autoIndicia.push('foreign_address');
+    const autoIndicia = detectIndicia(accountData, tenant.jurisdiction);
+    const hasForeignTaxResidency = autoIndicia.includes('foreign_tax_residency');
+    const hasForeignAddress = autoIndicia.includes('foreign_address');
     let status = 'pending_review', reason = 'Requires manual classification';
     if (accountData.account_holder_type === 'individual') {
-      if (hasForeignTaxResidency) { status = 'reportable'; reason = 'Foreign tax residency detected'; autoIndicia.push('foreign_tax_residency'); }
+      if (hasForeignTaxResidency) { status = 'reportable'; reason = 'Foreign tax residency detected'; }
       else if (hasForeignAddress) { status = 'pending_review'; reason = 'Foreign address found — requires self-certification'; }
       else if (accountData.tax_residencies.length > 0) { status = 'non_reportable'; reason = 'Local tax resident only (auto-classified from import)'; }
     }

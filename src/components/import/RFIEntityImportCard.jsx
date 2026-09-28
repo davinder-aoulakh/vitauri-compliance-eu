@@ -15,6 +15,7 @@ import AIFieldMapper from "./AIFieldMapper";
 import AIDataCleaner from "./AIDataCleaner";
 import { getFiTypeConfig, FI_TYPE_TEMPLATES } from "@/lib/fiTypeTemplates";
 import { getColumnsForFiType } from "@/components/superadmin/FITypeTemplateManager";
+import { detectIndicia } from "@/lib/indiciaUtils";
 
 const STEPS = [
   { id: "upload", label: "Upload File" },
@@ -1737,6 +1738,11 @@ export default function RFIEntityImportCard({ entity, tenant, onComplete }) {
       account.account_holder_name = `${account.first_name} ${account.last_name}`.trim();
     }
     if (account.tax_residencies) account.tax_residencies = account.tax_residencies.filter(t => t?.country);
+
+    // Compute foreign indicia so re-opening the account for edit doesn't falsely flag
+    // "Foreign indicia detected" changes (import previously left this empty).
+    const indicia = detectIndicia(account, tenant?.jurisdiction);
+    if (indicia.length > 0) account.indicia_found = indicia;
 
     // Build controlling person objects from flat cp data
     const controllingPersons = [];
