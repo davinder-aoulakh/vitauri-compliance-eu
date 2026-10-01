@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, Sparkles, Upload, X, Calendar, AlertCircle, Lock, Save } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, Sparkles, Upload, X, Calendar, AlertCircle, Lock, Save, GitBranch } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
@@ -33,6 +33,8 @@ import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import WorkflowRunnerPreviousAnswers from "./WorkflowRunnerPreviousAnswers";
 import DateInput from "@/components/ui/date-input";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
+import WorkflowVisualizer from "./WorkflowVisualizer";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 export default function WorkflowRunner({ workflow, initialData, onComplete, onCancel, accountId, entityId, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
@@ -55,6 +57,8 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [isRfiTypeA, setIsRfiTypeA] = useState(false);
+  const [showFlowchart, setShowFlowchart] = useState(false);
+  const flowchartEnabled = useTenantFeatureFlag('flowchart_view');
 
   const currentStep = workflow.steps[currentStepIndex];
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
@@ -1720,6 +1724,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
             <Sparkles className="w-4 h-4 mr-1" />
             AI Assist
           </Button>
+          {flowchartEnabled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFlowchart(true)}
+              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            >
+              <GitBranch className="w-4 h-4 mr-1" />
+              Flowchart
+            </Button>
+          )}
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">
@@ -1728,6 +1743,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
+
+      {flowchartEnabled && (
+        <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Flowchart: {workflow.workflow_name}</DialogTitle>
+            </DialogHeader>
+            <WorkflowVisualizer workflow={workflow} />
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={showAIHelper} onOpenChange={setShowAIHelper}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush, Menu, GripVertical } from "lucide-react";
+import { XCircle, Save, Building2, Palette, Settings, Sparkles, Brain, LayoutDashboard, PlayCircle, Shield, Zap, FileCheck, Eye, Users, Paintbrush, Menu, GripVertical, GitBranch } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 export default function TenantForm({ tenant, onSubmit, onCancel }) {
@@ -33,6 +33,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     guided_tours: true,
     compliance_assistant: true,
     compliance_support: false,
+    flowchart_view: false,
     //workflow_automation: true,
     advanced_reporting: true,
     audit_logging: true,
@@ -173,6 +174,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
         { key: "compliance_assistant", label: "Compliance Assistant", description: "AI compliance chat page", icon: Shield },
         { key: "compliance_support", label: "Compliance Support", description: "Support ticket management for tenant admins", icon: Shield },
         { key: "validation_rules", label: "Validation Rules", description: "Custom data validation rules", icon: Shield },
+        { key: "flowchart_view", label: "Flowchart View", description: "Workflow flowchart action on classification screens", icon: GitBranch },
       //  { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
         { key: "advanced_reporting", label: "Advanced Reporting", description: "Enhanced report generation", icon: FileCheck },
         { key: "audit_logging", label: "Activity Audit Log", description: "Detailed activity tracking", icon: Eye },
