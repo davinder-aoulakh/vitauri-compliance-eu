@@ -1095,18 +1095,20 @@ export default function AccountsPage() {
                                                 Re-classify Account
                                               </DropdownMenuItem>
                                             )}
-                                        <DropdownMenuItem
-                                          onClick={() => handleAIClassify(account)}
-                                          disabled={aiClassifyingId === account.id}
-                                          className="text-indigo-600 focus:text-indigo-700"
-                                        >
-                                          {aiClassifyingId === account.id ? (
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                          ) : (
-                                            <Sparkles className="w-4 h-4 mr-2" />
-                                          )}
-                                          AI Classify
-                                        </DropdownMenuItem>
+                                        {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
+                                          <DropdownMenuItem
+                                            onClick={() => handleAIClassify(account)}
+                                            disabled={aiClassifyingId === account.id}
+                                            className="text-indigo-600 focus:text-indigo-700"
+                                          >
+                                            {aiClassifyingId === account.id ? (
+                                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                              <Sparkles className="w-4 h-4 mr-2" />
+                                            )}
+                                            AI Classify
+                                          </DropdownMenuItem>
+                                        )}
                                         
                                         {account.account_holder_type === "entity" && (
                                           <DropdownMenuItem onClick={() => handleManageControllingPersons(account)}>
