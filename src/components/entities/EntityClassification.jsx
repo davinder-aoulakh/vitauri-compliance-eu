@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, GitBranch, Lock, Save } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, Check, Circle, AlertCircle, Lock, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -16,8 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import VoiceWorkflowAssistant from "../ai/VoiceWorkflowAssistant";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
@@ -33,7 +31,6 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [entityStatus, setEntityStatus] = useState(null);
-  const [showFlowChart, setShowFlowChart] = useState(false);
   const [prefilledSteps, setPrefilledSteps] = useState(
     initialDraftState?.lockedSteps ? new Set(initialDraftState.lockedSteps) : new Set()
   );
@@ -1268,29 +1265,11 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
   // Main workflow screen
   return (
     <div className="space-y-6">
-      <Dialog open={showFlowChart} onOpenChange={setShowFlowChart}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
-          </DialogHeader>
-          <WorkflowVisualizer workflow={workflow} />
-        </DialogContent>
-      </Dialog>
-
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
             {workflow.workflow_name} v{workflow.version}
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowFlowChart(true)}
-            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-          >
-            <GitBranch className="w-4 h-4 mr-1" />
-            Show Flowchart
-          </Button>
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">

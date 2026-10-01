@@ -16,9 +16,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, GitBranch, Sparkles, Upload, X, Calendar, AlertCircle, Lock, Save } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Info, FileCheck, Check, Sparkles, Upload, X, Calendar, AlertCircle, Lock, Save } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import WorkflowVisualizer from "./WorkflowVisualizer";
 import AIWorkflowHelper from "../ai/AIWorkflowHelper";
 import BeneficiaryInputRenderer from "../accounts/BeneficiaryInputRenderer";
 import ControllingPersonInputRenderer from "../accounts/ControllingPersonInputRenderer";
@@ -50,7 +49,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const [mappedEntityId, setMappedEntityId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState(initialDraftState?.history ?? []);
-  const [showFlowchart, setShowFlowchart] = useState(false);
   const [showAIHelper, setShowAIHelper] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [dragActive, setDragActive] = useState({});
@@ -1716,15 +1714,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowFlowchart(true)}
-            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-          >
-            <GitBranch className="w-4 h-4 mr-1" />
-            Flowchart
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             onClick={() => setShowAIHelper(true)}
             className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
           >
@@ -1739,15 +1728,6 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
-
-      <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
-          </DialogHeader>
-          <WorkflowVisualizer workflow={workflow} />
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={showAIHelper} onOpenChange={setShowAIHelper}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>

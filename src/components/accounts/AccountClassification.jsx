@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, GitBranch, Calendar, Lock, Save, Pencil, Clock } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, Info, FileCheck, Loader2, AlertCircle, Users, Check, Upload, Calendar, Lock, Save, Pencil, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import MultiFieldRenderer from "../workflows/MultiFieldRenderer";
-import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -55,7 +54,6 @@ export default function AccountClassification({ account, entities, onComplete, o
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
   const [history, setHistory] = useState(initialDraftState?.history ?? []);
-  const [showFlowchart, setShowFlowchart] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [completedPath, setCompletedPath] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -1470,26 +1468,12 @@ export default function AccountClassification({ account, entities, onComplete, o
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
             {workflow.workflow_name} v{workflow.version}
           </Badge>
-          <Button variant="ghost" size="sm" onClick={() => setShowFlowchart(true)} className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-            <GitBranch className="w-4 h-4 mr-1" />
-            Flowchart
-          </Button>
-
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-slate-700">Step {currentStepNumber}</p>
           <p className="text-xs text-slate-500">{progress}% Complete</p>
         </div>
       </div>
-
-      <Dialog open={showFlowchart} onOpenChange={setShowFlowchart}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" onInteractOutside={e => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Workflow Flowchart: {workflow.workflow_name}</DialogTitle>
-          </DialogHeader>
-          <WorkflowVisualizer workflow={workflow} />
-        </DialogContent>
-      </Dialog>
 
       {/* Introduction */}
       {workflow.display_workflow_introduction && (
