@@ -206,6 +206,11 @@
         "validation_rules": {
           "type": "boolean",
           "default": true
+        },
+        "flowchart_view": {
+          "type": "boolean",
+          "default": false,
+          "description": "Shows the workflow Flowchart action on Account, Entity, and Controlling Person classification screens"
         }
       }
     },
