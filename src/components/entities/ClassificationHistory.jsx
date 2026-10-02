@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
 import { toDisplayDateTime } from "@/lib/dateUtils";
+import FileUploadAnswerLinks from "@/components/shared/FileUploadAnswerLinks";
 
 export default function ClassificationHistory({ history, entity }) {
   // Fetch published entity classification workflows to map answers
@@ -32,9 +33,35 @@ export default function ClassificationHistory({ history, entity }) {
 
     const question = step.step_title || step.question_text || stepId;
     
-    // Try to find matching option label
     let answer = answerValue;
-    if (step.options && Array.isArray(step.options)) {
+
+    // Arrays (multiple choice)
+    if (Array.isArray(answerValue)) {
+      answer = answerValue.map(v => {
+        const matched = step.options?.find(opt => opt.value === v);
+        return matched ? (matched.label || matched.value) : v;
+      }).join(', ');
+    }
+    // Objects (file upload, address, multi-field)
+    else if (answerValue && typeof answerValue === 'object') {
+      if (Array.isArray(answerValue.files)) {
+        answer = <FileUploadAnswerLinks files={answerValue.files} />;
+      } else if (answerValue.street || answerValue.city || answerValue.country) {
+        answer = [answerValue.street, answerValue.city, answerValue.state, answerValue.postal_code, answerValue.country]
+          .filter(Boolean).join(', ');
+      } else if (step.multi_fields && Array.isArray(step.multi_fields)) {
+        answer = Object.entries(answerValue).map(([key, val]) => {
+          const fieldDef = step.multi_fields.find(f => f.field_id === key);
+          const label = fieldDef?.display_label || key;
+          const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val ?? '');
+          return `${label}: ${displayVal}`;
+        }).join(' | ');
+      } else {
+        answer = JSON.stringify(answerValue);
+      }
+    }
+    // Scalars — try matching option label
+    else if (step.options && Array.isArray(step.options)) {
       const matchingOption = step.options.find(opt => 
         opt.value === answerValue || opt.label === answerValue
       );
@@ -207,7 +234,7 @@ export default function ClassificationHistory({ history, entity }) {
                               {question}
                             </p>
                             <p className="text-sm text-slate-900 font-semibold">
-                              {answer}
+                              {answer || '—'}
                             </p>
                           </div>
                         );
