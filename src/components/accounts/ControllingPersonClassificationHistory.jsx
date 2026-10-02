@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, Clock, Globe } from "lucide-react";
 import { toDisplayDate, toDisplayDateTime } from "@/lib/dateUtils";
+import FileUploadAnswerLinks from "@/components/shared/FileUploadAnswerLinks";
 
 export default function ControllingPersonClassificationHistory({ controllingPerson }) {
   const { data: history = [], isLoading } = useQuery({
@@ -56,7 +57,7 @@ export default function ControllingPersonClassificationHistory({ controllingPers
     else if (typeof answerValue === 'object' && answerValue !== null) {
       // File upload
       if (answerValue.files && Array.isArray(answerValue.files)) {
-        answer = answerValue.files.map(f => f.name || 'Uploaded file').join(', ');
+        answer = <FileUploadAnswerLinks files={answerValue.files} />;
       }
       // Address input
       else if (answerValue.street || answerValue.city || answerValue.country) {
@@ -273,7 +274,7 @@ export default function ControllingPersonClassificationHistory({ controllingPers
                               {question}
                             </p>
                             <p className="text-sm text-slate-900 font-semibold">
-                              {String(answer || '—')}
+                              {answer || '—'}
                             </p>
                           </div>
                         );

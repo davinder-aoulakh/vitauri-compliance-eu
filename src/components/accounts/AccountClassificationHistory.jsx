@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, Clock, AlertTriangle, Users } from "lucide-react";
 import { toDisplayDateTime } from "@/lib/dateUtils";
+import FileUploadAnswerLinks from "@/components/shared/FileUploadAnswerLinks";
 
 export default function AccountClassificationHistory({ history, account }) {
   // Fetch controlling persons for this account
@@ -70,7 +71,18 @@ export default function AccountClassificationHistory({ history, account }) {
 
     // Native object (multi-field input, address, file upload stored as real objects)
     if (typeof answerValue === 'object') {
-      // File upload object
+      // File upload object: { files: [{ name, url, ... }], date_received }
+      if (Array.isArray(answerValue.files)) {
+        return (
+          <div className="space-y-1">
+            <FileUploadAnswerLinks files={answerValue.files} />
+            {answerValue.date_received && (
+              <p className="text-xs text-slate-500">Received: {answerValue.date_received}</p>
+            )}
+          </div>
+        );
+      }
+      // Legacy file upload object
       if (answerValue.file_name) {
         return answerValue.file_name + (answerValue.date_received ? ` (received: ${answerValue.date_received})` : '');
       }
