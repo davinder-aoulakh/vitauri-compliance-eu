@@ -298,7 +298,7 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
     setEditedStep({ ...editedStep, options: newOptions });
   };
 
-  const handleAddOption = () => setEditedStep({ ...editedStep, options: [...editedStep.options, { value: "", label: "", next_step: "" }] });
+  const handleAddOption = () => setEditedStep({ ...editedStep, options: [...editedStep.options, { value: "", label: "", next_step: "", help_text: "" }] });
   const handleRemoveOption = (index) => setEditedStep({ ...editedStep, options: editedStep.options.filter((_, i) => i !== index) });
 
   const handleAddAction = () => {
@@ -557,6 +557,14 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
                     </SelectContent>
                   </Select>
                 </div>
+                {editedStep.question_type !== "yes_no" && (
+                  <Input
+                    value={option.help_text || ""}
+                    onChange={(e) => handleOptionChange(index, "help_text", e.target.value)}
+                    placeholder="Help Text (optional — shown in Previous Answers instead of Label)"
+                    className="text-xs"
+                  />
+                )}
               </div>
             ))}
           </div>
