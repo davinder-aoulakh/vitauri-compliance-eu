@@ -4,6 +4,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toDisplayDate } from "@/lib/dateUtils";
 
 /**
+ * Resolves the display text for a matched option: help_text (trimmed) when present,
+ * otherwise the option's label. Only single_choice and multiple_choice steps use help_text.
+ */
+function getOptionDisplayText(option, step) {
+  const helpTextEligible = step.question_type === 'single_choice' || step.question_type === 'multiple_choice';
+  if (helpTextEligible && option.help_text && option.help_text.trim()) {
+    return option.help_text.trim();
+  }
+  return option.label;
+}
+
+/**
  * Formats a raw answer value into a human-readable string for WorkflowRunner.
  */
 function formatAnswer(ans, step) {
@@ -17,7 +29,7 @@ function formatAnswer(ans, step) {
   // String scalars — try option label lookup first, then YES/NO conversion
   if (typeof ans === 'string') {
     const matched = opts.find(o => o.value === ans);
-    if (matched) return matched.label;
+    if (matched) return getOptionDisplayText(matched, step);
     if (ans === 'YES') return 'Yes';
     if (ans === 'NO') return 'No';
     if (/^\d{4}-\d{2}-\d{2}/.test(ans)) return toDisplayDate(ans);
@@ -28,7 +40,7 @@ function formatAnswer(ans, step) {
   if (Array.isArray(ans)) {
     const labels = ans.map(v => {
       const matched = opts.find(o => o.value === v);
-      return matched ? matched.label : v;
+      return matched ? getOptionDisplayText(matched, step) : v;
     });
     return labels.join(', ') || null;
   }

@@ -4,6 +4,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toDisplayDate } from "@/lib/dateUtils";
 
 /**
+ * Resolves the display text for a matched option: help_text (trimmed) when present,
+ * otherwise the option's label. Only single_choice and multiple_choice steps use help_text.
+ */
+function getOptionDisplayText(option, step) {
+  const helpTextEligible = step.question_type === 'single_choice' || step.question_type === 'multiple_choice';
+  if (helpTextEligible && option.help_text && option.help_text.trim()) {
+    return option.help_text.trim();
+  }
+  return option.label;
+}
+
+/**
  * Formats a raw answer value into a human-readable string.
  * Handles booleans, arrays, file uploads, address inputs, controlling persons, and plain values.
  */
@@ -16,7 +28,7 @@ function formatAnswer(ans, step, getStepOptions) {
     const opts = getStepOptions(step);
     return ans.map(v => {
       const matched = opts.find(o => o.value === v);
-      return matched ? matched.label : v;
+      return matched ? getOptionDisplayText(matched, step) : v;
     }).join(', ') || null;
   }
 
@@ -58,7 +70,7 @@ function formatAnswer(ans, step, getStepOptions) {
   // Scalar: try label lookup first
   const opts = getStepOptions(step);
   const matched = opts.find(o => o.value === ans);
-  if (matched) return matched.label;
+  if (matched) return getOptionDisplayText(matched, step);
   if (ans === 'YES') return 'Yes';
   if (ans === 'NO') return 'No';
   if (typeof ans === 'string' && /^\d{4}-\d{2}-\d{2}/.test(ans)) return toDisplayDate(ans);

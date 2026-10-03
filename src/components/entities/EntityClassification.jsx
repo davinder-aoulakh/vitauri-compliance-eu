@@ -24,6 +24,18 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
 import { resolveEntityFiTypeUpdate } from "@/lib/classificationEvaluator";
 
+/**
+ * Resolves the display text for a matched option: help_text (trimmed) when present,
+ * otherwise the option's label. Only single_choice and multiple_choice steps use help_text.
+ */
+function getOptionDisplayText(option, step) {
+  const helpTextEligible = step.question_type === 'single_choice' || step.question_type === 'multiple_choice';
+  if (helpTextEligible && option.help_text && option.help_text.trim()) {
+    return option.help_text.trim();
+  }
+  return option.label;
+}
+
 export default function EntityClassification({ entity, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentNodeId, setCurrentNodeId] = useState(initialDraftState?.lastStepId ?? null);
   const [answers, setAnswers] = useState(initialDraftState?.answers ?? {});
@@ -1430,7 +1442,10 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
 
                  // Handle multiple choice answers (arrays)
                  if (Array.isArray(value)) {
-                   const labels = value.map(v => step.options?.find(o => o.value === v)?.label || v);
+                   const labels = value.map(v => {
+                     const matched = step.options?.find(o => o.value === v);
+                     return matched ? getOptionDisplayText(matched, step) : v;
+                   });
                    return (
                      <div key={key} className="flex items-start justify-between text-sm py-2 border-b border-slate-200 last:border-0">
                        <span className="text-slate-600 text-xs">
@@ -1453,7 +1468,10 @@ export default function EntityClassification({ entity, onComplete, onCancel, onS
                        {step.step_title || key}
                      </span>
                      <Badge variant="outline" className="capitalize text-xs">
-                       {step.options?.find(o => o.value === value)?.label || value}
+                       {(() => {
+                         const matched = step.options?.find(o => o.value === value);
+                         return matched ? getOptionDisplayText(matched, step) : value;
+                       })()}
                      </Badge>
                    </div>
                  );

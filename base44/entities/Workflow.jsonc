@@ -303,6 +303,10 @@
                 "next_step": {
                   "type": "string",
                   "description": "ID of next step based on this answer"
+                },
+                "help_text": {
+                  "type": "string",
+                  "description": "Optional text shown instead of the option label in the 'Previous Answers' panel when this option is selected. Falls back to the option label when empty. Only applies to single_choice and multiple_choice question types."
                 }
               }
             }

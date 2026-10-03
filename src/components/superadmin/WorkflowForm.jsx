@@ -84,7 +84,7 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
     const currentOptions = newSteps[stepIndex].options || [];
     newSteps[stepIndex].options = [
       ...currentOptions,
-      { value: "", label: "", next_step: "" }
+      { value: "", label: "", next_step: "", help_text: "" }
     ];
     setFormData(prev => ({ ...prev, steps: newSteps }));
   };
@@ -388,6 +388,16 @@ export default function WorkflowForm({ workflow, onSubmit, onCancel }) {
                                   size="sm"
                                 />
                               </div>
+                              {step.question_type !== "yes_no" && (
+                                <div className="col-span-2">
+                                  <Input
+                                    value={option.help_text || ""}
+                                    onChange={(e) => updateOption(stepIndex, optionIndex, "help_text", e.target.value)}
+                                    placeholder="Help Text (optional — shown in Previous Answers instead of Label)"
+                                    size="sm"
+                                  />
+                                </div>
+                              )}
                             </div>
                             {step.question_type !== "yes_no" && (
                               <Button
