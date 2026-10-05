@@ -133,8 +133,8 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
       !a.compliance_issues_resolved?.includes('needs_reclassification')
     ),
     // Accounts needing controlling person identification (none found yet) or classification (CP exists but is_reportable not set)
+    // Applies to ALL accounts, not just passive NFE
     cpPendingIdOrClassification: accounts.filter(a => {
-      if (a.entity_classification !== 'passive_nfe') return false;
       if (a.compliance_issues_resolved?.includes('cp_pending_id_or_classification')) return false;
       const accountCPs = controllingPersons.filter(cp => cp.account_id === a.id);
       if (accountCPs.length === 0) return true;
@@ -154,19 +154,26 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
   );
 
   // Self-certification requested but not yet received - Account and Controlling Person
+  // Request date must exist and not be in the future; obtained must still be false and no receipt date set
+  const todayStr = new Date().toISOString().split('T')[0];
   const selfCertOutstandingAccounts = accounts.filter(a =>
     !!a.self_certification_request_date &&
+    a.self_certification_request_date <= todayStr &&
     !a.self_certification_obtained &&
+    !a.self_certification_date &&
     !a.compliance_issues_resolved?.includes('self_cert_outstanding')
   );
   const selfCertOutstandingCPs = controllingPersons.filter(cp =>
-    !!cp.self_certification_request_date && !cp.self_certification_obtained
+    !!cp.self_certification_request_date &&
+    cp.self_certification_request_date <= todayStr &&
+    !cp.self_certification_obtained &&
+    !cp.self_certification_receipt_date
   );
 
-  const buildAccountItem = (account) => ({
+  const buildAccountItem = (account, showRequestDate) => ({
     key: account.id,
     title: account.account_holder_name,
-    subtitle: `${account.account_number} · Account`,
+    subtitle: `${account.account_number} · Account` + (showRequestDate && account.self_certification_request_date ? ` · Requested ${account.self_certification_request_date}` : ''),
     onReview: () => onSelectAccount(account),
     resolvable: true,
     account
@@ -174,10 +181,11 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
 
   const buildCPItem = (cp) => {
     const parentAccount = accountsById[cp.account_id];
+    const requestDateSuffix = cp.self_certification_request_date ? ` · Requested ${cp.self_certification_request_date}` : '';
     return {
       key: cp.id,
       title: cp.full_name || `${cp.first_name || ''} ${cp.last_name || ''}`.trim() || 'Controlling Person',
-      subtitle: parentAccount ? `${parentAccount.account_number} · Controlling Person` : 'Controlling Person',
+      subtitle: (parentAccount ? `${parentAccount.account_number} · Controlling Person` : 'Controlling Person') + requestDateSuffix,
       onReview: () => parentAccount && onSelectAccount(parentAccount),
       resolvable: false
     };
@@ -189,7 +197,7 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
     ...selfCertToRequestCPs.map(buildCPItem)
   ];
   const selfCertOutstandingItems = [
-    ...selfCertOutstandingAccounts.map(buildAccountItem),
+    ...selfCertOutstandingAccounts.map(a => buildAccountItem(a, true)),
     ...selfCertOutstandingCPs.map(buildCPItem)
   ];
 
