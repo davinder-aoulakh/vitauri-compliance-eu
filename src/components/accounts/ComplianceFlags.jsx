@@ -55,6 +55,8 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
     enabled: !!tenantId
   });
 
+  const accountsById = accounts.reduce((map, a) => { map[a.id] = a; return map; }, {});
+
   const updateAccountMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Account.update(id, data),
     onSuccess: () => {
@@ -129,10 +131,71 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
     needsReclassification: accounts.filter(a =>
       a.needs_reclassification === true &&
       !a.compliance_issues_resolved?.includes('needs_reclassification')
-    )
+    ),
+    // Accounts needing controlling person identification (none found yet) or classification (CP exists but is_reportable not set)
+    cpPendingIdOrClassification: accounts.filter(a => {
+      if (a.entity_classification !== 'passive_nfe') return false;
+      if (a.compliance_issues_resolved?.includes('cp_pending_id_or_classification')) return false;
+      const accountCPs = controllingPersons.filter(cp => cp.account_id === a.id);
+      if (accountCPs.length === 0) return true;
+      return accountCPs.some(cp => cp.is_reportable === null || cp.is_reportable === undefined);
+    })
   };
 
-  const totalIssues = Object.values(issues).reduce((sum, arr) => sum + arr.length, 0);
+  // Self-certification to be requested (first time or new) - Account and Controlling Person
+  const selfCertToRequestAccounts = accounts.filter(a =>
+    a.reportability_status !== 'non_reportable' &&
+    !a.self_certification_obtained &&
+    !a.self_certification_request_date &&
+    !a.compliance_issues_resolved?.includes('self_cert_to_request')
+  );
+  const selfCertToRequestCPs = controllingPersons.filter(cp =>
+    !cp.self_certification_obtained && !cp.self_certification_request_date
+  );
+
+  // Self-certification requested but not yet received - Account and Controlling Person
+  const selfCertOutstandingAccounts = accounts.filter(a =>
+    !!a.self_certification_request_date &&
+    !a.self_certification_obtained &&
+    !a.compliance_issues_resolved?.includes('self_cert_outstanding')
+  );
+  const selfCertOutstandingCPs = controllingPersons.filter(cp =>
+    !!cp.self_certification_request_date && !cp.self_certification_obtained
+  );
+
+  const buildAccountItem = (account) => ({
+    key: account.id,
+    title: account.account_holder_name,
+    subtitle: `${account.account_number} · Account`,
+    onReview: () => onSelectAccount(account),
+    resolvable: true,
+    account
+  });
+
+  const buildCPItem = (cp) => {
+    const parentAccount = accountsById[cp.account_id];
+    return {
+      key: cp.id,
+      title: cp.full_name || `${cp.first_name || ''} ${cp.last_name || ''}`.trim() || 'Controlling Person',
+      subtitle: parentAccount ? `${parentAccount.account_number} · Controlling Person` : 'Controlling Person',
+      onReview: () => parentAccount && onSelectAccount(parentAccount),
+      resolvable: false
+    };
+  };
+
+  const cpPendingIdOrClassificationItems = issues.cpPendingIdOrClassification.map(buildAccountItem);
+  const selfCertToRequestItems = [
+    ...selfCertToRequestAccounts.map(buildAccountItem),
+    ...selfCertToRequestCPs.map(buildCPItem)
+  ];
+  const selfCertOutstandingItems = [
+    ...selfCertOutstandingAccounts.map(buildAccountItem),
+    ...selfCertOutstandingCPs.map(buildCPItem)
+  ];
+
+  const totalIssues = Object.values(issues).reduce((sum, arr) => sum + arr.length, 0)
+    + selfCertToRequestItems.length
+    + selfCertOutstandingItems.length;
 
   // Notify parent of issues count changes
   React.useEffect(() => {
@@ -235,6 +298,81 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
                 className="w-full text-xs text-indigo-600 hover:text-indigo-800 font-medium text-center py-2 hover:underline"
               >
                 {expanded ? 'Show less' : `+${accounts.length - 5} more accounts`}
+              </button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const MixedIssueCard = ({ title, description, items, icon: Icon, color, issueType }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (items.length === 0) return null;
+    const displayedItems = expanded ? items : items.slice(0, 5);
+
+    return (
+      <Card className={`border-2 ${color.border} ${color.bg}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-lg ${color.iconBg} flex items-center justify-center mt-1`}>
+                <Icon className={`w-5 h-5 ${color.icon}`} />
+              </div>
+              <div>
+                <CardTitle className="text-base mb-1">{title}</CardTitle>
+                <CardDescription className="text-xs">{description}</CardDescription>
+              </div>
+            </div>
+            <Badge className={color.badge}>
+              {items.length}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {displayedItems.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {item.subtitle}
+                  </p>
+                </div>
+                <div className="flex gap-2 ml-2 flex-shrink-0">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={item.onReview}
+                    title="Review record"
+                  >
+                    Review
+                  </Button>
+                  {item.resolvable && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleResolveIssue(item.account, issueType)}
+                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                      title="Mark as resolved"
+                    >
+                      <Check className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {items.length > 5 && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                className="w-full text-xs text-indigo-600 hover:text-indigo-800 font-medium text-center py-2 hover:underline"
+              >
+                {expanded ? 'Show less' : `+${items.length - 5} more`}
               </button>
             )}
           </div>
@@ -448,6 +586,54 @@ export default function ComplianceFlags({ tenantId, onSelectAccount, onIssuesCou
             }}
             actionText="Review"
             issueType="old_classification"
+          />
+
+          {/* Pending CP Identification or Classification */}
+          <MixedIssueCard
+            title="Pending Identification & Classification of Controlling Persons"
+            description="Passive NFE accounts missing controlling persons or with unclassified ones"
+            items={cpPendingIdOrClassificationItems}
+            icon={Users}
+            color={{
+              border: "border-fuchsia-200",
+              bg: "bg-fuchsia-50/30",
+              iconBg: "bg-fuchsia-100",
+              icon: "text-fuchsia-600",
+              badge: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300"
+            }}
+            issueType="cp_pending_id_or_classification"
+          />
+
+          {/* Self-Certification To Be Requested */}
+          <MixedIssueCard
+            title="Self-Certification To Be Requested"
+            description="Accounts and controlling persons needing a first or new self-certification request"
+            items={selfCertToRequestItems}
+            icon={FileText}
+            color={{
+              border: "border-cyan-200",
+              bg: "bg-cyan-50/30",
+              iconBg: "bg-cyan-100",
+              icon: "text-cyan-600",
+              badge: "bg-cyan-100 text-cyan-800 border-cyan-300"
+            }}
+            issueType="self_cert_to_request"
+          />
+
+          {/* Self-Certification Requested but Not Received */}
+          <MixedIssueCard
+            title="Self-Certification Requested, Not Received"
+            description="Accounts and controlling persons with a request date but no certification received"
+            items={selfCertOutstandingItems}
+            icon={Clock}
+            color={{
+              border: "border-rose-200",
+              bg: "bg-rose-50/30",
+              iconBg: "bg-rose-100",
+              icon: "text-rose-600",
+              badge: "bg-rose-100 text-rose-800 border-rose-300"
+            }}
+            issueType="self_cert_outstanding"
           />
         </div>
       )}
