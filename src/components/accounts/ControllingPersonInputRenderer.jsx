@@ -274,7 +274,8 @@ export default function ControllingPersonInputRenderer({
         <AlertDescription className="text-sm text-purple-900">
           <strong>Controlling Persons:</strong> Identify individuals who exercise control over
           this entity (&gt;25% ownership or senior management). Any controlling person with
-          foreign tax residency makes this account reportable.
+          foreign tax residency makes this account reportable for the controlling persons if
+          resident in a CRS participating jurisdiction.
         </AlertDescription>
       </Alert>
 
