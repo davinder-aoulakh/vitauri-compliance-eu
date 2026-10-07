@@ -37,7 +37,7 @@ import AIClassificationAssistant from "../ai/AIClassificationAssistant";
 import { evaluateSingleCondition, evaluateConditionalLogic } from "../workflows/workflowConditionUtils";
 import { isActionNode } from "../workflows/workflowNavigationUtils";
 import { getFieldValue as getFieldValueUtil } from "../workflows/workflowFieldUtils";
-import { computePrefillAnswers, evaluateDateDifference } from "../workflows/workflowPrefillUtils";
+import { computePrefillAnswers, evaluateDateDifference, refreshDerivedPrefills } from "../workflows/workflowPrefillUtils";
 import { resolveRequestedDate, validateDateReceived, computeSelfCertFieldMinDates } from "../workflows/workflowValidationUtils";
 import { evaluateWorkflowTriggers } from "../workflows/WorkflowTriggerEvaluator";
 import WorkflowIntroFields from "../workflows/WorkflowIntroFields";
@@ -209,6 +209,21 @@ export default function AccountClassification({ account, entities, onComplete, o
         linkedEntityRef.current = entityRecord;
         setRfiEntityFiType(entityRecord?.fi_type || null);
         setSelectedWorkflow(chosenWorkflow);
+        // Always refresh balance-derived answers from the live account
+        if (chosenWorkflow) {
+          const { answers: derived, cleared } = refreshDerivedPrefills(chosenWorkflow, latestAccount);
+          setAnswers(prev => {
+            const next = { ...prev, ...derived };
+            cleared.forEach(id => { delete next[id]; });
+            return next;
+          });
+          setPrefilledSteps(prev => {
+            const next = new Set(prev);
+            cleared.forEach(id => next.delete(id));
+            Object.keys(derived).forEach(id => next.add(id));
+            return next;
+          });
+        }
         return;
       }
 

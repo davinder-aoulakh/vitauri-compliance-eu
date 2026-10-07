@@ -59,11 +59,31 @@ export const evaluateDateDifference = (cfg, stepAnswers = {}) => {
 /**
  * Evaluates computed_comparison prefill config against entity data.
  */
+// Strict numeric parse: only real finite numbers (or numeric strings) count.
+// null / undefined / '' / non-numeric => null (never treated as zero). Negatives are valid.
+export const parseStrictNumber = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
 export const evaluateComputedComparison = (cfg, entityData) => {
   // Guard: if config is incomplete, return null instead of defaulting to NO
   if (!cfg || (!cfg.field_one && !cfg.field_two)) return null;
   if (!cfg.comparison_operator) return null;
   if (cfg.threshold_value === undefined || cfg.threshold_value === null) return null;
+
+  // Single-field comparison (e.g. balance < 1,000,000): strict, unavailable value => no answer
+  if (cfg.field_one && !cfg.field_two) {
+    const value = parseStrictNumber(entityData?.[cfg.field_one]);
+    const threshold = parseStrictNumber(cfg.threshold_value);
+    if (value === null || threshold === null) return null;
+    const met = { greater_than: value > threshold, less_than: value < threshold, equals: value === threshold, greater_than_or_equal: value >= threshold, less_than_or_equal: value <= threshold, not_equals: value !== threshold }[cfg.comparison_operator] ?? false;
+    return (met === (cfg.prefill_if_true !== false)) ? 'YES' : 'NO';
+  }
 
   const v1 = Number(entityData[cfg.field_one]) || 0;
   const v2 = Number(entityData[cfg.field_two]) || 0;
@@ -71,6 +91,35 @@ export const evaluateComputedComparison = (cfg, entityData) => {
   const t = Number(cfg.threshold_value) || 0;
   const condMet = { greater_than: computed>t, less_than: computed<t, equals: computed===t, greater_than_or_equal: computed>=t, less_than_or_equal: computed<=t, not_equals: computed!==t }[cfg.comparison_operator] ?? false;
   return (condMet === (cfg.prefill_if_true !== false)) ? 'YES' : 'NO';
+};
+
+/**
+ * True for steps whose Yes/No answer is derived from a numeric account field.
+ * Such answers must never be written back to the source field.
+ */
+const NUMERIC_SOURCE_FIELDS = new Set(['year_end_cash_value', 'gross_payments']);
+export const isDerivedAnswerStep = (step) =>
+  !!step?.mapped_field && step.question_type === 'yes_no' && (
+    step.mapped_field.prefill_config?.prefill_type === 'computed_comparison' ||
+    NUMERIC_SOURCE_FIELDS.has(step.mapped_field.field_name)
+  );
+
+/**
+ * Re-evaluates derived (computed_comparison) Account steps from the live account.
+ * Returns { answers: {stepId: 'YES'|'NO'}, cleared: [stepIds with no valid source] }.
+ * Used to always refresh these answers at workflow start, including draft resumes.
+ */
+export const refreshDerivedPrefills = (workflow, accountData) => {
+  const answers = {};
+  const cleared = [];
+  for (const step of workflow?.steps || []) {
+    const mf = step.mapped_field;
+    if (!isDerivedAnswerStep(step) || mf.prefill_config?.prefill_type !== 'computed_comparison') continue;
+    if (mf.entity_type && mf.entity_type !== 'Account') continue;
+    const result = evaluateComputedComparison(mf.prefill_config, accountData || {});
+    if (result) answers[step.step_id] = result; else cleared.push(step.step_id);
+  }
+  return { answers, cleared };
 };
 
 /**
@@ -130,10 +179,11 @@ export const computePrefillAnswers = async (workflow, entityData, entityType, st
       } else if (prefillType === 'computed_comparison') {
         let result = evaluateComputedComparison(step.mapped_field.prefill_config, entityData);
 
-        // Fallback: if config is incomplete, use year_end_cash_value vs 1,000,000 (CRS standard rule)
-        if (result === null) {
-          const balance = Number(entityData['year_end_cash_value']) || 0;
-          if (balance > 0) {
+        // Fallback only when the config is incomplete (no source field configured at all)
+        const cfgPf = step.mapped_field.prefill_config;
+        if (result === null && !cfgPf.field_one && !cfgPf.field_two) {
+          const balance = parseStrictNumber(entityData['year_end_cash_value']);
+          if (balance !== null) {
             result = balance < 1000000 ? 'YES' : 'NO';
           }
         }

@@ -25,7 +25,7 @@ import MultiFieldRenderer from "./MultiFieldRenderer";
 import CountrySelect from "../shared/CountrySelect";
 import { getFieldValue as getFieldValueUtil } from "./workflowRunnerFieldUtils";
 import { evaluateSingleCondition as evalCondition, evaluateConditionalLogic as evalConditionalLogic } from "./workflowRunnerLogic";
-import { computePrefillAnswers, evaluateDateDifference } from "./workflowPrefillUtils";
+import { computePrefillAnswers, evaluateDateDifference, isDerivedAnswerStep, refreshDerivedPrefills } from "./workflowPrefillUtils";
 import { resolveRequestedDate, validateDateReceived, computeSelfCertFieldMinDates } from "./workflowValidationUtils";
 import { toDisplayDate } from "@/lib/dateUtils";
 import WorkflowIntroFields from "./WorkflowIntroFields";
@@ -133,6 +133,24 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
           setMappedEntityData(entityData);
           setMappedEntityType(accountId ? "Account" : "Entity");
           setMappedEntityId(accountId || entityId);
+          // Always refresh balance-derived answers from the live account, even on draft resume
+          if (accountId) {
+            const { answers: derived, cleared } = refreshDerivedPrefills(workflow, entityData);
+            setAnswers(prev => {
+              const next = { ...prev, ...derived };
+              cleared.forEach(id => { delete next[id]; });
+              return next;
+            });
+            setPrefilledSteps(prev => {
+              const next = new Set(prev);
+              cleared.forEach(id => next.delete(id));
+              Object.keys(derived).forEach(id => {
+                const st = workflow.steps.find(s => s.step_id === id);
+                if (st?.mapped_field?.read_only !== false) next.add(id);
+              });
+              return next;
+            });
+          }
           if (accountId && entityData.entity_id) {
             const entityRecords = await base44.entities.Entity.filter({ id: entityData.entity_id });
             if (entityRecords[0]) {
@@ -737,6 +755,9 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       // Strip the iteration suffix to get the base stepId
       const stepId = stepKey.includes('__iter') ? stepKey.split('__iter')[0] : stepKey;
       const step = workflow.steps.find(s => s.step_id === stepId);
+      // Derived answers (e.g. "balance < USD 1,000,000") live only in workflow answers —
+      // never write them back to their numeric source field.
+      if (isDerivedAnswerStep(step)) continue;
       if (step?.mapped_field && step.mapped_field.entity_type === mappedEntityType && step.mapped_field.field_name) {
         const fieldName = step.mapped_field.field_name;
         let valueToUpdate = answer;

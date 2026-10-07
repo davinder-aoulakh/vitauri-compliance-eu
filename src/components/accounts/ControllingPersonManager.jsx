@@ -411,6 +411,7 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
             </DialogHeader>
             <WorkflowRunner
               workflow={workflows[0]}
+              accountId={account?.id}
               initialData={{ controlling_person: classifyingPerson, account }}
               onComplete={handleClassificationComplete}
               onCancel={() => setShowClassification(false)}
