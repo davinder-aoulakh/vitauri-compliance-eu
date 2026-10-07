@@ -29,6 +29,7 @@ import VoiceFormAssistant from "../ai/VoiceFormAssistant";
 import { formatDateTimeDDMMYYYY } from "@/lib/dateUtils";
 import DateInput from "@/components/ui/date-input";
 import { detectIndicia } from "@/lib/indiciaUtils";
+import { getAccountBalanceLabel, getAccountGrossPaymentLabel } from "@/lib/accountReportingLabels";
 
 export default function AccountForm({ account, entities, onSubmit, onCancel, tenant, onBeneficiariesChange }) {
   const [isCurrentAddressSameAsOriginal, setIsCurrentAddressSameAsOriginal] = useState(false);
@@ -1105,7 +1106,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
             <h3 className="text-sm font-semibold text-slate-700 mb-3">CRS Reporting Values</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="year_end_cash_value">Year-end Cash or Surrender Value</Label>
+                <Label htmlFor="year_end_cash_value">{getAccountBalanceLabel(formData.account_type)}</Label>
                 <Input
                   id="year_end_cash_value"
                   type="number"
@@ -1131,7 +1132,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               </div>
 
               <div>
-                <Label htmlFor="gross_payments">Gross Payments (Redemptions, Annuities)</Label>
+                <Label htmlFor="gross_payments">{getAccountGrossPaymentLabel(formData.account_type)}</Label>
                 <Input
                   id="gross_payments"
                   type="number"

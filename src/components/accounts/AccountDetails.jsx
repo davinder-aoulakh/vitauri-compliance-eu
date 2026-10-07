@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import AccountAuditLog from "./AccountAuditLog";
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from "@/lib/dateUtils";
+import { getAccountBalanceLabel, getAccountGrossPaymentLabel } from "@/lib/accountReportingLabels";
 
 const InfoRow = ({ icon: Icon, label, value, badge, color }) => (
   <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
@@ -177,7 +178,7 @@ export default function AccountDetails({ account, entity }) {
             />
             <InfoRow
               icon={CreditCard}
-              label="Balance"
+              label={getAccountBalanceLabel(account.account_type)}
               value={formatCurrency(account.year_end_cash_value, account.year_end_cash_value_currency)}
             />
             <InfoRow
@@ -489,12 +490,12 @@ export default function AccountDetails({ account, entity }) {
               <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mt-4 mb-2">Account Holder Financial Information</p>
               <InfoRow
                 icon={CreditCard}
-                label="Year End Cash or Surrender Value"
+                label={getAccountBalanceLabel(account.account_type)}
                 value={formatCurrency(account.year_end_cash_value, account.year_end_cash_value_currency || "USD")}
               />
               <InfoRow
                 icon={CreditCard}
-                label="Income: Gross Payments (Redemptions, Annuities)"
+                label={`Income: ${getAccountGrossPaymentLabel(account.account_type)}`}
                 value={formatCurrency(account.gross_payments, account.gross_payments_currency || "USD")}
               />
               {account.account_closed_during_period && (
