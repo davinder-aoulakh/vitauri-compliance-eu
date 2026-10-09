@@ -760,6 +760,17 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
       if (isDerivedAnswerStep(step)) continue;
       if (step?.mapped_field && step.mapped_field.entity_type === mappedEntityType && step.mapped_field.field_name) {
         const fieldName = step.mapped_field.field_name;
+
+        // In controlling-person classification, these Account fields are
+        // sources for prefilled answers, not destinations for workflow answers.
+        if (
+          workflow.workflow_type === "controlling_person_classification" &&
+          mappedEntityType === "Account" &&
+          ["year_end_cash_value", "is_pre_existing"].includes(fieldName)
+        ) {
+          continue;
+        }
+
         let valueToUpdate = answer;
 
         if (step.question_type === 'yes_no') {
