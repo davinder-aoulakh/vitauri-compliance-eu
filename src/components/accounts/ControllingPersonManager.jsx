@@ -73,25 +73,38 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
     })
   });
 
+  // Sync CP count/flags and (for CP-related WIP accounts) account status. Never blocks the CP save.
+  const syncAccount = async () => {
+    try {
+      await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
+    } catch (error) {
+      console.error('Failed to sync controlling persons:', error);
+    }
+    queryClient.invalidateQueries(['accounts']);
+    queryClient.invalidateQueries(['account', account?.id]);
+  };
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ControllingPerson.create({
       ...data,
       tenant_id: tenant?.id || account?.tenant_id,
       account_id: account.id
     }),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
       setShowForm(false);
       setEditingPerson(null);
+      await syncAccount();
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ControllingPerson.update(id, data),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
       setShowForm(false);
       setEditingPerson(null);
+      await syncAccount();
     }
   });
 
@@ -139,6 +152,7 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
     queryClient.invalidateQueries(['controlling-persons', account?.id]);
     setShowClassification(false);
     setClassifyingPerson(null);
+    await syncAccount();
   };
 
   const getStatusBadge = (isReportable) => {

@@ -660,9 +660,39 @@ export default function WorkflowRunner({ workflow, initialData, onComplete, onCa
   const executePostCompletionActions = async (actions) => {
     if (!actions || actions.length === 0) return;
 
+    const isCpWorkflow = workflow.workflow_type === "controlling_person_classification";
+    const cpAccountId = accountId || initialData?.account?.id || initialData?.controlling_person?.account_id;
+
+    // For CP-related Work in Progress accounts, the shared sync owns the Account status/reason,
+    // so direct account-level status writes from this workflow are skipped (no race/override).
+    let actionsToRun = actions;
+    if (isCpWorkflow && cpAccountId) {
+      const [freshAccount] = await base44.entities.Account.filter({ id: cpAccountId });
+      const isCpWip =
+        freshAccount?.reportability_status === "work_in_progress" &&
+        /controlling person/i.test(freshAccount?.reportability_reason || "") &&
+        !/dorman/i.test(freshAccount?.reportability_reason || "");
+      if (isCpWip) {
+        actionsToRun = actions.filter(a => !(
+          a.target_entity_type === "Account" &&
+          ["reportability_status", "reportability_reason"].includes(a.field_to_update)
+        ));
+      }
+    }
+
     // Independent actions run in parallel; each returns which record it touched
     // so we can do a single consolidated refresh afterwards.
-    const results = await Promise.all(actions.map((action, i) => runPostCompletionAction(action, i)));
+    const results = await Promise.all(actionsToRun.map((action, i) => runPostCompletionAction(action, i)));
+
+    // Final sequential sync after all CP writes have settled.
+    if (isCpWorkflow && cpAccountId) {
+      try {
+        await base44.functions.invoke('syncAccountControllingPersons', { accountId: cpAccountId });
+      } catch (syncError) {
+        console.error("Final account sync failed after CP classification:", syncError);
+      }
+      results.push({ type: "Account", id: cpAccountId });
+    }
 
     const touchedAccountId = results.find(r => r?.type === "Account")?.id;
     const touchedEntityId = results.find(r => r?.type === "Entity")?.id;

@@ -196,6 +196,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
       queryClient.invalidateQueries(['controlling-persons', account?.id]);
       setShowBulkUpdate(false);
       setSelectedPersonIds([]);
+      await syncControllingPersons();
     } catch (err) {
       alert("Error updating controlling persons: " + err.message);
     } finally {
@@ -293,6 +294,9 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
         console.error('[ControllingPersonsList] Error creating audit log:', auditError);
       }
       
+      // Final sync after classification is saved (resolves CP-related WIP account status)
+      await syncControllingPersons();
+
       // Invalidate queries to refresh the data
       await queryClient.invalidateQueries(['controlling-persons', account?.id]);
       await queryClient.invalidateQueries(['accounts']);
