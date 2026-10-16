@@ -282,6 +282,12 @@ export default function AccountsPage() {
       const onSuccessStart = performance.now();
       const { account: updatedAccount, skipHooks } = response;
       
+      // Immediately merge the saved account into the cached list (filters stay untouched)
+      queryClient.setQueryData(['accounts', user?.tenant_id], (old) =>
+        Array.isArray(old)
+          ? old.map(a => a.id === variables.id ? { ...a, ...variables.data, ...(updatedAccount || {}) } : a)
+          : old
+      );
       queryClient.invalidateQueries(['accounts']);
       setShowForm(false);
       setShowClassification(false);
