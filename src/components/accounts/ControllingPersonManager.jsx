@@ -82,6 +82,7 @@ export default function ControllingPersonManager({ account, tenant, autoOpenAddF
     }
     queryClient.invalidateQueries(['accounts']);
     queryClient.invalidateQueries(['account', account?.id]);
+    queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).includes('history') });
   };
 
   const createMutation = useMutation({

@@ -117,6 +117,7 @@ export default function ControllingPersonsList({ account, onUpdateCount }) {
     try {
       await base44.functions.invoke('syncAccountControllingPersons', { accountId: account.id });
       queryClient.invalidateQueries(['accounts']);
+      queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).includes('history') });
     } catch (error) {
       console.error('Failed to sync controlling persons count:', error);
     }

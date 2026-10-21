@@ -29,6 +29,19 @@
       "type": "string",
       "description": "Detailed reason for this classification"
     },
+    "cp_rollup_reason": {
+      "type": "string",
+      "description": "New reason added when controlling person classification completed and the account status was rolled up"
+    },
+    "cp_rollup_status": {
+      "type": "string",
+      "description": "Resulting account status after the controlling person roll-up"
+    },
+    "cp_rollup_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the controlling person roll-up was applied"
+    },
     "classification_source": {
       "type": "string",
       "enum": [

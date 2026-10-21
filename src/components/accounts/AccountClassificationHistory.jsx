@@ -251,10 +251,23 @@ export default function AccountClassificationHistory({ history, account }) {
 
                 {/* Classification Details */}
                 <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Reason:</span>
-                    <p className="text-sm text-slate-800 flex-1">{record.classification_reason}</p>
-                  </div>
+                  {record.cp_rollup_reason ? (
+                    <>
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">New Reason:</span>
+                        <p className="text-sm text-slate-800 flex-1 font-medium">{record.cp_rollup_reason}</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Previous Reason:</span>
+                        <p className="text-sm text-slate-600 flex-1">{record.classification_reason}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Reason:</span>
+                      <p className="text-sm text-slate-800 flex-1">{record.classification_reason}</p>
+                    </div>
+                  )}
 
                   {record.reportable_jurisdictions && record.reportable_jurisdictions.length > 0 && (
                     <div className="flex items-start gap-2">

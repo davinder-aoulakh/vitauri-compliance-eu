@@ -94,6 +94,28 @@ export default async function (req: Request): Promise<Response> {
                 }
             }
             await base44.entities.Account.update(accountId, updates);
+
+            if (rollupApplied) {
+                // Attach the roll-up reason to the existing WIP history assessment (no new record)
+                try {
+                    const history = await base44.entities.AccountClassificationHistory.filter(
+                        { account_id: accountId },
+                        '-classification_date',
+                        1
+                    );
+                    const latest = Array.isArray(history) ? history[0] : history?.items?.[0];
+                    if (latest && latest.reportability_status === 'work_in_progress' && !latest.cp_rollup_reason) {
+                        const label = resultingStatus === 'reportable' ? 'Reportable' : 'Non-Reportable';
+                        await base44.entities.AccountClassificationHistory.update(latest.id, {
+                            cp_rollup_reason: `Controlling person classification completed. The account is now ${label} based on the controlling person classification results.`,
+                            cp_rollup_status: resultingStatus,
+                            cp_rollup_date: new Date().toISOString()
+                        });
+                    }
+                } catch (historyError) {
+                    console.error('Failed to write rollup history reason:', historyError);
+                }
+            }
         }
 
         return Response.json({
