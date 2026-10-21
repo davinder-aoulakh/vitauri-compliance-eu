@@ -1,25 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { Shield, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function ImpersonationBanner({ session }) {
+export default function ImpersonationBanner() {
+  const [impersonation, setImpersonation] = useState(null);
   const [reverting, setReverting] = useState(false);
-  const [error, setError] = useState(null);
 
-  if (!session) return null;
+  useEffect(() => {
+    // Check sessionStorage first, fall back to localStorage (survives refresh)
+    const stored = sessionStorage.getItem("super_admin_impersonating") 
+      || localStorage.getItem("super_admin_impersonating");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setImpersonation(parsed);
+        // Ensure both storages are in sync
+        sessionStorage.setItem("super_admin_impersonating", stored);
+        localStorage.setItem("super_admin_impersonating", stored);
+      } catch {
+        sessionStorage.removeItem("super_admin_impersonating");
+        localStorage.removeItem("super_admin_impersonating");
+      }
+    }
+  }, []);
 
-  const roleLabel = (session.impersonated_role || "tenant_admin").replace(/_/g, " ");
+  if (!impersonation) return null;
 
   const handleRevert = async () => {
     setReverting(true);
-    setError(null);
     try {
-      await base44.functions.invoke("switchRole", { action: "return" });
+      await base44.functions.invoke("switchRole", {
+        role: "super_admin",
+        tenant_id: null,
+        job_title: null
+      });
+      sessionStorage.removeItem("super_admin_impersonating");
+      localStorage.removeItem("super_admin_impersonating");
       window.location.href = createPageUrl("TenantManagement");
     } catch (err) {
-      setError(err.response?.data?.error || err.message || "Failed to return");
+      alert("Failed to revert: " + err.message);
       setReverting(false);
     }
   };
@@ -30,10 +51,7 @@ export default function ImpersonationBanner({ session }) {
         <Shield className="w-4 h-4" />
         <span>Super Admin Mode:</span>
         <Building2 className="w-4 h-4 ml-1" />
-        <span className="font-bold capitalize">
-          Acting as {roleLabel} for "{session.impersonated_tenant_name}"
-        </span>
-        {error && <span className="ml-3 bg-red-600 rounded px-2 py-0.5 text-xs">Return failed: {error}</span>}
+        <span className="font-bold">Acting as Tenant Admin for "{impersonation.tenant_name}"</span>
       </div>
       <Button
         size="sm"
@@ -43,7 +61,7 @@ export default function ImpersonationBanner({ session }) {
         className="bg-white text-amber-700 border-amber-300 hover:bg-amber-50 h-7 text-xs font-semibold"
       >
         <LogOut className="w-3.5 h-3.5 mr-1.5" />
-        {reverting ? "Returning..." : error ? "Retry return" : "Return to Super Admin"}
+        {reverting ? "Reverting..." : "Return to Super Admin"}
       </Button>
     </div>
   );

@@ -44,16 +44,17 @@ export default function Setup() {
     }
   };
 
-  const switchRole = async (role, tenantId) => {
+  const switchRole = async (role, tenantId, jobTitle, permissions) => {
     setUpdating(true);
     setMessage(null);
     
     try {
-      // Server decides: "super_admin" = return from an active session; otherwise start/switch tenant role.
-      const payload = role === "super_admin"
-        ? { action: "return" }
-        : { action: "start", role, tenant_id: tenantId };
-      const response = await base44.functions.invoke('switchRole', payload);
+      const response = await base44.functions.invoke('switchRole', {
+        role,
+        tenant_id: tenantId,
+        job_title: jobTitle,
+        permissions
+      });
       
       if (response.data?.error) {
         throw new Error(response.data.error);
@@ -72,7 +73,7 @@ export default function Setup() {
       console.error("Error updating user:", error);
       setMessage({ 
         type: "error", 
-        text: "Failed to update role: " + (error.response?.data?.error || error.message)
+        text: "Failed to update role: " + error.message 
       });
       setUpdating(false);
     }

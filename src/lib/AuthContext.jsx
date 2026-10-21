@@ -73,9 +73,9 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
 
-      // A new invited user has no tenant_id and no app_role yet. Super Admins legitimately have
-      // no tenant, so they must never trigger invite processing. The server only applies pending invites.
-      if (!currentUser.tenant_id && !currentUser.app_role) {
+      // If user has no tenant_id, they may have just signed up via an invite link.
+      // Trigger applyPendingInvites immediately so their tenant/role is assigned now.
+      if (!currentUser.tenant_id) {
         try {
           await base44.functions.invoke('applyPendingInvites', { email: currentUser.email });
           // Re-fetch the user so we get the updated tenant_id/app_role

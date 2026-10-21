@@ -115,15 +115,24 @@ export default function TenantManagement() {
     if (!confirm(`Switch to tenant "${tenant.name}" as Tenant Admin? You can return to Super Admin at any time.`)) return;
     setImpersonating(tenant.id);
     try {
-      // The server records the original role/tenant in an ImpersonationSession.
-      await base44.functions.invoke("switchRole", {
-        action: "start",
-        role: "tenant_admin",
+      // Store original role in both storages so banner persists after page refresh
+      const impersonationData = JSON.stringify({
+        original_role: "super_admin",
+        tenant_name: tenant.name,
         tenant_id: tenant.id
+      });
+      sessionStorage.setItem("super_admin_impersonating", impersonationData);
+      localStorage.setItem("super_admin_impersonating", impersonationData);
+      await base44.functions.invoke("switchRole", {
+        role: "tenant_admin",
+        tenant_id: tenant.id,
+        job_title: "Super Admin (Impersonating)"
       });
       window.location.href = createPageUrl("Dashboard");
     } catch (err) {
-      alert("Failed to impersonate tenant: " + (err.response?.data?.error || err.message));
+      sessionStorage.removeItem("super_admin_impersonating");
+      localStorage.removeItem("super_admin_impersonating");
+      alert("Failed to impersonate tenant: " + err.message);
       setImpersonating(null);
     }
   };
