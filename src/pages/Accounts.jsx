@@ -75,6 +75,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useClassificationDraftMap } from "@/hooks/useClassificationDraft";
 import { Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import ClassifyMenuItem from "@/components/accounts/ClassifyMenuItem";
+import { isEntityReadyForAccountClassification, RFI_NOT_READY_MESSAGE } from "@/lib/rfiReadiness";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -188,7 +190,9 @@ export default function AccountsPage() {
     queryFn: () => user?.tenant_id 
       ? base44.entities.Entity.filter({ tenant_id: user.tenant_id })
       : [],
-    enabled: !!user?.tenant_id
+    enabled: !!user?.tenant_id,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true
   });
 
   const { data: classificationHistory = [] } = useQuery({
@@ -475,7 +479,14 @@ export default function AccountsPage() {
     setShowDetails(true);
   };
 
+  const isAccountClassificationBlocked = (account) =>
+    !isEntityReadyForAccountClassification(entities.find(e => e.id === account?.entity_id));
+
   const handleClassify = (account) => {
+    if (isAccountClassificationBlocked(account)) {
+      toast({ title: "Classification unavailable", description: RFI_NOT_READY_MESSAGE, variant: "destructive" });
+      return;
+    }
     // Ensure we get the latest account data from the list
     const latestAccount = accounts.find(a => a.id === account.id) || account;
     setSelectedAccount(latestAccount);
@@ -1086,20 +1097,20 @@ export default function AccountsPage() {
                                     {can('Account', 'edit') && (
                                      <>
                                         {accountDraftMap[account.id] ? (
-                                              <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                              <ClassifyMenuItem blocked={isAccountClassificationBlocked(account)} onClick={() => handleClassify(account)}>
                                                 <Save className="w-4 h-4 mr-2 text-amber-600" />
                                                 Continue Classification
-                                              </DropdownMenuItem>
+                                              </ClassifyMenuItem>
                                             ) : account.reportability_status === "pending_review" ? (
-                                              <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                              <ClassifyMenuItem blocked={isAccountClassificationBlocked(account)} onClick={() => handleClassify(account)}>
                                                 <Eye className="w-4 h-4 mr-2" />
                                                 Classify Account
-                                              </DropdownMenuItem>
+                                              </ClassifyMenuItem>
                                             ) : (
-                                              <DropdownMenuItem onClick={() => handleClassify(account)}>
+                                              <ClassifyMenuItem blocked={isAccountClassificationBlocked(account)} onClick={() => handleClassify(account)}>
                                                 <Eye className="w-4 h-4 mr-2" />
                                                 Re-classify Account
-                                              </DropdownMenuItem>
+                                              </ClassifyMenuItem>
                                             )}
                                         {(tenant?.enabled_features?.ai_classification_assistant !== false) && (
                                           <DropdownMenuItem
