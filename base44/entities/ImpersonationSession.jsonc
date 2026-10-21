@@ -1,0 +1,93 @@
+{
+  "name": "ImpersonationSession",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user (Super Admin) who is impersonating"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of that user, for audit"
+    },
+    "original_role": {
+      "type": "string",
+      "description": "Role to restore on return"
+    },
+    "original_tenant_id": {
+      "type": "string",
+      "description": "Tenant to restore on return (empty for Super Admin)"
+    },
+    "original_job_title": {
+      "type": "string",
+      "description": "Job title to restore on return"
+    },
+    "impersonated_tenant_id": {
+      "type": "string",
+      "description": "Tenant currently being acted in"
+    },
+    "impersonated_tenant_name": {
+      "type": "string",
+      "description": "Tenant name, for banner display"
+    },
+    "impersonated_role": {
+      "type": "string",
+      "description": "Tenant role currently being acted as"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_reason": {
+      "type": "string",
+      "enum": [
+        "returned",
+        "admin_role_change",
+        "migration_superseded"
+      ],
+      "description": "Why the session was closed"
+    },
+    "ended_by": {
+      "type": "string",
+      "description": "Email of the person who closed the session"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "switch",
+        "recovery_migration"
+      ],
+      "default": "switch"
+    },
+    "evidence_note": {
+      "type": "string",
+      "description": "For recovery_migration sessions: the trusted evidence used"
+    }
+  },
+  "required": [
+    "user_id",
+    "original_role"
+  ],
+  "rls": {
+    "read": {
+      "data.user_id": "{{user.id}}"
+    },
+    "create": {
+      "data.user_id": "__service_role_only__"
+    },
+    "update": {
+      "data.user_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.user_id": "__service_role_only__"
+    }
+  }
+}
