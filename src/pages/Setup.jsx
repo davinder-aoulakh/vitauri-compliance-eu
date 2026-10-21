@@ -50,6 +50,7 @@ export default function Setup() {
     
     try {
       const response = await base44.functions.invoke('switchRole', {
+        action: role === 'super_admin' ? 'return' : 'start',
         role,
         tenant_id: tenantId,
         job_title: jobTitle,

@@ -437,7 +437,7 @@ const superAdminNav = filterMenuItems([
         }
       `}</style>
 
-      <div className="min-h-screen flex w-full bg-slate-50" role="application" aria-label="CRS Platform" style={typeof window !== "undefined" && sessionStorage.getItem("super_admin_impersonating") ? { paddingTop: "40px" } : {}}>
+      <div className="min-h-screen flex w-full bg-slate-50" role="application" aria-label="CRS Platform">
         <Sidebar className="border-r border-slate-200 bg-white" role="navigation" aria-label="Main navigation">
           <SidebarHeader className="border-b border-slate-100 p-5">
             {/* Vitauri Branding - Primary (configurable by super admin) */}

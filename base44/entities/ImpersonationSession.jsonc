@@ -1,0 +1,70 @@
+{
+  "name": "ImpersonationSession",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the Super Admin user who is impersonating"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "original_role": {
+      "type": "string",
+      "description": "Role to restore on return"
+    },
+    "original_tenant_id": {
+      "type": "string",
+      "description": "Tenant to restore on return (empty = none)"
+    },
+    "original_job_title": {
+      "type": "string"
+    },
+    "impersonated_role": {
+      "type": "string"
+    },
+    "impersonated_tenant_id": {
+      "type": "string"
+    },
+    "impersonated_tenant_name": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_reason": {
+      "type": "string",
+      "enum": [
+        "returned",
+        "role_changed"
+      ]
+    }
+  },
+  "required": [
+    "user_id",
+    "original_role"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "no-client-access"
+    },
+    "create": {
+      "created_by_id": "no-client-access"
+    },
+    "update": {
+      "created_by_id": "no-client-access"
+    },
+    "delete": {
+      "created_by_id": "no-client-access"
+    }
+  }
+}
