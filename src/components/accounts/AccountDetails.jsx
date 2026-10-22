@@ -120,7 +120,7 @@ export default function AccountDetails({ account, entity }) {
                 </Badge>
                 {account.entity_classification && (
                   <Badge variant="outline" className="capitalize bg-purple-50 text-purple-700 border-purple-200">
-                    {account.entity_classification.replace(/_/g, " ")}
+                    {account.entity_classification === "not_applicable" ? "Still to be determined" : account.entity_classification.replace(/_/g, " ")}
                   </Badge>
                 )}
               </div>

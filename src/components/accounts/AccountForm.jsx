@@ -736,7 +736,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                       <SelectItem value="financial_institution">Financial Institution</SelectItem>
                       <SelectItem value="active_nfe">Active NFE</SelectItem>
                       <SelectItem value="passive_nfe">Passive NFE</SelectItem>
-                      <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                      <SelectItem value="not_applicable">Still to be determined</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-500 mt-1">Used to derive CRS AcctHolderType in XML</p>

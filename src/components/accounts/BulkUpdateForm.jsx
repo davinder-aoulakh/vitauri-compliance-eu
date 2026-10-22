@@ -61,7 +61,7 @@ export default function BulkUpdateForm({ selectedAccounts, onUpdate, onCancel, i
         { value: "financial_institution", label: "Financial Institution" },
         { value: "active_nfe", label: "Active NFE" },
         { value: "passive_nfe", label: "Passive NFE" },
-        { value: "not_applicable", label: "Not Applicable" }
+        { value: "not_applicable", label: "Still to be determined" }
       ]
     },
     {
