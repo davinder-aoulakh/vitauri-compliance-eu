@@ -745,14 +745,14 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
                 <div>
                   <Label htmlFor="type_of_financial_institution" className="text-slate-700">Type of Financial Institution</Label>
                   <Select
-                    value={formData.type_of_financial_institution || ""}
-                    onValueChange={(value) => handleChange("type_of_financial_institution", value === "__clear__" ? "" : value)}
+                    value={formData.type_of_financial_institution || "__unknown__"}
+                    onValueChange={(value) => handleChange("type_of_financial_institution", value === "__unknown__" ? "" : value)}
                   >
                     <SelectTrigger className="mt-1.5" id="type_of_financial_institution">
-                      <SelectValue placeholder="Select type..." />
+                      <SelectValue placeholder="Not known yet" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__clear__"><span className="text-slate-400 italic">— Clear selection —</span></SelectItem>
+                      <SelectItem value="__unknown__">Not known yet</SelectItem>
                       {FI_TYPE_OPTIONS.map(opt => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
