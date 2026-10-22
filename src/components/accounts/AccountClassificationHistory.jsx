@@ -245,7 +245,11 @@ export default function AccountClassificationHistory({ history, account }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    {getStatusBadge(record.reportability_status)}
+                    {getStatusBadge(
+                      record.cp_rollup_reason && record.cp_rollup_status
+                        ? record.cp_rollup_status
+                        : record.reportability_status
+                    )}
                   </div>
                 </div>
 
@@ -260,6 +264,10 @@ export default function AccountClassificationHistory({ history, account }) {
                       <div className="flex items-start gap-2">
                         <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Previous Reason:</span>
                         <p className="text-sm text-slate-600 flex-1">{record.classification_reason}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Previous Status:</span>
+                        {getStatusBadge(record.previous_reportability_status || 'work_in_progress')}
                       </div>
                     </>
                   ) : (

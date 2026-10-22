@@ -107,6 +107,8 @@ export default async function (req: Request): Promise<Response> {
                     if (latest && latest.reportability_status === 'work_in_progress' && !latest.cp_rollup_reason) {
                         const label = resultingStatus === 'reportable' ? 'Reportable' : 'Non-Reportable';
                         await base44.entities.AccountClassificationHistory.update(latest.id, {
+                            previous_reportability_status: latest.reportability_status,
+                            reportability_status: resultingStatus,
                             cp_rollup_reason: `Controlling person classification completed. The account is now ${label} based on the controlling person classification results.`,
                             cp_rollup_status: resultingStatus,
                             cp_rollup_date: new Date().toISOString()
