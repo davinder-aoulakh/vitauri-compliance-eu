@@ -557,6 +557,7 @@ export default function WorkflowDragDropBuilder({ workflow, onSave, onCancel }) 
                 key={`step-editor-${selectedStep.step_id}`}
                 step={steps.find(s => s.step_id === selectedStep.step_id) || selectedStep}
                 allSteps={steps}
+                currentWorkflowId={workflow?.id}
                 onUpdate={handleUpdateStep}
                 onClose={() => setShowStepEditor(false)}
               />

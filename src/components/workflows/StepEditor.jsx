@@ -15,6 +15,7 @@ import MultiFieldEditor from "./MultiFieldEditor";
 import ConditionGroupsBuilder from "./ConditionGroupsBuilder";
 import MultiChoiceRoutingBuilder from "./MultiChoiceRoutingBuilder";
 import SelectionCountBranching from "./SelectionCountBranching";
+import StepTransitionConfig from "./StepTransitionConfig";
 
 // Helper function to determine the field type of a workflow question
 const getQuestionFieldType = (questionType) => {
@@ -226,7 +227,7 @@ const getSuggestedValuesForField = (entityType, fieldName, referencedDataList = 
 
 export { getFieldsForEntity, getSuggestedValuesForField };
 
-export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
+export default function StepEditor({ step, allSteps, currentWorkflowId, onUpdate, onClose }) {
   const normalizedConditionalLogic = step.conditional_logic ? {
     ...step.conditional_logic,
     conditions: (step.conditional_logic.conditions || []).map(c => ({
@@ -828,6 +829,15 @@ export default function StepEditor({ step, allSteps, onUpdate, onClose }) {
           </div>
         )}
       </div>
+
+      {editedStep.question_type !== "result" && (
+        <StepTransitionConfig
+          step={editedStep}
+          allSteps={allSteps}
+          currentWorkflowId={currentWorkflowId}
+          onChange={(wt) => setEditedStep(prev => ({ ...prev, workflow_transition: wt }))}
+        />
+      )}
 
       {/* Post-Completion Actions */}
       <div className="border-t pt-4">

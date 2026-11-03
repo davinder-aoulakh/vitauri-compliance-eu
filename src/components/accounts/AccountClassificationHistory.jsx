@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, CheckCircle2, XCircle, Clock, AlertTriangle, Users } from "lucide-react";
 import { toDisplayDateTime } from "@/lib/dateUtils";
+import WorkflowTransitionEntry from "./WorkflowTransitionEntry";
 import FileUploadAnswerLinks from "@/components/shared/FileUploadAnswerLinks";
 
 export default function AccountClassificationHistory({ history, account }) {
@@ -210,13 +211,15 @@ export default function AccountClassificationHistory({ history, account }) {
             Classification History
           </CardTitle>
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            {history.length} {history.length === 1 ? 'Assessment' : 'Assessments'}
+            {history.filter(h => h.entry_type !== 'workflow_transition').length} {history.filter(h => h.entry_type !== 'workflow_transition').length === 1 ? 'Assessment' : 'Assessments'}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="p-6">
         <div className="space-y-4">
-          {sortedHistory.map((record, index) => (
+          {sortedHistory.map((record, index) => record.entry_type === 'workflow_transition' ? (
+            <WorkflowTransitionEntry key={record.id} record={record} />
+          ) : (
             <div 
               key={record.id} 
               className={`relative border rounded-lg p-4 hover:shadow-md transition-shadow ${

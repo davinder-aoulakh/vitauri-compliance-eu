@@ -63,6 +63,55 @@
       "default": "workflow",
       "description": "How this classification was performed"
     },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "classification",
+        "workflow_transition"
+      ],
+      "default": "classification",
+      "description": "workflow_transition = audit event recording a hand-off from one workflow to another"
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "Name of the workflow that produced this entry"
+    },
+    "transition_sequence": {
+      "type": "number",
+      "description": "Order of this transition within the classification session (1-based)"
+    },
+    "from_workflow_id": {
+      "type": "string"
+    },
+    "from_workflow_name": {
+      "type": "string"
+    },
+    "to_workflow_id": {
+      "type": "string"
+    },
+    "to_workflow_name": {
+      "type": "string"
+    },
+    "transition_step_id": {
+      "type": "string"
+    },
+    "transition_step_title": {
+      "type": "string"
+    },
+    "transition_mode": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "conditional"
+      ]
+    },
+    "transition_chain": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ordered workflow names involved in this classification session (final entries only)"
+    },
     "rule_id": {
       "type": "string",
       "description": "Reference to the AutoClassificationRule that triggered this classification"

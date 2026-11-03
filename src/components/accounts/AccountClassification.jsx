@@ -49,6 +49,8 @@ import WorkflowVisualizer from "../workflows/WorkflowVisualizer";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS, resolveFiTypeUpdate } from "@/lib/classificationEvaluator";
 import { toDisplayDate } from "@/lib/dateUtils";
+import { toast } from "@/components/ui/use-toast";
+import { resolveTransitionTarget, validateTransition } from "@/lib/workflowTransitions";
 import DateInput from "@/components/ui/date-input";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
 
@@ -86,6 +88,8 @@ export default function AccountClassification({ account, entities, onComplete, o
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const prevIsDirtyRef = useRef(false);
   const [showFlowchart, setShowFlowchart] = useState(false);
+  // Workflow hand-offs performed during this classification session (in order)
+  const [workflowTransitions, setWorkflowTransitions] = useState([]);
   const flowchartEnabled = useTenantFeatureFlag('flowchart_view');
 
   // Re-show banner whenever isDirty flips to true (i.e. a new account edit was saved)
@@ -587,6 +591,12 @@ export default function AccountClassification({ account, entities, onComplete, o
     const newHistory = [...history, currentNodeId];
     setHistory(newHistory);
 
+    // Step-level workflow transition: end this workflow and start another one
+    if (currentNode.workflow_transition?.enabled) {
+      const handled = await performWorkflowTransition(newHistory, newAnswers);
+      if (handled) return;
+    }
+
     // Navigation
     const nextStepId = await resolveNextStep(currentNode, currentAnswer, newAnswers);
     if (nextStepId) {
@@ -641,6 +651,55 @@ export default function AccountClassification({ account, entities, onComplete, o
     } else {
       setCurrentStepIndex(currentStepIndex + 1);
     }
+  };
+
+  // Resolves and performs a configured workflow hand-off. Returns true when the step was handled
+  // (transition performed OR blocked with an error), false to continue normal navigation.
+  const performWorkflowTransition = async (newHistory, newAnswers) => {
+    const resolved = await resolveTransitionTarget(currentNode, (cond) => evalSingleCondition(cond, newAnswers));
+    if (!resolved) return false;
+
+    const target = workflows.find(w => w.id === resolved.targetId);
+    const chainIds = [workflowTransitions[0]?.from_workflow_id || selectedWorkflow?.id, ...workflowTransitions.map(t => t.to_workflow_id)].filter(Boolean);
+    const error = validateTransition({ target, chainIds });
+    if (error) {
+      toast({ title: "Workflow transition blocked", description: error, variant: "destructive" });
+      setHistory(history);
+      return true;
+    }
+
+    const visitedAnswers = {};
+    for (const id of newHistory) if (newAnswers[id] !== undefined) visitedAnswers[id] = newAnswers[id];
+
+    setWorkflowTransitions(prev => [...prev, {
+      sequence: prev.length + 1,
+      transitioned_at: new Date().toISOString(),
+      from_workflow_id: selectedWorkflow.id,
+      from_workflow_name: selectedWorkflow.workflow_name,
+      to_workflow_id: target.id,
+      to_workflow_name: target.workflow_name,
+      step_id: currentNode.step_id,
+      step_title: currentNode.step_title || currentNode.step_id,
+      mode: resolved.mode,
+      answers: visitedAnswers,
+      path: newHistory,
+    }]);
+
+    // Start the target workflow for the same account with fresh account/entity prefill
+    const { prefillMap, lockableStepIds } = await computeWorkflowPrefill(target, latestAccountData || account, linkedEntityRef.current);
+    setSelectedWorkflow(target);
+    setCurrentStepIndex(0);
+    setHistory([]);
+    setCompletedPath([]);
+    setAnswerHistory({});
+    setAnswers(prefillMap || {});
+    setPrefilledSteps(new Set(lockableStepIds || []));
+    setSelectedValue(null);
+    setDateReceivedValue("");
+    setMultiFieldValues({});
+    setAffectedSteps([]);
+    toast({ title: "Workflow changed", description: `Continuing with "${target.workflow_name}"` });
+    return true;
   };
 
   const resolveNextStep = async (step, answer, allAnswers) => {
@@ -886,6 +945,9 @@ export default function AccountClassification({ account, entities, onComplete, o
       _redirectToControllingPersons: resultAction === 'manage_controlling_persons',
       _redirectToBeneficiaries: resultAction === 'report_per_beneficiary',
       _manualReportTotal: resultAction === 'manual_report_total',
+      _workflowTransitions: workflowTransitions,
+      _workflowId: selectedWorkflow?.id,
+      _workflowName: selectedWorkflow?.workflow_name,
     };
 
     setLoading(false);

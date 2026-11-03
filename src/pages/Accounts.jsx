@@ -211,7 +211,7 @@ export default function AccountsPage() {
     enabled: !!user?.tenant_id
   });
 
-  const classifiedAccountIds = new Set(tenantClassificationHistory.map(h => h.account_id));
+  const classifiedAccountIds = new Set(tenantClassificationHistory.filter(h => h.entry_type !== 'workflow_transition').map(h => h.account_id));
 
   const isAdmin = user?.app_role === 'tenant_admin' || user?.app_role === 'super_admin';
   const { can } = usePermissions(user, tenant);
@@ -1275,7 +1275,7 @@ export default function AccountsPage() {
               queryClient.invalidateQueries(["classification-drafts-bulk"]);
             } catch (_) {}
             // --- existing completion logic below ---
-            const { _redirectToControllingPersons, _redirectToBeneficiaries, _manualReportTotal, ...cleanData } = data;
+            const { _redirectToControllingPersons, _redirectToBeneficiaries, _manualReportTotal, _workflowTransitions = [], _workflowId, _workflowName, ...cleanData } = data;
             const accountId = selectedAccount.id;
 
             // Update the account (skip hooks to avoid auto-classification and workflow checks)
@@ -1283,6 +1283,34 @@ export default function AccountsPage() {
 
             // Create classification history record
             try {
+              // Transition events (origin workflow result + hand-off), oldest first
+              for (const t of _workflowTransitions) {
+                await base44.entities.AccountClassificationHistory.create({
+                  tenant_id: user.tenant_id,
+                  account_id: accountId,
+                  classification_date: t.transitioned_at,
+                  reportability_status: 'work_in_progress',
+                  classification_reason: `Workflow "${t.from_workflow_name}" ended at step "${t.step_title}" and handed off to workflow "${t.to_workflow_name}".`,
+                  classification_source: 'workflow',
+                  entry_type: 'workflow_transition',
+                  transition_sequence: t.sequence,
+                  workflow_id: t.from_workflow_id,
+                  workflow_name: t.from_workflow_name,
+                  from_workflow_id: t.from_workflow_id,
+                  from_workflow_name: t.from_workflow_name,
+                  to_workflow_id: t.to_workflow_id,
+                  to_workflow_name: t.to_workflow_name,
+                  transition_step_id: t.step_id,
+                  transition_step_title: t.step_title,
+                  transition_mode: t.mode,
+                  workflow_path_taken: t.path,
+                  workflow_answers: t.answers,
+                  performed_by: user.email,
+                  account_holder_name: selectedAccount.account_holder_name,
+                  account_number: selectedAccount.account_number,
+                  account_balance: selectedAccount.year_end_cash_value,
+                });
+              }
               await base44.entities.AccountClassificationHistory.create({
                 tenant_id: user.tenant_id,
                 account_id: accountId,
@@ -1290,6 +1318,12 @@ export default function AccountsPage() {
                 reportability_status: cleanData.reportability_status,
                 classification_reason: cleanData.reportability_reason || '',
                 classification_source: 'workflow',
+                entry_type: 'classification',
+                ...(_workflowTransitions.length > 0 && {
+                  workflow_id: _workflowId,
+                  workflow_name: _workflowName,
+                  transition_chain: [_workflowTransitions[0].from_workflow_name, ..._workflowTransitions.map(t => t.to_workflow_name)],
+                }),
                 workflow_answers: cleanData.classification_answers || {},
                 performed_by: user.email,
                 account_holder_name: selectedAccount.account_holder_name,
