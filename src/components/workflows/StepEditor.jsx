@@ -835,6 +835,7 @@ export default function StepEditor({ step, allSteps, currentWorkflowId, onUpdate
           step={editedStep}
           allSteps={allSteps}
           currentWorkflowId={currentWorkflowId}
+          conditionFields={availableConditionFields}
           onChange={(wt) => setEditedStep(prev => ({ ...prev, workflow_transition: wt }))}
         />
       )}

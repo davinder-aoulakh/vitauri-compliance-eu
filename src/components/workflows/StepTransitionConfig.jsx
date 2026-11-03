@@ -2,13 +2,12 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, Workflow as WorkflowIcon } from "lucide-react";
-import { TRANSITION_OPERATORS } from "@/lib/workflowTransitions";
+import { Plus, Workflow as WorkflowIcon } from "lucide-react";
+import TransitionRuleGroup from "./TransitionRuleGroup";
 
 const NONE = "__none__";
 
@@ -26,7 +25,7 @@ function WorkflowSelect({ value, onChange, workflows, placeholder }) {
   );
 }
 
-export default function StepTransitionConfig({ step, allSteps = [], currentWorkflowId, onChange }) {
+export default function StepTransitionConfig({ step, allSteps = [], currentWorkflowId, conditionFields = [], onChange }) {
   const t = step.workflow_transition || { enabled: false, mode: "direct", rules: [] };
   const { data: all = [] } = useQuery({
     queryKey: ["workflows-for-transition"],
@@ -35,7 +34,11 @@ export default function StepTransitionConfig({ step, allSteps = [], currentWorkf
   const workflows = all.filter(w => w.id !== currentWorkflowId);
   const update = (patch) => onChange({ ...t, ...patch });
   const rules = t.rules || [];
-  const setRule = (i, patch) => update({ rules: rules.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) });
+  const fields = conditionFields.length
+    ? conditionFields
+    : allSteps.filter(s => s.question_type !== "result").map(s => ({ value: s.step_id, label: s.step_title || s.step_id, group: "Workflow Steps" }));
+  const setRule = (i, next) => update({ rules: rules.map((r, idx) => (idx === i ? next : r)) });
+  const newGroup = { group_operator: "AND", conditions: [{ field: "", operator: "=", value: "", value_type: "static" }], target_workflow_id: "" };
 
   return (
     <div className="border-t pt-4">
@@ -60,37 +63,23 @@ export default function StepTransitionConfig({ step, allSteps = [], currentWorkf
             <WorkflowSelect value={t.target_workflow_id} onChange={(v) => update({ target_workflow_id: v })} workflows={workflows} placeholder="Select target workflow" />
           ) : (
             <div className="space-y-2">
+              <p className="text-xs text-slate-500">Groups are checked in order. The first group whose conditions match selects its workflow.</p>
               {rules.map((rule, i) => (
-                <div key={i} className="bg-white border rounded-md p-2 space-y-2">
-                  <div className="flex gap-2 items-center">
-                    <Select value={rule.field || NONE} onValueChange={(v) => setRule(i, { field: v === NONE ? "" : v })}>
-                      <SelectTrigger className="flex-1"><SelectValue placeholder="Step answer" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>Select step answer</SelectItem>
-                        {allSteps.filter(s => s.question_type !== "result").map(s => (
-                          <SelectItem key={s.step_id} value={s.step_id}>{s.step_title || s.step_id}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={rule.operator || "="} onValueChange={(v) => setRule(i, { operator: v })}>
-                      <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {TRANSITION_OPERATORS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Input className="w-32" placeholder="Value" value={rule.value || ""} onChange={(e) => setRule(i, { value: e.target.value })} />
-                    <Button size="icon" variant="ghost" onClick={() => update({ rules: rules.filter((_, idx) => idx !== i) })}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </div>
-                  <WorkflowSelect value={rule.target_workflow_id} onChange={(v) => setRule(i, { target_workflow_id: v })} workflows={workflows} placeholder="Then go to workflow" />
-                </div>
+                <TransitionRuleGroup
+                  key={i}
+                  rule={rule}
+                  index={i}
+                  fields={fields}
+                  workflows={workflows}
+                  onChange={(r) => setRule(i, r)}
+                  onRemove={() => update({ rules: rules.filter((_, idx) => idx !== i) })}
+                />
               ))}
-              <Button size="sm" variant="outline" onClick={() => update({ rules: [...rules, { field: "", operator: "=", value: "", target_workflow_id: "" }] })}>
-                <Plus className="w-3 h-3 mr-1" />Add condition
+              <Button size="sm" variant="outline" onClick={() => update({ rules: [...rules, newGroup] })}>
+                <Plus className="w-3 h-3 mr-1" />Add condition group
               </Button>
               <div>
-                <Label className="text-xs text-slate-600">Otherwise (no condition matches)</Label>
+                <Label className="text-xs text-slate-600">Otherwise (no group matches)</Label>
                 <WorkflowSelect value={t.default_target_workflow_id} onChange={(v) => update({ default_target_workflow_id: v })} workflows={workflows} placeholder="Continue this workflow normally" />
               </div>
             </div>
