@@ -593,7 +593,7 @@ export default function AccountClassification({ account, entities, onComplete, o
 
     // Step-level workflow transition: end this workflow and start another one
     if (currentNode.workflow_transition?.enabled) {
-      const handled = await performWorkflowTransition(newHistory, newAnswers);
+      const handled = await performWorkflowTransition(newHistory, newAnswers, currentAnswer);
       if (handled) return;
     }
 
@@ -655,8 +655,8 @@ export default function AccountClassification({ account, entities, onComplete, o
 
   // Resolves and performs a configured workflow hand-off. Returns true when the step was handled
   // (transition performed OR blocked with an error), false to continue normal navigation.
-  const performWorkflowTransition = async (newHistory, newAnswers) => {
-    const resolved = await resolveTransitionTarget(currentNode, (cond) => evalSingleCondition(cond, newAnswers));
+  const performWorkflowTransition = async (newHistory, newAnswers, answerGiven) => {
+    const resolved = await resolveTransitionTarget(currentNode, (cond) => evalSingleCondition(cond, newAnswers), answerGiven);
     if (!resolved) return false;
 
     const target = workflows.find(w => w.id === resolved.targetId);

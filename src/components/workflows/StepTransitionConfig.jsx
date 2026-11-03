@@ -34,6 +34,10 @@ export default function StepTransitionConfig({ step, allSteps = [], currentWorkf
   const workflows = all.filter(w => w.id !== currentWorkflowId);
   const update = (patch) => onChange({ ...t, ...patch });
   const rules = t.rules || [];
+  const gate = t.trigger_answer_values || [];
+  const gateOptions = step.question_type === "yes_no" && !(step.options || []).length
+    ? [{ value: "YES", label: "Yes" }, { value: "NO", label: "No" }]
+    : ["yes_no", "single_choice", "multiple_choice"].includes(step.question_type) ? (step.options || []).filter(o => o.value) : [];
   const fields = conditionFields.length
     ? conditionFields
     : allSteps.filter(s => s.question_type !== "result").map(s => ({ value: s.step_id, label: s.step_title || s.step_id, group: "Workflow Steps" }));
@@ -51,6 +55,25 @@ export default function StepTransitionConfig({ step, allSteps = [], currentWorkf
       </div>
       {t.enabled && (
         <div className="space-y-3 bg-indigo-50/40 border border-indigo-100 rounded-lg p-3">
+          {gateOptions.length > 0 && (
+            <div className="bg-white border rounded-md p-2 space-y-1">
+              <Label className="text-xs text-slate-600">Only trigger this transition when the answer is:</Label>
+              <div className="flex flex-wrap gap-3">
+                {gateOptions.map(o => (
+                  <label key={o.value} className="flex items-center gap-1.5 text-sm">
+                    <Checkbox
+                      checked={gate.includes(o.value)}
+                      onCheckedChange={(v) => update({ trigger_answer_values: v ? [...gate, o.value] : gate.filter(x => x !== o.value) })}
+                    />
+                    {o.label || o.value}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">
+                {gate.length === 0 ? "No answer selected: the transition is checked for every answer." : "Any other answer follows the normal next-step routing."}
+              </p>
+            </div>
+          )}
           <Select value={t.mode || "direct"} onValueChange={(v) => update({ mode: v })}>
             <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -79,8 +102,8 @@ export default function StepTransitionConfig({ step, allSteps = [], currentWorkf
                 <Plus className="w-3 h-3 mr-1" />Add condition group
               </Button>
               <div>
-                <Label className="text-xs text-slate-600">Otherwise (no group matches)</Label>
-                <WorkflowSelect value={t.default_target_workflow_id} onChange={(v) => update({ default_target_workflow_id: v })} workflows={workflows} placeholder="Continue this workflow normally" />
+                <Label className="text-xs text-slate-600">Fallback workflow (no group matches)</Label>
+                <WorkflowSelect value={t.default_target_workflow_id} onChange={(v) => update({ default_target_workflow_id: v })} workflows={workflows} placeholder="Select fallback workflow" />
               </div>
             </div>
           )}

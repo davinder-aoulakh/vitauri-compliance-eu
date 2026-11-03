@@ -30,6 +30,11 @@ function FieldSelect({ value, onChange, fields, placeholder }) {
 export default function TransitionConditionRow({ condition, fields, onChange, onRemove }) {
   const isCrs = condition.operator === "is_crs" || condition.operator === "is_not_crs";
   const isRef = condition.value_type === "field_reference";
+  const selected = fields.find(f => f.value === condition.field);
+  const valueOptions = selected?.enum?.length ? selected.enum
+    : selected?.type === "yes_no" ? ["YES", "NO"]
+    : selected?.type === "boolean" ? ["true", "false"]
+    : null;
   return (
     <div className="grid grid-cols-12 gap-2 items-end">
       <div className="col-span-4">
@@ -55,6 +60,13 @@ export default function TransitionConditionRow({ condition, fields, onChange, on
       <div className="col-span-3">
         {isRef && !isCrs ? (
           <FieldSelect value={condition.value} onChange={(v) => onChange({ value: v })} fields={fields} placeholder="Compare to field..." />
+        ) : valueOptions && !["in", "not_in", "contains"].includes(condition.operator) ? (
+          <Select value={condition.value || ""} onValueChange={(v) => onChange({ value: v })}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select value..." /></SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {valueOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
         ) : (
           <Input className="h-8 text-xs" disabled={isCrs} placeholder={isCrs ? "N/A" : "Value"} value={condition.value || ""} onChange={(e) => onChange({ value: e.target.value })} />
         )}

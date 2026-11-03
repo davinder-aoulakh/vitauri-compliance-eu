@@ -29,9 +29,15 @@ export function normalizeTransitionRule(rule) {
 }
 
 // Returns { targetId, mode } or null when the step has no active transition / nothing matches.
-export async function resolveTransitionTarget(step, evalCondition) {
+export async function resolveTransitionTarget(step, evalCondition, currentAnswer) {
   const t = step?.workflow_transition;
   if (!t?.enabled) return null;
+  // Answer gate: only evaluate the transition when the step's answer matches a configured value.
+  const gate = t.trigger_answer_values || [];
+  if (gate.length > 0) {
+    const given = (Array.isArray(currentAnswer) ? currentAnswer : [currentAnswer]).map(a => String(a?.value ?? a));
+    if (!given.some(a => gate.includes(a))) return null;
+  }
   if (t.mode === "conditional") {
     for (const rule of t.rules || []) {
       const group = normalizeTransitionRule(rule);
