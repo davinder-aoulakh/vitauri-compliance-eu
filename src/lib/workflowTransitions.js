@@ -1,4 +1,5 @@
 import { evaluateComputedCondition } from "@/lib/transitionComputed";
+import { normalizeFIType } from "@/lib/fiTypeConstants";
 
 // Helpers for step-level workflow transitions (hand-off from one workflow to another).
 export const MAX_TRANSITIONS = 4;
@@ -28,6 +29,25 @@ export function normalizeTransitionRule(rule) {
     computed_conditions: [],
     conditions: rule?.field ? [{ field: rule.field, operator: rule.operator || "=", value: rule.value, value_type: "static" }] : [],
     target_workflow_id: rule?.target_workflow_id || "",
+  };
+}
+
+// FI type values are stored inconsistently (e.g. "Type A Investment entity" vs "type_a"),
+// so compare them in canonical form.
+const isFiTypeField = (f) => ["fi_type", "fi type", "type_of_financial_institution"].includes(String(f || "").toLowerCase());
+const canonFi = (v) => normalizeFIType(v) || String(v ?? "").trim().toLowerCase();
+
+// Wraps a condition evaluator so FI type comparisons ignore storage format differences.
+export function withFiTypeNormalization(evalCondition, getFieldValue) {
+  return async (cond) => {
+    const op = cond.operator || "=";
+    if (!isFiTypeField(cond.field) || cond.value_type === "field_reference" || !["=", "!=", "in", "not_in"].includes(op)) {
+      return evalCondition(cond);
+    }
+    const actual = canonFi(getFieldValue(cond.field));
+    const expected = String(cond.value ?? "").split(",").map(canonFi);
+    const hit = expected.includes(actual);
+    return op === "=" || op === "in" ? hit : !hit;
   };
 }
 

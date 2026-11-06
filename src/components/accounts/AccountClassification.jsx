@@ -50,7 +50,7 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { selectWorkflow, computeWorkflowPrefill, findAffectedSteps, auditAccountEditDuringClassification, CLASSIFICATION_FIELDS, resolveFiTypeUpdate } from "@/lib/classificationEvaluator";
 import { toDisplayDate } from "@/lib/dateUtils";
 import { toast } from "@/components/ui/use-toast";
-import { resolveTransitionTarget, validateTransition } from "@/lib/workflowTransitions";
+import { resolveTransitionTarget, validateTransition, withFiTypeNormalization } from "@/lib/workflowTransitions";
 import DateInput from "@/components/ui/date-input";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
 
@@ -424,6 +424,17 @@ export default function AccountClassification({ account, entities, onComplete, o
   const currentNodeId = currentNode?.step_id;
 
   const stepMap = steps.reduce((acc, s) => { acc[s.step_id] = s; return acc; }, {});
+  // Completed source workflows (answers kept visible after a workflow hand-off)
+  const transitionSections = workflowTransitions.map(t => {
+    const src = workflows.find(w => w.id === t.from_workflow_id);
+    return {
+      fromName: t.from_workflow_name,
+      toName: t.to_workflow_name,
+      stepMap: (src?.steps || []).reduce((acc, s) => { acc[s.step_id] = s; return acc; }, {}),
+      path: t.path,
+      answers: t.answers,
+    };
+  });
 
   // Fetch ReferencedData options for single_choice steps that use referenced_data_key
   const referencedDataKeys = steps
@@ -656,7 +667,7 @@ export default function AccountClassification({ account, entities, onComplete, o
   // Resolves and performs a configured workflow hand-off. Returns true when the step was handled
   // (transition performed OR blocked with an error), false to continue normal navigation.
   const performWorkflowTransition = async (newHistory, newAnswers, answerGiven) => {
-    const resolved = await resolveTransitionTarget(currentNode, (cond) => evalSingleCondition(cond, newAnswers), answerGiven, (fp) => getFieldValue(fp, newAnswers));
+    const resolved = await resolveTransitionTarget(currentNode, withFiTypeNormalization((cond) => evalSingleCondition(cond, newAnswers), (fp) => getFieldValue(fp, newAnswers)), answerGiven, (fp) => getFieldValue(fp, newAnswers));
     if (!resolved) return false;
 
     const target = workflows.find(w => w.id === resolved.targetId);
@@ -1517,6 +1528,8 @@ export default function AccountClassification({ account, entities, onComplete, o
             answers={answers}
             answerHistory={answerHistory}
             getStepOptions={getStepOptions}
+            transitionSections={transitionSections}
+            currentWorkflowName={selectedWorkflow?.workflow_name}
           />
         )}
 
@@ -1768,8 +1781,8 @@ export default function AccountClassification({ account, entities, onComplete, o
       </Card>
 
       {/* View Previous Answers */}
-      {history.length > 0 && (
-        <PreviousAnswers history={history} stepMap={stepMap} answers={answers} answerHistory={answerHistory} getStepOptions={getStepOptions} />
+      {(history.length > 0 || workflowTransitions.length > 0) && (
+        <PreviousAnswers history={history} stepMap={stepMap} answers={answers} answerHistory={answerHistory} getStepOptions={getStepOptions} transitionSections={transitionSections} currentWorkflowName={selectedWorkflow?.workflow_name} />
       )}
 
       {/* AI Helper */}

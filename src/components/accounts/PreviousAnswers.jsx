@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FileCheck, ChevronDown, ChevronRight } from "lucide-react";
+import { FileCheck, ChevronDown, ChevronRight, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { toDisplayDate } from "@/lib/dateUtils";
 
@@ -84,8 +84,25 @@ function formatAnswer(ans, step, getStepOptions) {
  * the ordered `history` array to show each loop iteration independently.
  * If `answerHistory` is absent (e.g. legacy callers), falls back to `answers`.
  */
-export default function PreviousAnswers({ history, stepMap, answers, answerHistory, getStepOptions }) {
+// Rows for a completed source workflow (answers captured before a workflow hand-off).
+function buildSectionRows(path, stepMap, answers, getStepOptions) {
+  return (path || [])
+    .map((stepId, i) => {
+      const step = stepMap?.[stepId];
+      if (!step || step.question_type === 'info' || step.question_type === 'result') return null;
+      const displayAnswer = formatAnswer(answers?.[stepId], step, getStepOptions);
+      return displayAnswer ? { key: `${stepId}-${i}`, title: step.step_title, displayAnswer } : null;
+    })
+    .filter(Boolean);
+}
+
+/**
+ * transitionSections: [{ fromName, toName, stepMap, path, answers }] - completed source workflows
+ * that handed off to another workflow. Their answers stay visible, grouped by workflow.
+ */
+export default function PreviousAnswers({ history, stepMap, answers, answerHistory, getStepOptions, transitionSections = [], currentWorkflowName }) {
   const [open, setOpen] = useState(false);
+  const sections = transitionSections.map(t => ({ ...t, rows: buildSectionRows(t.path, t.stepMap, t.answers, getStepOptions) }));
 
   // Walk history in order; for each step visit track which iteration we are on
   // so we pick the correct entry from answerHistory[stepId][iterationIndex].
@@ -118,7 +135,8 @@ export default function PreviousAnswers({ history, stepMap, answers, answerHisto
     })
     .filter(Boolean);
 
-  if (rows.length === 0) return null;
+  const total = rows.length + sections.reduce((n, t) => n + t.rows.length, 0);
+  if (total === 0) return null;
 
   return (
     <Card className="border border-slate-200">
@@ -128,7 +146,7 @@ export default function PreviousAnswers({ history, stepMap, answers, answerHisto
       >
         <FileCheck className="w-4 h-4 text-slate-500 flex-shrink-0" />
         <span className="text-sm font-medium text-slate-700 flex-1">
-          View Previous Answers ({rows.length})
+          View Previous Answers ({total})
         </span>
         {open
           ? <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -137,6 +155,27 @@ export default function PreviousAnswers({ history, stepMap, answers, answerHisto
       </button>
       {open && (
         <CardContent className="px-4 pb-4 pt-0">
+          {sections.map((t, i) => (
+            <div key={i} className="mb-3">
+              <div className="text-xs font-semibold text-slate-700 bg-slate-50 rounded px-2 py-1 mb-1">
+                {t.fromName} <span className="font-normal text-slate-500">(completed)</span>
+              </div>
+              {t.rows.map(r => (
+                <div key={r.key} className="flex items-start justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                  <span className="text-xs text-slate-600 flex-1">{r.title}</span>
+                  <span className="text-xs font-medium text-slate-900 text-right max-w-[220px]">{r.displayAnswer}</span>
+                </div>
+              ))}
+              <div className="flex items-center gap-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded px-2 py-1 mt-1">
+                <ArrowRight className="w-3 h-3" /> Workflow started: {t.toName}
+              </div>
+            </div>
+          ))}
+          {sections.length > 0 && rows.length > 0 && (
+            <div className="text-xs font-semibold text-slate-700 bg-slate-50 rounded px-2 py-1 mb-1">
+              {currentWorkflowName} <span className="font-normal text-slate-500">(current)</span>
+            </div>
+          )}
           <div className="space-y-0">
             {rows.map(({ stepId, iterIdx, step, displayAnswer, iterationLabel }) => (
               <div
