@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import TransitionConditionRow from "./TransitionConditionRow";
+import TransitionComputedRow from "./TransitionComputedRow";
 import { normalizeTransitionRule } from "@/lib/workflowTransitions";
 
 const NONE = "__none__";
@@ -11,7 +12,8 @@ const NONE = "__none__";
 export default function TransitionRuleGroup({ rule, index, fields, workflows, onChange, onRemove }) {
   const group = normalizeTransitionRule(rule);
   const conditions = group.conditions;
-  const emit = (patch) => onChange({ group_name: group.group_name, group_operator: group.group_operator, conditions, target_workflow_id: group.target_workflow_id, ...patch });
+  const computed = group.computed_conditions;
+  const emit = (patch) => onChange({ group_name: group.group_name, group_operator: group.group_operator, conditions, computed_conditions: computed, target_workflow_id: group.target_workflow_id, ...patch });
   const setCondition = (i, patch) => emit({ conditions: conditions.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) });
 
   return (
@@ -43,6 +45,26 @@ export default function TransitionRuleGroup({ rule, index, fields, workflows, on
       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => emit({ conditions: [...conditions, { field: "", operator: "=", value: "", value_type: "static" }] })}>
         <Plus className="w-3 h-3 mr-1" />Add condition
       </Button>
+
+      <div className="space-y-2 pt-1">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-700">Computed Conditions</p>
+            <p className="text-xs text-slate-500">For conditions using multiple fields (e.g., field1 + field2 &gt; 100000)</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => emit({ computed_conditions: [...computed, { expression: "", operator: "greater_than", value: "" }] })}>
+            <Plus className="w-3 h-3 mr-1" />Add Computed
+          </Button>
+        </div>
+        {computed.map((c, i) => (
+          <TransitionComputedRow
+            key={i}
+            condition={c}
+            onChange={(patch) => emit({ computed_conditions: computed.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) })}
+            onRemove={() => emit({ computed_conditions: computed.filter((_, idx) => idx !== i) })}
+          />
+        ))}
+      </div>
 
       <div>
         <p className="text-xs text-slate-600 mb-1">Then go to workflow</p>

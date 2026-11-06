@@ -1,3 +1,5 @@
+import { evaluateComputedCondition } from "@/lib/transitionComputed";
+
 // Helpers for step-level workflow transitions (hand-off from one workflow to another).
 export const MAX_TRANSITIONS = 4;
 
@@ -18,18 +20,19 @@ export const TRANSITION_OPERATORS = [
 // Converts a saved rule (new group shape or legacy single-condition shape) to a group.
 export function normalizeTransitionRule(rule) {
   if (Array.isArray(rule?.conditions)) {
-    return { group_name: rule.group_name || "", group_operator: rule.group_operator || "AND", conditions: rule.conditions, target_workflow_id: rule.target_workflow_id || "" };
+    return { group_name: rule.group_name || "", group_operator: rule.group_operator || "AND", conditions: rule.conditions, computed_conditions: rule.computed_conditions || [], target_workflow_id: rule.target_workflow_id || "" };
   }
   return {
     group_name: "",
     group_operator: "AND",
+    computed_conditions: [],
     conditions: rule?.field ? [{ field: rule.field, operator: rule.operator || "=", value: rule.value, value_type: "static" }] : [],
     target_workflow_id: rule?.target_workflow_id || "",
   };
 }
 
 // Returns { targetId, mode } or null when the step has no active transition / nothing matches.
-export async function resolveTransitionTarget(step, evalCondition, currentAnswer) {
+export async function resolveTransitionTarget(step, evalCondition, currentAnswer, getFieldValue) {
   const t = step?.workflow_transition;
   if (!t?.enabled) return null;
   // Answer gate: only evaluate the transition when the step's answer matches a configured value.
@@ -42,10 +45,15 @@ export async function resolveTransitionTarget(step, evalCondition, currentAnswer
     for (const rule of t.rules || []) {
       const group = normalizeTransitionRule(rule);
       const conditions = group.conditions.filter(c => c.field);
-      if (!group.target_workflow_id || conditions.length === 0) continue;
+      const computed = group.computed_conditions.filter(c => c.expression);
+      if (!group.target_workflow_id || conditions.length + computed.length === 0) continue;
+      const checks = [
+        ...conditions.map(c => () => evalCondition({ ...c, operator: c.operator || "=", value_type: c.value_type || "static" })),
+        ...computed.map(c => () => evaluateComputedCondition(c, getFieldValue || (() => 0))),
+      ];
       let met = group.group_operator === "AND";
-      for (const c of conditions) {
-        const result = await evalCondition({ ...c, operator: c.operator || "=", value_type: c.value_type || "static" });
+      for (const check of checks) {
+        const result = await check();
         if (group.group_operator === "AND") { met = met && result; if (!met) break; }
         else { met = met || result; if (met) break; }
       }

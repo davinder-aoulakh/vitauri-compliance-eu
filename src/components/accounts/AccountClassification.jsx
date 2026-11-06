@@ -656,7 +656,7 @@ export default function AccountClassification({ account, entities, onComplete, o
   // Resolves and performs a configured workflow hand-off. Returns true when the step was handled
   // (transition performed OR blocked with an error), false to continue normal navigation.
   const performWorkflowTransition = async (newHistory, newAnswers, answerGiven) => {
-    const resolved = await resolveTransitionTarget(currentNode, (cond) => evalSingleCondition(cond, newAnswers), answerGiven);
+    const resolved = await resolveTransitionTarget(currentNode, (cond) => evalSingleCondition(cond, newAnswers), answerGiven, (fp) => getFieldValue(fp, newAnswers));
     if (!resolved) return false;
 
     const target = workflows.find(w => w.id === resolved.targetId);
