@@ -971,6 +971,98 @@
               }
             },
             "description": "Maps this workflow step to an Account or Entity field for pre-filling and post-completion updates."
+          },
+          "workflow_transition": {
+            "type": "object",
+            "description": "Optional hand-off from this step to another workflow (direct or conditional).",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "direct",
+                  "conditional"
+                ],
+                "default": "direct"
+              },
+              "trigger_answer_values": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Answer values that trigger the transition. Empty = evaluate for every answer."
+              },
+              "target_workflow_id": {
+                "type": "string",
+                "description": "Target workflow for direct mode"
+              },
+              "default_target_workflow_id": {
+                "type": "string",
+                "description": "Fallback workflow when no condition group matches"
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "group_name": {
+                      "type": "string"
+                    },
+                    "group_operator": {
+                      "type": "string",
+                      "enum": [
+                        "AND",
+                        "OR"
+                      ],
+                      "default": "AND"
+                    },
+                    "target_workflow_id": {
+                      "type": "string"
+                    },
+                    "conditions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "operator": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "value_type": {
+                            "type": "string",
+                            "enum": [
+                              "static",
+                              "field_reference"
+                            ],
+                            "default": "static"
+                          }
+                        }
+                      }
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Legacy single-condition field"
+                    },
+                    "operator": {
+                      "type": "string",
+                      "description": "Legacy single-condition operator"
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "Legacy single-condition value"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
