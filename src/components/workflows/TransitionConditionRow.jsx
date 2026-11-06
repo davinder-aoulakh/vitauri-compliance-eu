@@ -31,9 +31,10 @@ export default function TransitionConditionRow({ condition, fields, onChange, on
   const isCrs = condition.operator === "is_crs" || condition.operator === "is_not_crs";
   const isRef = condition.value_type === "field_reference";
   const selected = fields.find(f => f.value === condition.field);
-  const valueOptions = selected?.enum?.length ? selected.enum
-    : selected?.type === "yes_no" ? ["YES", "NO"]
-    : selected?.type === "boolean" ? ["true", "false"]
+  const valueOptions = selected?.options?.length ? selected.options
+    : selected?.enum?.length ? selected.enum.map(v => ({ value: v, label: v }))
+    : selected?.type === "yes_no" ? [{ value: "YES", label: "Yes" }, { value: "NO", label: "No" }]
+    : selected?.type === "boolean" ? [{ value: "true", label: "True" }, { value: "false", label: "False" }]
     : null;
   return (
     <div className="grid grid-cols-12 gap-2 items-end">
@@ -64,7 +65,7 @@ export default function TransitionConditionRow({ condition, fields, onChange, on
           <Select value={condition.value || ""} onValueChange={(v) => onChange({ value: v })}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select value..." /></SelectTrigger>
             <SelectContent className="max-h-[300px]">
-              {valueOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+              {valueOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         ) : (

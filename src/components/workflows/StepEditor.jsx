@@ -138,12 +138,12 @@ const ACCOUNT_FIELDS_SCHEMA = [
 
 const ENTITY_FIELDS_SCHEMA = [
   { value: "entity_name", label: "Entity Name", type: "string" },
-  { value: "entity_type", label: "Entity Type", type: "string" },
+  { value: "entity_type", label: "Entity Type", type: "enum", enum: ["corporation", "trust", "partnership", "fund", "branch", "other"] },
   { value: "country_of_incorporation", label: "Country of Incorporation", type: "string", isCountry: true },
   { value: "tax_id", label: "Tax ID", type: "string" },
   { value: "giin", label: "GIIN", type: "string" },
-  { value: "rfi_status", label: "RFI Status", type: "string" },
-  { value: "fi_type", label: "FI Type", type: "string" },
+  { value: "rfi_status", label: "RFI Status", type: "enum", enum: ["pending_classification", "reporting_fi", "non_reporting_fi", "nfe_active", "nfe_passive"] },
+  { value: "fi_type", label: "FI Type", type: "enum", enum: ["custodial_institution", "depository_institution", "investment_entity", "specified_insurance_company", "not_applicable"] },
   { value: "non_reporting_reason", label: "Non-Reporting Reason", type: "string" },
   { value: "classification_completed_date", label: "Classification Completed Date", type: "date" },
   { value: "address", label: "Address (Object)", type: "object" },
@@ -152,7 +152,7 @@ const ENTITY_FIELDS_SCHEMA = [
   { value: "address.state", label: "Address State", type: "string" },
   { value: "address.postal_code", label: "Address Postal Code", type: "string" },
   { value: "address.country", label: "Address Country", type: "string", isCountry: true },
-  { value: "status", label: "Status", type: "string" }
+  { value: "status", label: "Status", type: "enum", enum: ["active", "inactive"] }
 ];
 
 const CONTROLLING_PERSON_FIELDS_SCHEMA = [
@@ -167,7 +167,7 @@ const CONTROLLING_PERSON_FIELDS_SCHEMA = [
   { value: "address.country", label: "Address - Country", type: "string", isCountry: true },
   { value: "tax_residencies.country", label: "Tax Residency - Country", type: "string", isCountry: true },
   { value: "tax_residencies.tin", label: "Tax Residency - TIN", type: "string" },
-  { value: "control_type", label: "Control Type", type: "enum" },
+  { value: "control_type", label: "Control Type", type: "enum", enum: ["legal_person_ownership", "legal_person_other_means", "legal_person_senior_managing_official", "trust_settlor", "trust_trustee", "trust_protector", "trust_beneficiary", "trust_other", "legal_arrangement_settlor_equivalent", "legal_arrangement_trustee_equivalent", "legal_arrangement_protector_equivalent", "legal_arrangement_beneficiary_equivalent", "legal_arrangement_other_equivalent"] },
   { value: "ownership_percentage", label: "Ownership Percentage", type: "number" },
   { value: "is_reportable", label: "Is Reportable", type: "boolean" },
   { value: "us_person_indic", label: "US Person Indicator", type: "boolean" },
@@ -287,9 +287,13 @@ export default function StepEditor({ step, allSteps, currentWorkflowId, onUpdate
       }
     });
 
-    [...accountFields, ...entityFields, ...controllingPersonFields, ...beneficiaryFields].forEach(f => fields.push(f));
+    const withOptions = (list, entityType) => list.map(f => {
+      const opts = getSuggestedValuesForField(entityType, f.value, referencedData);
+      return opts?.length ? { ...f, options: opts } : f;
+    });
+    [...withOptions(accountFields, "Account"), ...withOptions(entityFields, "Entity"), ...withOptions(controllingPersonFields, "ControllingPerson"), ...withOptions(beneficiaryFields, "Beneficiary")].forEach(f => fields.push(f));
     return fields;
-  }, [allSteps, editedStep.step_id, accountFields, entityFields, controllingPersonFields, beneficiaryFields]);
+  }, [allSteps, editedStep.step_id, accountFields, entityFields, controllingPersonFields, beneficiaryFields, referencedData]);
 
   const handleChange = (field, value) => setEditedStep({ ...editedStep, [field]: value });
 
