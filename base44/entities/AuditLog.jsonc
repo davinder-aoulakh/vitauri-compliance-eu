@@ -23,6 +23,7 @@
         "workflow_published",
         "workflow_archived",
         "settings_changed",
+        "mfa_setting_changed",
         "login",
         "logout",
         "dashboard_created",

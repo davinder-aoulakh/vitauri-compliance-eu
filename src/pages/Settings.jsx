@@ -33,6 +33,16 @@ import {
   X
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import ThemeSelector from "@/components/theme/ThemeSelector";
 import EmailNotificationConfig from "@/components/settings/EmailNotificationConfig";
 
@@ -43,6 +53,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaSaving, setMfaSaving] = useState(false);
+  const [showMfaDisableDialog, setShowMfaDisableDialog] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaCodeSending, setMfaCodeSending] = useState(false);
+  const [mfaCodeSubmitting, setMfaCodeSubmitting] = useState(false);
 
   // Accessibility Settings
   const [fontSize, setFontSize] = useState("medium");
@@ -281,17 +295,66 @@ export default function SettingsPage() {
   };
 
   const handleToggleMfa = async (enabled) => {
-    setMfaSaving(true);
+    if (enabled) {
+      // Turning ON: allowed for the user themselves (server-side setMyMfa).
+      setMfaSaving(true);
+      try {
+        const res = await base44.functions.invoke("setMyMfa", { enable: true });
+        if (res.data?.error) throw new Error(res.data.error);
+        setMfaEnabled(true);
+        sessionStorage.removeItem("mfa_verified");
+        toast.success("Two-factor authentication enabled");
+      } catch (error) {
+        toast.error(error.message || "Failed to update MFA settings");
+      } finally {
+        setMfaSaving(false);
+      }
+    } else if (user?.app_role === "super_admin") {
+      // Super Admin may disable 2FA without a code.
+      setMfaSaving(true);
+      try {
+        const res = await base44.functions.invoke("setMyMfa", { enable: false });
+        if (res.data?.error) throw new Error(res.data.error);
+        setMfaEnabled(false);
+        toast.success("Two-factor authentication disabled");
+      } catch (error) {
+        toast.error(error.message || "Failed to update MFA settings");
+      } finally {
+        setMfaSaving(false);
+      }
+    } else {
+      // Turning OFF: prompt for a verification code.
+      setMfaCode("");
+      setShowMfaDisableDialog(true);
+    }
+  };
+
+  const handleSendMfaCode = async () => {
+    setMfaCodeSending(true);
     try {
-      await base44.auth.updateMe({ mfa_enabled: enabled });
-      setMfaEnabled(enabled);
-      // Clear MFA session so it re-challenges on next load if enabled
-      if (enabled) sessionStorage.removeItem("mfa_verified");
-      toast.success(enabled ? "Two-factor authentication enabled" : "Two-factor authentication disabled");
+      const res = await base44.functions.invoke("requestMfaCode", {});
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success("Verification code sent to your email");
     } catch (error) {
-      toast.error("Failed to update MFA settings");
+      toast.error(error.message || "Failed to send code");
     } finally {
-      setMfaSaving(false);
+      setMfaCodeSending(false);
+    }
+  };
+
+  const handleConfirmDisableMfa = async () => {
+    setMfaCodeSubmitting(true);
+    try {
+      const res = await base44.functions.invoke("setMyMfa", { enable: false, code: mfaCode });
+      if (res.data?.error) throw new Error(res.data.error);
+      setMfaEnabled(false);
+      setShowMfaDisableDialog(false);
+      setMfaCode("");
+      toast.success("Two-factor authentication disabled");
+    } catch (error) {
+      toast.error(error.message || "Failed to disable 2FA");
+    } finally {
+      setMfaCodeSubmitting(false);
     }
   };
 
@@ -1190,6 +1253,43 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Disable 2FA confirmation dialog */}
+          <AlertDialog open={showMfaDisableDialog} onOpenChange={setShowMfaDisableDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Disable Two-Factor Authentication</AlertDialogTitle>
+                <AlertDialogDescription>
+                  For security, enter the 6-digit code sent to <strong>{user?.email}</strong> to confirm.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-2 py-2">
+                <Label htmlFor="mfa-disable-code" className="text-sm">Verification code</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="mfa-disable-code"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value)}
+                    placeholder="123456"
+                    maxLength={6}
+                    inputMode="numeric"
+                  />
+                  <Button type="button" variant="outline" onClick={handleSendMfaCode} disabled={mfaCodeSending}>
+                    {mfaCodeSending ? "Sending..." : "Send code"}
+                  </Button>
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={mfaCodeSubmitting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmDisableMfa}
+                  disabled={mfaCodeSubmitting || !mfaCode}
+                >
+                  {mfaCodeSubmitting ? "Disabling..." : "Disable 2FA"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Session Management */}
           <Card className="border-0 shadow-lg">

@@ -4,7 +4,14 @@
   "properties": {
     "tenant_id": {
       "type": "string",
-      "description": "Reference to the tenant this user belongs to (null for super_admin)"
+      "description": "Reference to the tenant this user belongs to (null for super_admin)",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "system"
+          }
+        }
+      }
     },
     "app_role": {
       "type": "string",
@@ -15,11 +22,42 @@
         "tenant_user"
       ],
       "default": "tenant_user",
-      "description": "User's role in the application"
+      "description": "User's role in the application",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "system"
+          }
+        }
+      }
+    },
+    "original_app_role": {
+      "type": "string",
+      "enum": [
+        "super_admin",
+        "tenant_admin",
+        "tenant_supervisor",
+        "tenant_user"
+      ],
+      "description": "Real app_role of an impersonating Super Admin; used to authorize returning to super_admin. Null when not impersonating.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "system"
+          }
+        }
+      }
     },
     "job_title": {
       "type": "string",
-      "description": "User's job title"
+      "description": "User's job title",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "system"
+          }
+        }
+      }
     },
     "department": {
       "type": "string",
@@ -37,6 +75,18 @@
       ],
       "default": "pending",
       "description": "Status of the user's invitation"
+    },
+    "mfa_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether 2FA is enabled for this user",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "system"
+          }
+        }
+      }
     },
     "accessibility_preferences": {
       "type": "object",
