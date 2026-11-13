@@ -8,6 +8,12 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // Role check: only approved app roles may run classification
+        const allowedRoles = ['tenant_user', 'tenant_supervisor', 'tenant_admin', 'super_admin'];
+        if (!allowedRoles.includes(user.app_role)) {
+            return Response.json({ error: 'Forbidden: insufficient role' }, { status: 403 });
+        }
+
         const { accountId } = await req.json();
         if (!accountId) {
             return Response.json({ error: 'accountId is required' }, { status: 400 });
@@ -19,6 +25,11 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Account not found' }, { status: 404 });
         }
         const account = accounts[0];
+
+        // Tenant check: non-super-admins may only classify accounts in their own tenant
+        if (user.app_role !== 'super_admin' && account.tenant_id !== user.tenant_id) {
+            return Response.json({ error: 'Account belongs to another tenant' }, { status: 403 });
+        }
 
         // Fetch related entity
         let entity = null;

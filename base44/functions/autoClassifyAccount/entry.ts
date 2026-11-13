@@ -10,6 +10,12 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // Role check: only approved app roles may run classification
+        const allowedRoles = ['tenant_user', 'tenant_supervisor', 'tenant_admin', 'super_admin'];
+        if (!allowedRoles.includes(user.app_role)) {
+            return Response.json({ error: 'Forbidden: insufficient role' }, { status: 403 });
+        }
+
         const { accountId, event_type, changed_fields } = await req.json();
         
         if (!accountId) {
@@ -25,6 +31,11 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Account not found' }, { status: 404 });
         }
         const account = accounts[0];
+
+        // Tenant check: non-super-admins may only classify accounts in their own tenant
+        if (user.app_role !== 'super_admin' && account.tenant_id !== user.tenant_id) {
+            return Response.json({ error: 'Account belongs to another tenant' }, { status: 403 });
+        }
 
         // Fetch all active auto-classification rules
         const rules = await base44.asServiceRole.entities.AutoClassificationRule.filter({
@@ -119,6 +130,24 @@ Deno.serve(async (req) => {
             account_holder_name: account.account_holder_name,
             account_number: account.account_number,
             account_balance: account.year_end_cash_value
+        });
+
+        // Audit log for this classification run
+        await base44.asServiceRole.entities.AuditLog.create({
+            tenant_id: account.tenant_id,
+            action_type: 'account_classified',
+            actor_email: user.email,
+            actor_role: user.app_role,
+            target_entity_type: 'Account',
+            target_entity_id: accountId,
+            target_entity_name: account.account_holder_name || account.account_number || accountId,
+            changes: {
+                reportability_status: matchedRule.classification_result,
+                reportability_reason: matchedRule.classification_reason,
+                classification_method: 'auto_classification',
+                rule_name: matchedRule.rule_name,
+            },
+            timestamp: new Date().toISOString(),
         });
 
         return Response.json({
