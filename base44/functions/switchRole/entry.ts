@@ -78,13 +78,18 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, message: `Now acting as ${role}` });
     }
 
-    // Return to the original Super Admin role. Only a user whose original_app_role is super_admin may return.
+    // Return to the original Super Admin role.
+    // A user may return if EITHER their original_app_role is 'super_admin', OR (when that flag is empty)
+    // they have an open ImpersonationSession whose original_role is 'super_admin'. job_title is never used.
     if (action === 'return') {
-      if (currentUser.original_app_role !== 'super_admin') {
-        return Response.json({ error: 'Forbidden: only an impersonating Super Admin may return to Super Admin' }, { status: 403 });
+      const hasOriginalFlag = currentUser.original_app_role === 'super_admin';
+      const verifiedBySession = !hasOriginalFlag && session && session.original_role === 'super_admin' ? session : null;
+
+      if (!hasOriginalFlag && !verifiedBySession) {
+        return Response.json({ error: 'Forbidden: only a verified impersonating Super Admin may return to Super Admin' }, { status: 403 });
       }
 
-      const restoreRole = session?.original_role || 'super_admin';
+      const restoreRole = verifiedBySession?.original_role || currentUser.original_app_role || 'super_admin';
       const res = await base44.functions.invoke('adminSetUserTenant', {
         userId: currentUser.id,
         app_role: restoreRole,
@@ -96,8 +101,9 @@ Deno.serve(async (req) => {
         throw new Error(res.data.error);
       }
 
-      if (session) {
-        await sr.entities.ImpersonationSession.update(session.id, {
+      const sessionToClose = verifiedBySession || (hasOriginalFlag ? session : null);
+      if (sessionToClose) {
+        await sr.entities.ImpersonationSession.update(sessionToClose.id, {
           is_active: false,
           ended_at: new Date().toISOString(),
           ended_reason: 'returned'
