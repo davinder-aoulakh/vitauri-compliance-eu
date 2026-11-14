@@ -59,5 +59,27 @@
     "backup_type",
     "exported_at",
     "exported_by"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }

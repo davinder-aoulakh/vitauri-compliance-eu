@@ -139,6 +139,7 @@ export default function TicketDetail({ ticket: initialTicket, user, onBack }) {
     try {
       const newComment = await base44.entities.TicketComment.create({
         ticket_id: ticket.id,
+        tenant_id: ticket.tenant_id,
         comment_text: replyText,
         created_by_user_id: user.id,
         created_by_user_email: user.email,

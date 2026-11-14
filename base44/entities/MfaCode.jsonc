@@ -25,5 +25,25 @@
     "user_email",
     "code",
     "expires_at"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }

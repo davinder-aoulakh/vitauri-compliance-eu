@@ -67,5 +67,41 @@
     "workflow_id",
     "execution_date"
   ],
-  "name": "WorkflowAnalytics"
+  "name": "WorkflowAnalytics",
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }

@@ -57,5 +57,36 @@
     "snapshot",
     "saved_by",
     "saved_at"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }

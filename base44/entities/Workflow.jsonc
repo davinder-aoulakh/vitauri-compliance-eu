@@ -533,13 +533,7 @@
                             "default": "static",
                             "description": "Whether value is a static value or a reference to another field"
                           }
-                        },
-                        "required": [
-                          "field",
-                          "operator",
-                          "value",
-                          "value_type"
-                        ]
+                        }
                       }
                     },
                     "true_step": {
@@ -699,14 +693,14 @@
                               "selection_count",
                               "field_comparison"
                             ],
-                            "description": "Type of condition: selected_options checks if specific options are selected, selection_count checks count, field_comparison checks other field values"
+                            "description": "Type of condition"
                           },
                           "option_values": {
                             "type": "array",
                             "items": {
                               "type": "string"
                             },
-                            "description": "For selected_options type: which option values to check (e.g., ['OPT1', 'OPT2'])"
+                            "description": "For selected_options type: which option values to check"
                           },
                           "count_operator": {
                             "type": "string",
@@ -831,7 +825,7 @@
                     "after_workflow"
                   ],
                   "default": "after_step",
-                  "description": "When to execute: after_step = when user clicks Next on this step, after_workflow = when entire workflow completes"
+                  "description": "When to execute"
                 },
                 "condition": {
                   "type": "object",
@@ -1181,5 +1175,36 @@
     "workflow_name",
     "workflow_type",
     "steps"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }

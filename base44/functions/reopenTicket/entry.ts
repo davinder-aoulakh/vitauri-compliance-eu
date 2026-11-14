@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
     // Create audit comment locally
     const auditComment = await base44.asServiceRole.entities.TicketComment.create({
       ticket_id: crs_ticket_id,
+      tenant_id: ticket.tenant_id,
       comment_text: reopen_comment || "Ticket reopened by tenant admin.",
       created_by_user_id: user.id,
       created_by_user_email: user.email,

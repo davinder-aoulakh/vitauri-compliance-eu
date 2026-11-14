@@ -28,7 +28,7 @@
     },
     "schema_version_by_year": {
       "type": "object",
-      "description": "Map of reporting year ranges to required schema versions (e.g., {'2024': 'v2.1', '2023': 'v2.0'})"
+      "description": "Map of reporting year ranges to required schema versions"
     },
     "file_naming_pattern": {
       "type": "string",
@@ -62,7 +62,7 @@
     },
     "controlled_code_lists": {
       "type": "object",
-      "description": "Controlled code lists for this jurisdiction (e.g., Payment types CRS501-504)"
+      "description": "Controlled code lists for this jurisdiction"
     },
     "residence_basis_lists": {
       "type": "object",
@@ -137,5 +137,36 @@
   "required": [
     "jurisdiction_code",
     "jurisdiction_name"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }

@@ -71,9 +71,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch parent ticket first so we can stamp tenant_id on the comment
+    const ticketResults = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
+    const ticket = ticketResults[0] || null;
+
     // Create new TicketComment record
     const newComment = await base44.asServiceRole.entities.TicketComment.create({
       ticket_id:              crs_internal_id,
+      tenant_id:              ticket?.tenant_id || "",
       comment_text,
       created_by_name:        author_name  || "Support Team",
       created_by_user_email:  author_email || "",
@@ -86,8 +91,6 @@ Deno.serve(async (req) => {
 
     // Update unread badge and send email — only for non-CRS-originated comments
     if (!isCrsOriginated) {
-      const ticketResults = await base44.asServiceRole.entities.Ticket.filter({ id: crs_internal_id });
-      const ticket = ticketResults[0] || null;
       if (ticket) {
         await base44.asServiceRole.entities.Ticket.update(crs_internal_id, {
           has_unread_updates:      true,

@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Parent ticket reference"
     },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant that owns the parent ticket (set from Ticket.tenant_id on create)"
+    },
     "comment_text": {
       "type": "string",
       "description": "Content of the comment"
@@ -76,5 +80,55 @@
     "comment_text",
     "created_by_role",
     "source_app"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.created_by_user_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.created_by_user_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

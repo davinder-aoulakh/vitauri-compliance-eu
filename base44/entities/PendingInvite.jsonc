@@ -52,5 +52,27 @@
     "email",
     "tenant_id",
     "app_role"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
 }
