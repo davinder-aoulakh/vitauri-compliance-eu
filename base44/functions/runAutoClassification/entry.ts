@@ -40,7 +40,15 @@ Deno.serve(async (req) => {
 
   let updated = 0;
   let skipped = 0;
+  let skippedStudio = 0;
   const results = [];
+
+  // Safeguard: accounts confirmed in the Classification Studio keep their studio decision.
+  let studioConfirmed = new Set();
+  try {
+    const decisions = await base44.asServiceRole.entities.ClassificationDecision.filter({ tenant_id: tenantId, status: 'confirmed' });
+    studioConfirmed = new Set(decisions.filter((d) => d.target_type === 'account').map((d) => d.target_id));
+  } catch (_e) { /* the studio tables may not exist in older environments */ }
 
   // Pre-load the entity so entity.* fields (e.g. entity.fi_type) can be resolved
   let entityRecord = null;
@@ -50,6 +58,7 @@ Deno.serve(async (req) => {
   } catch (_e) { /* ignore */ }
 
   for (const account of accounts) {
+    if (studioConfirmed.has(account.id)) { skippedStudio++; continue; }
     // Attach entity data so conditions like entity.fi_type resolve correctly
     const accountWithEntity = { ...account, entity: entityRecord || {} };
 
@@ -124,10 +133,11 @@ Deno.serve(async (req) => {
   }
 
   return Response.json({
-    message: `Completed. ${updated} accounts updated, ${skipped} skipped (no matching rule).`,
+    message: `Completed. ${updated} accounts updated, ${skipped} skipped (no matching rule)${skippedStudio ? `, ${skippedStudio} kept (confirmed in the Classification Studio)` : ''}.`,
     processed: accounts.length,
     updated,
     skipped,
+    skipped_studio_confirmed: skippedStudio,
     results,
   });
 });

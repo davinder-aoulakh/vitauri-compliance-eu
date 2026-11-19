@@ -22,8 +22,10 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'accountId is required' }, { status: 400 });
         }
         
-        // Default event_type to 'update' if not provided
-        const triggerEvent = event_type || 'update';
+        // Default event_type to 'update' if not provided. Older callers sent 'created'/'updated', which never
+        // matched the rules' trigger_events ('create'/'update'); accept both spellings.
+        const EVENT_ALIASES = { created: 'create', updated: 'update', bulk_updated: 'bulk_update', bulk_imported: 'bulk_import' };
+        const triggerEvent = EVENT_ALIASES[event_type] || event_type || 'update';
 
         // Fetch the account
         const accounts = await base44.asServiceRole.entities.Account.filter({ id: accountId });
@@ -36,6 +38,15 @@ Deno.serve(async (req) => {
         if (user.app_role !== 'super_admin' && account.tenant_id !== user.tenant_id) {
             return Response.json({ error: 'Account belongs to another tenant' }, { status: 403 });
         }
+
+        // Safeguard: never overwrite an account whose result was confirmed in the Classification Studio.
+        // Its status is owned by that permanent decision record; changes go through the studio's re-check instead.
+        try {
+            const studioDecisions = await base44.asServiceRole.entities.ClassificationDecision.filter({ target_id: accountId, target_type: 'account', status: 'confirmed' });
+            if (studioDecisions.some((d) => d.tenant_id === account.tenant_id)) {
+                return Response.json({ message: 'Account has a confirmed Classification Studio decision; auto-classification rules do not change it.', classified: false, skipped: 'studio_confirmed' });
+            }
+        } catch (_e) { /* the studio tables may not exist in older environments */ }
 
         // Fetch all active auto-classification rules
         const rules = await base44.asServiceRole.entities.AutoClassificationRule.filter({
