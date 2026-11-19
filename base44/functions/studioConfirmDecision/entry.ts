@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { evaluate, inputHash, buildDecision, accountWriteBack, canConfirm, loadStudioInput } from '../../shared/crs/index.js';
+import { evaluate, inputHash, buildDecision, accountWriteBack, canConfirm, loadStudioInput, isSystemProposal } from '../../shared/crs/index.js';
 
 // Classification Studio: confirm decisions (D2, D4).
 // Only tenant_admin and tenant_supervisor may confirm, and only in their own tenant.
 // The engine is re-run here on the server; the browser's result is never trusted.
 // Body: { accountIds: string[] (max 100), expectedHashes?: {[id]: hash}, note?: string, signOffDecisionId?: string }
+//    or: { dismissChange: { accountId, note } }  keep the current decision after a change (rejects the studio's proposal)
 
 const CONFIRM_ROLES = ['tenant_admin', 'tenant_supervisor'];
 const MAX = 100;
@@ -30,6 +31,29 @@ Deno.serve(async (req) => {
     const now = new Date();
     const confirmed = [];
     const skipped = [];
+
+    // ---- Keep the current decision after a change ------------------------------------------------------------
+    if (body.dismissChange) {
+      const { accountId } = body.dismissChange;
+      const why = String(body.dismissChange.note || '').trim().slice(0, 2000);
+      if (!why) return Response.json({ error: 'Say why the current decision still applies.' }, { status: 400 });
+      const account = (await db.Account.filter({ id: accountId }))[0];
+      if (!account || account.tenant_id !== tenantId) return Response.json({ error: 'Account not found' }, { status: 404 });
+      const decisions = (await db.ClassificationDecision.filter({ target_id: accountId, target_type: 'account' }, '-sequence', 200)).filter((d) => d.tenant_id === tenantId);
+      const confirmedNow = decisions.find((d) => d.status === 'confirmed');
+      if (!confirmedNow) return Response.json({ error: 'There is no confirmed decision to keep.' }, { status: 409 });
+      const proposals = decisions.filter(isSystemProposal);
+      const cases = (await db.ChangeCase.filter({ account_id: accountId }, '-detected_at', 50)).filter((c) => c.tenant_id === tenantId && (c.status === 'open' || c.status === 'overdue'));
+      if (!proposals.length && !cases.length) return Response.json({ error: 'There is no open change for this account.' }, { status: 409 });
+      for (const p of proposals) await db.ClassificationDecision.update(p.id, { status: 'rejected', reviewer: user.email, reviewed_at: now.toISOString(), note: why });
+      for (const c of cases) await db.ChangeCase.update(c.id, { status: 'resolved', resolution: `Kept decision #${confirmedNow.sequence}: ${why}`, resolved_at: now.toISOString(), resolved_by: user.email });
+      const { input } = await loadStudioInput(db, account);
+      await saveTask(db, account, await inputHash(input), now);
+      await db.AuditLog.create({ tenant_id: tenantId, action_type: 'account_classified', actor_email: user.email, actor_role: user.app_role, target_entity_type: 'Account',
+        target_entity_id: account.id, target_entity_name: account.account_holder_name || account.account_number || account.id,
+        changes: { action: 'change_dismissed', kept_decision_id: confirmedNow.id, rejected_proposals: proposals.map((p) => p.id), resolved_cases: cases.map((c) => c.id), note: why }, timestamp: now.toISOString() });
+      return Response.json({ ok: true, kept: confirmedNow.id, rejected: proposals.length, resolved: cases.length });
+    }
 
     // ---- Second sign-off of a proposed decision --------------------------------------------------------------
     if (body.signOffDecisionId) {
@@ -73,7 +97,7 @@ Deno.serve(async (req) => {
 
         const existing = await db.ClassificationDecision.filter({ target_id: id, target_type: 'account' }, '-sequence', 50);
         const mine = existing.filter((d) => d.tenant_id === tenantId);
-        if (mine.some((d) => d.status === 'proposed')) { skipped.push({ id, reason: 'A decision is already waiting for second sign-off.' }); continue; }
+        if (mine.some((d) => d.status === 'proposed' && !isSystemProposal(d))) { skipped.push({ id, reason: 'A decision is already waiting for second sign-off.' }); continue; }
         const previous = mine.find((d) => d.status === 'confirmed') || null;
         const latestSeq = mine.reduce((m, d) => Math.max(m, d.sequence || 0), 0);
 
@@ -101,11 +125,26 @@ Deno.serve(async (req) => {
   }
 });
 
+// The last checked inputs, so the automatic re-check (studioReevaluate) compares against this decision.
+async function saveTask(db, account, hash, now) {
+  const task = (await db.StudioTask.filter({ account_id: account.id }))[0];
+  const row = { tenant_id: account.tenant_id, account_id: account.id, input_hash: hash, last_evaluated_at: now.toISOString(), queue: 'classified' };
+  if (task) await db.StudioTask.update(task.id, row); else await db.StudioTask.create(row);
+}
+
 // Supersede the previous confirmed decision, write back to the Account, and record history and audit entries.
 async function finalise(db, user, account, decision, now) {
   if (decision.supersedes_id) {
     await db.ClassificationDecision.update(decision.supersedes_id, { status: 'superseded', superseded_by_id: decision.id });
   }
+  // A change the studio detected is settled by this confirmation.
+  const others = await db.ClassificationDecision.filter({ target_id: account.id, target_type: 'account' }, '-sequence', 200);
+  for (const p of others.filter((d) => d.tenant_id === account.tenant_id && d.id !== decision.id && isSystemProposal(d))) {
+    await db.ClassificationDecision.update(p.id, { status: 'superseded', superseded_by_id: decision.id });
+  }
+  const cases = (await db.ChangeCase.filter({ account_id: account.id }, '-detected_at', 50)).filter((c) => c.tenant_id === account.tenant_id && (c.status === 'open' || c.status === 'overdue'));
+  for (const c of cases) await db.ChangeCase.update(c.id, { status: 'resolved', resolution: `Confirmed decision #${decision.sequence}`, resolved_at: now.toISOString(), resolved_by: decision.reviewer || user.email });
+  if (decision.input_hash) await saveTask(db, account, decision.input_hash, now);
   const before = { reportability_status: account.reportability_status, reportability_reason: account.reportability_reason };
   const writeBack = accountWriteBack(decision);
   await db.Account.update(account.id, writeBack);

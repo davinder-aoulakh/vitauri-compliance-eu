@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowUpRight, CheckCircle2, HelpCircle, Loader2, RotateCcw, Save, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CheckCircle2, GitPullRequestArrow, HandCoins, HelpCircle, Loader2, RotateCcw, Save, Sparkles, X } from "lucide-react";
 import { evaluate, inputHash } from "../../../base44/shared/crs/index.js";
 import { OUTCOME_LABELS, MANUAL_LABELS } from "./useStudioData";
 import DecisionTimeline from "./DecisionTimeline";
@@ -51,6 +52,11 @@ function money(value, currency) {
   return `${currency || "USD"} ${Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
+const TRIGGER_LABEL = {
+  change_in_circumstances: "Change in circumstances", balance_threshold: "Balance crossed a threshold", rule_pack_published: "New rule or list version",
+  year_end: "Year-end re-check", trust_distribution: "Trust distribution", rm_attestation: "Relationship manager attestation", aml_kyc_change: "AML/KYC change",
+};
+
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "");
 
 /** The error text from a failed functions.invoke call. */
@@ -72,10 +78,16 @@ export default function StudioReview({ row, settings, reportableList, pack, user
   const [note, setNote] = useState("");
   const [confirming, setConfirming] = useState(false);
   const qc = useQueryClient();
+  const [keepOpen, setKeepOpen] = useState(false);
+  const [keepNote, setKeepNote] = useState("");
+  const [trustOpen, setTrustOpen] = useState(false);
+  const [trust, setTrust] = useState({ beneficiary: "", date: new Date().toISOString().slice(0, 10), amount: "" });
+  const [working, setWorking] = useState(false);
   const refreshHistory = () => Promise.all([
     qc.invalidateQueries({ queryKey: ["studio-account-decisions"] }),
     qc.invalidateQueries({ queryKey: ["studio-account-legacy-history"] }),
     qc.invalidateQueries({ queryKey: ["studio-all-decisions"] }),
+    qc.invalidateQueries({ queryKey: ["studio-change-cases"] }),
   ]);
 
   const live = useMemo(() => {
@@ -96,6 +108,12 @@ export default function StudioReview({ row, settings, reportableList, pack, user
   const manual = account.reportability_status;
   const confirmedDecision = row.confirmedDecision;
   const proposal = row.proposedDecision;
+  const changeCase = row.changeCase;
+  const systemProposal = row.systemProposal;
+  const hasChange = !!(changeCase || systemProposal);
+  const isTrust = account.account_holder_type === "entity" && (String(account.account_holder_entity_type || "").toLowerCase().includes("trust")
+    || (row.input?.controllingPersons || []).some((c) => String(c.control_type || "").startsWith("trust_")));
+  const today = new Date().toISOString().slice(0, 10);
   const ready = outcome.status !== "pending" && gaps.length === 0;
   const aiEnabled = settings?.ai_suggestions_enabled !== false && !readOnly;
   const suggestionFor = (key) => suggestions.find((s) => s.gap_key === key && !s.dismissed);
@@ -174,6 +192,30 @@ export default function StudioReview({ row, settings, reportableList, pack, user
     }
   };
 
+  const keepCurrent = async () => {
+    setWorking(true);
+    try {
+      const res = await base44.functions.invoke("studioConfirmDecision", { dismissChange: { accountId: row.account.id, note: keepNote } });
+      if (res?.data?.error) throw new Error(res.data.error);
+      toast.success("Current decision kept. The change is closed and recorded.");
+      setKeepOpen(false); setKeepNote("");
+      await Promise.all([onChanged?.(), refreshHistory()]);
+    } catch (e) { toast.error(`Couldn't keep the decision: ${invokeError(e)}`); }
+    finally { setWorking(false); }
+  };
+
+  const recordTrust = async () => {
+    setWorking(true);
+    try {
+      const res = await base44.functions.invoke("studioReevaluate", { action: "trust_distribution", accountId: row.account.id, ...trust });
+      if (res?.data?.error) throw new Error(res.data.error);
+      toast.success("Distribution recorded. A change case is open for review.");
+      setTrustOpen(false); setTrust({ beneficiary: "", date: new Date().toISOString().slice(0, 10), amount: "" });
+      await Promise.all([onChanged?.(), refreshHistory()]);
+    } catch (e) { toast.error(`Couldn't record the distribution: ${invokeError(e)}`); }
+    finally { setWorking(false); }
+  };
+
   const signOff = async () => {
     setConfirming(true);
     try {
@@ -226,6 +268,35 @@ export default function StudioReview({ row, settings, reportableList, pack, user
               <p className="text-xs text-amber-800 mt-2 flex gap-1"><AlertTriangle className="w-3.5 h-3.5 flex-none mt-0.5" />The data has changed since this was confirmed: the rules now give a different result (below). Review it and confirm again if it is right.</p>
             )}
           </div>
+        )}
+
+        {hasChange && (
+          <Alert className={`${changeCase?.status === "overdue" || (changeCase?.due_date && changeCase.due_date < today) ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50"}`}>
+            <GitPullRequestArrow className="w-4 h-4 text-amber-700" />
+            <AlertDescription className="text-sm text-slate-900 space-y-2">
+              <p className="font-semibold">
+                Change detected{changeCase?.detected_at ? ` on ${fmtDate(changeCase.detected_at)}` : ""} · {TRIGGER_LABEL[changeCase?.trigger || systemProposal?.trigger] || "Change in circumstances"}
+              </p>
+              <p className="text-xs">
+                The automatic re-check gives {systemProposal ? <strong>{OUTCOME_LABELS[systemProposal.outcome]}{systemProposal.reportable_jurisdictions?.length ? ` · ${systemProposal.reportable_jurisdictions.join(", ")}` : ""}</strong> : <strong>new open questions</strong>}
+                {" "}instead of the confirmed {OUTCOME_LABELS[confirmedDecision?.outcome] || "result"}. The account's status stays as it is until this is resolved.
+                {changeCase?.due_date && <> Resolve by <strong>{changeCase.due_date}</strong>{changeCase.status === "overdue" ? " (overdue)" : ""}: the later of 90 days or the end of the year (Handbook ¶202, ¶220).</>}
+              </p>
+              {changeCase?.changed_fields?.length > 0 && (
+                <ul className="text-xs list-disc pl-5 space-y-0.5">
+                  {changeCase.changed_fields.slice(0, 8).map((c, i) => <li key={i}>{c.field}: <span className="line-through text-slate-500 break-all">{c.before}</span> → <span className="break-all">{c.after}</span></li>)}
+                  {changeCase.changed_fields.length > 8 && <li>… {changeCase.changed_fields.length - 8} more</li>}
+                </ul>
+              )}
+              <p className="text-[11px] text-slate-600">Until it's resolved, treat the holder as resident in both the previous and the new jurisdictions. A new self-certification or a reasonable explanation may be needed.</p>
+              {canConfirm && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button size="sm" variant="outline" onClick={() => setKeepOpen(true)}>Keep current decision</Button>
+                  <span className="text-[11px] text-slate-600 self-center">or answer any open questions below and confirm the new result.</span>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
 
         {proposal && (
@@ -354,7 +425,7 @@ export default function StudioReview({ row, settings, reportableList, pack, user
           <div className="flex flex-wrap items-center gap-2">
             {!proposal && canConfirm && (
               <Button onClick={() => setConfirmOpen(true)} disabled={!ready || confirming} className="bg-teal-700 hover:bg-teal-800">
-                <CheckCircle2 className="w-4 h-4 mr-1" />{confirmedDecision ? "Confirm again" : "Confirm decision"}
+                <CheckCircle2 className="w-4 h-4 mr-1" />{hasChange ? "Confirm new result" : confirmedDecision ? "Confirm again" : "Confirm decision"}
               </Button>
             )}
             {!readOnly && (
@@ -363,6 +434,9 @@ export default function StudioReview({ row, settings, reportableList, pack, user
               </Button>
             )}
             {dirty && !readOnly && <span className="text-xs text-amber-700">Unsaved answers</span>}
+            {isTrust && confirmedDecision && !readOnly && (
+              <Button variant="outline" onClick={() => setTrustOpen(true)}><HandCoins className="w-4 h-4 mr-1" />Record trust distribution</Button>
+            )}
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link to={createPageUrl("Accounts")}>Classify manually on the Accounts page <ArrowUpRight className="w-3.5 h-3.5 ml-1" /></Link>
@@ -377,6 +451,41 @@ export default function StudioReview({ row, settings, reportableList, pack, user
         <div className="border-t pt-4">
           <DecisionTimeline account={account} tenantName={tenantName} user={user} />
         </div>
+
+        <Dialog open={keepOpen} onOpenChange={(o) => !working && setKeepOpen(o)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Keep the current decision?</DialogTitle>
+              <DialogDescription>Decision #{confirmedDecision?.sequence} stays in force and the change is closed. Say why it still applies, for example a corrected data error or a reasonable explanation on file.</DialogDescription>
+            </DialogHeader>
+            <Textarea value={keepNote} onChange={(e) => setKeepNote(e.target.value)} placeholder="Why the current decision still applies (required)" rows={3} maxLength={2000} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setKeepOpen(false)} disabled={working}>Cancel</Button>
+              <Button onClick={keepCurrent} disabled={working || !keepNote.trim()}>{working && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Keep decision</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={trustOpen} onOpenChange={(o) => !working && setTrustOpen(o)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Record a trust distribution</DialogTitle>
+              <DialogDescription>A distribution to a member of a class of beneficiaries makes them a controlling person for that year. It is a change in circumstances (Handbook ¶267), so a change case opens for review.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Input value={trust.beneficiary} onChange={(e) => setTrust({ ...trust, beneficiary: e.target.value })} placeholder="Beneficiary name" aria-label="Beneficiary name" />
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="date" value={trust.date} onChange={(e) => setTrust({ ...trust, date: e.target.value })} aria-label="Date of distribution" />
+                <Input type="number" value={trust.amount} onChange={(e) => setTrust({ ...trust, amount: e.target.value })} placeholder="Amount (optional)" aria-label="Amount" />
+              </div>
+              <p className="text-[11px] text-slate-500">Add the beneficiary as a controlling person on the account (with their residence) so the studio can check whether they are reportable.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTrustOpen(false)} disabled={working}>Cancel</Button>
+              <Button onClick={recordTrust} disabled={working || !trust.beneficiary.trim() || !trust.date}>{working && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Record</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogContent>
