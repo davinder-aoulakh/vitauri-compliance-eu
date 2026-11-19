@@ -1,0 +1,35 @@
+{
+  "name": "Studio re-check: Account changed",
+  "description": "Classification Studio: when an account is created or updated, re-check it against its confirmed studio decision (change in circumstances). Never changes the account.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update"
+      ],
+      "entity_name": "Account"
+    }
+  },
+  "definition": {
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "then": "end",
+          "with": {
+            "args": {},
+            "function_name": "studioReevaluate"
+          }
+        }
+      }
+    ],
+    "document": {
+      "dsl": "1.0.0",
+      "name": "studio_recheck_account",
+      "namespace": "base44",
+      "version": "1.0"
+    }
+  }
+}
