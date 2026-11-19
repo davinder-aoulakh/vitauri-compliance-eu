@@ -137,9 +137,13 @@ export const BASELINE_PACK = {
 /** Lay a pack's rules over a resolved pack by rule_key. Locked rules can't be disabled; custom rules are kept. */
 function overlay(base, published) {
   const byKey = new Map(base.rules.map((r) => [r.rule_key, r]));
-  for (const r of published.rules) {
+  for (const row of published.rules) {
+    // Stored rows carry nulls for empty fields; they must not blank out the baseline.
+    const r = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== null && v !== undefined));
+    if (Array.isArray(r.options)) r.options = r.options.map((o) => Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v !== null && v !== undefined)));
     const prev = byKey.get(r.rule_key);
     const merged = { ...(prev || {}), ...r, params: { ...(prev?.params || {}), ...(r.params || {}) } };
+    if (prev?.options?.length && Array.isArray(r.options) && r.options.length === 0) merged.options = prev.options;
     if (prev?.locked) { merged.locked = true; merged.enabled = true; }
     byKey.set(r.rule_key, merged);
   }
