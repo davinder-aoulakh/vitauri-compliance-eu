@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import StudioSettingsForm from "@/components/studio/StudioSettingsForm";
 import { ListChecks, Inbox, HelpCircle, RefreshCw, CheckCircle2, Settings as SettingsIcon, Lock, ArrowLeft } from "lucide-react";
 
 /**
@@ -147,18 +148,7 @@ export default function ClassificationStudio() {
         </TabsContent>
 
         <TabsContent value="settings" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">CRS settings for your organisation</CardTitle>
-              <CardDescription>
-                Elections such as the pre-existing account cut-off date, the residence address test and the USD 250,000 entity exemption.
-                {role === "tenant_admin" ? " You'll be able to edit them here." : " Your tenant admin will be able to edit them here."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-slate-500">Coming in the next phase.</p>
-            </CardContent>
-          </Card>
+          <StudioSettingsForm user={user} tenant={tenant} />
         </TabsContent>
       </Tabs>
     </div>
