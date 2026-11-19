@@ -1,28 +1,31 @@
 {
   "name": "CrsCountryInfo",
-  "type": "object",
   "properties": {
     "country_code": {
-      "type": "string",
-      "description": "ISO country code (e.g., US, GB)"
+      "description": "ISO country code (e.g., US, GB)",
+      "type": "string"
     },
     "country_name": {
-      "type": "string",
-      "description": "Full country name"
-    },
-    "is_crs_country": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether this country participates in CRS reporting"
+      "description": "Full country name",
+      "type": "string"
     },
     "crs_implementation_date": {
-      "type": "string",
+      "description": "Date when CRS was implemented in this country",
       "format": "date",
-      "description": "Date when CRS was implemented in this country"
+      "type": "string"
     },
     "crs_reporting_details": {
-      "type": "string",
-      "description": "Additional CRS-specific information for this country"
+      "description": "Additional CRS-specific information for this country",
+      "type": "string"
+    },
+    "is_crs_country": {
+      "default": false,
+      "description": "Whether this country participates in CRS reporting",
+      "type": "boolean"
+    },
+    "tin_issued_to_all": {
+      "description": "Classification Studio: true when this jurisdiction issues TINs to all tax residents (CRS FAQ II-8). A missing TIN is then a reason to doubt a self-certification. Optional; not used by manual classification.",
+      "type": "boolean"
     }
   },
   "required": [
@@ -30,6 +33,7 @@
     "country_name",
     "is_crs_country"
   ],
+  "type": "object",
   "rls": {
     "read": {
       "$or": [
