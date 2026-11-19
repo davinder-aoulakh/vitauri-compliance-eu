@@ -1,0 +1,43 @@
+{
+  "name": "Studio nightly scan",
+  "description": "Classification Studio: every night, re-check confirmed accounts (new rule or list versions, year end) and mark change cases past their due date as overdue.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 2 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "then": "end",
+          "with": {
+            "args": {
+              "action": "scan"
+            },
+            "function_name": "studioReevaluate"
+          }
+        }
+      }
+    ],
+    "document": {
+      "dsl": "1.0.0",
+      "name": "studio_nightly_scan",
+      "namespace": "base44",
+      "version": "1.0"
+    }
+  }
+}
