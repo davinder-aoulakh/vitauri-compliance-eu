@@ -8,10 +8,10 @@ import { evaluate } from "../../../base44/shared/crs/index.js";
  * with the shared CRS engine (in the browser; read-only — nothing is written).
  *
  * Queues:
- *  - classified: a confirmed ClassificationDecision exists (Phase 4+)
- *  - changed:    a proposed decision exists for an account that was already classified (Phase 7+)
+ *  - classified: a confirmed ClassificationDecision exists
+ *  - changed:    a proposed decision exists for an account that was already classified (Phase 7 re-evaluation)
  *  - needs:      the engine needs answers the data can't give
- *  - ready:      fully answered by the data, waiting for confirmation
+ *  - ready:      fully answered (by the data and saved answers), waiting for confirmation or second sign-off
  */
 export const OUTCOME_LABELS = {
   reportable: "Reportable",
@@ -134,9 +134,11 @@ export function useStudioData(tenantId) {
       }
       const confirmedDecision = confirmed[account.id] || null;
       const proposedDecision = proposed[account.id] || null;
+      const awaitingSignOff = !!proposedDecision && !confirmedDecision;
       let queue;
       if (proposedDecision && confirmedDecision) queue = "changed";
       else if (confirmedDecision) queue = "classified";
+      else if (awaitingSignOff) queue = "ready";
       else if (result.outcome.status === "pending" || result.gaps.length) queue = "needs";
       else queue = "ready";
       return {
@@ -147,6 +149,7 @@ export function useStudioData(tenantId) {
         queue,
         confirmedDecision,
         proposedDecision,
+        awaitingSignOff,
         entityName: entityNames[account.entity_id] || "",
         holderName: account.account_holder_name || [account.first_name, account.last_name].filter(Boolean).join(" ") || "Unnamed holder",
         comparison: compareWithManual(account.reportability_status, result.outcome.status),
@@ -154,9 +157,13 @@ export function useStudioData(tenantId) {
     });
   }, [isLoading, accountsQ.data, settingsQ.data, listQ.data, countriesQ.data, packQ.data, cpsQ.data, evidenceQ.data, decisionsQ.data, entitiesQ.data]);
 
+  const refetch = () => Promise.all([accountsQ.refetch(), evidenceQ.refetch(), decisionsQ.refetch(), cpsQ.refetch()]);
+
   return {
     isLoading,
     error,
+    refetch,
+    isFetching: accountsQ.isFetching || evidenceQ.isFetching || decisionsQ.isFetching,
     settings: settingsQ.data,
     reportableList: listQ.data,
     pack: packQ.data,
