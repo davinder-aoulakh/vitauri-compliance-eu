@@ -177,3 +177,20 @@ export function nextVersion(version, existing = []) {
 export function baselineRuleRows() {
   return BASELINE_RULES.map((r) => ({ ...r }));
 }
+
+/**
+ * Fingerprint of a draft as it would run: for an override pack (scope such as "CW") it also covers the published
+ * global pack it sits on, so an impact report goes stale when either changes.
+ */
+export function draftFingerprint(pack, rules, globalPack) {
+  const fp = packFingerprint(rules);
+  const scope = pack?.jurisdiction_scope || "global";
+  return scope === "global" ? fp : `${fp}@${globalPack?.version || "baseline"}`;
+}
+
+/** The rules used to validate a draft: a global draft as-is, an override draft laid over the published global pack. */
+export function effectiveRulesForValidation(pack, rules, globalPackWithRules, resolve) {
+  const scope = pack?.jurisdiction_scope || "global";
+  if (scope === "global") return rules;
+  return resolve(globalPackWithRules, { version: pack.version, jurisdiction_scope: scope, rules }).rules;
+}
