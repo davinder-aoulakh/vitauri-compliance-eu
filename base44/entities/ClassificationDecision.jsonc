@@ -1,7 +1,5 @@
 {
-  "name": "ClassificationDecision",
-  "type": "object",
-  "description": "Classification Studio: permanent decision record. Append-only for tenant roles; status changes go through a service-role backend function.",
+  "description": "Classification Studio: permanent decision record. Written only by the studioConfirmDecision backend function (service role); tenant roles can read only.",
   "properties": {
     "ai_suggestions": {
       "items": {
@@ -73,6 +71,10 @@
     },
     "input_snapshot": {
       "type": "object"
+    },
+    "note": {
+      "description": "Optional note from the person who confirmed",
+      "type": "string"
     },
     "outcome": {
       "enum": [
@@ -232,16 +234,9 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        {
-          "user_condition": {
-            "data.app_role": "super_admin"
-          }
-        },
-        {
-          "data.tenant_id": "{{user.data.tenant_id}}"
-        }
-      ]
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
     },
     "delete": {
       "user_condition": {
@@ -265,5 +260,7 @@
         "data.app_role": "super_admin"
       }
     }
-  }
+  },
+  "type": "object",
+  "name": "ClassificationDecision"
 }
