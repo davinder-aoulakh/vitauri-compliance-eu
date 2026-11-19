@@ -1,89 +1,132 @@
 {
-  "type": "object",
   "properties": {
-    "tenant_id": {
-      "type": "string",
-      "description": "Reference to the owning tenant"
+    "account_balance": {
+      "description": "Account balance at time of classification",
+      "type": "number"
+    },
+    "account_holder_name": {
+      "description": "Account holder name at time of classification",
+      "type": "string"
     },
     "account_id": {
-      "type": "string",
-      "description": "Reference to the account being classified"
+      "description": "Reference to the account being classified",
+      "type": "string"
+    },
+    "account_number": {
+      "description": "Account number at time of classification",
+      "type": "string"
     },
     "classification_date": {
-      "type": "string",
+      "description": "When this classification was performed",
       "format": "date-time",
-      "description": "When this classification was performed"
-    },
-    "reportability_status": {
-      "type": "string",
-      "enum": [
-        "reportable",
-        "non_reportable",
-        "pending_review",
-        "excluded",
-        "work_in_progress"
-      ],
-      "description": "The reportability determination"
-    },
-    "previous_reportability_status": {
-      "type": "string",
-      "enum": [
-        "reportable",
-        "non_reportable",
-        "pending_review",
-        "excluded",
-        "work_in_progress"
-      ],
-      "description": "Status this entry had before the controlling person roll-up updated it (e.g. work_in_progress)"
+      "type": "string"
     },
     "classification_reason": {
-      "type": "string",
-      "description": "Detailed reason for this classification"
-    },
-    "cp_rollup_reason": {
-      "type": "string",
-      "description": "New reason added when controlling person classification completed and the account status was rolled up"
-    },
-    "cp_rollup_status": {
-      "type": "string",
-      "description": "Resulting account status after the controlling person roll-up"
-    },
-    "cp_rollup_date": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When the controlling person roll-up was applied"
+      "description": "Detailed reason for this classification",
+      "type": "string"
     },
     "classification_source": {
-      "type": "string",
+      "default": "workflow",
+      "description": "How this classification was performed",
       "enum": [
         "workflow",
         "auto_classification",
-        "manual"
+        "manual",
+        "studio"
       ],
-      "default": "workflow",
-      "description": "How this classification was performed"
+      "type": "string"
+    },
+    "cp_rollup_date": {
+      "description": "When the controlling person roll-up was applied",
+      "format": "date-time",
+      "type": "string"
+    },
+    "cp_rollup_reason": {
+      "description": "New reason added when controlling person classification completed and the account status was rolled up",
+      "type": "string"
+    },
+    "cp_rollup_status": {
+      "description": "Resulting account status after the controlling person roll-up",
+      "type": "string"
     },
     "entry_type": {
-      "type": "string",
+      "default": "classification",
+      "description": "workflow_transition = audit event recording a hand-off from one workflow to another",
       "enum": [
         "classification",
         "workflow_transition"
       ],
-      "default": "classification",
-      "description": "workflow_transition = audit event recording a hand-off from one workflow to another"
-    },
-    "workflow_name": {
-      "type": "string",
-      "description": "Name of the workflow that produced this entry"
-    },
-    "transition_sequence": {
-      "type": "number",
-      "description": "Order of this transition within the classification session (1-based)"
+      "type": "string"
     },
     "from_workflow_id": {
       "type": "string"
     },
     "from_workflow_name": {
+      "type": "string"
+    },
+    "indicia_found": {
+      "description": "Foreign indicia identified during classification",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "performed_by": {
+      "description": "Email of user who performed classification",
+      "type": "string"
+    },
+    "previous_reportability_status": {
+      "description": "Status this entry had before the controlling person roll-up updated it (e.g. work_in_progress)",
+      "enum": [
+        "reportable",
+        "non_reportable",
+        "pending_review",
+        "excluded",
+        "work_in_progress"
+      ],
+      "type": "string"
+    },
+    "reportability_status": {
+      "description": "The reportability determination",
+      "enum": [
+        "reportable",
+        "non_reportable",
+        "pending_review",
+        "excluded",
+        "work_in_progress"
+      ],
+      "type": "string"
+    },
+    "reportable_jurisdictions": {
+      "description": "List of jurisdictions where account is reportable",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "rule_id": {
+      "description": "Reference to the AutoClassificationRule that triggered this classification",
+      "type": "string"
+    },
+    "rule_name": {
+      "description": "Name of the rule at time of classification (for audit trail)",
+      "type": "string"
+    },
+    "self_certification_status": {
+      "description": "Self-certification status at time of classification",
+      "enum": [
+        "obtained",
+        "not_obtained",
+        "not_required"
+      ],
+      "type": "string"
+    },
+    "studio_decision_id": {
+      "description": "ClassificationDecision record behind a Classification Studio entry",
+      "type": "string"
+    },
+    "tenant_id": {
+      "description": "Reference to the owning tenant",
       "type": "string"
     },
     "to_workflow_id": {
@@ -92,87 +135,48 @@
     "to_workflow_name": {
       "type": "string"
     },
+    "transition_chain": {
+      "description": "Ordered workflow names involved in this classification session (final entries only)",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "transition_mode": {
+      "enum": [
+        "direct",
+        "conditional"
+      ],
+      "type": "string"
+    },
+    "transition_sequence": {
+      "description": "Order of this transition within the classification session (1-based)",
+      "type": "number"
+    },
     "transition_step_id": {
       "type": "string"
     },
     "transition_step_title": {
       "type": "string"
     },
-    "transition_mode": {
-      "type": "string",
-      "enum": [
-        "direct",
-        "conditional"
-      ]
-    },
-    "transition_chain": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Ordered workflow names involved in this classification session (final entries only)"
-    },
-    "rule_id": {
-      "type": "string",
-      "description": "Reference to the AutoClassificationRule that triggered this classification"
-    },
-    "rule_name": {
-      "type": "string",
-      "description": "Name of the rule at time of classification (for audit trail)"
+    "workflow_answers": {
+      "description": "Complete workflow answers for audit trail (resolved from account fields)",
+      "type": "object"
     },
     "workflow_id": {
-      "type": "string",
-      "description": "Reference to the Workflow simulated during auto-classification"
+      "description": "Reference to the Workflow simulated during auto-classification",
+      "type": "string"
+    },
+    "workflow_name": {
+      "description": "Name of the workflow that produced this entry",
+      "type": "string"
     },
     "workflow_path_taken": {
-      "type": "array",
+      "description": "Array of step IDs visited during headless workflow simulation",
       "items": {
         "type": "string"
       },
-      "description": "Array of step IDs visited during headless workflow simulation"
-    },
-    "reportable_jurisdictions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "List of jurisdictions where account is reportable"
-    },
-    "workflow_answers": {
-      "type": "object",
-      "description": "Complete workflow answers for audit trail (resolved from account fields)"
-    },
-    "indicia_found": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Foreign indicia identified during classification"
-    },
-    "self_certification_status": {
-      "type": "string",
-      "enum": [
-        "obtained",
-        "not_obtained",
-        "not_required"
-      ],
-      "description": "Self-certification status at time of classification"
-    },
-    "performed_by": {
-      "type": "string",
-      "description": "Email of user who performed classification"
-    },
-    "account_holder_name": {
-      "type": "string",
-      "description": "Account holder name at time of classification"
-    },
-    "account_number": {
-      "type": "string",
-      "description": "Account number at time of classification"
-    },
-    "account_balance": {
-      "type": "number",
-      "description": "Account balance at time of classification"
+      "type": "array"
     }
   },
   "required": [
@@ -182,7 +186,7 @@
     "reportability_status",
     "classification_reason"
   ],
-  "name": "AccountClassificationHistory",
+  "type": "object",
   "rls": {
     "read": {
       "$or": [
@@ -232,5 +236,6 @@
         }
       ]
     }
-  }
+  },
+  "name": "AccountClassificationHistory"
 }
