@@ -1,7 +1,5 @@
 {
-  "name": "CrsRulePack",
-  "type": "object",
-  "description": "CRS Rule Library: a versioned pack of rules used by the Classification Studio. Published packs are never edited; changes go into a new draft.",
+  "description": "CRS Rule Library: a versioned pack of rules used by the Classification Studio. Published packs are never edited; changes go into a new draft. Written through the studioRulePack backend function.",
   "properties": {
     "based_on_version": {
       "type": "string"
@@ -9,11 +7,15 @@
     "change_note": {
       "type": "string"
     },
+    "created_by_email": {
+      "type": "string"
+    },
     "effective_from": {
       "format": "date",
       "type": "string"
     },
     "impact_report": {
+      "description": "Dry-run impact of this draft vs the published pack: {fingerprint, run_at, run_by, tenants, totals, changed[]}",
       "type": "object"
     },
     "jurisdiction_scope": {
@@ -28,6 +30,18 @@
     "published_by": {
       "type": "string"
     },
+    "retired_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "rollback_of": {
+      "description": "Version this pack restores (rollback)",
+      "type": "string"
+    },
+    "rules_fingerprint": {
+      "description": "Fingerprint of the rules when last saved",
+      "type": "string"
+    },
     "status": {
       "default": "draft",
       "enum": [
@@ -38,6 +52,7 @@
       "type": "string"
     },
     "test_run_result": {
+      "description": "Fixture run: {fingerprint, run_at, passed, total, failed, results[]}",
       "type": "object"
     },
     "title": {
@@ -51,6 +66,7 @@
     "version",
     "status"
   ],
+  "type": "object",
   "rls": {
     "create": {
       "user_condition": {
@@ -81,5 +97,6 @@
         "data.app_role": "super_admin"
       }
     }
-  }
+  },
+  "name": "CrsRulePack"
 }

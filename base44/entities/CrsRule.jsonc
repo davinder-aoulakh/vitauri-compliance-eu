@@ -1,6 +1,4 @@
 {
-  "name": "CrsRule",
-  "type": "object",
   "description": "CRS Rule Library: one rule inside a rule pack.",
   "properties": {
     "ai_guidance": {
@@ -13,6 +11,11 @@
     "crs_ref": {
       "type": "string"
     },
+    "custom": {
+      "default": false,
+      "description": "Extra question added in the Rule Library (not a Handbook rule)",
+      "type": "boolean"
+    },
     "enabled": {
       "default": true,
       "type": "boolean"
@@ -23,6 +26,15 @@
     "help": {
       "type": "string"
     },
+    "hook": {
+      "description": "Extra questions only: where the question is asked",
+      "enum": [
+        "after_general",
+        "individual",
+        "entity"
+      ],
+      "type": "string"
+    },
     "locked": {
       "default": false,
       "type": "boolean"
@@ -31,9 +43,14 @@
       "items": {
         "properties": {
           "effect": {
+            "description": "Extra questions only: continue or hold",
             "type": "string"
           },
           "label": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "Extra questions only: shown when the option puts the account on hold",
             "type": "string"
           },
           "value": {
@@ -66,7 +83,8 @@
         "controlling_persons",
         "trust",
         "joint",
-        "change_in_circumstances"
+        "change_in_circumstances",
+        "custom"
       ],
       "type": "string"
     },
@@ -92,6 +110,7 @@
     "procedure",
     "tier"
   ],
+  "type": "object",
   "rls": {
     "create": {
       "user_condition": {
@@ -122,5 +141,6 @@
         "data.app_role": "super_admin"
       }
     }
-  }
+  },
+  "name": "CrsRule"
 }
