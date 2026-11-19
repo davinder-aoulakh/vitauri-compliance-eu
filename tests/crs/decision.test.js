@@ -53,31 +53,30 @@ describe("buildDecision", () => {
 
   it("marks answers that came from an accepted AI suggestion as source ai", () => {
     const input = newIndividual({ self_certification_obtained: undefined, self_certification_date: undefined });
-    const first = evaluate(input);
-    const key = first.gaps[0].key;
-    const value = first.gaps[0].options[0].value;
-    const answers = { [key]: value };
+    const answers = { "IND_NEW.SELF_CERT": "yes", "IND_NEW.SELF_CERT_VALID": "valid" };
     const result = evaluate(input, answers);
-    if (!canConfirm(result)) return; // the follow-up path may ask more; covered by the other tests
+    expect(canConfirm(result)).toBe(true);
+    const key = "IND_NEW.SELF_CERT_VALID";
     const d = buildDecision({ input, result, answers, user, hash: "h", now,
-      aiSuggestions: [{ gap_key: key, answer: value, confidence: 0.8, rationale: "on file", accepted: true }] });
-    const step = d.step_trace.find((s) => s.step_id === key);
-    expect(step.source).toBe("ai");
-    expect(d.gap_answers).toEqual([{ key, value, source: "ai" }]);
+      aiSuggestions: [{ gap_key: key, answer: "valid", confidence: 0.8, rationale: "on file", accepted: true }] });
+    expect(d.step_trace.find((s) => s.step_id === key).source).toBe("ai");
+    expect(d.step_trace.find((s) => s.step_id === "IND_NEW.SELF_CERT").source).toBe("user");
+    expect(d.gap_answers).toEqual([{ key: "IND_NEW.SELF_CERT", value: "yes", source: "user" }, { key, value: "valid", source: "ai" }]);
     expect(d.ai_suggestions[0]).toMatchObject({ question: key, accepted: true, confidence: 0.8 });
   });
 
   it("keeps user answers as source user when the AI suggestion was not accepted", () => {
     const input = newIndividual({ self_certification_obtained: undefined, self_certification_date: undefined });
-    const first = evaluate(input);
-    const key = first.gaps[0].key;
-    const value = first.gaps[0].options[0].value;
-    const result = evaluate(input, { [key]: value });
-    if (!canConfirm(result)) return;
-    const d = buildDecision({ input, result, answers: { [key]: value, unused: "x" }, user, hash: "h", now,
-      aiSuggestions: [{ gap_key: key, answer: value, confidence: 0.4, accepted: false }] });
+    const answers = { "IND_NEW.SELF_CERT": "yes", "IND_NEW.SELF_CERT_VALID": "valid", unused: "x" };
+    const result = evaluate(input, answers);
+    expect(canConfirm(result)).toBe(true);
+    const key = "IND_NEW.SELF_CERT_VALID";
+    const d = buildDecision({ input, result, answers, user, hash: "h", now,
+      aiSuggestions: [{ gap_key: key, answer: "valid", confidence: 0.4, accepted: false }] });
     expect(d.step_trace.find((s) => s.step_id === key).source).toBe("user");
-    expect(d.gap_answers).toEqual([{ key, value, source: "user" }]);
+    expect(d.gap_answers.map((g) => g.key)).toEqual(["IND_NEW.SELF_CERT", key]);
+    expect(d.gap_answers.every((g) => g.source === "user")).toBe(true);
+    expect(d.ai_suggestions[0].accepted).toBe(false);
   });
 });
 
