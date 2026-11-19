@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { evaluate } from "../../../base44/shared/crs/index.js";
+import { evaluate, loadPublishedPacks } from "../../../base44/shared/crs/index.js";
 
 /**
  * Loads everything the Classification Studio needs for one tenant and evaluates every account
@@ -66,14 +66,9 @@ export function useStudioData(tenantId) {
   });
 
   const packQ = useQuery({
-    queryKey: ["studio-rule-pack"],
-    queryFn: async () => {
-      const packs = await base44.entities.CrsRulePack.filter({ status: "published" }, "-published_at", 10);
-      const pack = packs.find((p) => !p.jurisdiction_scope || p.jurisdiction_scope === "global") || null;
-      if (!pack) return null;
-      const rules = await base44.entities.CrsRule.filter({ pack_id: pack.id }, "order", 500);
-      return { ...pack, rules };
-    },
+    queryKey: ["studio-rule-pack", jurisdiction],
+    queryFn: () => loadPublishedPacks(base44.entities, jurisdiction),
+    enabled: !!jurisdiction,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -103,9 +98,9 @@ export function useStudioData(tenantId) {
     enabled,
   });
 
-  const queries = [settingsQ, countriesQ, accountsQ, cpsQ, evidenceQ, decisionsQ, entitiesQ, packQ];
-  const isLoading = queries.some((q) => q.isLoading) || (!!jurisdiction && listQ.isLoading);
-  const error = queries.find((q) => q.error)?.error || listQ.error || null;
+  const queries = [settingsQ, countriesQ, accountsQ, cpsQ, evidenceQ, decisionsQ, entitiesQ];
+  const isLoading = queries.some((q) => q.isLoading) || (!!jurisdiction && (listQ.isLoading || packQ.isLoading));
+  const error = queries.find((q) => q.error)?.error || listQ.error || packQ.error || null;
 
   const rows = useMemo(() => {
     if (isLoading || !accountsQ.data || !settingsQ.data) return [];
@@ -120,7 +115,7 @@ export function useStudioData(tenantId) {
       if (d.status === "proposed" && !proposed[d.target_id]) proposed[d.target_id] = d;
     }
     const entityNames = Object.fromEntries((entitiesQ.data || []).map((e) => [e.id, e.entity_name]));
-    const base = { settings: settingsQ.data, reportableList: listQ.data || null, countries: countriesQ.data || [], pack: packQ.data || null };
+    const base = { settings: settingsQ.data, reportableList: listQ.data || null, countries: countriesQ.data || [], pack: packQ.data?.pack || null, overridePack: packQ.data?.overridePack || null };
 
     return accountsQ.data.map((account) => {
       const evidence = evidenceByAccount[account.id] || {};
@@ -166,7 +161,8 @@ export function useStudioData(tenantId) {
     isFetching: accountsQ.isFetching || evidenceQ.isFetching || decisionsQ.isFetching,
     settings: settingsQ.data,
     reportableList: listQ.data,
-    pack: packQ.data,
+    pack: packQ.data?.pack || null,
+    overridePack: packQ.data?.overridePack || null,
     entities: entitiesQ.data || [],
     rows,
   };

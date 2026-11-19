@@ -1,6 +1,6 @@
 // Classification Studio — baseline CRS rule pack v1.0, based on the OECD CRS Implementation Handbook (2nd ed.).
 // The engine reads parameters, wording and references from here. A published CrsRulePack in the Rule Library
-// (Phase 5) overrides these by rule_key. Rules marked `locked` are core Handbook steps: their wording can change,
+// overrides these by rule_key. Rules marked `locked` are core Handbook steps: their wording can change,
 // but they can't be disabled.
 
 export const BASELINE_PACK_VERSION = "1.0.0";
@@ -134,17 +134,31 @@ export const BASELINE_PACK = {
   rules: BASELINE_RULES,
 };
 
-/** Merge a published pack's rules over the baseline by rule_key (locked rules can't be disabled). */
-export function resolvePack(published) {
-  if (!published || !Array.isArray(published.rules) || published.rules.length === 0) return BASELINE_PACK;
-  const byKey = new Map(BASELINE_RULES.map((r) => [r.rule_key, r]));
+/** Lay a pack's rules over a resolved pack by rule_key. Locked rules can't be disabled; custom rules are kept. */
+function overlay(base, published) {
+  const byKey = new Map(base.rules.map((r) => [r.rule_key, r]));
   for (const r of published.rules) {
-    const base = byKey.get(r.rule_key);
-    const merged = { ...(base || {}), ...r, params: { ...(base?.params || {}), ...(r.params || {}) } };
-    if (base?.locked) { merged.locked = true; merged.enabled = true; }
+    const prev = byKey.get(r.rule_key);
+    const merged = { ...(prev || {}), ...r, params: { ...(prev?.params || {}), ...(r.params || {}) } };
+    if (prev?.locked) { merged.locked = true; merged.enabled = true; }
     byKey.set(r.rule_key, merged);
   }
-  return { ...BASELINE_PACK, ...published, rules: [...byKey.values()] };
+  return [...byKey.values()];
+}
+
+/**
+ * Resolve the rules the engine uses: the baseline, then the published global pack, then (optionally) a published
+ * pack scoped to the tenant's reporting jurisdiction (e.g. CW).
+ */
+export function resolvePack(published, override) {
+  const hasRules = (p) => p && Array.isArray(p.rules) && p.rules.length > 0;
+  let pack = BASELINE_PACK;
+  if (hasRules(published)) pack = { ...BASELINE_PACK, ...published, rules: overlay(BASELINE_PACK, published) };
+  if (hasRules(override)) {
+    pack = { ...pack, rules: overlay(pack, override), override_version: override.version, override_scope: override.jurisdiction_scope,
+      version: `${pack.version}+${override.jurisdiction_scope || "local"}.${override.version}` };
+  }
+  return pack;
 }
 
 export function getRule(pack, key) {

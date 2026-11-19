@@ -103,15 +103,24 @@ export async function loadStudioInput(db, account, shared = {}) {
     .filter((r) => r.status !== "retired").sort((a, b) => (b.year || 0) - (a.year || 0))[0] || null;
   const countries = shared.countries ?? (await db.CrsCountryInfo.filter({}, "country_code", 1000));
   let pack = shared.pack;
-  if (pack === undefined) {
-    const packs = await db.CrsRulePack.filter({ status: "published" }, "-published_at", 10);
-    const p = packs.find((x) => !x.jurisdiction_scope || x.jurisdiction_scope === "global") || null;
-    pack = p ? { ...p, rules: await db.CrsRule.filter({ pack_id: p.id }, "order", 500) } : null;
+  let overridePack = shared.overridePack;
+  if (pack === undefined || overridePack === undefined) {
+    const loaded = await loadPublishedPacks(db, settings.reporting_jurisdiction);
+    pack = loaded.pack; overridePack = loaded.overridePack;
   }
   const controllingPersons = await db.ControllingPerson.filter({ account_id: account.id }, "-updated_date", 500);
   const evidence = (await db.StudioEvidence.filter({ account_id: account.id }))[0] || {};
   return {
-    input: { settings, reportableList, countries, pack, account, controllingPersons: controllingPersons.filter((c) => c.tenant_id === tenantId), evidence, linkedAccounts: [] },
-    shared: { settings, reportableList, countries, pack },
+    input: { settings, reportableList, countries, pack, overridePack, account, controllingPersons: controllingPersons.filter((c) => c.tenant_id === tenantId), evidence, linkedAccounts: [] },
+    shared: { settings, reportableList, countries, pack, overridePack },
   };
+}
+
+/** The published global pack and the published pack for a reporting jurisdiction (if any), each with its rules. */
+export async function loadPublishedPacks(db, jurisdiction) {
+  const packs = await db.CrsRulePack.filter({ status: "published" }, "-published_at", 50);
+  const g = packs.find((x) => !x.jurisdiction_scope || x.jurisdiction_scope === "global") || null;
+  const o = jurisdiction ? packs.find((x) => x.jurisdiction_scope === jurisdiction) || null : null;
+  const withRules = async (p) => (p ? { ...p, rules: await db.CrsRule.filter({ pack_id: p.id }, "order", 500) } : null);
+  return { pack: await withRules(g), overridePack: await withRules(o) };
 }

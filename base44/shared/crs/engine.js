@@ -8,13 +8,14 @@
 // input = {
 //   account, controllingPersons[], evidence (StudioEvidence), linkedAccounts[], settings (StudioSettings),
 //   reportableList (ReportableJurisdictionList), countries (CrsCountryInfo rows), pack (published CrsRulePack + rules),
-//   asOf (ISO date)
+//   overridePack (published pack scoped to the reporting jurisdiction, optional), asOf (ISO date)
 // }
 
 import { normalizeCountry, normalizeWithIndex, buildCountryIndex, countryName } from "./countries.js";
 import { resolvePack, getRule } from "./baselinePack.js";
+import { matchesCondition } from "./conditions.js";
 
-export const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "1.1.0";
 
 const EXCLUDED_TYPES = {
   inheritance_estate: "Estate account",
@@ -46,7 +47,7 @@ const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 class Pending extends Error {}
 
 function makeContext(input = {}, answers = {}) {
-  const pack = resolvePack(input.pack);
+  const pack = resolvePack(input.pack, input.overridePack);
   const settings = input.settings || {};
   const index = buildCountryIndex(input.countries || []);
   const norm = (v) => normalizeWithIndex(index, v);
@@ -66,6 +67,8 @@ function makeContext(input = {}, answers = {}) {
   };
 
   const rule = (key) => getRule(pack, key) || { rule_key: key };
+  // Optional (unlocked) rules can be switched off pack-wide in the Rule Library.
+  const enabled = (key) => rule(key).enabled !== false;
 
   const step = (key, answer, source, evidence, extra = {}) => {
     const r = rule(key);
@@ -89,7 +92,7 @@ function makeContext(input = {}, answers = {}) {
     throw new Pending();
   };
 
-  return { input, answers, pack, settings, index, norm, fiJur, list, listSource, asOf, steps, gaps, isReportable, rule, step, ask,
+  return { input, answers, pack, settings, index, norm, fiJur, list, listSource, asOf, steps, gaps, isReportable, rule, enabled, step, ask,
     account: input.account || {}, evidence: input.evidence || {}, cps: input.controllingPersons || [] };
 }
 
@@ -206,7 +209,7 @@ function individualPreexisting(ctx, h, usd) {
   const hv = usd > hvLimit || ctx.settings.alt_hv_rules_for_lv === true;
   const names = (codes) => codes.map((c) => countryName(ctx.index, c)).join(", ");
 
-  if (INSURANCE_TYPES.includes(a.account_type)) {
+  if (INSURANCE_TYPES.includes(a.account_type) && ctx.enabled("IND_PRE.INSURANCE_BAR")) {
     if (ev.insurance_sale_prohibited === true) {
       ctx.step("IND_PRE.INSURANCE_BAR", "Yes", "data", "insurance_sale_prohibited = true");
       return { status: "non_reportable", jurisdictions: [], persons: [], reason: "Insurance or annuity contract that law bars from sale to residents of reportable jurisdictions (Handbook ¶158)." };
@@ -217,7 +220,8 @@ function individualPreexisting(ctx, h, usd) {
   // Residence address test (lower value only, where allowed)
   const docs = (ev.documentary_evidence || []).filter((d) => d && (d.type || d.id_number));
   const docCountries = uniq(docs.map((d) => ctx.norm(d.address_country)));
-  const ratAllowed = ctx.settings.residence_address_test_allowed !== false && !hv && ctx.settings.alt_new_rules_for_preexisting !== true;
+  const ratOn = ctx.enabled("IND_PRE.RESIDENCE_ADDRESS_TEST");
+  const ratAllowed = ratOn && ctx.settings.residence_address_test_allowed !== false && !hv && ctx.settings.alt_new_rules_for_preexisting !== true;
   if (ratAllowed && docs.length && h.addressCountry && (docCountries.length === 0 || docCountries.includes(h.addressCountry))) {
     ctx.step("IND_PRE.RESIDENCE_ADDRESS_TEST", `Yes · ${countryName(ctx.index, h.addressCountry)}`, "data",
       `${docs.map((d) => d.type).filter(Boolean).join(" + ") || "Documentary evidence"} on file · current_address.country = ${h.addressCountry}`, { holder: tag });
@@ -226,7 +230,7 @@ function individualPreexisting(ctx, h, usd) {
       `Lower value pre-existing account. The residence address test places the holder in ${countryName(ctx.index, h.addressCountry)}, which is not a reportable jurisdiction.`);
   }
   ctx.step("IND_PRE.RESIDENCE_ADDRESS_TEST", "Not used", "rule",
-    hv ? "High value account · the residence address test is not allowed" : !ratAllowed ? "Not allowed by your settings" : "No documentary evidence of the current address on file", { holder: tag });
+    hv ? "High value account · the residence address test is not allowed" : !ratOn ? "Switched off in the CRS Rule Library" : !ratAllowed ? "Not allowed by your settings" : "No documentary evidence of the current address on file", { holder: tag });
 
   // Electronic indicia search
   const recorded = (ev.crs_indicia || []).filter((i) => !i.cured);
@@ -304,11 +308,12 @@ function individualNew(ctx, h) {
   }
 
   const tinRisk = tinGaps.filter((c) => ctx.isReportable(c) && ctx.index.byCode[c]?.tinIssuedToAll === true);
-  if (tinRisk.length) {
+  if (tinRisk.length && ctx.enabled("IND_NEW.TIN_CHECK")) {
     if (ctx.ask("IND_NEW.TIN_CHECK", { holder: tag, question: `${names(tinRisk)} issue${tinRisk.length > 1 ? "" : "s"} TINs to all residents, but no TIN is on file. Has it been obtained or explained?` }) === "missing") {
       throw new Pending("Request the missing TIN. Its absence is a reason to doubt the self-certification (FAQ II-8).");
     }
-  } else ctx.step("IND_NEW.TIN_CHECK", "No", "reference", tinGaps.length ? "TIN missing, but not for a jurisdiction recorded as issuing TINs to all residents" : "TIN on file for every tax residence", { holder: tag });
+  } else if (!ctx.enabled("IND_NEW.TIN_CHECK")) ctx.step("IND_NEW.TIN_CHECK", "Not applied", "rule", "Switched off in the CRS Rule Library", { holder: tag });
+  else ctx.step("IND_NEW.TIN_CHECK", "No", "reference", tinGaps.length ? "TIN missing, but not for a jurisdiction recorded as issuing TINs to all residents" : "TIN on file for every tax residence", { holder: tag });
 
   if (h.addressCountry && h.residences.length && !h.residences.includes(h.addressCountry)) {
     if (ctx.ask("IND_NEW.REASONABLENESS", { holder: tag, question: `The address on file is in ${countryName(ctx.index, h.addressCountry)}, which is not among the self-certified residences (${names(h.residences)}). Is there a reasonable explanation?` }) === "new_cert") {
@@ -406,11 +411,12 @@ function entityAccount(ctx, pre, usd) {
   const a = ctx.account;
   const names = (codes) => codes.map((c) => countryName(ctx.index, c)).join(", ");
   const exemptionLimit = ctx.rule("ENT_PRE.THRESHOLD_250K").params?.threshold_usd ?? 250000;
-  if (pre && ctx.settings.entity_250k_exemption === true && usd <= exemptionLimit) {
+  const exemptionOn = ctx.enabled("ENT_PRE.THRESHOLD_250K") && ctx.settings.entity_250k_exemption === true;
+  if (pre && exemptionOn && usd <= exemptionLimit) {
     ctx.step("ENT_PRE.THRESHOLD_250K", "Yes · not reviewed", "rule", `${fmtUsd(usd)} ≤ ${fmtUsd(exemptionLimit)} · exemption elected in settings`);
     return { status: "non_reportable", jurisdictions: [], persons: [], reason: `Pre-existing entity account of ${fmtUsd(usd)}. Under the elected USD 250,000 exemption it is not reviewed until it exceeds the threshold at a year end (Handbook ¶189).` };
   }
-  if (pre) ctx.step("ENT_PRE.THRESHOLD_250K", "No", "rule", ctx.settings.entity_250k_exemption === true ? `${fmtUsd(usd)} > ${fmtUsd(exemptionLimit)}` : "Exemption not elected");
+  if (pre) ctx.step("ENT_PRE.THRESHOLD_250K", "No", "rule", exemptionOn ? `${fmtUsd(usd)} > ${fmtUsd(exemptionLimit)}` : !ctx.enabled("ENT_PRE.THRESHOLD_250K") ? "Exemption switched off in the CRS Rule Library" : "Exemption not elected");
 
   // Residence (Table 3)
   const type = String(a.account_holder_entity_type || "").toLowerCase();
@@ -472,8 +478,12 @@ export function evaluate(input, answers = {}) {
     if (!outcome) {
       const pre = preexisting(ctx);
       const usd = balance(ctx);
-      if (ctx.account.account_holder_type === "entity") outcome = entityAccount(ctx, pre, usd);
-      else {
+      extraQuestions(ctx, "after_general", { preexisting: pre, balance_usd: usd });
+      if (ctx.account.account_holder_type === "entity") {
+        extraQuestions(ctx, "entity", { preexisting: pre, balance_usd: usd });
+        outcome = entityAccount(ctx, pre, usd);
+      } else {
+        extraQuestions(ctx, "individual", { preexisting: pre, balance_usd: usd });
         const results = individualHolders(ctx).map((h) => (pre && ctx.settings.alt_new_rules_for_preexisting !== true ? individualPreexisting(ctx, h, usd) : individualNew(ctx, h)));
         if (results.length === 1) outcome = results[0];
         else {
@@ -501,6 +511,24 @@ export function evaluate(input, answers = {}) {
     gaps: ctx.gaps,
     outcome,
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Extra questions (custom rules added in the CRS Rule Library). They can only pause an account ("Action needed");
+// they can never make it non-reportable or change its jurisdictions, so a local check can't weaken the Handbook steps.
+
+export const EXTRA_QUESTION_HOOKS = ["after_general", "individual", "entity"];
+
+function extraQuestions(ctx, hook, derived) {
+  const custom = (ctx.pack.rules || []).filter((r) => r.custom && r.hook === hook && r.enabled !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (!custom.length) return;
+  const facts = { ...ctx.account, ...derived, reporting_jurisdiction: ctx.fiJur };
+  for (const r of custom) {
+    if (r.condition && !matchesCondition(r.condition, facts)) continue;
+    const value = ctx.ask(r.rule_key);
+    const option = (r.options || []).find((o) => o.value === value);
+    if (option?.effect === "hold") throw new Pending(option.reason || `Action needed: ${r.question}`);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -535,6 +563,7 @@ export function materialSnapshot(input) {
     settings: pick(input.settings, ["reporting_jurisdiction", "preexisting_cutoff", "residence_address_test_allowed", "entity_250k_exemption", "wider_approach", "alt_new_rules_for_preexisting", "alt_hv_rules_for_lv", "fx_rates"]),
     reportable_list_version: input.reportableList?.version || null,
     rule_pack_version: input.pack?.version || null,
+    ...(input.overridePack?.version ? { override_pack: `${input.overridePack.jurisdiction_scope}.${input.overridePack.version}` } : {}),
   };
 }
 
