@@ -1,102 +1,156 @@
 {
-  "name": "Tenant",
-  "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "Legal name of the financial institution"
-    },
-    "short_name": {
-      "type": "string",
-      "description": "Display name for the tenant"
-    },
-    "jurisdiction": {
-      "type": "string",
-      "description": "Primary jurisdiction/country of operation"
-    },
-    "tax_id": {
-      "type": "string",
-      "description": "Tax identification number"
-    },
-    "contact_email": {
-      "type": "string",
-      "format": "email"
-    },
-    "contact_phone": {
-      "type": "string"
-    },
     "address": {
-      "type": "object",
       "properties": {
-        "street": {
-          "type": "string"
-        },
         "city": {
           "type": "string"
         },
-        "state": {
+        "country": {
           "type": "string"
         },
         "postal_code": {
           "type": "string"
         },
-        "country": {
+        "state": {
+          "type": "string"
+        },
+        "street": {
           "type": "string"
         }
-      }
+      },
+      "type": "object"
     },
     "branding": {
-      "type": "object",
       "properties": {
+        "font_family": {
+          "default": "Inter",
+          "type": "string"
+        },
         "logo_url": {
           "type": "string"
         },
         "primary_color": {
-          "type": "string",
-          "default": "#464feb"
+          "default": "#464feb",
+          "type": "string"
         },
         "secondary_color": {
-          "type": "string",
-          "default": "#1e293b"
-        },
-        "font_family": {
-          "type": "string",
-          "default": "Inter"
+          "default": "#1e293b",
+          "type": "string"
         }
-      }
+      },
+      "type": "object"
     },
-    "subscription_status": {
-      "type": "string",
-      "enum": [
-        "active",
-        "suspended",
-        "trial"
-      ],
-      "default": "active"
+    "contact_email": {
+      "format": "email",
+      "type": "string"
     },
-    "subscription_tier": {
-      "type": "string",
-      "enum": [
-        "basic",
-        "professional",
-        "enterprise"
-      ],
-      "default": "professional"
+    "contact_phone": {
+      "type": "string"
     },
     "default_mfa_enabled": {
-      "type": "boolean",
       "default": true,
-      "description": "Whether 2FA is enabled by default for all newly invited users in this tenant"
+      "description": "Whether 2FA is enabled by default for all newly invited users in this tenant",
+      "type": "boolean"
+    },
+    "enabled_features": {
+      "description": "Feature flags to control tenant access to specific platform capabilities",
+      "properties": {
+        "advanced_reporting": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_bulk_import": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_classification_assistant": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_data_validator": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_document_parser": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_help_assistant": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_jurisdiction_advisor": {
+          "default": true,
+          "type": "boolean"
+        },
+        "ai_workflow_helper": {
+          "default": true,
+          "type": "boolean"
+        },
+        "audit_logging": {
+          "default": true,
+          "type": "boolean"
+        },
+        "compliance_assistant": {
+          "default": true,
+          "type": "boolean"
+        },
+        "compliance_support": {
+          "default": false,
+          "type": "boolean"
+        },
+        "crs_enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "dashboard_builder": {
+          "default": true,
+          "type": "boolean"
+        },
+        "fatca_enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "flowchart_view": {
+          "default": false,
+          "description": "Shows the workflow Flowchart action on Account, Entity, and Controlling Person classification screens",
+          "type": "boolean"
+        },
+        "guided_tours": {
+          "default": true,
+          "type": "boolean"
+        },
+        "user_management": {
+          "default": true,
+          "type": "boolean"
+        },
+        "validation_rules": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "jurisdiction": {
+      "description": "Primary jurisdiction/country of operation",
+      "type": "string"
+    },
+    "name": {
+      "description": "Legal name of the financial institution",
+      "type": "string"
     },
     "navigation_settings": {
-      "type": "object",
       "description": "Navigation menu configuration",
       "properties": {
+        "administration_default_collapsed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "crs_default_collapsed": {
+          "default": false,
+          "type": "boolean"
+        },
         "crs_menu_order": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
           "default": [
             "Dashboard",
             "Activity Log",
@@ -105,13 +159,17 @@
             "CRS Reports",
             "AI Assistant"
           ],
-          "description": "Order of CRS menu items"
-        },
-        "fatca_menu_order": {
-          "type": "array",
+          "description": "Order of CRS menu items",
           "items": {
             "type": "string"
           },
+          "type": "array"
+        },
+        "fatca_default_collapsed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "fatca_menu_order": {
           "default": [
             "Dashboard",
             "Activity Log",
@@ -119,117 +177,63 @@
             "Accounts",
             "FATCA Reports"
           ],
-          "description": "Order of FATCA menu items"
-        },
-        "crs_default_collapsed": {
-          "type": "boolean",
-          "default": false
-        },
-        "fatca_default_collapsed": {
-          "type": "boolean",
-          "default": false
-        },
-        "administration_default_collapsed": {
-          "type": "boolean",
-          "default": false
+          "description": "Order of FATCA menu items",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
-      }
+      },
+      "type": "object"
     },
-    "enabled_features": {
-      "type": "object",
-      "description": "Feature flags to control tenant access to specific platform capabilities",
-      "properties": {
-        "crs_enabled": {
-          "type": "boolean",
-          "default": true
-        },
-        "fatca_enabled": {
-          "type": "boolean",
-          "default": false
-        },
-        "ai_bulk_import": {
-          "type": "boolean",
-          "default": true
-        },
-        "ai_classification_assistant": {
-          "type": "boolean",
-          "default": true
-        },
-        "ai_data_validator": {
-          "type": "boolean",
-          "default": true
-        },
-        "ai_jurisdiction_advisor": {
-          "type": "boolean",
-          "default": true
-        },
-        "ai_help_assistant": {
-          "type": "boolean",
-          "default": true
-        },
-        "ai_workflow_helper": {
-          "type": "boolean",
-          "default": true
-        },
-        "ai_document_parser": {
-          "type": "boolean",
-          "default": true
-        },
-        "dashboard_builder": {
-          "type": "boolean",
-          "default": true
-        },
-        "guided_tours": {
-          "type": "boolean",
-          "default": true
-        },
-        "compliance_assistant": {
-          "type": "boolean",
-          "default": true
-        },
-        "compliance_support": {
-          "type": "boolean",
-          "default": false
-        },
-        "advanced_reporting": {
-          "type": "boolean",
-          "default": true
-        },
-        "audit_logging": {
-          "type": "boolean",
-          "default": true
-        },
-        "user_management": {
-          "type": "boolean",
-          "default": true
-        },
-        "validation_rules": {
-          "type": "boolean",
-          "default": true
-        },
-        "flowchart_view": {
-          "type": "boolean",
-          "default": false,
-          "description": "Shows the workflow Flowchart action on Account, Entity, and Controlling Person classification screens"
-        }
-      }
+    "preexisting_cutoff": {
+      "description": "CRS pre-existing account cut-off date for this tenant (accounts open on or before it are pre-existing). Empty = 31 Dec 2017 (previous default).",
+      "format": "date",
+      "type": "string"
+    },
+    "short_name": {
+      "description": "Display name for the tenant",
+      "type": "string"
+    },
+    "subscription_status": {
+      "default": "active",
+      "enum": [
+        "active",
+        "suspended",
+        "trial"
+      ],
+      "type": "string"
+    },
+    "subscription_tier": {
+      "default": "professional",
+      "enum": [
+        "basic",
+        "professional",
+        "enterprise"
+      ],
+      "type": "string"
     },
     "support_hub_sync_status": {
-      "type": "string",
+      "default": "pending",
+      "description": "Synchronization status with the Support Hub application",
       "enum": [
         "pending",
         "synced",
         "failed",
         "retrying"
       ],
-      "default": "pending",
-      "description": "Synchronization status with the Support Hub application"
+      "type": "string"
+    },
+    "tax_id": {
+      "description": "Tax identification number",
+      "type": "string"
     }
   },
   "required": [
     "name",
     "jurisdiction"
   ],
+  "type": "object",
   "rls": {
     "read": {
       "$or": [
@@ -265,5 +269,6 @@
         "data.app_role": "super_admin"
       }
     }
-  }
+  },
+  "name": "Tenant"
 }
