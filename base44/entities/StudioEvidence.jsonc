@@ -159,6 +159,32 @@
     "tenant_id": {
       "type": "string"
     },
+    "trust_distributions": {
+      "description": "Distributions to members of a class of trust beneficiaries (change in circumstances, Handbook para 267)",
+      "items": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "beneficiary": {
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "recorded_by": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
     "trust_parties": {
       "items": {
         "properties": {
