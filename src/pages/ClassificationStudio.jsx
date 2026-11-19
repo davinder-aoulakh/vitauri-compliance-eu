@@ -17,7 +17,8 @@ import { Inbox, Settings as SettingsIcon, Lock, ArrowLeft, Scale, Loader2, Alert
 
 /**
  * Classification Studio — extra, opt-in screen behind the tenant feature flag `classification_studio`.
- * Phase 3: read-only queues, review screen and studio-vs-manual comparison using the shared CRS engine.
+ * Queues, review screen (answer open questions, AI suggestions, confirm) and studio-vs-manual comparison,
+ * all using the shared CRS engine. Confirming runs in the studioConfirmDecision backend function.
  * It does not change the manual classification flow on the Accounts page.
  */
 
@@ -53,7 +54,8 @@ function usePilotTenants(enabled) {
 
 function StudioWorkspace({ tenantId, user, tenant, accountId }) {
   const data = useStudioData(tenantId);
-  const [tab, setTab] = useState(accountId ? "queues" : "queues");
+  const [tab, setTab] = useState("queues");
+  const canConfirm = CONFIRM_ROLES.includes(user?.app_role);
   const [openAccount, setOpenAccount] = useState(accountId || null);
   useEffect(() => { if (accountId) setOpenAccount(accountId); }, [accountId]);
 
@@ -77,7 +79,7 @@ function StudioWorkspace({ tenantId, user, tenant, accountId }) {
 
       <TabsContent value="queues" className="mt-4">
         {!data.isLoading && !data.error && data.settings && (
-          <StudioQueues key={openAccount || "none"} data={data} initialAccountId={openAccount} />
+          <StudioQueues key={openAccount || "none"} data={data} initialAccountId={openAccount} user={user} canConfirm={canConfirm} readOnly={user?.app_role === "super_admin"} />
         )}
       </TabsContent>
       <TabsContent value="comparison" className="mt-4">
@@ -149,7 +151,7 @@ export default function ClassificationStudio() {
             and keeps a permanent record of every decision. Manual classification on the Accounts page keeps working as before.
           </p>
         </div>
-        <Badge variant="secondary">{isSuperAdmin ? "Super admin · read-only" : canConfirm ? "You can confirm decisions" : "You can review and draft answers"}</Badge>
+        <Badge variant="secondary">{isSuperAdmin ? "Super admin · read-only" : canConfirm ? "You can confirm decisions" : "You can answer questions; an admin or supervisor confirms"}</Badge>
       </div>
 
       {isSuperAdmin && !user?.tenant_id && (
