@@ -1,0 +1,36 @@
+{
+  "name": "Studio re-check: Controlling person changed",
+  "description": "Classification Studio: when a controlling person is added, changed or removed, re-check the account against its confirmed studio decision.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "entity_name": "ControllingPerson"
+    }
+  },
+  "definition": {
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "then": "end",
+          "with": {
+            "args": {},
+            "function_name": "studioReevaluate"
+          }
+        }
+      }
+    ],
+    "document": {
+      "dsl": "1.0.0",
+      "name": "studio_recheck_controlling_person",
+      "namespace": "base44",
+      "version": "1.0"
+    }
+  }
+}

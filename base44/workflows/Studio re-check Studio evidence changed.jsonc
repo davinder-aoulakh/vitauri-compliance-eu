@@ -1,0 +1,35 @@
+{
+  "name": "Studio re-check: Studio evidence changed",
+  "description": "Classification Studio: when the studio's CRS evidence for an account changes (indicia, documents, RM attestations), re-check the account against its confirmed decision. Draft answers don't trigger anything.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update"
+      ],
+      "entity_name": "StudioEvidence"
+    }
+  },
+  "definition": {
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "then": "end",
+          "with": {
+            "args": {},
+            "function_name": "studioReevaluate"
+          }
+        }
+      }
+    ],
+    "document": {
+      "dsl": "1.0.0",
+      "name": "studio_recheck_evidence",
+      "namespace": "base44",
+      "version": "1.0"
+    }
+  }
+}
