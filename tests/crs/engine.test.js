@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { evaluate, inputHash, materialSnapshot, resolvePack, BASELINE_RULES, normalizeCountry, buildCountryIndex } from "../../base44/shared/crs/index.js";
+import { normalizeWithIndex } from "../../base44/shared/crs/countries.js";
 
 // ---- Shared reference data -------------------------------------------------------------------------------------
 const COUNTRIES = [
@@ -136,7 +137,7 @@ describe("ACME-style accounts (CW)", () => {
 
   it("Managed investment entity in a non-participating jurisdiction → Passive NFE, look-through (VIII(D)(8))", () => {
     const r = run(CW, { account: { account_holder_type: "entity", account_creation_date: "2020-01-01", year_end_cash_value: 5e6, year_end_cash_value_currency: "USD", country_of_incorporation_code: "VE",
-      self_certification_obtained: true, type_of_financial_institution: "investment_entity_type_b" },
+      self_certification_obtained: true, entity_classification: "financial_institution", type_of_financial_institution: "investment_entity_type_b" },
     controllingPersons: [{ full_name: "Ana Pérez", control_type: "legal_person_ownership", ownership_percentage: 100, tax_residencies: [{ country: "CO" }], self_certification_obtained: true }] });
     expect(r.outcome).toMatchObject({ status: "reportable", jurisdictions: ["CO"] });
   });
@@ -247,5 +248,54 @@ describe("Settings and rule pack", () => {
     expect(h2).toBe(h1);
     expect(h3).not.toBe(h1);
     expect(materialSnapshot(base).account.current_email).toBeUndefined();
+  });
+});
+
+// ---- Regressions found in the ACME dry run (19 Nov 2026) -------------------------------------------------------
+describe("ACME dry-run regressions", () => {
+  const NAMED = [
+    { country_code: "SR", country_name: "Suriname", is_crs_country: false },
+    { country_code: "GD", country_name: "Grenada", is_crs_country: true },
+    { country_code: "CL", country_name: "Chile", is_crs_country: true },
+    { country_code: "IN", country_name: "India", is_crs_country: true },
+    { country_code: "BE", country_name: "Belgium", is_crs_country: true },
+    { country_code: "CW", country_name: "Curaçao", is_crs_country: true },
+  ];
+  const CWN = { ...CW, countries: NAMED, reportableList: listFor(["GD", "CL", "IN", "BE"], "CW-2026-v1") };
+
+  it("Recognises full country names from the country table", () => {
+    const idx = buildCountryIndex(NAMED);
+    expect(normalizeWithIndex(idx, "Suriname")).toBe("SR");
+    expect(normalizeWithIndex(idx, "grenada")).toBe("GD");
+    expect(normalizeWithIndex(idx, "Atlantis")).toBeNull();
+  });
+
+  it("Uses named tax residences (Chile, Grenada) before the place of incorporation", () => {
+    const r = run(CWN, { account: { account_holder_type: "entity", account_holder_name: "X", account_creation_date: "2004-06-17", year_end_cash_value: 1000050, year_end_cash_value_currency: "USD",
+      tax_residencies: [{ country: "Chile" }, { country: "Grenada" }], country_of_incorporation: "India", entity_classification: "active_nfe" } });
+    expect(r.outcome.jurisdictions.sort()).toEqual(["CL", "GD"]);
+    expect(r.steps.find((s) => s.key === "ENT.RESIDENCE").evidence).toMatch(/self-certified tax residence/);
+  });
+
+  it("A default type_of_financial_institution does not override an explicit Passive NFE classification", () => {
+    const r = run(CWN, { account: { account_holder_type: "entity", account_creation_date: "2017-07-03", year_end_cash_value: 4000000, year_end_cash_value_currency: "USD",
+      tax_residencies: [{ country: "Curaçao" }], entity_classification: "passive_nfe", type_of_financial_institution: "investment_entity_type_b", gross_income_from_financial_assets: true, self_certification_obtained: true },
+    controllingPersons: [{ full_name: "B", control_type: "legal_arrangement_beneficiary_equivalent", tax_residencies: [{ country: "Belgium" }], self_certification_obtained: true }] });
+    expect(r.steps.find((s) => s.key === "ENT.STATUS").answer).toBe("Passive NFE");
+    expect(r.outcome).toMatchObject({ status: "reportable", jurisdictions: ["BE"] });
+  });
+
+  it("FI-type field alone is a hint, not a classification: asks the status", () => {
+    const r = run(CWN, { account: { account_holder_type: "entity", account_creation_date: "2026-10-01", year_end_cash_value: 1500000, year_end_cash_value_currency: "USD",
+      tax_residencies: [{ country: "Curaçao" }], type_of_financial_institution: "investment_entity_type_b", gross_income_from_financial_assets: true, entity_managed_by_asset_manager: false, self_certification_obtained: true } });
+    expect(gapKeys(r)).toEqual(["ENT.STATUS"]);
+    expect(r.gaps[0].help).toMatch(/investment_entity_type_b/);
+  });
+
+  it("Explicit FI classification with type (b) outside participating jurisdictions → Passive NFE", () => {
+    const r = run(CWN, { account: { account_holder_type: "entity", account_creation_date: "2020-01-01", year_end_cash_value: 5e6, year_end_cash_value_currency: "USD",
+      tax_residencies: [{ country: "Suriname" }], entity_classification: "financial_institution", type_of_financial_institution: "investment_entity_type_b", self_certification_obtained: true },
+    controllingPersons: [{ full_name: "B", control_type: "legal_person_ownership", tax_residencies: [{ country: "Belgium" }], self_certification_obtained: true }] });
+    expect(r.outcome).toMatchObject({ status: "reportable", jurisdictions: ["BE"] });
   });
 });

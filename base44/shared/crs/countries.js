@@ -41,7 +41,21 @@ export function buildCountryIndex(rows = []) {
     };
   }
   const participating = new Set(Object.values(byCode).filter((c) => c.participating).map((c) => c.code));
-  return { byCode, participating };
+  // Full-name lookup from the table ("Suriname" -> SR), for records that store country names instead of codes.
+  const byName = {};
+  for (const r of rows || []) {
+    const code = normalizeCountry(r.country_code);
+    if (code && r.country_name) byName[String(r.country_name).trim().toLowerCase()] = code;
+  }
+  return { byCode, participating, byName };
+}
+
+/** Normalise using the built-in aliases first, then the country table's names. */
+export function normalizeWithIndex(index, value) {
+  const direct = normalizeCountry(value);
+  if (direct) return direct;
+  if (value === null || value === undefined) return null;
+  return index?.byName?.[String(value).trim().toLowerCase()] || null;
 }
 
 export function countryName(index, code) {

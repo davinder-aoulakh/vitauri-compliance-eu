@@ -11,7 +11,7 @@
 //   asOf (ISO date)
 // }
 
-import { normalizeCountry, buildCountryIndex, countryName } from "./countries.js";
+import { normalizeCountry, normalizeWithIndex, buildCountryIndex, countryName } from "./countries.js";
 import { resolvePack, getRule } from "./baselinePack.js";
 
 export const ENGINE_VERSION = "1.0.0";
@@ -49,9 +49,10 @@ function makeContext(input = {}, answers = {}) {
   const pack = resolvePack(input.pack);
   const settings = input.settings || {};
   const index = buildCountryIndex(input.countries || []);
-  const fiJur = normalizeCountry(settings.reporting_jurisdiction);
+  const norm = (v) => normalizeWithIndex(index, v);
+  const fiJur = norm(settings.reporting_jurisdiction);
   const list = input.reportableList || null;
-  const listCodes = new Set((list?.jurisdictions || []).map((j) => normalizeCountry(j.code)).filter(Boolean));
+  const listCodes = new Set((list?.jurisdictions || []).map((j) => norm(j.code)).filter(Boolean));
   const listSource = settings.wider_approach ? "wider approach" : list ? `${list.version} (${list.status})` : "participating jurisdictions (no reportable list found)";
   const asOf = input.asOf ? new Date(input.asOf) : new Date();
   const steps = [];
@@ -88,7 +89,7 @@ function makeContext(input = {}, answers = {}) {
     throw new Pending();
   };
 
-  return { input, answers, pack, settings, index, fiJur, list, listSource, asOf, steps, gaps, isReportable, rule, step, ask,
+  return { input, answers, pack, settings, index, norm, fiJur, list, listSource, asOf, steps, gaps, isReportable, rule, step, ask,
     account: input.account || {}, evidence: input.evidence || {}, cps: input.controllingPersons || [] };
 }
 
@@ -156,10 +157,10 @@ function balance(ctx) {
 // ---------------------------------------------------------------------------------------------------------------
 // Holders
 
-function residencesOf(obj) {
+function residencesOf(ctx, obj) {
   const codes = [];
-  for (const r of obj?.tax_residencies || []) codes.push(normalizeCountry(r.country));
-  for (const c of obj?.multiple_residencies || []) codes.push(normalizeCountry(c));
+  for (const r of obj?.tax_residencies || []) codes.push(ctx.norm(r.country));
+  for (const c of obj?.multiple_residencies || []) codes.push(ctx.norm(c));
   return uniq(codes);
 }
 
@@ -168,9 +169,9 @@ function individualHolders(ctx) {
   if (joint.length > 0) {
     return joint.map((h, i) => ({
       id: `h${i + 1}`, name: h.name || `Holder ${i + 1}`, joint: true,
-      residences: uniq([...(h.tax_residencies || []).map((r) => normalizeCountry(r.country)), normalizeCountry(h.country_of_residence)]),
+      residences: uniq([...(h.tax_residencies || []).map((r) => ctx.norm(r.country)), ctx.norm(h.country_of_residence)]),
       tins: h.tax_residencies || [],
-      addressCountry: normalizeCountry(h.address_country || h.address?.country),
+      addressCountry: ctx.norm(h.address_country || h.address?.country),
       dob: h.date_of_birth, selfCert: h.self_certification_obtained, selfCertDate: h.self_certification_date,
     }));
   }
@@ -178,10 +179,10 @@ function individualHolders(ctx) {
   const name = a.account_holder_name || [a.first_name, a.last_name].filter(Boolean).join(" ");
   return [{
     id: null, name, joint: false,
-    residences: uniq([...residencesOf(a), normalizeCountry(a.country_of_residence)]),
+    residences: uniq([...residencesOf(ctx, a), ctx.norm(a.country_of_residence)]),
     tins: a.tax_residencies || [],
-    addressCountry: normalizeCountry(a.current_address?.country),
-    otherAddressCountry: normalizeCountry(a.account_holder_address?.country),
+    addressCountry: ctx.norm(a.current_address?.country),
+    otherAddressCountry: ctx.norm(a.account_holder_address?.country),
     dob: a.date_of_birth,
     selfCert: a.self_certification_obtained === true || (a.documents || []).some((d) => d.document_type === "self_certification") ? true : undefined,
     selfCertDate: a.self_certification_date,
@@ -215,7 +216,7 @@ function individualPreexisting(ctx, h, usd) {
 
   // Residence address test (lower value only, where allowed)
   const docs = (ev.documentary_evidence || []).filter((d) => d && (d.type || d.id_number));
-  const docCountries = uniq(docs.map((d) => normalizeCountry(d.address_country)));
+  const docCountries = uniq(docs.map((d) => ctx.norm(d.address_country)));
   const ratAllowed = ctx.settings.residence_address_test_allowed !== false && !hv && ctx.settings.alt_new_rules_for_preexisting !== true;
   if (ratAllowed && docs.length && h.addressCountry && (docCountries.length === 0 || docCountries.includes(h.addressCountry))) {
     ctx.step("IND_PRE.RESIDENCE_ADDRESS_TEST", `Yes · ${countryName(ctx.index, h.addressCountry)}`, "data",
@@ -230,7 +231,7 @@ function individualPreexisting(ctx, h, usd) {
   // Electronic indicia search
   const recorded = (ev.crs_indicia || []).filter((i) => !i.cured);
   const indicia = [];
-  for (const i of recorded) { const c = normalizeCountry(i.country); if (c && ctx.isReportable(c)) indicia.push({ type: i.type, country: c, source: i.source || "recorded" }); }
+  for (const i of recorded) { const c = ctx.norm(i.country); if (c && ctx.isReportable(c)) indicia.push({ type: i.type, country: c, source: i.source || "recorded" }); }
   for (const c of h.residences) if (ctx.isReportable(c)) indicia.push({ type: "a_identified_resident", country: c, source: "tax_residencies" });
   for (const c of uniq([h.addressCountry, h.otherAddressCountry])) if (ctx.isReportable(c)) indicia.push({ type: "b_address", country: c, source: "address" });
   const holdMailOnly = ev.hold_mail_only === true || (recorded.length > 0 && recorded.every((i) => i.type === "f_hold_mail_in_care_of"));
@@ -293,7 +294,7 @@ function individualNew(ctx, h) {
   if (!h.name) missing.push("name");
   if (!h.addressCountry) missing.push("residence address");
   if (!h.residences.length) missing.push("tax residence");
-  const tinGaps = h.residences.filter((c) => c !== ctx.fiJur && !(h.tins.find((t) => normalizeCountry(t.country) === c && (t.tin || t.tin_unavailable_reason))));
+  const tinGaps = h.residences.filter((c) => c !== ctx.fiJur && !(h.tins.find((t) => ctx.norm(t.country) === c && (t.tin || t.tin_unavailable_reason))));
   if (tinGaps.length) missing.push(`TIN for ${tinGaps.join(", ")}`);
   if (!h.dob) missing.push("date of birth");
   if (!h.selfCertDate) missing.push("date signed");
@@ -327,25 +328,44 @@ function entityStatus(ctx, residences) {
   const a = ctx.account;
   const participating = (c) => c && (c === ctx.fiJur || ctx.index.participating.has(c));
   const anyParticipating = residences.some(participating);
-  if (a.type_of_financial_institution === "investment_entity_type_b" || (a.gross_income_from_financial_assets === true && a.entity_managed_by_asset_manager === true)) {
-    const src = a.type_of_financial_institution ? "type_of_financial_institution = investment_entity_type_b" : "gross_income_from_financial_assets = true and entity_managed_by_asset_manager = true";
+  const managedInvestment = a.gross_income_from_financial_assets === true && a.entity_managed_by_asset_manager === true;
+  const fiTypeNote = a.type_of_financial_institution ? ` · type_of_financial_institution = ${a.type_of_financial_institution}` : "";
+
+  // 1. Explicit classification on the account wins (the FI-type field alone is often a form default).
+  if (a.entity_classification === "financial_institution") {
+    if (a.type_of_financial_institution === "investment_entity_type_b" && !anyParticipating && residences.length) {
+      ctx.step("ENT.STATUS", "Passive NFE · managed investment entity in a non-participating jurisdiction", "rule", `entity_classification = financial_institution${fiTypeNote} · resident outside participating jurisdictions (VIII(D)(8))`);
+      return "passive_nfe";
+    }
+    ctx.step("ENT.STATUS", "Financial institution", "data", `entity_classification = financial_institution${fiTypeNote}`);
+    return "fi";
+  }
+  if (a.entity_classification === "active_nfe" || a.entity_classification === "passive_nfe") {
+    const label = a.entity_classification === "active_nfe" ? "Active NFE" : "Passive NFE";
+    const conflict = managedInvestment ? " · note: income mainly from financial assets and managed by an asset manager — check it isn't an investment entity" : "";
+    ctx.step("ENT.STATUS", label, "data", `entity_classification = ${a.entity_classification}${conflict}`);
+    return a.entity_classification;
+  }
+  if (a.crs_entity_classification === "CRS101" || a.crs_entity_classification === "CRS103") {
+    ctx.step("ENT.STATUS", "Passive NFE", "data", `crs_entity_classification = ${a.crs_entity_classification}`); return "passive_nfe";
+  }
+  // 2. Derived from the investment-entity facts (VIII(A)(6)(b)).
+  if (managedInvestment) {
+    const src = "gross_income_from_financial_assets = true and entity_managed_by_asset_manager = true";
     if (anyParticipating) { ctx.step("ENT.STATUS", "Financial institution · managed investment entity", "rule", `${src} · resident in a participating jurisdiction`); return "fi"; }
     ctx.step("ENT.STATUS", "Passive NFE · managed investment entity in a non-participating jurisdiction", "rule", `${src} (VIII(D)(8))`); return "passive_nfe";
   }
-  const map = { financial_institution: "fi", active_nfe: "active_nfe", passive_nfe: "passive_nfe" };
-  if (map[a.entity_classification]) { ctx.step("ENT.STATUS", { fi: "Financial institution", active_nfe: "Active NFE", passive_nfe: "Passive NFE" }[map[a.entity_classification]], "data", `entity_classification = ${a.entity_classification}`); return map[a.entity_classification]; }
-  if (a.crs_entity_classification) {
-    const s = a.crs_entity_classification === "CRS102" ? "active_nfe" : "passive_nfe";
-    ctx.step("ENT.STATUS", s === "active_nfe" ? "Active NFE or financial institution" : "Passive NFE", "data", `crs_entity_classification = ${a.crs_entity_classification}`); return s;
-  }
-  if (a.type_of_financial_institution) { ctx.step("ENT.STATUS", "Financial institution", "data", `type_of_financial_institution = ${a.type_of_financial_institution}`); return "fi"; }
   if (a.potential_exception_type === "HoldCo" || a.potential_exception_type === "TreasuryCtr") {
     ctx.step("ENT.STATUS", "Active NFE", "data", `potential_exception_type = ${a.potential_exception_type} (VIII(D)(9)(${a.potential_exception_type === "HoldCo" ? "d" : "g"}))`); return "active_nfe";
   }
   if (a.non_reportable_exception_type === "liquidation_dissolution") { ctx.step("ENT.STATUS", "Active NFE · in liquidation", "data", "non_reportable_exception_type = liquidation_dissolution (VIII(D)(9)(f))"); return "active_nfe"; }
-  const v = ctx.ask("ENT.STATUS");
+  // 3. Ask. (CRS102 and the FI-type field alone are hints, not a classification.)
+  const hint = [a.crs_entity_classification ? `crs_entity_classification = ${a.crs_entity_classification}` : "", a.type_of_financial_institution ? `type_of_financial_institution = ${a.type_of_financial_institution}` : "", a.entity_classification ? `entity_classification = ${a.entity_classification}` : ""].filter(Boolean).join(" · ");
+  const v = ctx.ask("ENT.STATUS", hint ? { help: `${getRuleHelp(ctx)} Recorded so far: ${hint}.` } : {});
   return v === "fi" ? "fi" : v === "active_nfe" ? "active_nfe" : "passive_nfe";
 }
+
+function getRuleHelp(ctx) { return ctx.rule("ENT.STATUS").help || ""; }
 
 function controllingPersons(ctx, { pre, usd }) {
   const names = (codes) => codes.map((c) => countryName(ctx.index, c)).join(", ");
@@ -372,7 +392,7 @@ function controllingPersons(ctx, { pre, usd }) {
   const persons = cps.map((c) => {
     const name = c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed";
     const role = CP_ROLE_LABELS[c.control_type] || "Controlling person";
-    const codes = uniq([...(c.tax_residencies || []).map((r) => normalizeCountry(r.country)), normalizeCountry(c.country_of_residence_code), normalizeCountry(c.country_of_residence), normalizeCountry(c.address?.country)]);
+    const codes = uniq([...(c.tax_residencies || []).map((r) => ctx.norm(r.country)), ctx.norm(c.country_of_residence_code), ctx.norm(c.country_of_residence), ctx.norm(c.address?.country)]);
     return { name, role: c.ownership_percentage ? `${role} · ${c.ownership_percentage}%` : role, codes, jurisdictions: codes.filter((x) => ctx.isReportable(x)) };
   });
   ctx.step("CP.IDENTIFY", `${persons.length} controlling person${persons.length > 1 ? "s" : ""}`, "data", persons.map((p) => `${p.name} (${p.role}) · ${p.codes.join("/") || "residence not recorded"}`).join(" — "));
@@ -395,13 +415,13 @@ function entityAccount(ctx, pre, usd) {
   // Residence (Table 3)
   const type = String(a.account_holder_entity_type || "").toLowerCase();
   const isTrust = type.includes("trust") || ctx.cps.some((c) => String(c.control_type || "").startsWith("trust_"));
-  let residences = residencesOf(a); let basis = "self-certified tax residence";
+  let residences = residencesOf(ctx, a); let basis = "self-certified tax residence";
   if (!residences.length && isTrust) {
-    residences = uniq(ctx.cps.filter((c) => c.control_type === "trust_trustee").map((c) => normalizeCountry(c.address?.country) || normalizeCountry(c.country_of_residence_code) || normalizeCountry(c.country_of_residence)));
+    residences = uniq(ctx.cps.filter((c) => c.control_type === "trust_trustee").map((c) => ctx.norm(c.address?.country) || ctx.norm(c.country_of_residence_code) || ctx.norm(c.country_of_residence)));
     basis = "trustee address (trusts)";
   }
-  if (!residences.length) { residences = uniq([normalizeCountry(a.country_of_incorporation_code), normalizeCountry(a.country_of_incorporation)]); basis = "place of incorporation"; }
-  if (!residences.length) { residences = uniq([normalizeCountry(a.current_address?.country)]); basis = "address"; }
+  if (!residences.length) { residences = uniq([ctx.norm(a.country_of_incorporation_code), ctx.norm(a.country_of_incorporation)]); basis = "place of incorporation"; }
+  if (!residences.length) { residences = uniq([ctx.norm(a.current_address?.country)]); basis = "address"; }
   if (residences.length) ctx.step("ENT.RESIDENCE", names(residences), "data", `By ${basis}`);
   else if (isTrust) ctx.step("ENT.RESIDENCE", "No tax residence", "data", "Trust with no residence recorded · a trust without tax residence is not a reportable person (Handbook ¶265)");
   else throw (ctx.ask("ENT.RESIDENCE", { question: "Where is the entity resident? No incorporation country or address is recorded.", options: [{ value: "recorded", label: "Recorded now · re-run" }] }), new Pending("Record the entity's residence, then re-run."));
