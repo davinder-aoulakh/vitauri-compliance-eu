@@ -7,6 +7,7 @@ import { History, CheckCircle2, XCircle, Clock, AlertTriangle, Users } from "luc
 import { toDisplayDateTime } from "@/lib/dateUtils";
 import WorkflowTransitionEntry from "./WorkflowTransitionEntry";
 import FileUploadAnswerLinks from "@/components/shared/FileUploadAnswerLinks";
+import { StudioDecisionSummary } from "@/components/studio/DecisionTimeline";
 
 export default function AccountClassificationHistory({ history, account }) {
   // Fetch controlling persons for this account
@@ -246,6 +247,9 @@ export default function AccountClassificationHistory({ history, account }) {
                     <p className="text-xs text-slate-500">
                       by {record.performed_by}
                     </p>
+                    {record.classification_source === 'studio' && (
+                      <Badge variant="outline" className="mt-1 bg-teal-50 text-teal-800 border-teal-200 text-[10px]">Classification Studio</Badge>
+                    )}
                   </div>
                   <div className="text-right">
                     {getStatusBadge(
@@ -306,10 +310,12 @@ export default function AccountClassificationHistory({ history, account }) {
                     </div>
                   )}
 
+                  {record.classification_source !== 'studio' && (
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">Self-Certification:</span>
                     {getSelfCertBadge(record.self_certification_status)}
                   </div>
+                  )}
 
                   {record.account_balance !== undefined && record.account_balance !== null && (
                     <div className="flex items-center gap-2">
@@ -320,6 +326,11 @@ export default function AccountClassificationHistory({ history, account }) {
                     </div>
                   )}
                 </div>
+
+                {/* Classification Studio decision record (studio entries only) */}
+                {record.classification_source === 'studio' && record.studio_decision_id && (
+                  <StudioDecisionSummary decisionId={record.studio_decision_id} account={account} />
+                )}
 
                 {/* Workflow Answers (Collapsible) - User Friendly */}
                 {record.workflow_answers && Object.keys(record.workflow_answers).filter(k => !k.startsWith('_')).length > 0 && (
