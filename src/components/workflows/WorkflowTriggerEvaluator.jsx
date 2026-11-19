@@ -257,7 +257,7 @@ export const suggestWorkflows = async (entityData, eventType, autoTrigger = fals
     });
     
     // Evaluate which workflows match
-    const matchingWorkflows = evaluateWorkflowTriggers(entityData, eventType, allWorkflows);
+    const matchingWorkflows = await evaluateWorkflowTriggers(entityData, eventType, allWorkflows);
     
     // If auto-trigger is enabled, we would create workflow execution records here
     // For now, just return the suggestions

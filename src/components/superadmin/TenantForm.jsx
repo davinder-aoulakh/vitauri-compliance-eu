@@ -247,6 +247,18 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
             </div>
 
             <div>
+              <Label htmlFor="preexisting_cutoff">CRS pre-existing cut-off date</Label>
+              <Input
+                id="preexisting_cutoff"
+                type="date"
+                value={formData.preexisting_cutoff || ""}
+                onChange={(e) => handleChange("preexisting_cutoff", e.target.value || null)}
+                className="mt-1.5"
+              />
+              <p className="text-xs text-slate-500 mt-1">Accounts open on or before this date are pre-existing. Early adopters: 31 Dec 2015; 2018 exchanges: 31 Dec 2016. Empty: 31 Dec 2017 (previous default).</p>
+            </div>
+
+            <div>
               <Label htmlFor="tax_id">Tax ID</Label>
               <Input
                 id="tax_id"

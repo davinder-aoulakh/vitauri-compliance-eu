@@ -261,7 +261,7 @@ export default function AccountsPage() {
       try {
         await base44.functions.invoke('autoClassifyAccount', {
           accountId: newAccount.id,
-          event_type: 'created'
+          event_type: 'create'
         });
         queryClient.invalidateQueries(['accounts']);
       } catch (error) {
@@ -336,7 +336,7 @@ export default function AccountsPage() {
       try {
         await base44.functions.invoke('autoClassifyAccount', {
           accountId: variables.id,
-          event_type: 'updated'
+          event_type: 'update'
         });
         console.log(`⏱️ [MUTATION] Auto-classification completed in ${Math.round(performance.now() - autoClassifyStart)}ms`);
         queryClient.invalidateQueries(['accounts']);

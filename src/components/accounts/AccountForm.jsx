@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { FI_TYPE_OPTIONS, normalizeFIType } from "@/lib/fiTypeConstants";
+import { preexistingCutoff, isPreExistingOn } from "@/lib/classificationOutcome";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,19 +155,32 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
     }
   };
 
+  // The tenant's CRS pre-existing cut-off: the tenant setting, else the Classification Studio settings,
+  // else 31 Dec 2017 (the previous hard-coded default).
+  const [studioCutoff, setStudioCutoff] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const tenantId = tenant?.id || account?.tenant_id;
+    if (!tenant?.preexisting_cutoff && tenantId) {
+      base44.entities.StudioSettings.filter({ tenant_id: tenantId })
+        .then((rows) => { if (alive) setStudioCutoff(rows?.[0]?.preexisting_cutoff || null); })
+        .catch(() => {});
+    }
+    return () => { alive = false; };
+  }, [tenant?.id, tenant?.preexisting_cutoff, account?.tenant_id]);
+  const cutoffDate = preexistingCutoff(tenant, { preexisting_cutoff: studioCutoff });
+
   // Auto-determine if account is pre-existing based on account creation date
   // If a valid date is present, lock the field; otherwise leave it editable
   useEffect(() => {
     if (formData.account_creation_date) {
-      const creationDate = new Date(formData.account_creation_date);
-      const crsThresholdDate = new Date('2017-12-31');
-      const isPreExisting = creationDate <= crsThresholdDate;
+      const isPreExisting = isPreExistingOn(formData.account_creation_date, cutoffDate);
       setFormData(prev => ({ ...prev, is_pre_existing: isPreExisting }));
       setIsPreExistingLocked(true);
     } else {
       setIsPreExistingLocked(false);
     }
-  }, [formData.account_creation_date]);
+  }, [formData.account_creation_date, cutoffDate]);
 
   // Force fiduciary trust = true for Investment Entity workflow
   useEffect(() => {
@@ -1207,7 +1221,7 @@ export default function AccountForm({ account, entities, onSubmit, onCancel, ten
               {/* Pre-existing Account */}
               <div>
                 <Label htmlFor="is_pre_existing" className="text-sm font-medium text-slate-700">
-                  Pre-existing Account (opened before Jan 1, 2018)
+                  Pre-existing Account (open on or before {new Date(`${cutoffDate}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })})
                 </Label>
                 <div className="mt-2">
                   <RadioGroup

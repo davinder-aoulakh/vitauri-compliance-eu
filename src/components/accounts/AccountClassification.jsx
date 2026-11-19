@@ -53,6 +53,7 @@ import { toast } from "@/components/ui/use-toast";
 import { resolveTransitionTarget, validateTransition, withFiTypeNormalization } from "@/lib/workflowTransitions";
 import DateInput from "@/components/ui/date-input";
 import { toggleMultiChoiceValue } from "@/lib/multiChoiceUtils";
+import { resolveRunOutcome } from "@/lib/classificationOutcome";
 
 export default function AccountClassification({ account, entities, onComplete, onCancel, onSaveAndExit, initialDraftState }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(initialDraftState?.currentStepIndex ?? 0);
@@ -918,19 +919,11 @@ export default function AccountClassification({ account, entities, onComplete, o
 
     // Build result data
     const finalStep = steps.find(s => s.step_id === allSteps[allSteps.length - 1]);
-    const deriveStatusForComplete = (step) => {
-      if (step?.result_status) return step.result_status;
-      if (step?.result_action) {
-        if (step.result_action.includes('non_reportable') || step.result_action.includes('excluded')) return 'non_reportable';
-        if (step.result_action.includes('reportable')) return 'reportable';
-      }
-      return 'pending_review';
-    };
-    // Prefer the status already written to the account by post-completion actions (e.g. info steps)
-    const currentAccountStatus = (latestAccountData || account)?.reportability_status;
-    const resolvedStatus = (currentAccountStatus && currentAccountStatus !== 'pending_review')
-      ? currentAccountStatus
-      : deriveStatusForComplete(finalStep);
+    // The outcome of THIS run: the last status/reason set by an action on a visited step, else the final
+    // step's configured result. (It used to prefer the status already on the account, so a re-classify kept
+    // the old result.)
+    const runOutcome = resolveRunOutcome(allSteps, stepMap, answers, resolveActionUpdate);
+    const resolvedStatus = runOutcome.status;
 
     // Only include answers for steps the user actually visited (allSteps = completedPath)
     // This prevents prefilled-but-never-visited answers from appearing in classification history
@@ -943,8 +936,7 @@ export default function AccountClassification({ account, entities, onComplete, o
 
     const classificationData = {
       reportability_status: resolvedStatus,
-      reportability_reason: (latestAccountData || account)?.reportability_reason
-        || finalStep?.result_description || finalStep?.question_text || '',
+      reportability_reason: runOutcome.reason,
       classification_answers: visitedAnswers,
     };
 
@@ -1434,11 +1426,9 @@ export default function AccountClassification({ account, entities, onComplete, o
       }
       return 'pending_review';
     };
-    // Prefer the status already written to the account by post-completion actions
-    const accountStatus = (latestAccountData || account)?.reportability_status;
-    const summaryStatus = (accountStatus && accountStatus !== 'pending_review')
-      ? accountStatus
-      : deriveStatus(finalStep);
+    // The outcome of this run (see resolveRunOutcome), not the status already on the account
+    const summaryOutcome = resolveRunOutcome(completedPath.length ? completedPath : [currentNodeId], stepMap, answers, resolveActionUpdate);
+    const summaryStatus = summaryOutcome.status || deriveStatus(finalStep);
     const isReportable = summaryStatus === 'reportable';
     const isPending = summaryStatus === 'pending_review';
     const isWorkInProgress = summaryStatus === 'work_in_progress';
@@ -1508,7 +1498,7 @@ export default function AccountClassification({ account, entities, onComplete, o
               </Badge>
             </div>
             {(() => {
-              const reason = (latestAccountData || account)?.reportability_reason
+              const reason = summaryOutcome.reason
                 || finalStep?.result_description
                 || finalStep?.question_text;
               return reason ? (
