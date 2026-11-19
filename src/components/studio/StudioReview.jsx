@@ -9,9 +9,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowUpRight, CheckCircle2, HelpCircle, Loader2, RotateCcw, Save, Sparkles, X } from "lucide-react";
 import { evaluate, inputHash } from "../../../base44/shared/crs/index.js";
 import { OUTCOME_LABELS, MANUAL_LABELS } from "./useStudioData";
+import DecisionTimeline from "./DecisionTimeline";
 
 const SOURCE = {
   data: { label: "From account data", cls: "bg-teal-50 text-teal-800 border-teal-200" },
@@ -59,7 +61,7 @@ export function invokeError(err) {
 // Only the fields StudioEvidence stores for a suggestion.
 const storedSuggestion = (s) => ({ gap_key: s.gap_key, answer: s.answer, confidence: s.confidence, rationale: s.rationale, fields_used: s.fields_used || [], suggested_at: s.suggested_at, accepted: !!s.accepted });
 
-export default function StudioReview({ row, settings, reportableList, pack, user, canConfirm, readOnly = false, onChanged }) {
+export default function StudioReview({ row, settings, reportableList, pack, user, canConfirm, readOnly = false, onChanged, tenantName = "" }) {
   const evidence = row?.input?.evidence || {};
   const [answers, setAnswers] = useState(() => ({ ...(evidence.draft_gap_answers || {}) }));
   const [suggestions, setSuggestions] = useState(() => evidence.draft_ai_suggestions || []);
@@ -69,6 +71,12 @@ export default function StudioReview({ row, settings, reportableList, pack, user
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [note, setNote] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const qc = useQueryClient();
+  const refreshHistory = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ["studio-account-decisions"] }),
+    qc.invalidateQueries({ queryKey: ["studio-account-legacy-history"] }),
+    qc.invalidateQueries({ queryKey: ["studio-all-decisions"] }),
+  ]);
 
   const live = useMemo(() => {
     if (!row) return null;
@@ -158,7 +166,7 @@ export default function StudioReview({ row, settings, reportableList, pack, user
       toast.success(done?.awaiting_sign_off ? "Decision proposed. A second admin or supervisor needs to sign it off." : "Decision confirmed and saved to the account.");
       setConfirmOpen(false);
       setNote("");
-      await onChanged?.();
+      await Promise.all([onChanged?.(), refreshHistory()]);
     } catch (e) {
       toast.error(`Couldn't confirm: ${invokeError(e)}`);
     } finally {
@@ -172,7 +180,7 @@ export default function StudioReview({ row, settings, reportableList, pack, user
       const res = await base44.functions.invoke("studioConfirmDecision", { signOffDecisionId: proposal.id });
       if (res?.data?.error) throw new Error(res.data.error);
       toast.success("Signed off. The decision is confirmed and saved to the account.");
-      await onChanged?.();
+      await Promise.all([onChanged?.(), refreshHistory()]);
     } catch (e) {
       toast.error(`Couldn't sign off: ${invokeError(e)}`);
     } finally {
@@ -365,6 +373,10 @@ export default function StudioReview({ row, settings, reportableList, pack, user
             : !canConfirm ? "You can answer questions and save them. A tenant admin or supervisor confirms the decision."
             : !ready ? "Answer the open questions to confirm." : "Confirming saves a permanent decision record and updates the account's reportability status."}
         </p>
+
+        <div className="border-t pt-4">
+          <DecisionTimeline account={account} tenantName={tenantName} user={user} />
+        </div>
 
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogContent>

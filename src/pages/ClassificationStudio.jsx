@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import StudioSettingsForm from "@/components/studio/StudioSettingsForm";
 import StudioQueues from "@/components/studio/StudioQueues";
 import StudioComparison from "@/components/studio/StudioComparison";
+import StudioRecords from "@/components/studio/StudioRecords";
 import { useStudioData } from "@/components/studio/useStudioData";
-import { Inbox, Settings as SettingsIcon, Lock, ArrowLeft, Scale, Loader2, AlertTriangle } from "lucide-react";
+import { Inbox, Settings as SettingsIcon, Lock, ArrowLeft, Scale, Loader2, AlertTriangle, FileText } from "lucide-react";
 
 /**
  * Classification Studio — extra, opt-in screen behind the tenant feature flag `classification_studio`.
@@ -64,10 +65,11 @@ function StudioWorkspace({ tenantId, user, tenant, accountId }) {
       <TabsList>
         <TabsTrigger value="queues"><Inbox className="w-4 h-4 mr-2" />Queues</TabsTrigger>
         <TabsTrigger value="comparison"><Scale className="w-4 h-4 mr-2" />Studio vs manual</TabsTrigger>
+        <TabsTrigger value="records"><FileText className="w-4 h-4 mr-2" />Decision records</TabsTrigger>
         <TabsTrigger value="settings"><SettingsIcon className="w-4 h-4 mr-2" />Settings</TabsTrigger>
       </TabsList>
 
-      {(tab === "queues" || tab === "comparison") && (
+      {(tab === "queues" || tab === "comparison" || tab === "records") && (
         data.isLoading ? (
           <div className="flex items-center gap-2 py-16 justify-center text-sm text-slate-500"><Loader2 className="w-5 h-5 animate-spin text-teal-700" />Checking accounts against the CRS rules…</div>
         ) : data.error ? (
@@ -79,12 +81,17 @@ function StudioWorkspace({ tenantId, user, tenant, accountId }) {
 
       <TabsContent value="queues" className="mt-4">
         {!data.isLoading && !data.error && data.settings && (
-          <StudioQueues key={openAccount || "none"} data={data} initialAccountId={openAccount} user={user} canConfirm={canConfirm} readOnly={user?.app_role === "super_admin"} />
+          <StudioQueues key={openAccount || "none"} data={data} initialAccountId={openAccount} user={user} canConfirm={canConfirm} readOnly={user?.app_role === "super_admin"} tenantName={tenant?.name || ""} />
         )}
       </TabsContent>
       <TabsContent value="comparison" className="mt-4">
         {!data.isLoading && !data.error && data.settings && (
           <StudioComparison data={data} onOpen={(id) => { setOpenAccount(id); setTab("queues"); }} />
+        )}
+      </TabsContent>
+      <TabsContent value="records" className="mt-4">
+        {!data.isLoading && !data.error && data.settings && (
+          <StudioRecords tenantId={tenantId} tenantName={tenant?.name || ""} settings={data.settings} rows={data.rows} user={user} onOpen={(id) => { setOpenAccount(id); setTab("queues"); }} />
         )}
       </TabsContent>
       <TabsContent value="settings" className="mt-4">

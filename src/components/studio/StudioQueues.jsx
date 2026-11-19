@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useQueryClient } from "@tanstack/react-query";
 import { inputHash } from "../../../base44/shared/crs/index.js";
 import StudioReview, { OutcomeBadge, invokeError } from "./StudioReview";
 
@@ -20,7 +21,7 @@ const QUEUES = [
 const PAGE = 50;
 const MAX_BULK = 100;
 
-export default function StudioQueues({ data, initialAccountId, user, canConfirm, readOnly = false }) {
+export default function StudioQueues({ data, initialAccountId, user, canConfirm, readOnly = false, tenantName = "" }) {
   const { rows, settings, reportableList, pack, entities } = data;
   const initialRow = rows.find((r) => r.id === initialAccountId);
   const [queue, setQueue] = useState(initialRow?.queue || "ready");
@@ -32,6 +33,7 @@ export default function StudioQueues({ data, initialAccountId, user, canConfirm,
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
+  const qc = useQueryClient();
 
   useEffect(() => {
     if (initialRow) { setQueue(initialRow.queue); setSelectedId(initialRow.id); }
@@ -76,7 +78,7 @@ export default function StudioQueues({ data, initialAccountId, user, canConfirm,
       setBulkResult(out);
       setPicked(new Set());
       toast.success(`${out.confirmed?.length || 0} confirmed${out.skipped?.length ? `, ${out.skipped.length} skipped` : ""}`);
-      await data.refetch?.();
+      await Promise.all([data.refetch?.(), qc.invalidateQueries({ queryKey: ["studio-all-decisions"] }), qc.invalidateQueries({ queryKey: ["studio-account-decisions"] })]);
     } catch (e) {
       toast.error(`Couldn't confirm: ${invokeError(e)}`);
     } finally {
@@ -168,7 +170,7 @@ export default function StudioQueues({ data, initialAccountId, user, canConfirm,
         </CardContent>
       </Card>
       <StudioReview key={selected?.id || "none"} row={selected} settings={settings} reportableList={reportableList} pack={pack}
-        user={user} canConfirm={canConfirm} readOnly={readOnly} onChanged={data.refetch} />
+        user={user} canConfirm={canConfirm} readOnly={readOnly} onChanged={data.refetch} tenantName={tenantName} />
 
       <Dialog open={bulkOpen} onOpenChange={(o) => { if (!bulkBusy) setBulkOpen(o); }}>
         <DialogContent className="max-w-lg">
