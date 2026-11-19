@@ -175,3 +175,27 @@ describe("diff, fingerprint and versions", () => {
     expect(new Set(BASELINE_RULES.map((r) => r.rule_key)).size).toBe(BASELINE_RULES.length);
   });
 });
+
+describe("stored rows (nulls from the database)", () => {
+  const stored = baselineRuleRows().map((r, i) => ({
+    id: `row${i}`, pack_id: "p1", created_date: "2026-11-19", custom: false, hook: null, condition: null, outcome_reason_template: null,
+    ai_guidance: r.ai_guidance ?? null, help: r.help ?? null, params: r.params ?? null,
+    ...r, options: (r.options || []).map((o) => ({ effect: null, reason: null, ...o })),
+  }));
+  it("give the same results as the baseline on every fixture", () => {
+    const base = runFixtures(null).results.map((x) => x.path.join("|"));
+    const db = runFixtures({ version: "1.0.0", rules: stored }).results.map((x) => x.path.join("|"));
+    expect(db).toEqual(base);
+  });
+  it("validate and fingerprint like the baseline", () => {
+    expect(validatePack(stored).ok).toBe(true);
+    expect(packFingerprint(stored)).toBe(packFingerprint(baselineRuleRows()));
+  });
+  it("a null field never blanks out baseline wording", () => {
+    const rows = stored.map((r) => (r.rule_key === "IND_PRE.CURE" ? { ...r, help: null, question: null } : r));
+    const p = resolvePack({ version: "1.0.0", rules: rows });
+    const cure = p.rules.find((r) => r.rule_key === "IND_PRE.CURE");
+    expect(cure.question).toBe("Have the indicia been cured?");
+    expect(cure.help).toMatch(/self-certification/);
+  });
+});

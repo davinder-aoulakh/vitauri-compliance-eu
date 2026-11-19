@@ -111,10 +111,23 @@ function stable(value) {
   return JSON.stringify(value ?? null);
 }
 
+// Drop null, undefined and empty-string values (stored rows carry nulls for empty fields).
+function clean(v) {
+  if (Array.isArray(v)) return v.map(clean);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).filter(([, x]) => x !== null && x !== undefined && x !== "").map(([k, x]) => [k, clean(x)]));
+  return v;
+}
+
 /** The part of a rule that affects behaviour or wording (no ids, timestamps or pack ids). */
 export function ruleContent(r) {
   const out = { rule_key: r.rule_key, custom: !!r.custom };
-  for (const f of RULE_FIELDS) if (r[f] !== undefined && r[f] !== null && r[f] !== "") out[f] = r[f];
+  for (const f of RULE_FIELDS) {
+    const v = clean(r[f]);
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0) continue;
+    out[f] = v;
+  }
   if (out.enabled === undefined) out.enabled = true;
   return out;
 }
