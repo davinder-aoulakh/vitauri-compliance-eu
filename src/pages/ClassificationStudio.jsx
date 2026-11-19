@@ -13,8 +13,10 @@ import StudioSettingsForm from "@/components/studio/StudioSettingsForm";
 import StudioQueues from "@/components/studio/StudioQueues";
 import StudioComparison from "@/components/studio/StudioComparison";
 import StudioRecords from "@/components/studio/StudioRecords";
+import StudioHelp from "@/components/studio/StudioHelp";
+import { StudioReadiness } from "@/components/studio/StudioSetup";
 import { useStudioData } from "@/components/studio/useStudioData";
-import { Inbox, Settings as SettingsIcon, Lock, ArrowLeft, Scale, Loader2, AlertTriangle, FileText } from "lucide-react";
+import { Inbox, Settings as SettingsIcon, Lock, ArrowLeft, Scale, Loader2, AlertTriangle, FileText, LifeBuoy } from "lucide-react";
 
 /**
  * Classification Studio — extra, opt-in screen behind the tenant feature flag `classification_studio`.
@@ -62,11 +64,12 @@ function StudioWorkspace({ tenantId, user, tenant, accountId }) {
 
   return (
     <Tabs value={tab} onValueChange={setTab}>
-      <TabsList>
+      <TabsList className="flex-wrap h-auto">
         <TabsTrigger value="queues"><Inbox className="w-4 h-4 mr-2" />Queues</TabsTrigger>
         <TabsTrigger value="comparison"><Scale className="w-4 h-4 mr-2" />Studio vs manual</TabsTrigger>
         <TabsTrigger value="records"><FileText className="w-4 h-4 mr-2" />Decision records</TabsTrigger>
         <TabsTrigger value="settings"><SettingsIcon className="w-4 h-4 mr-2" />Settings</TabsTrigger>
+        <TabsTrigger value="help"><LifeBuoy className="w-4 h-4 mr-2" />Help</TabsTrigger>
       </TabsList>
 
       {(tab === "queues" || tab === "comparison" || tab === "records") && (
@@ -94,7 +97,11 @@ function StudioWorkspace({ tenantId, user, tenant, accountId }) {
           <StudioRecords tenantId={tenantId} tenantName={tenant?.name || ""} settings={data.settings} rows={data.rows} user={user} onOpen={(id) => { setOpenAccount(id); setTab("queues"); }} />
         )}
       </TabsContent>
-      <TabsContent value="settings" className="mt-4">
+      <TabsContent value="help" className="mt-4">
+        <StudioHelp user={user} />
+      </TabsContent>
+      <TabsContent value="settings" className="mt-4 space-y-4">
+        <StudioReadiness user={user} tenantId={tenantId} />
         <StudioSettingsForm user={user} tenant={tenant || { id: tenantId }} />
       </TabsContent>
     </Tabs>

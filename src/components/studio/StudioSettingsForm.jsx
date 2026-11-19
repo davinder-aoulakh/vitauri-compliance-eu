@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Loader2, Save } from "lucide-react";
+import { SetupSettings } from "./StudioSetup";
 
 /**
  * Classification Studio — tenant CRS elections (StudioSettings).
@@ -83,14 +84,7 @@ export default function StudioSettingsForm({ user, tenant }) {
   }
 
   if (!settings) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">CRS settings not set up yet</CardTitle>
-          <CardDescription>Your platform administrator sets up the studio's CRS settings for your organisation before the pilot starts.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <SetupSettings user={user} tenant={tenant} tenantId={tenantId} />;
   }
   if (!form) return null;
 
