@@ -23,8 +23,7 @@ export default function PackCompare({ packs, initialRightId }) {
       const sameScopePublished = packs.find((p) => p.status === "published" && scopeOf(p) === scopeOf(right) && p.id !== right.id);
       if (sameScopePublished) setLeftId(sameScopePublished.id);
     }
-    // only when the right side changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // only when the right side changes (left is picked once per right-side choice)
   }, [rightId]);
 
   useEffect(() => {
