@@ -104,7 +104,10 @@ Deno.serve(async (req) => {
         // Handbook rule: structure comes from the baseline; only the editable parts are taken from the request.
         Object.assign(rule, { rule_key: key, procedure: base.procedure, tier: base.tier, order: base.order, locked: !!base.locked, custom: false });
         for (const f of EDITABLE_TEXT_FIELDS) if (input[f] !== undefined) rule[f] = String(input[f] ?? '');
-        if (input.enabled !== undefined) rule.enabled = input.enabled !== false;
+        if (input.enabled !== undefined) {
+          if (base.locked && input.enabled === false) throw new Refused("This is a core Handbook step and can't be switched off.", 422, [{ rule_key: key, field: 'enabled', message: "This is a core Handbook step and can't be switched off." }]);
+          rule.enabled = input.enabled !== false;
+        }
         if (input.params !== undefined) rule.params = input.params;
         if (input.options !== undefined) rule.options = (input.options || []).map((o) => ({ value: String(o.value ?? ''), label: String(o.label ?? '') }));
       } else {
