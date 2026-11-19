@@ -1,0 +1,164 @@
+{
+  "name": "StudioSettings",
+  "type": "object",
+  "description": "Classification Studio: per-tenant CRS elections (one record per tenant).",
+  "properties": {
+    "ai_suggestions_enabled": {
+      "default": true,
+      "type": "boolean"
+    },
+    "alt_hv_rules_for_lv": {
+      "default": false,
+      "type": "boolean"
+    },
+    "alt_new_rules_for_preexisting": {
+      "default": false,
+      "type": "boolean"
+    },
+    "confirmation_note": {
+      "type": "string"
+    },
+    "discretionary_beneficiary_alignment": {
+      "default": false,
+      "description": "Report discretionary beneficiaries only in years they receive a distribution",
+      "type": "boolean"
+    },
+    "entity_250k_exemption": {
+      "default": true,
+      "type": "boolean"
+    },
+    "fx_rates": {
+      "items": {
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "usd_rate": {
+            "type": "number"
+          },
+          "year": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "last_updated_by": {
+      "type": "string"
+    },
+    "new_accounts_of_existing_customers_as_preexisting": {
+      "default": false,
+      "type": "boolean"
+    },
+    "preexisting_cutoff": {
+      "description": "Accounts maintained on this date are pre-existing",
+      "format": "date",
+      "type": "string"
+    },
+    "reporting_currency": {
+      "default": "USD",
+      "type": "string"
+    },
+    "reporting_jurisdiction": {
+      "description": "ISO code of the reporting jurisdiction, e.g. CW",
+      "type": "string"
+    },
+    "require_second_signoff": {
+      "default": false,
+      "type": "boolean"
+    },
+    "residence_address_test_allowed": {
+      "default": true,
+      "type": "boolean"
+    },
+    "retention_years": {
+      "default": 5,
+      "type": "number"
+    },
+    "review_deadline_hv_months": {
+      "default": 12,
+      "type": "number"
+    },
+    "review_deadline_lv_months": {
+      "default": 24,
+      "type": "number"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "values_confirmed": {
+      "default": false,
+      "type": "boolean"
+    },
+    "wider_approach": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "reporting_jurisdiction"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "data.app_role": "tenant_admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "data.app_role": "tenant_admin"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "ReportableJurisdictionList",
+  "type": "object",
+  "description": "Classification Studio: list of reportable jurisdictions per reporting jurisdiction and year.",
+  "properties": {
+    "jurisdictions": {
+      "items": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "exchange_since": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "published_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "published_by": {
+      "type": "string"
+    },
+    "reporting_jurisdiction": {
+      "description": "ISO code, e.g. CW",
+      "type": "string"
+    },
+    "source_note": {
+      "type": "string"
+    },
+    "status": {
+      "default": "provisional",
+      "enum": [
+        "provisional",
+        "published",
+        "retired"
+      ],
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "year": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "reporting_jurisdiction",
+    "year",
+    "version",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
+}

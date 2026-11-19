@@ -1,0 +1,99 @@
+{
+  "name": "StudioTask",
+  "type": "object",
+  "description": "Classification Studio: queue cache so queues load fast at scale.",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "input_hash": {
+      "type": "string"
+    },
+    "last_evaluated_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "open_gaps": {
+      "type": "number"
+    },
+    "proposed_jurisdictions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "proposed_outcome": {
+      "type": "string"
+    },
+    "queue": {
+      "enum": [
+        "ready",
+        "needs",
+        "changed",
+        "classified"
+      ],
+      "type": "string"
+    },
+    "rule_pack_version": {
+      "type": "string"
+    },
+    "tenant_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "account_id",
+    "queue"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    }
+  }
+}

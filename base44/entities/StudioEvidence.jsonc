@@ -1,0 +1,204 @@
+{
+  "name": "StudioEvidence",
+  "type": "object",
+  "description": "Classification Studio: CRS facts the Account record does not hold (keeps Account untouched). One record per account.",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "aggregation_group": {
+      "items": {
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "system",
+              "relationship_manager"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "crs_indicia": {
+      "items": {
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "cure_evidence": {
+            "type": "string"
+          },
+          "cured": {
+            "type": "boolean"
+          },
+          "found_at": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "a_identified_resident",
+              "b_address",
+              "c_phone",
+              "d_standing_instruction",
+              "e_power_of_attorney",
+              "f_hold_mail_in_care_of"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "documentary_evidence": {
+      "items": {
+        "properties": {
+          "address_country": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "id_number": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "draft_gap_answers": {
+      "description": "Unconfirmed answers to studio gap questions, keyed by rule_key",
+      "type": "object"
+    },
+    "entity_status": {
+      "type": "object"
+    },
+    "hold_mail_only": {
+      "type": "boolean"
+    },
+    "insurance_sale_prohibited": {
+      "description": "Cash value insurance/annuity legally barred from sale to reportable-jurisdiction residents (HB para 158)",
+      "type": "boolean"
+    },
+    "joint_holders": {
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "rm_attestations": {
+      "items": {
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "knowledge": {
+            "type": "string"
+          },
+          "relationship_manager": {
+            "type": "string"
+          },
+          "year": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "self_cert_detail": {
+      "type": "object"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "trust_parties": {
+      "items": {
+        "properties": {
+          "is_entity": {
+            "type": "boolean"
+          },
+          "looked_through_to": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "residence": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "updated_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "account_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "CrsRulePack",
+  "type": "object",
+  "description": "CRS Rule Library: a versioned pack of rules used by the Classification Studio. Published packs are never edited; changes go into a new draft.",
+  "properties": {
+    "based_on_version": {
+      "type": "string"
+    },
+    "change_note": {
+      "type": "string"
+    },
+    "effective_from": {
+      "format": "date",
+      "type": "string"
+    },
+    "impact_report": {
+      "type": "object"
+    },
+    "jurisdiction_scope": {
+      "default": "global",
+      "description": "global or an ISO code for an override pack",
+      "type": "string"
+    },
+    "published_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "published_by": {
+      "type": "string"
+    },
+    "status": {
+      "default": "draft",
+      "enum": [
+        "draft",
+        "published",
+        "retired"
+      ],
+      "type": "string"
+    },
+    "test_run_result": {
+      "type": "object"
+    },
+    "title": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
+}

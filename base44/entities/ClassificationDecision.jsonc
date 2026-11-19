@@ -1,0 +1,269 @@
+{
+  "name": "ClassificationDecision",
+  "type": "object",
+  "description": "Classification Studio: permanent decision record. Append-only for tenant roles; status changes go through a service-role backend function.",
+  "properties": {
+    "ai_suggestions": {
+      "items": {
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "question": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "changed_fields": {
+      "items": {
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "before": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "decided_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "decided_by": {
+      "type": "string"
+    },
+    "engine_version": {
+      "type": "string"
+    },
+    "fx_rate": {
+      "type": "number"
+    },
+    "gap_answers": {
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "holders": {
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "input_hash": {
+      "type": "string"
+    },
+    "input_snapshot": {
+      "type": "object"
+    },
+    "outcome": {
+      "enum": [
+        "reportable",
+        "non_reportable",
+        "undocumented",
+        "excluded"
+      ],
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "reportable_from": {
+      "format": "date",
+      "type": "string"
+    },
+    "reportable_jurisdictions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "reportable_list_version": {
+      "type": "string"
+    },
+    "reportable_persons": {
+      "items": {
+        "properties": {
+          "jurisdictions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "reporting_year": {
+      "type": "number"
+    },
+    "retention_until": {
+      "format": "date",
+      "type": "string"
+    },
+    "reviewed_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "rule_pack_id": {
+      "type": "string"
+    },
+    "rule_pack_version": {
+      "type": "string"
+    },
+    "sequence": {
+      "type": "number"
+    },
+    "status": {
+      "default": "proposed",
+      "enum": [
+        "proposed",
+        "confirmed",
+        "superseded",
+        "rejected",
+        "checked_no_change"
+      ],
+      "type": "string"
+    },
+    "step_trace": {
+      "items": {
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "crs_ref": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "hb_ref": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "data",
+              "rule",
+              "reference",
+              "ai",
+              "user"
+            ],
+            "type": "string"
+          },
+          "step_id": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "superseded_by_id": {
+      "type": "string"
+    },
+    "supersedes_id": {
+      "type": "string"
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "target_type": {
+      "enum": [
+        "account",
+        "entity",
+        "controlling_person"
+      ],
+      "type": "string"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "trigger": {
+      "enum": [
+        "initial",
+        "manual",
+        "change_in_circumstances",
+        "balance_threshold",
+        "year_end",
+        "rm_attestation",
+        "trust_distribution",
+        "rule_pack_published",
+        "aml_kyc_change"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "target_type",
+    "target_id",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "data.app_role": "super_admin"
+          }
+        },
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "name": "CrsRule",
+  "type": "object",
+  "description": "CRS Rule Library: one rule inside a rule pack.",
+  "properties": {
+    "ai_guidance": {
+      "type": "string"
+    },
+    "condition": {
+      "description": "Condition-group JSON over the engine fact allowlist",
+      "type": "object"
+    },
+    "crs_ref": {
+      "type": "string"
+    },
+    "enabled": {
+      "default": true,
+      "type": "boolean"
+    },
+    "hb_ref": {
+      "type": "string"
+    },
+    "help": {
+      "type": "string"
+    },
+    "locked": {
+      "default": false,
+      "type": "boolean"
+    },
+    "options": {
+      "items": {
+        "properties": {
+          "effect": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "order": {
+      "type": "number"
+    },
+    "outcome_reason_template": {
+      "type": "string"
+    },
+    "pack_id": {
+      "type": "string"
+    },
+    "params": {
+      "type": "object"
+    },
+    "procedure": {
+      "enum": [
+        "general",
+        "individual_preexisting",
+        "individual_new",
+        "entity_preexisting",
+        "entity_new",
+        "controlling_persons",
+        "trust",
+        "joint",
+        "change_in_circumstances"
+      ],
+      "type": "string"
+    },
+    "question": {
+      "type": "string"
+    },
+    "rule_key": {
+      "description": "Stable key, e.g. IND_PRE.HV_THRESHOLD",
+      "type": "string"
+    },
+    "tier": {
+      "enum": [
+        "parameter",
+        "text",
+        "logic"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "pack_id",
+    "rule_key",
+    "procedure",
+    "tier"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.app_role": "super_admin"
+      }
+    }
+  }
+}
