@@ -14,8 +14,9 @@
 import { normalizeCountry, normalizeWithIndex, buildCountryIndex, countryName } from "./countries.js";
 import { resolvePack, getRule } from "./baselinePack.js";
 import { matchesCondition } from "./conditions.js";
+import { phoneCountry } from "./phones.js";
 
-export const ENGINE_VERSION = "1.1.0";
+export const ENGINE_VERSION = "1.2.0";
 
 const EXCLUDED_TYPES = {
   inheritance_estate: "Estate account",
@@ -186,6 +187,8 @@ function individualHolders(ctx) {
     tins: a.tax_residencies || [],
     addressCountry: ctx.norm(a.current_address?.country),
     otherAddressCountry: ctx.norm(a.account_holder_address?.country),
+    phoneCountry: phoneCountry(a.current_phone),
+    phone: a.current_phone,
     dob: a.date_of_birth,
     selfCert: a.self_certification_obtained === true || (a.documents || []).some((d) => d.document_type === "self_certification") ? true : undefined,
     selfCertDate: a.self_certification_date,
@@ -238,6 +241,10 @@ function individualPreexisting(ctx, h, usd) {
   for (const i of recorded) { const c = ctx.norm(i.country); if (c && ctx.isReportable(c)) indicia.push({ type: i.type, country: c, source: i.source || "recorded" }); }
   for (const c of h.residences) if (ctx.isReportable(c)) indicia.push({ type: "a_identified_resident", country: c, source: "tax_residencies" });
   for (const c of uniq([h.addressCountry, h.otherAddressCountry])) if (ctx.isReportable(c)) indicia.push({ type: "b_address", country: c, source: "address" });
+  // (c) a current phone number in a reportable jurisdiction and none in the FI's jurisdiction (one phone field on the account)
+  if (h.phoneCountry && h.phoneCountry !== ctx.fiJur && ctx.isReportable(h.phoneCountry) && !indicia.some((i) => i.type === "c_phone" && i.country === h.phoneCountry)) {
+    indicia.push({ type: "c_phone", country: h.phoneCountry, source: `current_phone ${h.phone}` });
+  }
   const holdMailOnly = ev.hold_mail_only === true || (recorded.length > 0 && recorded.every((i) => i.type === "f_hold_mail_in_care_of"));
   const realIndicia = indicia.filter((i) => i.type !== "f_hold_mail_in_care_of");
   const indiciaCountries = uniq(realIndicia.map((i) => i.country));

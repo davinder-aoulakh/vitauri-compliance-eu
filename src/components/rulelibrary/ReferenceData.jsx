@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { StudioReadiness } from "@/components/studio/StudioSetup";
 
 const audit = (user, type, id, name, changes) => base44.entities.AuditLog.create({
   action_type: "settings_changed", actor_email: user?.email, actor_role: user?.app_role, target_entity_type: type, target_entity_id: id,
@@ -23,6 +24,7 @@ const audit = (user, type, id, name, changes) => base44.entities.AuditLog.create
 export default function ReferenceData({ user }) {
   return (
     <div className="space-y-4">
+      <PilotReadiness user={user} />
       <ReportableLists user={user} />
       <Countries user={user} />
       <Card>
@@ -32,6 +34,31 @@ export default function ReferenceData({ user }) {
         </CardHeader>
       </Card>
     </div>
+  );
+}
+
+/** Readiness of each tenant that has the studio switched on (rollout check for super admins). */
+function PilotReadiness({ user }) {
+  const { data: tenants = [] } = useQuery({
+    queryKey: ["rule-library-pilot-tenants"],
+    queryFn: async () => (await base44.entities.Tenant.filter({}, "name", 500)).filter((t) => t.enabled_features?.classification_studio === true),
+  });
+  const [tenantId, setTenantId] = useState("");
+  const active = tenantId || tenants[0]?.id || "";
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">Tenants using the studio</CardTitle>
+          <CardDescription>To roll out to another tenant: switch on "Classification Studio" in Tenant Management, then set up its CRS settings in the studio and check its reportable jurisdiction list here.</CardDescription>
+        </div>
+        <Select value={active} onValueChange={setTenantId}>
+          <SelectTrigger className="w-64"><SelectValue placeholder={tenants.length ? "Choose a tenant" : "No tenant has the studio on"} /></SelectTrigger>
+          <SelectContent>{tenants.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+        </Select>
+      </CardHeader>
+      {active && <CardContent><StudioReadiness user={user} tenantId={active} /></CardContent>}
+    </Card>
   );
 }
 
