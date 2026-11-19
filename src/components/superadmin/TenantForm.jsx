@@ -39,6 +39,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
     audit_logging: true,
     user_management: true,
     validation_rules: true,
+    classification_studio: false,
    // custom_branding: true
   };
 
@@ -175,6 +176,7 @@ export default function TenantForm({ tenant, onSubmit, onCancel }) {
         { key: "compliance_support", label: "Compliance Support", description: "Support ticket management for tenant admins", icon: Shield },
         { key: "validation_rules", label: "Validation Rules", description: "Custom data validation rules", icon: Shield },
         { key: "flowchart_view", label: "Flowchart View", description: "Workflow flowchart action on classification screens", icon: GitBranch },
+        { key: "classification_studio", label: "Classification Studio", description: "Data-first CRS classification with decision records (pilot). Manual classification is unaffected.", icon: Shield },
       //  { key: "workflow_automation", label: "Workflow Automation", description: "Auto-triggered workflows", icon: Zap },
         { key: "advanced_reporting", label: "Advanced Reporting", description: "Enhanced report generation", icon: FileCheck },
         { key: "audit_logging", label: "Activity Audit Log", description: "Detailed activity tracking", icon: Eye },

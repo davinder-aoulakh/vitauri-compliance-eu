@@ -50,7 +50,9 @@
 import Accounts from './pages/Accounts';
 import Activity from './pages/Activity';
 import AutoClassificationRules from './pages/AutoClassificationRules';
+import ClassificationStudio from './pages/ClassificationStudio';
 import ComplianceAssistant from './pages/ComplianceAssistant';
+import CrsRuleLibrary from './pages/CrsRuleLibrary';
 import CustomValidationRules from './pages/CustomValidationRules';
 import Dashboard from './pages/Dashboard';
 import DashboardBuilder from './pages/DashboardBuilder';
@@ -74,7 +76,9 @@ export const PAGES = {
     "Accounts": Accounts,
     "Activity": Activity,
     "AutoClassificationRules": AutoClassificationRules,
+    "ClassificationStudio": ClassificationStudio,
     "ComplianceAssistant": ComplianceAssistant,
+    "CrsRuleLibrary": CrsRuleLibrary,
     "CustomValidationRules": CustomValidationRules,
     "Dashboard": Dashboard,
     "DashboardBuilder": DashboardBuilder,

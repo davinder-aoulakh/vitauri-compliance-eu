@@ -32,7 +32,9 @@ import {
   Palette,
   Globe,
   Sparkles,
-  Headphones
+  Headphones,
+  ListChecks,
+  BookOpen
 } from "lucide-react";
 import {
   Sidebar,
@@ -264,10 +266,21 @@ export default function Layout({ children }) {
     ...menuItemMap[title]
   })).filter(item => item.url);  */
 
-  const crsNav = filterMenuItems(crsMenuOrder.map(title => ({
-   title,
-    ...menuItemMap[title]
-    })));
+  const crsNav = filterMenuItems([
+    ...crsMenuOrder.map(title => ({
+      title,
+      ...menuItemMap[title]
+    })),
+    // Classification Studio is appended (not part of the configurable menu order)
+    // and only shows for tenants with the classification_studio feature enabled.
+    {
+      title: "Classification Studio",
+      url: createPageUrl("ClassificationStudio"),
+      icon: ListChecks,
+      roles: ["tenant_admin", "tenant_supervisor", "tenant_user"],
+      featureKey: "classification_studio"
+    }
+  ]);
 
   const fatcaNav = filterMenuItems(fatcaMenuOrder.map(title => ({
   title,
@@ -345,6 +358,13 @@ const superAdminNav = filterMenuItems([
     title: "Auto Classification Rules",
     url: createPageUrl("AutoClassificationRules"),
     icon: Sparkles,
+    roles: ["super_admin"],
+    featureKey: null
+  },
+  {
+    title: "CRS Rule Library",
+    url: createPageUrl("CrsRuleLibrary"),
+    icon: BookOpen,
     roles: ["super_admin"],
     featureKey: null
   },

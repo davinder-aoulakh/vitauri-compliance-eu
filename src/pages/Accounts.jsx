@@ -77,6 +77,9 @@ import { Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import ClassifyMenuItem from "@/components/accounts/ClassifyMenuItem";
 import { isEntityReadyForAccountClassification, RFI_NOT_READY_MESSAGE } from "@/lib/rfiReadiness";
+import { Link } from "react-router-dom";
+import { ListChecks } from "lucide-react";
+import { createPageUrl } from "@/utils";
 
 export default function AccountsPage() {
   const [user, setUser] = useState(null);
@@ -1093,7 +1096,16 @@ export default function AccountsPage() {
                                       <History className="w-4 h-4 mr-2" />
                                       View History
                                     </DropdownMenuItem>
-                                    
+
+                                    {tenant?.enabled_features?.classification_studio === true && (
+                                      <DropdownMenuItem asChild>
+                                        <Link to={`${createPageUrl("ClassificationStudio")}?account=${account.id}`}>
+                                          <ListChecks className="w-4 h-4 mr-2 text-teal-700" />
+                                          Open in Studio
+                                        </Link>
+                                      </DropdownMenuItem>
+                                    )}
+
                                     {can('Account', 'edit') && (
                                      <>
                                         {accountDraftMap[account.id] ? (
