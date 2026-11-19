@@ -8,3 +8,4 @@ export { validatePack, diffPacks, packFingerprint, draftFingerprint, effectiveRu
 export { FIXTURES, runFixtures, runFixture } from "./fixtures.js";
 export { EXTRA_QUESTION_HOOKS } from "./engine.js";
 export { buildTimeline, previousDecision, snapshotChanges, changesFor, decisionRows, stepRows, aiRows, showValue, OUTCOME_TEXT, SOURCE_TEXT, TRIGGER_TEXT } from "./timeline.js";
+export { changeCaseDueDate, reevaluationOutcome, changeCaseFields, isSystemProposal } from "./reevaluation.js";

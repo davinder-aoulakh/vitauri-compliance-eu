@@ -12,7 +12,7 @@ import { OUTCOME_TEXT, TRIGGER_TEXT } from "../../../base44/shared/crs/timeline.
 import { downloadRecordsWorkbook } from "./decisionExports";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—");
-const STATUS_FILTERS = { confirmed: ["confirmed"], all: ["confirmed", "superseded", "proposed", "rejected"] };
+const STATUS_FILTERS = { confirmed: ["confirmed"], all: ["confirmed", "superseded", "proposed", "rejected", "checked_no_change"] };
 
 /** Decision records per reporting year, with the Excel export an auditor can take away. */
 export default function StudioRecords({ tenantId, tenantName, settings, rows, user, onOpen }) {
@@ -34,7 +34,7 @@ export default function StudioRecords({ tenantId, tenantName, settings, rows, us
     setBusy(true);
     try {
       await downloadRecordsWorkbook({ decisions: shown, accountsById, tenantName, jurisdiction: settings?.reporting_jurisdiction, year: activeYear === "all" ? "" : activeYear,
-        statusFilter: statusFilter === "confirmed" ? "Confirmed" : "All (confirmed, superseded, proposed, rejected)", generatedBy: user?.email });
+        statusFilter: statusFilter === "confirmed" ? "Confirmed" : "All (confirmed, superseded, proposed, rejected, checked with no change)", generatedBy: user?.email });
     } catch (e) { toast.error(`Couldn't create the Excel file: ${e.message || e}`); }
     finally { setBusy(false); }
   };

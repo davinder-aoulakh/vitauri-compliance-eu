@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { evaluate, loadPublishedPacks } from "../../../base44/shared/crs/index.js";
+import { evaluate, loadPublishedPacks, isSystemProposal } from "../../../base44/shared/crs/index.js";
 
 /**
  * Loads everything the Classification Studio needs for one tenant and evaluates every account
@@ -9,7 +9,7 @@ import { evaluate, loadPublishedPacks } from "../../../base44/shared/crs/index.j
  *
  * Queues:
  *  - classified: a confirmed ClassificationDecision exists
- *  - changed:    a proposed decision exists for an account that was already classified (Phase 7 re-evaluation)
+ *  - changed:    a confirmed account the automatic re-check flagged (open change case or studio proposal), or a re-confirm awaiting sign-off
  *  - needs:      the engine needs answers the data can't give
  *  - ready:      fully answered (by the data and saved answers), waiting for confirmation or second sign-off
  */
@@ -92,13 +92,18 @@ export function useStudioData(tenantId) {
     queryFn: () => base44.entities.ClassificationDecision.filter({ tenant_id: tenantId, status: { $in: ["confirmed", "proposed"] } }, "-created_date", LIMIT),
     enabled,
   });
+  const casesQ = useQuery({
+    queryKey: ["studio-change-cases", tenantId],
+    queryFn: () => base44.entities.ChangeCase.filter({ tenant_id: tenantId, status: { $in: ["open", "overdue"] } }, "-detected_at", LIMIT),
+    enabled,
+  });
   const entitiesQ = useQuery({
     queryKey: ["studio-rfi-entities", tenantId],
     queryFn: () => base44.entities.Entity.filter({ tenant_id: tenantId }, "entity_name", 1000),
     enabled,
   });
 
-  const queries = [settingsQ, countriesQ, accountsQ, cpsQ, evidenceQ, decisionsQ, entitiesQ];
+  const queries = [settingsQ, countriesQ, accountsQ, cpsQ, evidenceQ, decisionsQ, entitiesQ, casesQ];
   const isLoading = queries.some((q) => q.isLoading) || (!!jurisdiction && (listQ.isLoading || packQ.isLoading));
   const error = queries.find((q) => q.error)?.error || listQ.error || packQ.error || null;
 
@@ -108,12 +113,15 @@ export function useStudioData(tenantId) {
     for (const c of cpsQ.data || []) (cpsByAccount[c.account_id] ||= []).push(c);
     const evidenceByAccount = {};
     for (const e of evidenceQ.data || []) evidenceByAccount[e.account_id] = e;
-    const confirmed = {}; const proposed = {};
+    const confirmed = {}; const proposed = {}; const systemProposed = {};
     for (const d of decisionsQ.data || []) {
       if (d.target_type !== "account") continue;
       if (d.status === "confirmed" && !confirmed[d.target_id]) confirmed[d.target_id] = d;
-      if (d.status === "proposed" && !proposed[d.target_id]) proposed[d.target_id] = d;
+      if (isSystemProposal(d)) { if (!systemProposed[d.target_id]) systemProposed[d.target_id] = d; }
+      else if (d.status === "proposed" && !proposed[d.target_id]) proposed[d.target_id] = d;
     }
+    const caseByAccount = {};
+    for (const c of casesQ.data || []) if (!caseByAccount[c.account_id]) caseByAccount[c.account_id] = c;
     const entityNames = Object.fromEntries((entitiesQ.data || []).map((e) => [e.id, e.entity_name]));
     const base = { settings: settingsQ.data, reportableList: listQ.data || null, countries: countriesQ.data || [], pack: packQ.data?.pack || null, overridePack: packQ.data?.overridePack || null };
 
@@ -129,9 +137,11 @@ export function useStudioData(tenantId) {
       }
       const confirmedDecision = confirmed[account.id] || null;
       const proposedDecision = proposed[account.id] || null;
+      const systemProposal = confirmedDecision ? systemProposed[account.id] || null : null;
+      const changeCase = confirmedDecision ? caseByAccount[account.id] || null : null;
       const awaitingSignOff = !!proposedDecision && !confirmedDecision;
       let queue;
-      if (proposedDecision && confirmedDecision) queue = "changed";
+      if (confirmedDecision && (proposedDecision || systemProposal || changeCase)) queue = "changed";
       else if (confirmedDecision) queue = "classified";
       else if (awaitingSignOff) queue = "ready";
       else if (result.outcome.status === "pending" || result.gaps.length) queue = "needs";
@@ -144,15 +154,17 @@ export function useStudioData(tenantId) {
         queue,
         confirmedDecision,
         proposedDecision,
+        systemProposal,
+        changeCase,
         awaitingSignOff,
         entityName: entityNames[account.entity_id] || "",
         holderName: account.account_holder_name || [account.first_name, account.last_name].filter(Boolean).join(" ") || "Unnamed holder",
         comparison: compareWithManual(account.reportability_status, result.outcome.status),
       };
     });
-  }, [isLoading, accountsQ.data, settingsQ.data, listQ.data, countriesQ.data, packQ.data, cpsQ.data, evidenceQ.data, decisionsQ.data, entitiesQ.data]);
+  }, [isLoading, accountsQ.data, settingsQ.data, listQ.data, countriesQ.data, packQ.data, cpsQ.data, evidenceQ.data, decisionsQ.data, entitiesQ.data, casesQ.data]);
 
-  const refetch = () => Promise.all([accountsQ.refetch(), evidenceQ.refetch(), decisionsQ.refetch(), cpsQ.refetch()]);
+  const refetch = () => Promise.all([accountsQ.refetch(), evidenceQ.refetch(), decisionsQ.refetch(), cpsQ.refetch(), casesQ.refetch()]);
 
   return {
     isLoading,

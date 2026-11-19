@@ -16,7 +16,9 @@ const STATUS_CLS = {
   superseded: "bg-slate-100 text-slate-600 border-slate-200",
   proposed: "bg-violet-50 text-violet-800 border-violet-200",
   rejected: "bg-red-50 text-red-700 border-red-200",
+  checked_no_change: "bg-sky-50 text-sky-800 border-sky-200",
 };
+const STATUS_TEXT = { checked_no_change: "checked, no change", proposed: "proposed", confirmed: "confirmed", superseded: "superseded", rejected: "not used" };
 const SOURCE_CLS = {
   data: "bg-teal-50 text-teal-800 border-teal-200", rule: "bg-slate-100 text-slate-700 border-slate-200", reference: "bg-amber-50 text-amber-800 border-amber-200",
   user: "bg-blue-50 text-blue-800 border-blue-200", ai: "bg-violet-50 text-violet-800 border-violet-200",
@@ -97,9 +99,9 @@ function DecisionEntry({ entry, decisions, account, tenantName, user, expanded, 
       <div className="flex flex-wrap items-center gap-2 p-2.5">
         <button type="button" onClick={onToggle} className="flex flex-1 min-w-0 flex-wrap items-center gap-2 text-left" aria-expanded={expanded}>
           {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-          <span className="text-sm font-semibold text-slate-900">#{d.sequence} · {OUTCOME_TEXT[d.outcome] || d.outcome}{d.reportable_jurisdictions?.length ? ` · ${d.reportable_jurisdictions.join(", ")}` : ""}</span>
-          <Badge variant="outline" className={`text-[10px] ${STATUS_CLS[d.status] || ""}`}>{d.status}</Badge>
-          <span className="text-xs text-slate-500">{TRIGGER_TEXT[d.trigger] || d.trigger} · {d.decided_by} · {fmt(d.decided_at)}</span>
+          <span className="text-sm font-semibold text-slate-900">#{d.sequence} · {d.status === "checked_no_change" ? "Checked, no change" : `${OUTCOME_TEXT[d.outcome] || d.outcome}${d.reportable_jurisdictions?.length ? ` · ${d.reportable_jurisdictions.join(", ")}` : ""}`}</span>
+          <Badge variant="outline" className={`text-[10px] ${STATUS_CLS[d.status] || ""}`}>{STATUS_TEXT[d.status] || d.status}</Badge>
+          <span className="text-xs text-slate-500">{TRIGGER_TEXT[d.trigger] || d.trigger} · {d.decided_by === "system" ? "automatic re-check" : d.decided_by} · {fmt(d.decided_at)}</span>
         </button>
         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={pdf} disabled={busy}>{busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1" />}PDF</Button>
       </div>

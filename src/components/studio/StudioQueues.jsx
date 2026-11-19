@@ -15,7 +15,7 @@ import StudioReview, { OutcomeBadge, invokeError } from "./StudioReview";
 const QUEUES = [
   { key: "ready", label: "Ready to confirm", help: "Every CRS question is answered by the account data or saved answers. Check the decision path, then confirm." },
   { key: "needs", label: "Needs input", help: "The data can't answer every CRS question. Only the open questions will be asked." },
-  { key: "changed", label: "Changed", help: "Something changed after classification. The confirmed status stays until someone confirms the proposal." },
+  { key: "changed", label: "Changed", help: "The automatic re-check found a different result or new questions after a change. The confirmed status stays until an admin or supervisor confirms the new result or keeps the current one." },
   { key: "classified", label: "Classified", help: "Confirmed decisions with a permanent record of why." },
 ];
 const PAGE = 50;
@@ -128,7 +128,7 @@ export default function StudioQueues({ data, initialAccountId, user, canConfirm,
           {pageRows.length === 0 ? (
             <p className="p-6 text-sm text-slate-500">
               {queue === "classified" ? "No confirmed decisions yet." :
-                queue === "changed" ? "Nothing has changed since classification." : "No accounts in this queue."}
+                queue === "changed" ? "No changes to review. Confirmed accounts are re-checked automatically when their data or the rules change." : "No accounts in this queue."}
             </p>
           ) : (
             <ul className="divide-y">
@@ -152,6 +152,8 @@ export default function StudioQueues({ data, initialAccountId, user, canConfirm,
                       {r.result.outcome.action_required && <span className="text-blue-700">Action needed</span>}
                       {r.comparison === "differ" && !r.confirmedDecision && <span className="text-amber-700">Differs from manual</span>}
                       {r.awaitingSignOff && <span className="text-violet-700">Awaiting sign-off</span>}
+                      {r.changeCase && <span className={r.changeCase.status === "overdue" || (r.changeCase.due_date && r.changeCase.due_date < new Date().toISOString().slice(0, 10)) ? "text-red-700 font-medium" : "text-amber-700"}>
+                        {r.changeCase.status === "overdue" ? "Overdue" : "Due"} {r.changeCase.due_date}</span>}
                     </div>
                   </button>
                 </li>
