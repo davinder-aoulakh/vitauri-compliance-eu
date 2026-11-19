@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -8,26 +8,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StudioSettingsForm from "@/components/studio/StudioSettingsForm";
-import { ListChecks, Inbox, HelpCircle, RefreshCw, CheckCircle2, Settings as SettingsIcon, Lock, ArrowLeft } from "lucide-react";
+import StudioQueues from "@/components/studio/StudioQueues";
+import StudioComparison from "@/components/studio/StudioComparison";
+import { useStudioData } from "@/components/studio/useStudioData";
+import { Inbox, Settings as SettingsIcon, Lock, ArrowLeft, Scale, Loader2, AlertTriangle } from "lucide-react";
 
 /**
- * Classification Studio (Phase 0 scaffold).
- *
- * Extra, opt-in screen behind the tenant feature flag `classification_studio`.
+ * Classification Studio — extra, opt-in screen behind the tenant feature flag `classification_studio`.
+ * Phase 3: read-only queues, review screen and studio-vs-manual comparison using the shared CRS engine.
  * It does not change the manual classification flow on the Accounts page.
- * Later phases add the CRS engine, queues, review screen and decision records.
  */
 
 const STUDIO_ROLES = ["tenant_admin", "tenant_supervisor", "tenant_user", "super_admin"];
 const CONFIRM_ROLES = ["tenant_admin", "tenant_supervisor"];
-
-const QUEUES = [
-  { key: "ready", label: "Ready to confirm", icon: CheckCircle2, text: "Accounts the data fully answers. You check them and confirm, one by one or in bulk." },
-  { key: "needs", label: "Needs input", icon: HelpCircle, text: "Accounts where the data can't answer every CRS question. Only the open questions are asked." },
-  { key: "changed", label: "Changed", icon: RefreshCw, text: "Accounts whose data changed after classification. The confirmed status stays until someone confirms the proposal." },
-  { key: "done", label: "Classified", icon: ListChecks, text: "Confirmed decisions, each with a permanent record of why." },
-];
 
 function useStudioContext() {
   return useQuery({
@@ -45,22 +40,67 @@ function useStudioContext() {
   });
 }
 
-function useSelectedAccount(accountId) {
+function usePilotTenants(enabled) {
   return useQuery({
-    queryKey: ["classification-studio-account", accountId],
+    queryKey: ["classification-studio-pilot-tenants"],
     queryFn: async () => {
-      const rows = await base44.entities.Account.filter({ id: accountId });
-      return rows[0] || null;
+      const all = await base44.entities.Tenant.filter({}, "name", 500);
+      return all.filter((t) => t.enabled_features?.classification_studio === true);
     },
-    enabled: !!accountId,
+    enabled,
   });
+}
+
+function StudioWorkspace({ tenantId, user, tenant, accountId }) {
+  const data = useStudioData(tenantId);
+  const [tab, setTab] = useState(accountId ? "queues" : "queues");
+  const [openAccount, setOpenAccount] = useState(accountId || null);
+  useEffect(() => { if (accountId) setOpenAccount(accountId); }, [accountId]);
+
+  return (
+    <Tabs value={tab} onValueChange={setTab}>
+      <TabsList>
+        <TabsTrigger value="queues"><Inbox className="w-4 h-4 mr-2" />Queues</TabsTrigger>
+        <TabsTrigger value="comparison"><Scale className="w-4 h-4 mr-2" />Studio vs manual</TabsTrigger>
+        <TabsTrigger value="settings"><SettingsIcon className="w-4 h-4 mr-2" />Settings</TabsTrigger>
+      </TabsList>
+
+      {(tab === "queues" || tab === "comparison") && (
+        data.isLoading ? (
+          <div className="flex items-center gap-2 py-16 justify-center text-sm text-slate-500"><Loader2 className="w-5 h-5 animate-spin text-teal-700" />Checking accounts against the CRS rules…</div>
+        ) : data.error ? (
+          <Alert className="mt-4 border-red-300 bg-red-50"><AlertTriangle className="w-4 h-4 text-red-600" /><AlertDescription>Couldn't load the studio data: {String(data.error.message || data.error)}</AlertDescription></Alert>
+        ) : !data.settings ? (
+          <Alert className="mt-4"><AlertDescription>The studio's CRS settings aren't set up for this organisation yet. Open the Settings tab, or ask your platform administrator.</AlertDescription></Alert>
+        ) : null
+      )}
+
+      <TabsContent value="queues" className="mt-4">
+        {!data.isLoading && !data.error && data.settings && (
+          <StudioQueues key={openAccount || "none"} data={data} initialAccountId={openAccount} />
+        )}
+      </TabsContent>
+      <TabsContent value="comparison" className="mt-4">
+        {!data.isLoading && !data.error && data.settings && (
+          <StudioComparison data={data} onOpen={(id) => { setOpenAccount(id); setTab("queues"); }} />
+        )}
+      </TabsContent>
+      <TabsContent value="settings" className="mt-4">
+        <StudioSettingsForm user={user} tenant={tenant || { id: tenantId }} />
+      </TabsContent>
+    </Tabs>
+  );
 }
 
 export default function ClassificationStudio() {
   const location = useLocation();
   const accountId = new URLSearchParams(location.search).get("account");
   const { data: ctx, isLoading } = useStudioContext();
-  const { data: account, isLoading: accountLoading } = useSelectedAccount(accountId);
+  const user = ctx?.user;
+  const role = user?.app_role;
+  const isSuperAdmin = role === "super_admin";
+  const { data: pilotTenants = [] } = usePilotTenants(isSuperAdmin && !user?.tenant_id);
+  const [pickedTenantId, setPickedTenantId] = useState("");
 
   if (isLoading) {
     return (
@@ -70,10 +110,7 @@ export default function ClassificationStudio() {
     );
   }
 
-  const user = ctx?.user;
   const tenant = ctx?.tenant;
-  const role = user?.app_role;
-  const isSuperAdmin = role === "super_admin";
   const enabled = isSuperAdmin || tenant?.enabled_features?.classification_studio === true;
 
   if (!STUDIO_ROLES.includes(role) || !enabled) {
@@ -95,6 +132,8 @@ export default function ClassificationStudio() {
     );
   }
 
+  const tenantId = user?.tenant_id || pickedTenantId;
+  const pickedTenant = pilotTenants.find((t) => t.id === pickedTenantId) || null;
   const canConfirm = CONFIRM_ROLES.includes(role);
 
   return (
@@ -110,47 +149,26 @@ export default function ClassificationStudio() {
             and keeps a permanent record of every decision. Manual classification on the Accounts page keeps working as before.
           </p>
         </div>
-        <Badge variant="secondary">{canConfirm ? "You can confirm decisions" : "You can review and draft answers"}</Badge>
+        <Badge variant="secondary">{isSuperAdmin ? "Super admin · read-only" : canConfirm ? "You can confirm decisions" : "You can review and draft answers"}</Badge>
       </div>
 
-      {accountId && (
-        <Alert>
-          <AlertDescription>
-            {accountLoading
-              ? "Loading the selected account…"
-              : account
-                ? <>Opened from Accounts: <strong>{account.account_holder_name || "Unnamed holder"}</strong> · {account.account_number || account.id}. The review screen for this account arrives in a later phase.</>
-                : "The selected account wasn't found or you don't have access to it."}
-          </AlertDescription>
-        </Alert>
+      {isSuperAdmin && !user?.tenant_id && (
+        <Card>
+          <CardContent className="p-4 flex flex-wrap items-center gap-3">
+            <span className="text-sm text-slate-700">Pilot tenant</span>
+            <Select value={pickedTenantId} onValueChange={setPickedTenantId}>
+              <SelectTrigger className="w-72"><SelectValue placeholder={pilotTenants.length ? "Choose a tenant" : "No tenant has the studio switched on"} /></SelectTrigger>
+              <SelectContent>{pilotTenants.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
       )}
 
-      <Tabs defaultValue="queues">
-        <TabsList>
-          <TabsTrigger value="queues"><Inbox className="w-4 h-4 mr-2" />Queues</TabsTrigger>
-          <TabsTrigger value="settings"><SettingsIcon className="w-4 h-4 mr-2" />Settings</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="queues" className="mt-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {QUEUES.map((q) => (
-              <Card key={q.key}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2"><q.icon className="w-4 h-4 text-teal-700" />{q.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-600">{q.text}</p>
-                  <p className="text-xs text-slate-400 mt-3">Available once the CRS engine is connected.</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="settings" className="mt-4">
-          <StudioSettingsForm user={user} tenant={tenant} />
-        </TabsContent>
-      </Tabs>
+      {tenantId ? (
+        <StudioWorkspace tenantId={tenantId} user={user} tenant={tenant || pickedTenant} accountId={accountId} />
+      ) : (
+        <p className="text-sm text-slate-500">Choose a pilot tenant to see its accounts.</p>
+      )}
     </div>
   );
 }
