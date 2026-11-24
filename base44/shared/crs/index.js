@@ -10,3 +10,4 @@ export { EXTRA_QUESTION_HOOKS } from "./engine.js";
 export { buildTimeline, previousDecision, snapshotChanges, changesFor, decisionRows, stepRows, aiRows, showValue, OUTCOME_TEXT, SOURCE_TEXT, TRIGGER_TEXT } from "./timeline.js";
 export { changeCaseDueDate, reevaluationOutcome, changeCaseFields, isSystemProposal } from "./reevaluation.js";
 export { phoneCountry } from "./phones.js";
+export { parseHandbookRef, formatCrsRef, formatReferencesText, handbookLink, printedPage, deglyph, HANDBOOK_URL, HANDBOOK_TITLE } from "./references.js";

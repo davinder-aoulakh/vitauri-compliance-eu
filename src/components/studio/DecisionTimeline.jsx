@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronRight, FileDown, History, Loader2 } from "lucide-react";
 import { buildTimeline, changesFor, showValue, OUTCOME_TEXT, SOURCE_TEXT, TRIGGER_TEXT } from "../../../base44/shared/crs/timeline.js";
 import { downloadDecisionPdf } from "./decisionExports";
+import References from "./References";
+import { deglyph } from "../../../base44/shared/crs/references.js";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—");
 const STATUS_CLS = {
@@ -107,7 +109,7 @@ function DecisionEntry({ entry, decisions, account, tenantName, user, expanded, 
       </div>
       {expanded && (
         <div className="border-t p-3 space-y-4 text-xs">
-          {d.reason && <p className="text-sm text-slate-700">{d.reason}</p>}
+          {d.reason && <p className="text-sm text-slate-700">{deglyph(d.reason)}</p>}
           <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
             {[
               ["Decided by", `${d.decided_by || "—"} · ${fmt(d.decided_at)}`],
@@ -141,12 +143,13 @@ function DecisionEntry({ entry, decisions, account, tenantName, user, expanded, 
                 <li key={i} className="flex gap-2">
                   <span className="flex-none w-5 h-5 rounded-full border text-[10px] font-mono grid place-items-center text-slate-500">{i + 1}</span>
                   <div className="min-w-0">
-                    <p className="text-slate-800">{s.question}</p>
+                    <p className="text-slate-800">{deglyph(s.question)}</p>
                     <p className="flex flex-wrap items-center gap-1.5 mt-0.5"><span className="font-semibold">{s.answer}</span>
                       <span className={`text-[10px] font-semibold border rounded px-1 ${SOURCE_CLS[s.source] || ""}`}>{SOURCE_TEXT[s.source] || s.source}</span>
-                      {(s.crs_ref || s.hb_ref) && <span className="text-[10px] font-mono text-slate-500 border border-dashed rounded px-1">{[s.crs_ref && `CRS ${s.crs_ref}`, s.hb_ref && `HB ${s.hb_ref}`].filter(Boolean).join(" · ")}</span>}
+
                     </p>
-                    {s.evidence && <p className="font-mono text-[11px] text-slate-500 break-words">{s.evidence}</p>}
+                    <References crsRef={s.crs_ref} hbRef={s.hb_ref} />
+                    {s.evidence && <p className="font-mono text-[11px] text-slate-500 break-words">{deglyph(s.evidence)}</p>}
                   </div>
                 </li>
               ))}

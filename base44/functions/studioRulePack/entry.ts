@@ -84,7 +84,12 @@ Deno.serve(async (req) => {
         version, status: 'draft', jurisdiction_scope: scope, title: body.title || (scope === 'global' ? 'OECD CRS Handbook rules' : `${scope} overrides`),
         based_on_version: from?.version || '', created_by_email: user.email, change_note: '',
       });
-      const source = from ? await rulesOf(from.id) : scope === 'global' ? baselineRuleRows() : [];
+      let source = from ? await rulesOf(from.id) : scope === 'global' ? baselineRuleRows() : [];
+      // A global draft copied from an older version gains any Handbook rules added to the engine since then.
+      if (scope === 'global' && from) {
+        const have = new Set(source.map((r) => r.rule_key));
+        source = [...source, ...baselineRuleRows().filter((r) => !have.has(r.rule_key))];
+      }
       const rows = source.map((r) => ({ ...Object.fromEntries(RULE_STORE_FIELDS.filter((f) => r[f] !== undefined && r[f] !== null).map((f) => [f, r[f]])), pack_id: pack.id }));
       await createMany(db.CrsRule, rows);
       const { fingerprint } = await checkDraft(pack, rows);
@@ -226,7 +231,12 @@ Deno.serve(async (req) => {
         version, status: 'draft', jurisdiction_scope: scope, title: `Rollback to ${target.version}`, rollback_of: target.version,
         based_on_version: current?.version || '', created_by_email: user.email, change_note: `Rollback to version ${target.version}.`,
       });
-      const rows = (await rulesOf(target.id)).map((r) => ({ ...Object.fromEntries(RULE_STORE_FIELDS.filter((f) => r[f] !== undefined && r[f] !== null).map((f) => [f, r[f]])), pack_id: pack.id }));
+      let targetRules = await rulesOf(target.id);
+      if (scope === 'global') {
+        const have = new Set(targetRules.map((r) => r.rule_key));
+        targetRules = [...targetRules, ...baselineRuleRows().filter((r) => !have.has(r.rule_key))];
+      }
+      const rows = targetRules.map((r) => ({ ...Object.fromEntries(RULE_STORE_FIELDS.filter((f) => r[f] !== undefined && r[f] !== null).map((f) => [f, r[f]])), pack_id: pack.id }));
       await createMany(db.CrsRule, rows);
       const { fingerprint } = await checkDraft(pack, rows);
       await db.CrsRulePack.update(pack.id, { rules_fingerprint: fingerprint });

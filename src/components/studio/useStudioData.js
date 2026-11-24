@@ -82,6 +82,11 @@ export function useStudioData(tenantId) {
     queryFn: () => base44.entities.ControllingPerson.filter({ tenant_id: tenantId }, "-updated_date", LIMIT),
     enabled,
   });
+  const beneficiariesQ = useQuery({
+    queryKey: ["studio-beneficiaries", tenantId],
+    queryFn: () => base44.entities.Beneficiary.filter({ tenant_id: tenantId }, "-updated_date", LIMIT),
+    enabled,
+  });
   const evidenceQ = useQuery({
     queryKey: ["studio-evidence", tenantId],
     queryFn: () => base44.entities.StudioEvidence.filter({ tenant_id: tenantId }, "-updated_date", LIMIT),
@@ -103,7 +108,7 @@ export function useStudioData(tenantId) {
     enabled,
   });
 
-  const queries = [settingsQ, countriesQ, accountsQ, cpsQ, evidenceQ, decisionsQ, entitiesQ, casesQ];
+  const queries = [settingsQ, countriesQ, accountsQ, cpsQ, evidenceQ, decisionsQ, entitiesQ, casesQ, beneficiariesQ];
   const isLoading = queries.some((q) => q.isLoading) || (!!jurisdiction && (listQ.isLoading || packQ.isLoading));
   const error = queries.find((q) => q.error)?.error || listQ.error || packQ.error || null;
 
@@ -111,6 +116,8 @@ export function useStudioData(tenantId) {
     if (isLoading || !accountsQ.data || !settingsQ.data) return [];
     const cpsByAccount = {};
     for (const c of cpsQ.data || []) (cpsByAccount[c.account_id] ||= []).push(c);
+    const bensByAccount = {};
+    for (const b of beneficiariesQ.data || []) (bensByAccount[b.account_id] ||= []).push(b);
     const evidenceByAccount = {};
     for (const e of evidenceQ.data || []) evidenceByAccount[e.account_id] = e;
     const confirmed = {}; const proposed = {}; const systemProposed = {};
@@ -127,7 +134,7 @@ export function useStudioData(tenantId) {
 
     return accountsQ.data.map((account) => {
       const evidence = evidenceByAccount[account.id] || {};
-      const input = { ...base, account, controllingPersons: cpsByAccount[account.id] || [], evidence, linkedAccounts: [] };
+      const input = { ...base, account, controllingPersons: cpsByAccount[account.id] || [], beneficiaries: bensByAccount[account.id] || [], evidence, linkedAccounts: [] };
       let result;
       try {
         result = evaluate(input, evidence.draft_gap_answers || {});
@@ -162,9 +169,9 @@ export function useStudioData(tenantId) {
         comparison: compareWithManual(account.reportability_status, result.outcome.status),
       };
     });
-  }, [isLoading, accountsQ.data, settingsQ.data, listQ.data, countriesQ.data, packQ.data, cpsQ.data, evidenceQ.data, decisionsQ.data, entitiesQ.data, casesQ.data]);
+  }, [isLoading, accountsQ.data, settingsQ.data, listQ.data, countriesQ.data, packQ.data, cpsQ.data, evidenceQ.data, decisionsQ.data, entitiesQ.data, casesQ.data, beneficiariesQ.data]);
 
-  const refetch = () => Promise.all([accountsQ.refetch(), evidenceQ.refetch(), decisionsQ.refetch(), cpsQ.refetch(), casesQ.refetch()]);
+  const refetch = () => Promise.all([accountsQ.refetch(), evidenceQ.refetch(), decisionsQ.refetch(), cpsQ.refetch(), casesQ.refetch(), beneficiariesQ.refetch()]);
 
   return {
     isLoading,

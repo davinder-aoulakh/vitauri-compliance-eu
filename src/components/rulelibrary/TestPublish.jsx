@@ -66,12 +66,14 @@ export default function TestPublish({ pack, rules, globalPublished, overridesByS
       let done = 0;
       setProgress({ done: 0, total: targets.length });
       for (const { tenant, settings } of targets) {
-        const [accounts, cps, evidence, decisions] = await Promise.all([
+        const [accounts, cps, evidence, decisions, bens] = await Promise.all([
           base44.entities.Account.filter({ tenant_id: tenant.id }, "-updated_date", 5000),
           base44.entities.ControllingPerson.filter({ tenant_id: tenant.id }, "-updated_date", 5000),
           base44.entities.StudioEvidence.filter({ tenant_id: tenant.id }, "-updated_date", 5000),
           base44.entities.ClassificationDecision.filter({ tenant_id: tenant.id, status: "confirmed" }, "-created_date", 5000),
+          base44.entities.Beneficiary.filter({ tenant_id: tenant.id }, "-updated_date", 5000).catch(() => []),
         ]);
+        const bensBy = {}; for (const b of bens) (bensBy[b.account_id] ||= []).push(b);
         const list = lists.filter((l) => l.reporting_jurisdiction === settings.reporting_jurisdiction && l.status !== "retired").sort((a, b) => (b.year || 0) - (a.year || 0))[0] || null;
         const p = packsFor(pack, rules, globalPublished, overridesByScope, settings.reporting_jurisdiction);
         const cpsBy = {}; for (const c of cps) (cpsBy[c.account_id] ||= []).push(c);
@@ -80,7 +82,7 @@ export default function TestPublish({ pack, rules, globalPublished, overridesByS
         let changed = 0;
         for (const account of accounts) {
           const ev = evBy[account.id] || {};
-          const base = { settings, reportableList: list, countries, account, controllingPersons: cpsBy[account.id] || [], evidence: ev, linkedAccounts: [] };
+          const base = { settings, reportableList: list, countries, account, controllingPersons: cpsBy[account.id] || [], beneficiaries: bensBy[account.id] || [], evidence: ev, linkedAccounts: [] };
           const a = evaluate({ ...base, ...p.published }, ev.draft_gap_answers || {});
           const b = evaluate({ ...base, ...p.draft }, ev.draft_gap_answers || {});
           report.totals.accounts++;

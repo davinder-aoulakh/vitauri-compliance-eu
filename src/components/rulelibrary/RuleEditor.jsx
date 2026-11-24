@@ -12,6 +12,7 @@ import { Loader2, Lock, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { resolvePack, PARAM_SPECS, PROCEDURE_LABELS, BASELINE_RULES } from "../../../base44/shared/crs/index.js";
 import { callLibrary, scopeOf, STATUS_STYLE, useInvalidateLibrary } from "./useRuleLibrary";
 import ExtraQuestionForm from "./ExtraQuestionForm";
+import References from "@/components/studio/References";
 
 const baseKeys = new Set(BASELINE_RULES.map((r) => r.rule_key));
 const PROCEDURE_ORDER = ["general", "individual_preexisting", "individual_new", "entity_preexisting", "entity_new", "controlling_persons", "custom"];
@@ -183,7 +184,11 @@ function HandbookRuleForm({ pack, rule, readOnly, overridden, isOverride, onSave
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1"><Label htmlFor="r-crs">CRS reference</Label><Input id="r-crs" disabled={readOnly} value={form.crs_ref} onChange={(e) => set("crs_ref", e.target.value)} /></div>
-          <div className="space-y-1"><Label htmlFor="r-hb">Handbook reference</Label><Input id="r-hb" disabled={readOnly} value={form.hb_ref} onChange={(e) => set("hb_ref", e.target.value)} /></div>
+          <div className="space-y-1"><Label htmlFor="r-hb">Handbook reference</Label><Input id="r-hb" disabled={readOnly} value={form.hb_ref} onChange={(e) => set("hb_ref", e.target.value)} placeholder="e.g. Fig. 8, ¶129–130, FAQ II-8" /></div>
+        </div>
+        <div className="rounded border border-dashed px-2 py-1.5 bg-slate-50">
+          <p className="text-[11px] text-slate-500 mb-0.5">Users see:</p>
+          <References crsRef={form.crs_ref} hbRef={form.hb_ref} />
         </div>
         {form.options.length > 0 && (
           <div className="space-y-2">

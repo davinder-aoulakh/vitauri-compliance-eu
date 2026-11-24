@@ -14,7 +14,8 @@ const ACCOUNT_FIELDS = [
   'country_of_incorporation_code', 'tax_residencies', 'multiple_residencies', 'current_address', 'account_holder_address', 'current_phone',
   'date_of_birth', 'self_certification_obtained', 'self_certification_date', 'year_end_cash_value', 'year_end_cash_value_currency',
   'entity_classification', 'crs_entity_classification', 'type_of_financial_institution', 'gross_income_from_financial_assets',
-  'entity_managed_by_asset_manager', 'notes', 'reportability_reason',
+  'entity_managed_by_asset_manager', 'notes', 'reportability_reason', 'account_holder_is_alive', 'account_holder_deceased_during_period',
+  'death_certificate_received', 'will_or_inheritance_received', 'legacy_of_deceased_settled',
 ];
 const CP_FIELDS = ['full_name', 'control_type', 'ownership_percentage', 'tax_residencies', 'country_of_residence', 'country_of_residence_code', 'self_certification_obtained'];
 const EVIDENCE_FIELDS = ['crs_indicia', 'hold_mail_only', 'documentary_evidence', 'rm_attestations', 'self_cert_detail', 'entity_status', 'trust_parties', 'joint_holders'];
@@ -48,6 +49,7 @@ Deno.serve(async (req) => {
       reporting_jurisdiction: result.reporting_jurisdiction,
       account: pick(account, ACCOUNT_FIELDS),
       controlling_persons: (input.controllingPersons || []).map((c) => pick(c, CP_FIELDS)),
+      beneficiaries: (input.beneficiaries || []).map((b) => pick(b, ['full_name', 'first_name', 'last_name', 'tax_residencies', 'country_of_residence', 'address', 'reportability_status'])),
       studio_evidence: pick(input.evidence, EVIDENCE_FIELDS),
       steps_already_decided: result.steps.filter((s) => !s.gap).map((s) => ({ question: s.question, answer: s.answer, evidence: s.evidence })),
     };

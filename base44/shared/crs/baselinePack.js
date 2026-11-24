@@ -26,6 +26,17 @@ export const BASELINE_RULES = [
     options: [{ value: "above_1m", label: "Above USD 1,000,000" }, { value: "between", label: "Between USD 250,000 and 1,000,000" }, { value: "below_250k", label: "USD 250,000 or less" }] }),
 
   // ---------- Pre-existing individual (Fig. 13) ----------
+  R("IND.DECEASED", "general", 40, "logic", { locked: true,
+    question: "Is the account holder deceased, and who holds the account now?",
+    crs_ref: "VIII(E)(1), VIII(C)(17)(e)", hb_ref: "Fig. 8, ¶129",
+    help: "Insurance and annuity contracts: each person entitled to a payment is an account holder. Other accounts: the deceased stays the holder until the account is held solely by the estate with the will or death certificate on file (excluded), or passes to the heirs.",
+    options: [{ value: "estate", label: "Held solely by the estate · will or death certificate on file" }, { value: "heirs", label: "Passed to the heirs" }, { value: "deceased", label: "Still in the deceased's name" }],
+    ai_guidance: "Use the death certificate, will and legacy fields and the recorded beneficiaries. Suggest 'estate' only when the will or death certificate is on file and nothing says the heirs took over." }),
+  R("IND.BENEFICIARIES", "general", 45, "logic", { locked: true,
+    question: "Who are the beneficiaries or heirs, and where are they resident?",
+    crs_ref: "VIII(E)(1)", hb_ref: "¶129",
+    help: "Record each beneficiary or heir on the account with their address and tax residence, so each can be checked as an account holder.",
+    options: [{ value: "recorded", label: "Recorded now · re-run" }] }),
   R("IND_PRE.INSURANCE_BAR", "individual_preexisting", 10, "logic", {
     question: "Is this insurance or annuity contract legally barred from sale to residents of reportable jurisdictions?",
     crs_ref: "III(A)", hb_ref: "¶158" }),
@@ -104,6 +115,10 @@ export const BASELINE_RULES = [
     help: "Use held or public information first. A type (b) investment entity resident in a non-participating jurisdiction is a Passive NFE. If the status can't be determined, presume Passive NFE.",
     options: [{ value: "fi", label: "Financial institution" }, { value: "active_nfe", label: "Active NFE" }, { value: "passive_nfe", label: "Passive NFE" }, { value: "unknown", label: "Can't determine · presume Passive NFE" }],
     ai_guidance: "Use the self-certification box ticked, the entity's business, income mix and whether an FI manages it." }),
+  R("CP.LOOK_THROUGH", "controlling_persons", 5, "logic", { locked: true,
+    question: "Are the controlling persons looked through?",
+    crs_ref: "VIII(D)(6), VIII(D)(9)", hb_ref: "Part I ¶31, ¶196–197, ¶211",
+    help: "Only Passive NFEs are looked through, including type (b) investment entities resident in a non-participating jurisdiction. Financial institutions and Active NFEs are not." }),
   R("CP.IDENTIFY", "controlling_persons", 10, "logic", { locked: true,
     params: { ownership_threshold_pct: 25 },
     question: "Who are the controlling persons?",

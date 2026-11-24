@@ -3,6 +3,7 @@
 // jspdf / exceljs on demand.
 
 import { OUTCOME_TEXT, SOURCE_TEXT, TRIGGER_TEXT, showValue, decisionRows, stepRows, aiRows } from "../../../base44/shared/crs/timeline.js";
+import { formatReferencesText, deglyph } from "../../../base44/shared/crs/references.js";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " UTC" : "—");
 const holderOf = (a) => (a ? a.account_holder_name || [a.first_name, a.last_name].filter(Boolean).join(" ") || "" : "");
@@ -40,7 +41,7 @@ export function buildDecisionPdf(JsPDF, { decision: d, account, tenantName = "",
   // Outcome box
   const outcome = OUTCOME_TEXT[d.outcome] || d.outcome || "—";
   const juris = (d.reportable_jurisdictions || []).join(", ");
-  const reasonLines = doc.splitTextToSize(String(d.reason || ""), W - 2 * M - 24);
+  const reasonLines = doc.splitTextToSize(String(deglyph(d.reason) || ""), W - 2 * M - 24);
   const boxH = 44 + reasonLines.length * 12;
   ensure(boxH + 8);
   doc.setDrawColor(...(d.outcome === "reportable" || d.outcome === "undocumented" ? [234, 88, 12] : [22, 163, 74]));
@@ -81,10 +82,10 @@ export function buildDecisionPdf(JsPDF, { decision: d, account, tenantName = "",
   heading(`Decision path (${(d.step_trace || []).length} steps)`);
   (d.step_trace || []).forEach((s, i) => {
     ensure(40);
-    text(`${i + 1}. ${s.question || s.step_id}`, { bold: true, size: 9.5, gap: 1 });
+    text(`${i + 1}. ${deglyph(s.question || s.step_id)}`, { bold: true, size: 9.5, gap: 1 });
     text(`Answer: ${s.answer || "—"}   ·   Source: ${SOURCE_TEXT[s.source] || s.source || "—"}`, { indent: 14, size: 9, gap: 1 });
-    if (s.evidence) text(`Evidence: ${s.evidence}`, { indent: 14, size: 8.5, color: [71, 85, 105], gap: 1 });
-    const refs = [s.crs_ref && `CRS ${s.crs_ref}`, s.hb_ref && `Handbook ${s.hb_ref}`].filter(Boolean).join(" · ");
+    if (s.evidence) text(`Evidence: ${deglyph(s.evidence)}`, { indent: 14, size: 8.5, color: [71, 85, 105], gap: 1 });
+    const refs = formatReferencesText(s.crs_ref, s.hb_ref);
     text(`${refs || "No reference"}   [${s.step_id}]`, { indent: 14, size: 8, color: [100, 116, 139], gap: 5 });
   });
 
@@ -125,7 +126,7 @@ const SHEETS = {
   ],
   Steps: [
     ["account_number", "Account number", 16], ["sequence", "Decision #", 10], ["step", "Step", 6], ["step_id", "Rule", 26], ["question", "Question", 50],
-    ["answer", "Answer", 34], ["source", "Source", 20], ["evidence", "Evidence", 50], ["crs_ref", "CRS reference", 18], ["hb_ref", "Handbook reference", 22], ["decision_id", "Decision id", 26],
+    ["answer", "Answer", 34], ["source", "Source", 20], ["evidence", "Evidence", 50], ["crs_ref", "CRS reference", 22], ["hb_ref", "Handbook reference (printed page)", 40], ["decision_id", "Decision id", 26],
   ],
   "AI suggestions": [
     ["account_number", "Account number", 16], ["sequence", "Decision #", 10], ["question", "Question", 26], ["answer", "Suggested answer", 20],
