@@ -110,8 +110,10 @@ export async function loadStudioInput(db, account, shared = {}) {
   }
   const controllingPersons = await db.ControllingPerson.filter({ account_id: account.id }, "-updated_date", 500);
   const evidence = (await db.StudioEvidence.filter({ account_id: account.id }))[0] || {};
+  let beneficiaries = [];
+  try { beneficiaries = (await db.Beneficiary.filter({ account_id: account.id }, "-updated_date", 200)).filter((b) => !b.tenant_id || b.tenant_id === tenantId); } catch (_e) { /* no Beneficiary table */ }
   return {
-    input: { settings, reportableList, countries, pack, overridePack, account, controllingPersons: controllingPersons.filter((c) => c.tenant_id === tenantId), evidence, linkedAccounts: [] },
+    input: { settings, reportableList, countries, pack, overridePack, account, controllingPersons: controllingPersons.filter((c) => c.tenant_id === tenantId), beneficiaries, evidence, linkedAccounts: [] },
     shared: { settings, reportableList, countries, pack, overridePack },
   };
 }

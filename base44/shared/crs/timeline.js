@@ -1,5 +1,6 @@
 // Classification Studio — decision history ("Why this outcome"), pure helpers.
 // Used by the studio timeline, the Accounts history panel, the PDF and the Excel export, and by the tests.
+import { formatCrsRef, parseHandbookRef, deglyph } from "./references.js";
 
 const SECTION_LABELS = { account: "Account", evidence: "Studio evidence", settings: "Settings", linked_balances: "Linked accounts" };
 
@@ -93,7 +94,7 @@ export function decisionRows(decisions = [], accountsById = {}) {
       account_number: a?.account_number || "", holder: holderOf(a) || d.input_snapshot?.account?.account_holder_name || "", account_id: d.target_id,
       outcome: OUTCOME_TEXT[d.outcome] || d.outcome || "", jurisdictions: (d.reportable_jurisdictions || []).join(", "),
       reportable_persons: (d.reportable_persons || []).map((p) => `${p.name} (${p.role}: ${(p.jurisdictions || []).join(", ")})`).join("; "),
-      reason: d.reason || "", status: d.status || "", sequence: d.sequence ?? "", trigger: TRIGGER_TEXT[d.trigger] || d.trigger || "",
+      reason: deglyph(d.reason || ""), status: d.status || "", sequence: d.sequence ?? "", trigger: TRIGGER_TEXT[d.trigger] || d.trigger || "",
       supersedes: d.supersedes_id || "", superseded_by: d.superseded_by_id || "", decided_by: d.decided_by || "", decided_at: d.decided_at || "",
       reviewer: d.reviewer || "", reviewed_at: d.reviewed_at || "", reporting_year: d.reporting_year ?? "", reportable_from: d.reportable_from || "",
       rule_pack_version: d.rule_pack_version || "", reportable_list_version: d.reportable_list_version || "", engine_version: d.engine_version || "",
@@ -106,8 +107,9 @@ export function decisionRows(decisions = [], accountsById = {}) {
 export function stepRows(decisions = [], accountsById = {}) {
   return decisions.flatMap((d) => (d.step_trace || []).map((s, i) => ({
     account_number: accountsById[d.target_id]?.account_number || "", decision_id: d.id, sequence: d.sequence ?? "", step: i + 1,
-    step_id: s.step_id || "", question: s.question || "", answer: s.answer || "", source: SOURCE_TEXT[s.source] || s.source || "",
-    evidence: s.evidence || "", crs_ref: s.crs_ref || "", hb_ref: s.hb_ref || "",
+    step_id: s.step_id || "", question: deglyph(s.question || ""), answer: s.answer || "", source: SOURCE_TEXT[s.source] || s.source || "",
+    evidence: deglyph(s.evidence || ""), crs_ref: s.crs_ref ? formatCrsRef(s.crs_ref) : "",
+    hb_ref: parseHandbookRef(s.hb_ref).map((x) => (x.printed ? `${x.label} (page ${x.printed})` : x.label)).join(", "),
   })));
 }
 

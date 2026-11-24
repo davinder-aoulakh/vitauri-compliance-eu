@@ -16,7 +16,7 @@ import { resolvePack, getRule } from "./baselinePack.js";
 import { matchesCondition } from "./conditions.js";
 import { phoneCountry } from "./phones.js";
 
-export const ENGINE_VERSION = "1.2.0";
+export const ENGINE_VERSION = "1.3.0";
 
 const EXCLUDED_TYPES = {
   inheritance_estate: "Estate account",
@@ -94,7 +94,9 @@ function makeContext(input = {}, answers = {}) {
   };
 
   return { input, answers, pack, settings, index, norm, fiJur, list, listSource, asOf, steps, gaps, isReportable, rule, enabled, step, ask,
-    account: input.account || {}, evidence: input.evidence || {}, cps: input.controllingPersons || [] };
+    account: input.account || {}, evidence: input.evidence || {}, cps: input.controllingPersons || [],
+    beneficiaries: (input.beneficiaries || []).filter((b) => !input.account?.id || !b.account_id || b.account_id === input.account.id),
+    info: {} };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -169,6 +171,7 @@ function residencesOf(ctx, obj) {
 }
 
 function individualHolders(ctx) {
+  if (ctx.holderOverride?.length) return ctx.holderOverride;
   const joint = ctx.evidence.joint_holders || [];
   if (joint.length > 0) {
     return joint.map((h, i) => ({
@@ -193,6 +196,114 @@ function individualHolders(ctx) {
     selfCert: a.self_certification_obtained === true || (a.documents || []).some((d) => d.document_type === "self_certification") ? true : undefined,
     selfCertDate: a.self_certification_date,
   }];
+}
+
+// Deceased holders and beneficiaries (CRS VIII(E)(1) Account Holder; VIII(C)(17)(e) estate accounts)
+const personName = (p) => p.full_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "Unnamed";
+
+function beneficiaryHolder(ctx, b, i, role) {
+  const residences = uniq([...(b.tax_residencies || []).map((r) => ctx.norm(r.country)), ctx.norm(b.country_of_residence)]);
+  return {
+    id: `b${i + 1}`, name: personName(b), joint: true, role,
+    residences, tins: b.tax_residencies || [],
+    addressCountry: ctx.norm(b.address?.country), otherAddressCountry: null, phoneCountry: null,
+    dob: b.date_of_birth, selfCert: b.self_certification_obtained === true ? true : undefined, selfCertDate: b.self_certification_date,
+  };
+}
+
+/** Beneficiaries entitled to the account become its holders: each needs a residence on record. */
+function useBeneficiariesAsHolders(ctx, role, label) {
+  const holders = ctx.beneficiaries.map((b, i) => beneficiaryHolder(ctx, b, i, role));
+  ctx.info.holders = { label, role, names: holders.map((h) => h.name) };
+  for (const h of holders) {
+    if (!h.residences.length && !h.addressCountry) {
+      ctx.ask("IND.BENEFICIARIES", { holder: h.id, question: `No residence is recorded for ${h.name}. Record their address or tax residence on the beneficiary.` });
+      throw new Pending(`Record where ${h.name} is resident, then re-run.`);
+    }
+  }
+  ctx.holderOverride = holders;
+}
+
+function deceasedAndBeneficiaries(ctx) {
+  const a = ctx.account;
+  const bens = ctx.beneficiaries;
+  const deceased = a.account_holder_is_alive === false || a.account_holder_deceased_during_period === true;
+  const insurance = INSURANCE_TYPES.includes(a.account_type);
+  const list = bens.map((b) => personName(b)).join(", ");
+  if (!deceased) {
+    if (bens.length) {
+      ctx.step("IND.DECEASED", "No · the holder is alive", "data",
+        `${bens.length} beneficiar${bens.length > 1 ? "ies" : "y"} recorded (${list}). ${insurance ? "On an insurance or annuity contract, beneficiaries become account holders only when they are entitled to a payment" : "Beneficiaries are not account holders while the holder is alive"} (CRS VIII(E)(1)).`);
+    }
+    return null;
+  }
+  if (insurance) {
+    ctx.step("IND.DECEASED", "Yes · insurance or annuity contract", "data",
+      "account_holder_is_alive = false · each person entitled to receive a payment under the contract is treated as an account holder (CRS VIII(E)(1))");
+    if (!bens.length) {
+      ctx.ask("IND.BENEFICIARIES", { question: "The insured holder has died. Record the beneficiaries entitled to the payment on the account." });
+      throw new Pending("Record the beneficiaries entitled to the payment, then re-run.");
+    }
+    useBeneficiariesAsHolders(ctx, "Beneficiary entitled to payment", `Insurance or annuity paid to ${bens.length} beneficiar${bens.length > 1 ? "ies" : "y"}`);
+    return null;
+  }
+  // Other accounts: the deceased stays the holder until the estate holds it (excluded) or it passes to the heirs.
+  const docs = a.death_certificate_received === true || a.will_or_inheritance_received === true;
+  let v;
+  if (a.legacy_of_deceased_settled === true && bens.length) v = "heirs";
+  else if (!docs && a.legacy_of_deceased_settled !== true) v = "deceased";
+  if (v) {
+    ctx.step("IND.DECEASED", v === "heirs" ? "Yes · passed to the heirs" : "Yes · still in the deceased's name", "data",
+      v === "heirs" ? `legacy_of_deceased_settled = true · heirs recorded: ${list}` : "No will or death certificate on file and the legacy isn't settled, so the deceased remains the account holder");
+  } else {
+    v = ctx.ask("IND.DECEASED", {
+      question: `The holder has died${docs ? " and the will or death certificate is on file" : ""}. Who holds the account now?`,
+      help: `An account held solely by the estate, with the will or death certificate on file, is an excluded account (CRS VIII(C)(17)(e)). Once it passes to the heirs, each heir is an account holder.${bens.length ? ` Heirs recorded: ${list}.` : ""}`,
+    });
+  }
+  if (v === "estate") {
+    return { outcome: { status: "excluded", jurisdictions: [], persons: [], reason: "Estate account: held solely by the estate of a deceased holder, with the will or death certificate on file. Excluded accounts are not reviewed or reported (CRS VIII(C)(17)(e))." } };
+  }
+  if (v === "heirs") {
+    if (!bens.length) {
+      ctx.ask("IND.BENEFICIARIES", { question: "The account has passed to the heirs. Record them as beneficiaries on the account." });
+      throw new Pending("Record the heirs on the account, then re-run.");
+    }
+    useBeneficiariesAsHolders(ctx, "Heir", `Account passed to ${bens.length} heir${bens.length > 1 ? "s" : ""}`);
+    return null;
+  }
+  return null;
+}
+
+// Controlling persons as recorded, for the "look-through" step and the review screen.
+function cpSummary(ctx) {
+  return ctx.cps.map((c) => {
+    const codes = uniq([...(c.tax_residencies || []).map((r) => ctx.norm(r.country)), ctx.norm(c.country_of_residence_code), ctx.norm(c.country_of_residence), ctx.norm(c.address?.country)]);
+    return {
+      name: personName(c), role: (CP_ROLE_LABELS[c.control_type] || "Controlling person") + (c.ownership_percentage ? ` · ${c.ownership_percentage}%` : ""),
+      residences: codes, reportable_jurisdictions: codes.filter((x) => ctx.isReportable(x)),
+      self_certification: c.self_certification_obtained === true, manual_reportable: c.is_reportable ?? null,
+    };
+  });
+}
+
+const cpList = (ctx, people) => people.map((p) => `${p.name} (${p.role}) · ${p.residences.map((c) => countryName(ctx.index, c)).join("/") || "residence not recorded"}${p.reportable_jurisdictions.length ? " · reportable residence" : ""}`).join(" — ");
+
+/** Record whether the controlling persons are looked through, and why not when they aren't. */
+function lookThroughStep(ctx, status, { exempt = false } = {}) {
+  const a = ctx.account;
+  const people = cpSummary(ctx);
+  const reportableCount = people.filter((p) => p.reportable_jurisdictions.length).length;
+  let applied = status === "passive_nfe"; let why;
+  if (exempt) { applied = false; why = "Not reviewed: the account is under the elected USD 250,000 exemption (Handbook ¶189)."; }
+  else if (applied) why = "Passive NFE: its controlling persons are looked through (CRS VIII(D)(6)).";
+  else if (status === "fi" && a.type_of_financial_institution === "investment_entity_type_b") why = "Investment entity of type (b) resident in a participating jurisdiction: it is a financial institution, not a Passive NFE, so its controlling persons are not looked through on this account (Handbook ¶31). Its owners are reported as holders of equity interests under its own CRS reporting.";
+  else if (status === "fi") why = "Financial institution: not a reportable person, and its controlling persons are not looked through (CRS VIII(D)(2)).";
+  else if (status === "active_nfe") why = "Active NFE: only Passive NFEs are looked through, so its controlling persons are not reported (CRS VIII(D)(6), Handbook ¶196–197).";
+  else why = "The holder is not a reportable entity type for look-through.";
+  ctx.info.entity = { status, look_through: applied, reason: why, controlling_persons: people, reportable_count: reportableCount };
+  ctx.step("CP.LOOK_THROUGH", applied ? "Yes · Passive NFE" : "No", "rule",
+    `${why}${people.length ? ` Recorded: ${cpList(ctx, people)}.` : " No controlling persons recorded."}${!applied && reportableCount ? ` ${reportableCount} of them ${reportableCount > 1 ? "have" : "has"} a residence in a reportable jurisdiction, but that doesn't make this account reportable.` : ""}`);
 }
 
 function outcomeFor(ctx, holderName, role, codes, reasonIfReportable, reasonIfNot) {
@@ -228,7 +339,7 @@ function individualPreexisting(ctx, h, usd) {
   if (ratAllowed && docs.length && h.addressCountry && (docCountries.length === 0 || docCountries.includes(h.addressCountry))) {
     ctx.step("IND_PRE.RESIDENCE_ADDRESS_TEST", `Yes · ${countryName(ctx.index, h.addressCountry)}`, "data",
       `${docs.map((d) => d.type).filter(Boolean).join(" + ") || "Documentary evidence"} on file · current_address.country = ${h.addressCountry}`, { holder: tag });
-    return outcomeFor(ctx, h.name, "Account holder", [h.addressCountry],
+    return outcomeFor(ctx, h.name, h.role || "Account holder", [h.addressCountry],
       (j) => `Lower value pre-existing account. The residence address test places the holder in ${names(j)}, backed by documentary evidence.`,
       `Lower value pre-existing account. The residence address test places the holder in ${countryName(ctx.index, h.addressCountry)}, which is not a reportable jurisdiction.`);
   }
@@ -262,7 +373,7 @@ function individualPreexisting(ctx, h, usd) {
     if (rm === "knows") {
       const codes = uniq([...h.residences, ...indiciaCountries]);
       if (!codes.length) throw new Pending("Record the residence the relationship manager knows about on the account, then re-run.");
-      return outcomeFor(ctx, h.name, "Account holder", codes,
+      return outcomeFor(ctx, h.name, h.role || "Account holder", codes,
         (j) => `High value account. The relationship manager knows the holder is resident in ${names(j)}.`,
         "High value account. The relationship manager's knowledge points to no reportable jurisdiction.");
     }
@@ -272,7 +383,7 @@ function individualPreexisting(ctx, h, usd) {
     if (holdMailOnly) {
       const r = ctx.ask("IND_PRE.HOLD_MAIL", { holder: tag });
       if (r === "none") return { status: "undocumented", jurisdictions: [], persons: [], reason: "Hold-mail or in-care-of address only, no indicia, and neither the paper record search nor outreach established residence. Report as an undocumented account (Handbook ¶166)." };
-      return outcomeFor(ctx, h.name, "Account holder", h.residences,
+      return outcomeFor(ctx, h.name, h.role || "Account holder", h.residences,
         (j) => `Residence established through outreach: ${names(j)}.`, "Residence established through outreach is not in a reportable jurisdiction.");
     }
     return { status: "non_reportable", jurisdictions: [], persons: [], reason: `${hv ? "High value" : "Lower value"} pre-existing account with no indicia of residence in a reportable jurisdiction. Not reported until a change in circumstances.` };
@@ -281,16 +392,16 @@ function individualPreexisting(ctx, h, usd) {
   // Indicia that are not the holder's own recorded tax residences can be cured.
   const curable = indiciaCountries.filter((c) => !h.residences.includes(c));
   if (curable.length === 0) {
-    return outcomeFor(ctx, h.name, "Account holder", indiciaCountries,
+    return outcomeFor(ctx, h.name, h.role || "Account holder", indiciaCountries,
       (j) => `Pre-existing account. The holder is identified as resident in ${names(j)}.`, "No reportable residence.");
   }
   const cure = ctx.ask("IND_PRE.CURE", { holder: tag, question: `Have the indicia for ${names(curable)} been cured?` });
   if (cure === "cured") {
-    return outcomeFor(ctx, h.name, "Account holder", h.residences,
+    return outcomeFor(ctx, h.name, h.role || "Account holder", h.residences,
       (j) => `Indicia for ${names(curable)} are cured. The self-certification and evidence show residence in ${names(j)}.`,
       `Indicia for ${names(curable)} are cured. The holder's recorded residences are not reportable.`);
   }
-  return outcomeFor(ctx, h.name, "Account holder", indiciaCountries,
+  return outcomeFor(ctx, h.name, h.role || "Account holder", indiciaCountries,
     (j) => `Pre-existing account with indicia for ${names(j)} that are not cured, so the holder is treated as resident there (Handbook ¶168).`, "No reportable indicia.");
 }
 
@@ -328,7 +439,7 @@ function individualNew(ctx, h) {
     }
   } else ctx.step("IND_NEW.REASONABLENESS", "Yes", "rule", h.addressCountry ? `Address ${h.addressCountry} matches self-certified residence` : "No conflicting KYC address on file", { holder: tag });
 
-  return outcomeFor(ctx, h.name, h.joint ? "Joint account holder" : "Account holder", h.residences,
+  return outcomeFor(ctx, h.name, h.role || (h.joint ? "Joint account holder" : "Account holder"), h.residences,
     (j) => `New individual account. The self-certification confirms tax residence in ${names(j)}.`,
     `New individual account. The self-certified residence${h.residences.length > 1 ? "s are" : " is"} ${names(h.residences) || "not recorded"}, not a reportable jurisdiction.`);
 }
@@ -373,7 +484,13 @@ function entityStatus(ctx, residences) {
   if (a.non_reportable_exception_type === "liquidation_dissolution") { ctx.step("ENT.STATUS", "Active NFE · in liquidation", "data", "non_reportable_exception_type = liquidation_dissolution (VIII(D)(9)(f))"); return "active_nfe"; }
   // 3. Ask. (CRS102 and the FI-type field alone are hints, not a classification.)
   const hint = [a.crs_entity_classification ? `crs_entity_classification = ${a.crs_entity_classification}` : "", a.type_of_financial_institution ? `type_of_financial_institution = ${a.type_of_financial_institution}` : "", a.entity_classification ? `entity_classification = ${a.entity_classification}` : ""].filter(Boolean).join(" · ");
-  const v = ctx.ask("ENT.STATUS", hint ? { help: `${getRuleHelp(ctx)} Recorded so far: ${hint}.` } : {});
+  const people = cpSummary(ctx);
+  const rep = people.filter((p) => p.reportable_jurisdictions.length);
+  const preview = people.length
+    ? ` If this is a Passive NFE, its ${people.length} controlling person${people.length > 1 ? "s are" : " is"} looked through: ${rep.length ? `${rep.length} ${rep.length > 1 ? "have" : "has"} a residence in a reportable jurisdiction (${uniq(rep.flatMap((p) => p.reportable_jurisdictions)).map((c) => countryName(ctx.index, c)).join(", ")}), so the account would be reportable` : "none has a residence in a reportable jurisdiction"}.`
+    : " No controlling persons are recorded yet.";
+  ctx.info.entity = { status: null, look_through: null, reason: "Entity status not determined yet.", controlling_persons: people, reportable_count: rep.length };
+  const v = ctx.ask("ENT.STATUS", { help: `${getRuleHelp(ctx)}${hint ? ` Recorded so far: ${hint}.` : ""}${preview}` });
   return v === "fi" ? "fi" : v === "active_nfe" ? "active_nfe" : "passive_nfe";
 }
 
@@ -421,6 +538,7 @@ function entityAccount(ctx, pre, usd) {
   const exemptionOn = ctx.enabled("ENT_PRE.THRESHOLD_250K") && ctx.settings.entity_250k_exemption === true;
   if (pre && exemptionOn && usd <= exemptionLimit) {
     ctx.step("ENT_PRE.THRESHOLD_250K", "Yes · not reviewed", "rule", `${fmtUsd(usd)} ≤ ${fmtUsd(exemptionLimit)} · exemption elected in settings`);
+    lookThroughStep(ctx, null, { exempt: true });
     return { status: "non_reportable", jurisdictions: [], persons: [], reason: `Pre-existing entity account of ${fmtUsd(usd)}. Under the elected USD 250,000 exemption it is not reviewed until it exceeds the threshold at a year end (Handbook ¶189).` };
   }
   if (pre) ctx.step("ENT_PRE.THRESHOLD_250K", "No", "rule", exemptionOn ? `${fmtUsd(usd)} > ${fmtUsd(exemptionLimit)}` : !ctx.enabled("ENT_PRE.THRESHOLD_250K") ? "Exemption switched off in the CRS Rule Library" : "Exemption not elected");
@@ -458,7 +576,8 @@ function entityAccount(ctx, pre, usd) {
     if (j.length) holder = { persons: [{ name: a.account_holder_name || "Entity", role: "Account holder", jurisdictions: j }], jurisdictions: j };
   }
 
-  // Test 2 — controlling persons of a Passive NFE
+  // Test 2 — controlling persons of a Passive NFE (the step records why they are or aren't looked through)
+  lookThroughStep(ctx, status);
   let cp = { persons: [] };
   if (status === "passive_nfe") cp = controllingPersons(ctx, { pre, usd });
 
@@ -466,7 +585,8 @@ function entityAccount(ctx, pre, usd) {
   const persons = [...holder.persons, ...cp.persons];
   const label = { fi: "Financial institution", active_nfe: "Active NFE", passive_nfe: "Passive NFE" }[status];
   if (!jurisdictions.length) {
-    return { status: "non_reportable", jurisdictions: [], persons: [], reason: `${pre ? "Pre-existing" : "New"} entity account. ${label}${status === "passive_nfe" ? " with no reportable controlling persons" : ""}; the entity is not resident in a reportable jurisdiction.${cp.note ? " " + cp.note : ""}` };
+    const lt = status !== "passive_nfe" && ctx.info.entity?.controlling_persons?.length ? ` ${ctx.info.entity.reason}` : "";
+    return { status: "non_reportable", jurisdictions: [], persons: [], reason: `${pre ? "Pre-existing" : "New"} entity account. ${label}${status === "passive_nfe" ? " with no reportable controlling persons" : ""}; the entity is not resident in a reportable jurisdiction.${lt}${cp.note ? " " + cp.note : ""}` };
   }
   const parts = [];
   if (holder.jurisdictions.length) parts.push(`the entity is resident in ${names(holder.jurisdictions)}`);
@@ -491,13 +611,17 @@ export function evaluate(input, answers = {}) {
         outcome = entityAccount(ctx, pre, usd);
       } else {
         extraQuestions(ctx, "individual", { preexisting: pre, balance_usd: usd });
+        const holderStep = deceasedAndBeneficiaries(ctx);
+        if (holderStep?.outcome) outcome = holderStep.outcome;
+      }
+      if (!outcome && ctx.account.account_holder_type !== "entity") {
         const results = individualHolders(ctx).map((h) => (pre && ctx.settings.alt_new_rules_for_preexisting !== true ? individualPreexisting(ctx, h, usd) : individualNew(ctx, h)));
         if (results.length === 1) outcome = results[0];
         else {
           const j = uniq(results.flatMap((r) => r.jurisdictions));
           const undocumented = results.some((r) => r.status === "undocumented");
           outcome = { status: j.length ? "reportable" : undocumented ? "undocumented" : "non_reportable", jurisdictions: j, persons: results.flatMap((r) => r.persons),
-            reason: `Joint account: each holder was checked separately and is attributed the full balance (Handbook ¶232). ${results.map((r) => r.reason).join(" ")}` };
+            reason: `${ctx.info.holders ? `${ctx.info.holders.label}: each was checked separately as an account holder (CRS VIII(E)(1)).` : "Joint account: each holder was checked separately and is attributed the full balance (Handbook ¶232)."} ${results.map((r) => r.reason).join(" ")}` };
         }
       }
     }
@@ -517,6 +641,8 @@ export function evaluate(input, answers = {}) {
     steps: ctx.steps,
     gaps: ctx.gaps,
     outcome,
+    ...(ctx.info.entity ? { entity: ctx.info.entity } : {}),
+    ...(ctx.info.holders ? { holders: ctx.info.holders } : {}),
   };
 }
 
@@ -550,6 +676,13 @@ const ACCOUNT_MATERIAL = [
   "entity_managed_by_asset_manager", "account_holder_name", "first_name", "last_name",
 ];
 const CP_MATERIAL = ["full_name", "first_name", "last_name", "control_type", "ownership_percentage", "tax_residencies", "country_of_residence", "country_of_residence_code", "address", "self_certification_obtained", "date_of_birth"];
+const BENEFICIARY_MATERIAL = ["full_name", "first_name", "last_name", "tax_residencies", "country_of_residence", "address", "date_of_birth", "self_certification_obtained"];
+const DECEASED_FIELDS = ["account_holder_is_alive", "account_holder_deceased_during_period", "death_certificate_received", "will_or_inheritance_received", "legacy_of_deceased_settled"];
+function deceasedInfo(a) {
+  if (!a) return null;
+  const relevant = a.account_holder_is_alive === false || DECEASED_FIELDS.slice(1).some((f) => a[f] === true);
+  return relevant ? pick(a, DECEASED_FIELDS) : null;
+}
 const EVIDENCE_MATERIAL = ["crs_indicia", "hold_mail_only", "insurance_sale_prohibited", "documentary_evidence", "aggregation_group", "rm_attestations", "joint_holders", "trust_parties", "entity_status"];
 
 const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "").map((k) => [k, obj[k]]));
@@ -568,6 +701,9 @@ export function materialSnapshot(input) {
     evidence: pick(input.evidence, EVIDENCE_MATERIAL),
     linked_balances: (input.linkedAccounts || []).map((a) => pick(a, ["id", "year_end_cash_value", "year_end_cash_value_currency", "non_reportable_exception_type"])),
     settings: pick(input.settings, ["reporting_jurisdiction", "preexisting_cutoff", "residence_address_test_allowed", "entity_250k_exemption", "wider_approach", "alt_new_rules_for_preexisting", "alt_hv_rules_for_lv", "fx_rates"]),
+    // Only present when the account has them, so accounts without them keep their earlier fingerprint.
+    ...(deceasedInfo(input.account) ? { deceased: deceasedInfo(input.account) } : {}),
+    ...((input.beneficiaries || []).length ? { beneficiaries: input.beneficiaries.map((b) => pick(b, BENEFICIARY_MATERIAL)).sort((x, y) => stable(x).localeCompare(stable(y))) } : {}),
     reportable_list_version: input.reportableList?.version || null,
     rule_pack_version: input.pack?.version || null,
     ...(input.overridePack?.version ? { override_pack: `${input.overridePack.jurisdiction_scope}.${input.overridePack.version}` } : {}),

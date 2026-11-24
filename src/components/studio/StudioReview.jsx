@@ -15,6 +15,9 @@ import { AlertTriangle, ArrowUpRight, CheckCircle2, GitPullRequestArrow, HandCoi
 import { evaluate, inputHash } from "../../../base44/shared/crs/index.js";
 import { OUTCOME_LABELS, MANUAL_LABELS } from "./useStudioData";
 import DecisionTimeline from "./DecisionTimeline";
+import References from "./References";
+import StudioPeople from "./StudioPeople";
+import { deglyph } from "../../../base44/shared/crs/references.js";
 
 const SOURCE = {
   data: { label: "From account data", cls: "bg-teal-50 text-teal-800 border-teal-200" },
@@ -56,6 +59,8 @@ const TRIGGER_LABEL = {
   change_in_circumstances: "Change in circumstances", balance_threshold: "Balance crossed a threshold", rule_pack_published: "New rule or list version",
   year_end: "Year-end re-check", trust_distribution: "Trust distribution", rm_attestation: "Relationship manager attestation", aml_kyc_change: "AML/KYC change",
 };
+
+const holderLabel = (tag) => (String(tag).startsWith("b") ? `Beneficiary ${String(tag).slice(1)}` : `Holder ${String(tag).replace(/^h/, "")}`);
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "");
 
@@ -325,7 +330,7 @@ export default function StudioReview({ row, settings, reportableList, pack, user
               <p className="font-semibold text-slate-800">{MANUAL_LABELS[manual] || manual || "Not set"}</p>
             </div>
           </div>
-          <p className="text-sm text-slate-700 mt-2">{outcome.reason}</p>
+          <p className="text-sm text-slate-700 mt-2">{deglyph(outcome.reason)}</p>
           {outcome.persons?.length > 0 && (
             <ul className="mt-2 text-xs text-slate-600 list-disc pl-5">
               {outcome.persons.map((p, i) => <li key={i}>{p.name} · {p.role} · {p.jurisdictions.join(", ")}</li>)}
@@ -342,6 +347,8 @@ export default function StudioReview({ row, settings, reportableList, pack, user
             </AlertDescription>
           </Alert>
         )}
+
+        <StudioPeople row={{ ...row, result: live }} />
 
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -362,17 +369,13 @@ export default function StudioReview({ row, settings, reportableList, pack, user
                   <span className={`flex-none w-6 h-6 rounded-full text-[11px] font-mono grid place-items-center border ${s.gap ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 text-slate-500 border-slate-200"}`}>{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="font-medium text-sm text-slate-900">{s.question}</span>
-                      {(s.crs_ref || s.hb_ref) && (
-                        <span className="text-[11px] font-mono text-slate-500 border border-dashed border-slate-300 rounded px-1">
-                          {s.crs_ref ? `CRS ${s.crs_ref}` : ""}{s.crs_ref && s.hb_ref ? " · " : ""}{s.hb_ref ? `HB ${s.hb_ref}` : ""}
-                        </span>
-                      )}
-                      {s.holder && <Badge variant="secondary" className="text-[10px]">Holder {s.holder}</Badge>}
+                      <span className="font-medium text-sm text-slate-900">{deglyph(s.question)}</span>
+                      {s.holder && <Badge variant="secondary" className="text-[10px]">{holderLabel(s.holder)}</Badge>}
                     </div>
+                    <References crsRef={s.crs_ref} hbRef={s.hb_ref} className="mt-0.5" />
                     {s.gap ? (
                       <div className="mt-2 rounded-md border border-blue-300 bg-blue-50 p-3 space-y-2">
-                        <p className="text-xs text-blue-900 flex gap-1"><HelpCircle className="w-3.5 h-3.5 mt-0.5 flex-none" />The data can't answer this.{s.help ? ` ${s.help}` : ""}</p>
+                        <p className="text-xs text-blue-900 flex gap-1"><HelpCircle className="w-3.5 h-3.5 mt-0.5 flex-none" />The data can't answer this.{s.help ? ` ${deglyph(s.help)}` : ""}</p>
                         {s.options?.length > 0 ? (
                           <div className="flex flex-wrap gap-2">
                             {s.options.map((o) => (
@@ -411,7 +414,7 @@ export default function StudioReview({ row, settings, reportableList, pack, user
                             </button>
                           )}
                         </div>
-                        {s.evidence && <p className="text-[11.5px] font-mono text-slate-500 mt-1 break-words">{s.evidence}</p>}
+                        {s.evidence && <p className="text-[11.5px] font-mono text-slate-500 mt-1 break-words">{deglyph(s.evidence)}</p>}
                       </>
                     )}
                   </div>
