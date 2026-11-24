@@ -59,6 +59,7 @@ import DashboardBuilder from './pages/DashboardBuilder';
 import DashboardTemplates from './pages/DashboardTemplates';
 import Entities from './pages/Entities';
 import FormBuilder from './pages/FormBuilder';
+import HandbookViewer from './pages/HandbookViewer';
 import Home from './pages/Home';
 import JurisdictionSettings from './pages/JurisdictionSettings';
 import ReferencedDataManagement from './pages/ReferencedDataManagement';
@@ -85,6 +86,7 @@ export const PAGES = {
     "DashboardTemplates": DashboardTemplates,
     "Entities": Entities,
     "FormBuilder": FormBuilder,
+    "HandbookViewer": HandbookViewer,
     "Home": Home,
     "JurisdictionSettings": JurisdictionSettings,
     "ReferencedDataManagement": ReferencedDataManagement,
