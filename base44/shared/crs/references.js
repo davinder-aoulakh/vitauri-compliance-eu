@@ -5,10 +5,12 @@
 import { PARAGRAPH_PAGES, FIGURE_PAGES, TABLE_PAGES, FAQ_PAGES, PRINTED_PAGE_OFFSET } from "./handbookIndex.js";
 
 /**
- * Link target of the Handbook PDF in the app's media library. Empty until the PDF has been uploaded;
- * the references then show page numbers without a link.
+ * The Handbook PDF in the app's media library (uploaded from docs/ in the repo).
+ * The media host serves it as application/octet-stream, so browsers would download it instead of opening it:
+ * links go to the in-app viewer page, which loads the file and opens it at the page.
  */
-export const HANDBOOK_URL = "";
+export const HANDBOOK_URL = "https://media.base44.com/files/public/69f35134a131013751aa0482/8719315b1e7aafcb29040d47b3daa440_oecd-crs-implementation-handbook-2nd-ed.pdf";
+export const HANDBOOK_VIEWER_PATH = "/HandbookViewer";
 export const HANDBOOK_TITLE = "OECD CRS Implementation Handbook (2nd edition)";
 
 const FAQ_GROUP_LABEL = { I: "Section I", II: "Sections II–VII", VIIIA: "Section VIII(A)", VIIIB: "Section VIII(B)", VIIIC: "Section VIII(C)", VIIID: "Section VIII(D)", VIIIE: "Section VIII(E)" };
@@ -19,6 +21,11 @@ export const printedPage = (pdfPage) => (pdfPage ? pdfPage - PRINTED_PAGE_OFFSET
 /** Link to a Handbook page, or null when the PDF isn't available yet. */
 export function handbookLink(pdfPage, url = HANDBOOK_URL) {
   return url && pdfPage ? `${url}#page=${pdfPage}` : null;
+}
+
+/** Link to the in-app Handbook viewer at a PDF page, or null when there is no page or no PDF. */
+export function handbookViewerLink(pdfPage, { url = HANDBOOK_URL, viewer = HANDBOOK_VIEWER_PATH } = {}) {
+  return url && pdfPage ? `${viewer}?page=${pdfPage}` : null;
 }
 
 /**

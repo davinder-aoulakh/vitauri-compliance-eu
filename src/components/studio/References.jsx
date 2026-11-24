@@ -1,10 +1,10 @@
 import React from "react";
 import { ExternalLink } from "lucide-react";
-import { parseHandbookRef, formatCrsRef, handbookLink, HANDBOOK_TITLE } from "../../../base44/shared/crs/references.js";
+import { parseHandbookRef, formatCrsRef, handbookViewerLink, HANDBOOK_TITLE } from "../../../base44/shared/crs/references.js";
 
 /**
  * The reference line under a question: "CRS Section VIII(C)(17)" and "Handbook: Figure 8, paragraphs 129–130",
- * each Handbook item linking to its page in the Handbook PDF (or showing the page number until the PDF is linked).
+ * each Handbook item opening the Handbook at its page in a new tab (the in-app viewer) (or showing the page number until the PDF is linked).
  */
 export default function References({ crsRef, hbRef, className = "" }) {
   const items = parseHandbookRef(hbRef);
@@ -16,7 +16,7 @@ export default function References({ crsRef, hbRef, className = "" }) {
         <span className="inline-flex flex-wrap items-center gap-x-1">
           <span>Handbook:</span>
           {items.map((it, i) => {
-            const href = handbookLink(it.pdfPage);
+            const href = handbookViewerLink(it.pdfPage);
             const sep = i < items.length - 1 ? "," : "";
             if (href) {
               return (

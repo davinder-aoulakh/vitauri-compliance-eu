@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BASELINE_RULES, parseHandbookRef, formatCrsRef, formatReferencesText, handbookLink, deglyph, evaluate, materialSnapshot, FIXTURES, runFixture } from "../../base44/shared/crs/index.js";
+import { BASELINE_RULES, parseHandbookRef, formatCrsRef, formatReferencesText, handbookLink, handbookViewerLink, HANDBOOK_URL, deglyph, evaluate, materialSnapshot, FIXTURES, runFixture } from "../../base44/shared/crs/index.js";
 
 describe("Handbook references", () => {
   it("every Handbook reference in the rules resolves to a page", () => {
@@ -17,6 +17,19 @@ describe("Handbook references", () => {
   it("builds a page link only when the Handbook URL is set", () => {
     expect(handbookLink(66, "")).toBeNull();
     expect(handbookLink(66, "https://example.test/hb.pdf")).toBe("https://example.test/hb.pdf#page=66");
+  });
+  it("links every Handbook reference in the rules to a page of the viewer", () => {
+    expect(HANDBOOK_URL).toMatch(/^https:\/\/media\.base44\.com\/.+\.pdf$/);
+    expect(handbookViewerLink(66)).toBe("/HandbookViewer?page=66");
+    expect(handbookViewerLink(null)).toBeNull();
+    expect(handbookViewerLink(66, { url: "" })).toBeNull();
+    const items = BASELINE_RULES.flatMap((r) => parseHandbookRef(r.hb_ref));
+    expect(items.length).toBeGreaterThan(40);
+    for (const it of items) {
+      expect(it.pdfPage, it.label).toBeGreaterThanOrEqual(1);
+      expect(it.pdfPage, it.label).toBeLessThanOrEqual(174);
+      expect(handbookViewerLink(it.pdfPage)).toBe(`/HandbookViewer?page=${it.pdfPage}`);
+    }
   });
   it("removes the paragraph sign from free text", () => {
     expect(deglyph("Not reviewed (Handbook ¶189); see ¶160–165 and HB ¶31.")).toBe("Not reviewed (Handbook paragraph 189); see paragraphs 160–165 and Handbook paragraph 31.");
