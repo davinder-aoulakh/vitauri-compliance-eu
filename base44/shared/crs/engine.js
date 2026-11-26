@@ -451,8 +451,22 @@ function entityStatus(ctx, residences) {
   const a = ctx.account;
   const participating = (c) => c && (c === ctx.fiJur || ctx.index.participating.has(c));
   const anyParticipating = residences.some(participating);
-  const managedInvestment = a.gross_income_from_financial_assets === true && a.entity_managed_by_asset_manager === true;
+  // Managed by a financial institution: a fiduciary / trust office or an asset manager (VIII(A)(6)(b)).
+  const managedByFI = a.entity_managed_by_fiduciary_trust === true || a.entity_managed_by_asset_manager === true;
+  // Recorded as NOT managed by any financial institution (both flags explicitly false; a missing flag is unknown).
+  const notManagedByFI = a.entity_managed_by_fiduciary_trust === false && a.entity_managed_by_asset_manager === false;
+  const managedInvestment = a.gross_income_from_financial_assets === true && managedByFI;
   const fiTypeNote = a.type_of_financial_institution ? ` · type_of_financial_institution = ${a.type_of_financial_institution}` : "";
+  const managementNote = `entity_managed_by_fiduciary_trust = ${a.entity_managed_by_fiduciary_trust} · entity_managed_by_asset_manager = ${a.entity_managed_by_asset_manager}`;
+  const unclassified = !a.entity_classification || a.entity_classification === "not_applicable";
+
+  // 0. A type (b) investment entity must be managed by a financial institution. Recorded as type (b) but managed by no FI,
+  //    it is not an investment entity: with its mainly passive income it is a Passive NFE (VIII(A)(6)(b), VIII(D)(9)).
+  if (a.type_of_financial_institution === "investment_entity_type_b" && notManagedByFI && (unclassified || a.entity_classification === "financial_institution")) {
+    ctx.step("ENT.STATUS", "Passive NFE · type (b) investment entity not managed by a financial institution", "rule",
+      `type_of_financial_institution = investment_entity_type_b · ${managementNote}${a.entity_classification ? ` · entity_classification = ${a.entity_classification}` : ""} (VIII(A)(6)(b), VIII(D)(8)–(9))`);
+    return "passive_nfe";
+  }
 
   // 1. Explicit classification on the account wins (the FI-type field alone is often a form default).
   if (a.entity_classification === "financial_institution") {
@@ -474,7 +488,7 @@ function entityStatus(ctx, residences) {
   }
   // 2. Derived from the investment-entity facts (VIII(A)(6)(b)).
   if (managedInvestment) {
-    const src = "gross_income_from_financial_assets = true and entity_managed_by_asset_manager = true";
+    const src = `gross_income_from_financial_assets = true and managed by a financial institution (${managementNote})`;
     if (anyParticipating) { ctx.step("ENT.STATUS", "Financial institution · managed investment entity", "rule", `${src} · resident in a participating jurisdiction`); return "fi"; }
     ctx.step("ENT.STATUS", "Passive NFE · managed investment entity in a non-participating jurisdiction", "rule", `${src} (VIII(D)(8))`); return "passive_nfe";
   }
@@ -482,6 +496,11 @@ function entityStatus(ctx, residences) {
     ctx.step("ENT.STATUS", "Active NFE", "data", `potential_exception_type = ${a.potential_exception_type} (VIII(D)(9)(${a.potential_exception_type === "HoldCo" ? "d" : "g"}))`); return "active_nfe";
   }
   if (a.non_reportable_exception_type === "liquidation_dissolution") { ctx.step("ENT.STATUS", "Active NFE · in liquidation", "data", "non_reportable_exception_type = liquidation_dissolution (VIII(D)(9)(f))"); return "active_nfe"; }
+  // Not classified, income mainly from financial assets and managed by no financial institution: a Passive NFE (VIII(D)(9)).
+  if (unclassified && a.gross_income_from_financial_assets === true && notManagedByFI) {
+    ctx.step("ENT.STATUS", "Passive NFE · mainly passive income, not managed by a financial institution", "rule", `gross_income_from_financial_assets = true · ${managementNote} (VIII(D)(9))`);
+    return "passive_nfe";
+  }
   // 3. Ask. (CRS102 and the FI-type field alone are hints, not a classification.)
   const hint = [a.crs_entity_classification ? `crs_entity_classification = ${a.crs_entity_classification}` : "", a.type_of_financial_institution ? `type_of_financial_institution = ${a.type_of_financial_institution}` : "", a.entity_classification ? `entity_classification = ${a.entity_classification}` : ""].filter(Boolean).join(" · ");
   const people = cpSummary(ctx);
