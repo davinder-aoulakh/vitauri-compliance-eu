@@ -127,6 +127,11 @@
         "validation_rules": {
           "default": true,
           "type": "boolean"
+        },
+        "classification_studio": {
+          "default": false,
+          "description": "Classification Studio (pilot): data-first CRS classification with decision records",
+          "type": "boolean"
         }
       },
       "type": "object"
