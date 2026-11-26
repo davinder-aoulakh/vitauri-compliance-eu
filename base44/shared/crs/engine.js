@@ -280,6 +280,7 @@ function cpSummary(ctx) {
   return ctx.cps.map((c) => {
     const codes = uniq([...(c.tax_residencies || []).map((r) => ctx.norm(r.country)), ctx.norm(c.country_of_residence_code), ctx.norm(c.country_of_residence), ctx.norm(c.address?.country)]);
     return {
+      id: c.id || null,
       name: personName(c), role: (CP_ROLE_LABELS[c.control_type] || "Controlling person") + (c.ownership_percentage ? ` · ${c.ownership_percentage}%` : ""),
       residences: codes, reportable_jurisdictions: codes.filter((x) => ctx.isReportable(x)),
       self_certification: c.self_certification_obtained === true, manual_reportable: c.is_reportable ?? null,
@@ -301,9 +302,26 @@ function lookThroughStep(ctx, status, { exempt = false } = {}) {
   else if (status === "fi") why = "Financial institution: not a reportable person, and its controlling persons are not looked through (CRS VIII(D)(2)).";
   else if (status === "active_nfe") why = "Active NFE: only Passive NFEs are looked through, so its controlling persons are not reported (CRS VIII(D)(6), Handbook ¶196–197).";
   else why = "The holder is not a reportable entity type for look-through.";
-  ctx.info.entity = { status, look_through: applied, reason: why, controlling_persons: people, reportable_count: reportableCount };
+  ctx.info.entity = { status, look_through: applied, reason: why, controlling_persons: people, reportable_count: reportableCount, cp_results: cpResults(ctx, people, applied, why) };
   ctx.step("CP.LOOK_THROUGH", applied ? "Yes · Passive NFE" : "No", "rule",
     `${why}${people.length ? ` Recorded: ${cpList(ctx, people)}.` : " No controlling persons recorded."}${!applied && reportableCount ? ` ${reportableCount} of them ${reportableCount > 1 ? "have" : "has"} a residence in a reportable jurisdiction, but that doesn't make this account reportable.` : ""}`);
+}
+
+/**
+ * The classification of each controlling person on this account: reportable only when looked through (Passive NFE)
+ * and resident in a reportable jurisdiction. Written back to ControllingPerson.is_reportable when the decision is confirmed.
+ */
+function cpResults(ctx, people, lookedThrough, whyNot) {
+  const names = (codes) => codes.map((c) => countryName(ctx.index, c)).join(", ");
+  return people.map((p) => {
+    const reportable = lookedThrough && p.reportable_jurisdictions.length > 0;
+    let reason;
+    if (!lookedThrough) reason = `Not looked through. ${whyNot}`;
+    else if (reportable) reason = `Controlling person of a Passive NFE, resident in ${names(p.reportable_jurisdictions)}, a reportable jurisdiction (CRS VIII(D)(6)).`;
+    else if (p.residences.length) reason = `Controlling person of a Passive NFE, resident in ${names(p.residences)}, not a reportable jurisdiction.`;
+    else reason = "Controlling person of a Passive NFE with no residence recorded.";
+    return { id: p.id, name: p.name, role: p.role, residences: p.residences, jurisdictions: reportable ? p.reportable_jurisdictions : [], looked_through: lookedThrough, reportable, reason };
+  });
 }
 
 function outcomeFor(ctx, holderName, role, codes, reasonIfReportable, reasonIfNot) {
