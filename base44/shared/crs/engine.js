@@ -710,7 +710,7 @@ const ACCOUNT_MATERIAL = [
   "tax_residencies", "multiple_residencies", "current_address", "account_holder_address", "current_phone", "date_of_birth",
   "self_certification_obtained", "self_certification_date", "year_end_cash_value", "year_end_cash_value_currency",
   "entity_classification", "crs_entity_classification", "type_of_financial_institution", "gross_income_from_financial_assets",
-  "entity_managed_by_asset_manager", "account_holder_name", "first_name", "last_name",
+  "entity_managed_by_asset_manager", "entity_managed_by_fiduciary_trust", "account_holder_name", "first_name", "last_name",
 ];
 const CP_MATERIAL = ["full_name", "first_name", "last_name", "control_type", "ownership_percentage", "tax_residencies", "country_of_residence", "country_of_residence_code", "address", "self_certification_obtained", "date_of_birth"];
 const BENEFICIARY_MATERIAL = ["full_name", "first_name", "last_name", "tax_residencies", "country_of_residence", "address", "date_of_birth", "self_certification_obtained"];
