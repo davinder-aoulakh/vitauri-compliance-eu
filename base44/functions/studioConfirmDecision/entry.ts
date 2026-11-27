@@ -132,6 +132,38 @@ async function saveTask(db, account, hash, now) {
   if (task) await db.StudioTask.update(task.id, row); else await db.StudioTask.create(row);
 }
 
+// Record each controlling person's classification from the decision (ControllingPerson.is_reportable + history),
+// the same fields the manual workflow and syncAccountControllingPersons use. is_reportable is not a material input,
+// so this write-back does not trigger a studio re-check.
+async function writeBackControllingPersons(db, user, account, decision, now) {
+  const results = (decision.cp_results || []).filter((r) => r.controlling_person_id);
+  if (!results.length) return;
+  const cps = (await db.ControllingPerson.filter({ account_id: account.id })).filter((c) => c.tenant_id === account.tenant_id);
+  const byId = Object.fromEntries(cps.map((c) => [c.id, c]));
+  for (const r of results) {
+    const cp = byId[r.controlling_person_id];
+    if (!cp) continue;
+    if (cp.is_reportable !== r.reportable) await db.ControllingPerson.update(cp.id, { is_reportable: r.reportable });
+    await db.ControllingPersonClassificationHistory.create({
+      tenant_id: account.tenant_id,
+      controlling_person_id: cp.id,
+      account_id: account.id,
+      classification_date: now.toISOString(),
+      reportability_status: r.reportable,
+      classification_reason: `[Classification Studio] ${r.reason}`.trim(),
+      classification_source: 'studio',
+      tax_residencies: (cp.tax_residencies || []).map((t) => ({ country: String(t.country || ''), tin: String(t.tin ?? '') })),
+      performed_by: decision.reviewer || user.email,
+      controlling_person_name: r.name || cp.full_name || '',
+      control_type: cp.control_type || '',
+    });
+  }
+  await db.Account.update(account.id, {
+    controlling_persons_count: cps.length,
+    has_unclassified_controlling_persons: cps.some((c) => !results.some((r) => r.controlling_person_id === c.id) && (c.is_reportable === null || c.is_reportable === undefined)),
+  });
+}
+
 // Supersede the previous confirmed decision, write back to the Account, and record history and audit entries.
 async function finalise(db, user, account, decision, now) {
   if (decision.supersedes_id) {
@@ -148,6 +180,7 @@ async function finalise(db, user, account, decision, now) {
   const before = { reportability_status: account.reportability_status, reportability_reason: account.reportability_reason };
   const writeBack = accountWriteBack(decision);
   await db.Account.update(account.id, writeBack);
+  await writeBackControllingPersons(db, user, account, decision, now);
   await db.AccountClassificationHistory.create({
     tenant_id: account.tenant_id,
     account_id: account.id,
