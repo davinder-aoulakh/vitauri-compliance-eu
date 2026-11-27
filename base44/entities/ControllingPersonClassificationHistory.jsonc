@@ -31,7 +31,8 @@
       "type": "string",
       "enum": [
         "workflow",
-        "manual"
+        "manual",
+        "studio"
       ],
       "default": "workflow",
       "description": "How this classification was performed"
