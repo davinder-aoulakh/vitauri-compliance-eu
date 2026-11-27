@@ -121,6 +121,45 @@
       },
       "type": "array"
     },
+    "cp_results": {
+      "description": "Classification of each controlling person on an entity account (looked through only for a Passive NFE)",
+      "items": {
+        "properties": {
+          "controlling_person_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "residences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "jurisdictions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "looked_through": {
+            "type": "boolean"
+          },
+          "reportable": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
     "reporting_year": {
       "type": "number"
     },
