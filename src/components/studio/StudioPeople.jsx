@@ -24,6 +24,7 @@ export default function StudioPeople({ row }) {
 
   if (account.account_holder_type === "entity") {
     const studioByName = Object.fromEntries((entity?.controlling_persons || []).map((p) => [p.name, p]));
+    const resultFor = (c) => (entity?.cp_results || []).find((r) => (c.id && r.id === c.id) || r.name === nameOf(c));
     return (
       <div className="rounded-lg border bg-slate-50/60 p-3">
         <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -39,16 +40,23 @@ export default function StudioPeople({ row }) {
         {cps.length === 0 ? <p className="text-xs text-slate-500">No controlling persons are recorded for this entity.</p> : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead><tr className="text-left text-slate-500"><th className="py-1 pr-2 font-medium">Name</th><th className="py-1 pr-2 font-medium">Role</th><th className="py-1 pr-2 font-medium">Residence</th><th className="py-1 pr-2 font-medium">Self-certification</th><th className="py-1 pr-2 font-medium">Manual result</th></tr></thead>
+              <thead><tr className="text-left text-slate-500"><th className="py-1 pr-2 font-medium">Name</th><th className="py-1 pr-2 font-medium">Role</th><th className="py-1 pr-2 font-medium">Residence</th><th className="py-1 pr-2 font-medium">Self-certification</th><th className="py-1 pr-2 font-medium">Studio result</th><th className="py-1 pr-2 font-medium">Manual result</th></tr></thead>
               <tbody>
                 {cps.map((c, i) => {
                   const s = studioByName[nameOf(c)];
+                  const r = resultFor(c);
                   return (
                     <tr key={c.id || i} className="border-t border-slate-200">
                       <td className="py-1 pr-2 text-slate-800">{nameOf(c)}</td>
                       <td className="py-1 pr-2">{ROLE[c.control_type] || "Controlling person"}{c.ownership_percentage ? ` · ${c.ownership_percentage}%` : ""}</td>
                       <td className="py-1 pr-2">{residencesOf(c).join(", ") || <span className="text-amber-700">Not recorded</span>}{s?.reportable_jurisdictions?.length ? <Badge variant="outline" className="ml-1 text-[10px] border-orange-300 text-orange-800">reportable jurisdiction</Badge> : null}</td>
                       <td className="py-1 pr-2">{c.self_certification_obtained ? "On file" : "Not on file"}</td>
+                      <td className="py-1 pr-2" title={r?.reason ? deglyph(r.reason) : undefined}>
+                        {!r ? <span className="text-slate-400">—</span>
+                          : !r.looked_through ? <span className="text-slate-500">Not looked through</span>
+                          : r.reportable ? <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-800">Reportable · {r.jurisdictions.join(", ")}</Badge>
+                          : <span className="text-slate-700">Non-reportable</span>}
+                      </td>
                       <td className="py-1 pr-2">{c.is_reportable === true ? "Reportable" : c.is_reportable === false ? "Non-reportable" : "Not classified"}</td>
                     </tr>
                   );
